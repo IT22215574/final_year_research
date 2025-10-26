@@ -1,0 +1,5 @@
+Date,FishType,Market,Price_LKR_per_kg,Temp_C,Rainfall_mm,FuelPrice_LKR,DemandIndex,Season
+2025-07-01,Kelawalla,Colombo,1250,29.5,5,480,0.8,SW
+2025-07-08,Balaya,Negombo,780,30.0,2,485,0.6,SW
+2025-07-15,Paraw,Galle,950,28.0,10,490,0.7,SW
+2025-07-22,Thalapath,Colombo,1400,27.5,12,495,0.9,SW
