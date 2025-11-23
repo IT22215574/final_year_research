@@ -1,15 +1,26 @@
-import { Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Redirect } from "expo-router";
+import useAuthStore from "@/stores/authStore";
 
-export default function Index() {
-  return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <h1 className="text-red-600">Edit app/index.tsx to edit this screen.</h1>
-    </View>
+const Home = () => {
+  const { isSignedIn, checkAuthStatus } = useAuthStore();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const initialize = async () => {
+      await checkAuthStatus();
+      setLoading(false);
+    };
+    initialize();
+  }, []);
+
+  if (loading) return null;
+
+  return isSignedIn ? (
+    <Redirect href="/(root)/(tabs)/home" />
+  ) : (
+    <Redirect href="/(auth)/onBoard1" />
   );
-}
+};
+
+export default Home;

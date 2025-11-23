@@ -1,0 +1,651 @@
+import { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  TextInput,
+  ActivityIndicator,
+  StyleSheet,
+  Animated,
+  Image,
+  ImageSourcePropType,
+  Alert
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Controller, useForm } from "react-hook-form";
+import { Ionicons } from "@expo/vector-icons";
+import CheckBox from "expo-checkbox";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import Svg, { Path } from "react-native-svg";
+import { LinearGradient } from "expo-linear-gradient";
+import { icons } from "@/constants";
+import useAuthStore from "@/stores/authStore";
+
+const API = process.env.EXPO_PUBLIC_API_KEY;
+
+const SignIn = () => {
+  const { control, handleSubmit, formState: { errors }, setError, clearErrors } = useForm();
+  const [secureText, setSecureText] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [apiErrors, setApiErrors] = useState({
+    email: "",
+    password: ""
+  });
+  
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const { signIn, isSignedIn } = useAuthStore();
+
+  // Animation values for icons - FIXED: Create refs for animated values
+  const animatedValues = useRef(Array(15).fill(0).map(() => new Animated.Value(0))).current;
+  const animationRefs = useRef<Animated.CompositeAnimation[]>([]);
+
+  // Get role from navigation params
+  useEffect(() => {
+    if (params.role) {
+      setUserRole(params.role as string);
+      console.log("User role:", params.role);
+    }
+  }, [params.role]);
+
+  // Animation functions - FIXED: Improved animation sequence
+  const startAnimations = () => {
+    // Clear any existing animations
+    animationRefs.current.forEach(animation => animation.stop());
+    animationRefs.current = [];
+
+    // Reset all animated values to start position
+    animatedValues.forEach(value => value.setValue(0));
+
+    // Start floating animations for all icons
+    const iconAnimations = animatedValues.map((animValue, index) => {
+      const delay = index * 150 + Math.random() * 400;
+      
+      // Create a continuous floating animation
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.parallel([
+            // Float up and down
+            Animated.timing(animValue, {
+              toValue: 1,
+              duration: 3000 + Math.random() * 2000,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: 3000 + Math.random() * 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      
+      animationRefs.current.push(animation);
+      return animation;
+    });
+
+    // Start all animations
+    iconAnimations.forEach(animation => animation.start());
+  };
+
+  const stopAnimations = () => {
+    animationRefs.current.forEach(animation => animation.stop());
+    animationRefs.current = [];
+  };
+
+  // Start animations when component mounts - FIXED: Added proper dependency
+  useEffect(() => {
+    startAnimations();
+
+    return () => {
+      stopAnimations();
+    };
+  }, []);
+
+  // Clear API errors when user starts typing
+  const clearApiErrors = (field: string) => {
+    setApiErrors(prev => ({
+      ...prev,
+      [field]: ""
+    }));
+    clearErrors(field);
+  };
+
+  // Check if sign up option should be shown (only for External Student)
+  const showSignUpOption = userRole === "External";
+
+  // Handle forgot password navigation
+  const handleForgotPassword = () => {
+    router.push("/(auth)/forgetpassword");
+  };
+
+  // Pick only the icons you want
+  const selectedIcons: ImageSourcePropType[] = [
+    icons.Icon1, icons.Icon2, icons.Icon3, icons.Icon4, icons.Icon5, icons.Icon6,
+    icons.Icon1, icons.Icon3, icons.Icon2, icons.Icon4, icons.Icon3, icons.Icon5,
+    icons.Icon1, icons.Icon6, icons.Icon2,
+  ];
+
+  const getPredefinedPositions = () => {
+    const positions = [
+      // Top row
+      { top: 25, left: 10 }, { top: 25, left: 50 }, { top: 25, left: 90 },
+      // Upper middle row
+      { top: 60, left: 20 }, { top: 60, left: 80 },
+      // Middle row
+      { top: 95, left: 5 }, { top: 95, left: 35 }, { top: 95, left: 65 }, { top: 95, left: 95 },
+      // Lower middle row
+      { top: 130, left: 15 }, { top: 130, left: 50 }, { top: 130, left: 85 },
+      // Bottom row
+      { top: 165, left: 25 }, { top: 165, left: 75 },
+      // Very bottom row
+      { top: 200, left: 5 }, { top: 200, left: 40 }, { top: 200, left: 60 }, { top: 200, left: 95 },
+    ];
+    return positions;
+  };
+
+  const renderDistributedIcons = () => {
+    const predefinedPositions = getPredefinedPositions();
+    
+    return selectedIcons.map((icon, index) => {
+      let position;
+      
+      if (index < predefinedPositions.length) {
+        position = predefinedPositions[index];
+      } else {
+        position = {
+          top: 30 + Math.random() * 140,
+          left: 15 + Math.random() * 70
+        };
+      }
+      
+      const randomOpacity = 0.8 + Math.random() * 0.2;
+      const randomSize = 20 + Math.random() * 12;
+      const randomRotation = Math.random() * 20 - 10;
+
+      // Animation transforms - FIXED: Improved interpolation ranges
+      const translateY = animatedValues[index].interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, -15], // Increased movement range for better visibility
+      });
+
+      const scale = animatedValues[index].interpolate({
+        inputRange: [0, 1],
+        outputRange: [1, 1.1], // Slightly more scale change
+      });
+
+      const rotate = animatedValues[index].interpolate({
+        inputRange: [0, 1],
+        outputRange: [`${randomRotation}deg`, `${randomRotation + 8}deg`], // More rotation
+      });
+
+      const opacity = animatedValues[index].interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [randomOpacity, randomOpacity * 1.4, randomOpacity],
+      });
+
+      return (
+        <Animated.Image
+          key={index}
+          source={icon}
+          style={{
+            position: "absolute",
+            top: position.top,
+            left: `${position.left}%`,
+            width: randomSize,
+            height: randomSize,
+            opacity: opacity,
+            tintColor: "#FFFFFF",
+            zIndex: 2,
+            transform: [
+              { translateY: translateY },
+              { scale: scale },
+              { rotate: rotate },
+            ],
+            shadowColor: "#FFFFFF",
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.8,
+            shadowRadius: 4,
+            elevation: 4,
+          }}
+          resizeMode="contain"
+        />
+      );
+    });
+  };
+
+const onSubmit = async (data: any) => {
+  setLoading(true);
+  setApiErrors({ email: "", password: "" });
+  
+  try {
+    console.log("📧 Form data:", data);
+    
+    const response = await fetch(`${API}/api/v1/auth/signin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password,
+      }),
+      credentials: 'include',
+    });
+
+    const result = await response.json();
+    console.log("📱 FULL API Response:", result);
+
+    if (!response.ok) {
+      throw new Error(result.message || "Sign in failed");
+    }
+
+    // ✅ Transform API response to match authStore User interface
+    const userData = {
+      id: result._id, // Convert _id to id
+      _id: result._id,
+      email: result.email,
+      firstName: result.firstName,
+      lastName: result.lastName,
+      username: result.username,
+      phone: result.phone,
+      role: "student", // Add default role since API doesn't provide it
+      isAdmin: result.isAdmin || false,
+      // Add any optional fields that might be needed
+      profilePicture: result.profilePicture,
+    };
+
+    console.log("✅ Transformed user data for authStore:", userData);
+    
+    // Now call signIn with the transformed data
+    await signIn(userData);
+    
+    Alert.alert("Success", "Signed in successfully!");
+    
+    router.replace({
+      pathname: "/(root)/(tabs)/home",
+      params: { refresh: Date.now() }
+    });
+
+  } catch (error: any) {
+    console.error("❌ Sign in error:", error);
+    
+    if (error.message.includes("User not found") || error.message.includes("Invalid credentials")) {
+      setApiErrors({
+        email: "Invalid email or password",
+        password: "Invalid email or password"
+      });
+    } else {
+      Alert.alert("Error", error.message || "Sign in failed. Please try again.");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+  // Helper function to determine input border color
+  const getInputBorderColor = (fieldName: string) => {
+    if (errors[fieldName] || apiErrors[fieldName]) {
+      return "#ef4444"; // Red color for errors
+    }
+    return "#d1d5db"; // Default border color
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Top Gradient with Icons and Waves */}
+      <LinearGradient
+        colors={["#4B3AFF", "#5C6CFF"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.topSection}
+      >
+        {/* Icons Layer with Animation */}
+        <View style={styles.iconsLayer}>{renderDistributedIcons()}</View>
+
+        {/* Title - Only Learn APP in top section */}
+        <Text style={styles.header}><Text  className="text-blue-400">S</Text>MART  <Text  className="text-blue-400">F</Text>ISHER </Text>
+        <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">LANKA </Text>
+
+        {/* Light Blue Wave - BELOW the white wave */}
+        <View style={styles.lightBlueWaveContainer}>
+          <Svg
+            height="92"
+            width="90%"
+            viewBox="0 0 1440 320"
+            style={styles.lightBlueWaveSvg}
+          >
+            <Path
+              fill="#4B9BFF"
+              d="M0,180L48,170C96,160,192,140,288,130C384,120,480,120,576,135C672,150,768,180,864,190C960,200,1056,190,1152,175C1248,160,1344,130,1392,115L1440,100L1440,320L0,320Z"
+            />
+          </Svg>
+        </View>
+
+        {/* White Wave - ABOVE the blue wave */}
+        <Svg
+          height="92"
+          width="100%"
+          viewBox="0 0 1440 320"
+          style={styles.whiteWaveWrapper}
+        >
+          <Path
+            fill="#ffffff"
+            d="M0,224L48,202.7C96,181,192,139,288,128C384,117,480,139,576,165.3C672,192,768,224,864,234.7C960,245,1056,235,1152,213.3C1248,192,1344,160,1392,144L1440,128L1440,320L0,320Z"
+          />
+        </Svg>
+      </LinearGradient>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Heading */}
+        <View style={styles.headingContainer}>
+          <Text style={styles.welcomeText}>Welcome Back</Text>
+          <Text style={styles.subtitle}>
+            Sign in to your account
+          </Text>
+        </View>
+
+        {/* Form */}
+        <View style={styles.formContainer}>
+          {/* Email */}
+          <Controller
+            control={control}
+            name="email"
+            rules={{
+              required: "Email is required",
+              pattern: { value: /^\S+@\S+\.\S+$/, message: "Invalid email" },
+            }}
+            render={({ field: { onChange, value } }) => (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>
+                  Email <Text style={styles.required}>*</Text>
+                </Text>
+                <View style={[
+                  styles.inputWrapper,
+                  { borderColor: getInputBorderColor("email") }
+                ]}>
+                  <Ionicons 
+                    name="mail-outline" 
+                    size={18} 
+                    color={errors.email || apiErrors.email ? "#ef4444" : "gray"} 
+                  />
+                  <TextInput
+                    placeholder="Enter Your Email"
+                    placeholderTextColor="#9ca3af"
+                    keyboardType="email-address"
+                    value={value}
+                    onChangeText={(text) => {
+                      onChange(text);
+                      clearApiErrors("email");
+                    }}
+                    style={styles.textInput}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+                {(errors.email || apiErrors.email) && (
+                  <Text style={styles.errorText}>
+                    {errors.email?.message as string || apiErrors.email}
+                  </Text>
+                )}
+              </View>
+            )}
+          />
+
+          {/* Password */}
+          <Controller
+            control={control}
+            name="password"
+            rules={{ required: "Password is required" }}
+            render={({ field: { onChange, value } }) => (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>
+                  Password <Text style={styles.required}>*</Text>
+                </Text>
+                <View style={[
+                  styles.inputWrapper,
+                  { borderColor: getInputBorderColor("password") }
+                ]}>
+                  <Ionicons 
+                    name="lock-closed-outline" 
+                    size={18} 
+                    color={errors.password || apiErrors.password ? "#ef4444" : "gray"} 
+                  />
+                  <TextInput
+                    placeholder="Enter Your Password"
+                    placeholderTextColor="#9ca3af"
+                    secureTextEntry={secureText}
+                    value={value}
+                    onChangeText={(text) => {
+                      onChange(text);
+                      clearApiErrors("password");
+                    }}
+                    style={styles.textInput}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setSecureText(!secureText)}>
+                    <Ionicons
+                      name={secureText ? "eye-off-outline" : "eye-outline"}
+                      size={20}
+                      color={errors.password || apiErrors.password ? "#ef4444" : "gray"}
+                    />
+                  </TouchableOpacity>
+                </View>
+                {(errors.password || apiErrors.password) && (
+                  <Text style={styles.errorText}>
+                    {errors.password?.message as string || apiErrors.password}
+                  </Text>
+                )}
+              </View>
+            )}
+          />
+
+          {/* Remember Me + Forgot */}
+          <View style={styles.optionsContainer}>
+            <View style={styles.rememberMeContainer}>
+              <CheckBox
+                value={rememberMe}
+                onValueChange={setRememberMe}
+                color={rememberMe ? "#2563eb" : undefined}
+              />
+              <Text style={styles.rememberMeText}>Remember Me</Text>
+            </View>
+            <TouchableOpacity onPress={handleForgotPassword}>
+              <Text style={styles.forgotPassword}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Sign In Button */}
+          <TouchableOpacity
+            onPress={handleSubmit(onSubmit)}
+            style={[styles.signInButton, loading && styles.disabledButton]}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.signInText}>Sign In</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Sign Up - Only show for External Student */}
+         
+            <View style={styles.signUpContainer}>
+              <Text style={styles.signUpText}>Don't You Have An Account? </Text>
+              <TouchableOpacity onPress={() => router.push("/(auth)/sign-up")}>
+                <Text style={styles.signUpLink}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+          
+        </View>
+      </ScrollView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  topSection: {
+    position: "relative",
+    width: "100%",
+    height: 230,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  iconsLayer: {
+    position: "absolute",
+    width: "100%",
+    height: "95%",
+    zIndex: 7,
+  },
+  header: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: "#fff",
+    zIndex: 5,
+    textShadowColor: "rgba(0, 0, 0, 0.3)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
+    fontFamily: "Poppins-Bold",
+  },
+  whiteWaveWrapper: {
+    position: "absolute",
+    bottom: -5,
+    left: 0,
+    zIndex: 3,
+  },
+  lightBlueWaveContainer: {
+    position: "absolute",
+    bottom: -0.1,
+    left: "5%",
+    right: "-20%",
+    alignItems: "center",
+    zIndex: 2,
+  },
+  lightBlueWaveSvg: {},
+  scrollContainer: {
+    flexGrow: 1,
+  },
+  headingContainer: {
+    alignItems: "center",
+    marginTop: 40,
+    marginBottom: 30,
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#000",
+    fontFamily: "Poppins-Bold",
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 4,
+    fontFamily: "Poppins-Regular",
+  },
+  formContainer: {
+    paddingHorizontal: 32,
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  label: {
+    color: "#000",
+    marginBottom: 8,
+    fontFamily: "Poppins-Regular",
+    fontSize: 14,
+  },
+  required: {
+    color: "#ef4444",
+  },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  textInput: {
+    flex: 1,
+    marginLeft: 8,
+    paddingVertical: 8,
+    color: "#000",
+    fontFamily: "Poppins-Regular",
+    fontSize: 14,
+  },
+  errorText: {
+    color: "#ef4444",
+    fontSize: 12,
+    marginTop: 4,
+    fontFamily: "Poppins-Regular",
+  },
+  optionsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 24,
+    marginTop: 8,
+  },
+  rememberMeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  rememberMeText: {
+    marginLeft: 8,
+    color: "#000",
+    fontFamily: "Poppins-Regular",
+    fontSize: 14,
+  },
+  forgotPassword: {
+    color: "#3b82f6",
+    fontFamily: "Poppins-Regular",
+    fontSize: 14,
+  },
+  signInButton: {
+    backgroundColor: "#3b82f6",
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  signInText: {
+    color: "#fff",
+    fontSize: 18,
+    fontFamily: "Poppins-SemiBold",
+  },
+  signUpContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  signUpText: {
+    color: "#666",
+    fontFamily: "Poppins-Regular",
+    fontSize: 14,
+  },
+  signUpLink: {
+    color: "#3b82f6",
+    fontFamily: "Poppins-Medium",
+    fontSize: 14,
+  },
+});
+
+export default SignIn;
