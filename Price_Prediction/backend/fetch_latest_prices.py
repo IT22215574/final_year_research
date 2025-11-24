@@ -25,7 +25,7 @@ def fetch_latest_prices():
             df_new = tables[0]
         else:
             raise ValueError("No tables parsed with pandas.read_html")
-    except Exception as e:
+    except Exception:
         # --- Fallback to manual parsing ---
         headers = [th.get_text(strip=True) for th in table.find_all("th")]
         rows = []
@@ -60,7 +60,7 @@ def fetch_latest_prices():
     if "FishType" in df_new.columns:
         df_new["FishType"] = df_new["FishType"].fillna("Unknown").astype(str).str.lower().str.strip()
     else:
-        df_new["FishType"] = "Unknown"
+        df_new["FishType"] = "unknown"
 
     # --- Filter target fish ---
     TARGET_FISH = ["yellow fin tuna", "tuna", "sail fish", "marlin fish"]
@@ -83,9 +83,12 @@ def fetch_latest_prices():
         )
 
     # --- Add default numeric columns ---
-    for col in ["Temp_C", "Rainfall_mm", "FuelPrice_LKR", "DemandIndex", "Season", "PrevPrice"]:
+    for col in ["Temp_C", "Rainfall_mm", "FuelPrice_LKR", "DemandIndex", "Season", "PrevPrice", "Market"]:
         if col not in df_new.columns:
-            df_new[col] = 0.0
+            if col == "Market":
+                df_new[col] = "Unknown"
+            else:
+                df_new[col] = 0.0
 
     # --- Save dataset ---
     os.makedirs(os.path.dirname(DATASET_PATH), exist_ok=True)
@@ -100,10 +103,11 @@ def fetch_latest_prices():
 
     combined.to_csv(DATASET_PATH, index=False)
 
-    # --- Save per-fish CSVs ---
+    # Save per-fish CSVs in the same backend dataset directory
     for fish in TARGET_FISH:
         df_fish = combined[combined["FishType"] == fish]
-        df_fish.to_csv(f"dataset/{fish.replace(' ', '_')}.csv", index=False)
+        per_fish_path = os.path.join(BASE_DIR, "dataset", f"{fish.replace(' ', '_')}.csv")
+        df_fish.to_csv(per_fish_path, index=False)
 
     print(f"✅ Dataset updated and saved to {DATASET_PATH} (total rows: {len(combined)})")
     print("🔎 Sample data:\n", combined.head())

@@ -12,25 +12,34 @@ def load_model():
         payload = pickle.load(f)
     return payload
 
+def _find_category_index(value, categories):
+    if value is None:
+        return 0
+    s = str(value).strip().lower()
+    for i, cat in enumerate(categories):
+        if str(cat).strip().lower() == s:
+            return i
+    # try numeric
+    try:
+        v = int(value)
+        if 0 <= v < len(categories):
+            return v
+    except Exception:
+        pass
+    return 0
+
 def predict_price(fish_type, market, temp=0.0, rainfall=0.0, fuel=0.0, demand=0.0, season=0.0, prev_price=0.0):
     payload = load_model()
     model = payload["model"]
-    mappings = payload["mappings"]
-    feature_cols = payload["feature_cols"]
+    mappings = payload.get("mappings", {})
+    feature_cols = payload.get("feature_cols", [])
 
-    # Encode fish type
-    if fish_type in mappings.get("fishtypes", []):
-        fish_id = mappings["fishtypes"].index(fish_type)
-    else:
-        fish_id = 0
+    fishtypes = mappings.get("fishtypes", [])
+    markets = mappings.get("markets", [])
 
-    # Encode market
-    if market in mappings.get("markets", []):
-        market_id = mappings["markets"].index(market)
-    else:
-        market_id = 0
+    fish_id = _find_category_index(fish_type, fishtypes)
+    market_id = _find_category_index(market, markets)
 
-    # Build feature row
     row = {
         "FishType_id": fish_id,
         "Market_id": market_id,

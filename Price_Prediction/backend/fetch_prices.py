@@ -62,9 +62,12 @@ def fetch_latest_prices():
             errors="coerce"
         )
 
-    for col in ["Temp_C", "Rainfall_mm", "FuelPrice_LKR", "DemandIndex", "Season", "PrevPrice"]:
+    for col in ["Temp_C", "Rainfall_mm", "FuelPrice_LKR", "DemandIndex", "Season", "PrevPrice", "Market"]:
         if col not in df_new.columns:
-            df_new[col] = 0.0
+            if col == "Market":
+                df_new[col] = "Unknown"
+            else:
+                df_new[col] = 0.0
 
     os.makedirs(os.path.dirname(DATASET_PATH), exist_ok=True)
     if os.path.exists(DATASET_PATH):
@@ -79,7 +82,8 @@ def fetch_latest_prices():
 
     for fish in TARGET_FISH:
         df_fish = combined[combined["FishType"] == fish]
-        df_fish.to_csv(f"dataset/{fish.replace(' ', '_')}.csv", index=False)
+        per_fish_path = os.path.join(BASE_DIR, "dataset", f"{fish.replace(' ', '_')}.csv")
+        df_fish.to_csv(per_fish_path, index=False)
 
     print(f"✅ Dataset updated and saved to {DATASET_PATH} (total rows: {len(combined)})")
 

@@ -23,28 +23,31 @@ def prepare_df(df):
     if price_col is None:
         raise ValueError("No price column detected in dataset.")
 
-    # Fill missing FishType with "Unknown"
+    # ensure basic columns exist
     if "FishType" in df.columns:
         df["FishType"] = df["FishType"].fillna("Unknown")
-        df = df.dropna(subset=[price_col])
     else:
-        df = df.dropna(subset=[price_col])
+        df["FishType"] = "Unknown"
 
+    # --- clean price column first (ensure numeric) ---
+    df[price_col] = pd.to_numeric(
+        df[price_col].astype(str).str.replace(",", "").str.extract(r"([-0-9.]+)")[0],
+        errors="coerce"
+    )
+    df = df.dropna(subset=[price_col])
     if df.empty:
         raise ValueError("Dataset is empty after cleaning.")
 
-    # Add lag feature
+    # convert Date if present
+    if "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce", dayfirst=True)
+
+    # Add lag feature PrevPrice after numeric price available
     sort_cols = [c for c in ["FishType", "Market", "Date"] if c in df.columns]
     if sort_cols:
         df = df.sort_values(by=sort_cols)
     df["PrevPrice"] = df.groupby([c for c in ["FishType", "Market"] if c in df.columns])[price_col].shift(1)
     df["PrevPrice"] = df["PrevPrice"].fillna(0.0)
-
-    # clean price column
-    df[price_col] = pd.to_numeric(
-        df[price_col].astype(str).str.replace(",", "").str.extract(r"([-0-9.]+)")[0],
-        errors="coerce"
-    )
 
     # add default numeric columns if missing
     for col in ["Temp_C", "Rainfall_mm", "FuelPrice_LKR", "DemandIndex", "Season", "PrevPrice"]:
@@ -77,7 +80,7 @@ def prepare_df(df):
         if col in df.columns:
             feature_cols.append(col)
 
-    return df, price_col, mappings, feature_cols
+    return df.reset_index(drop=True), price_col, mappings, feature_cols
 
 def train_and_save():
     if not os.path.exists(DATA_PATH):
@@ -87,7 +90,7 @@ def train_and_save():
     df, price_col, mappings, feature_cols = prepare_df(df)
 
     if df.empty or df.shape[0] < 2:
-        raise ValueError("Not enough data to train model. Please scrape more rows.")
+        raise ValueError("Not enough data to train model. Please add more rows.")
 
     if not feature_cols:
         raise ValueError("No feature columns available for training.")
@@ -95,9 +98,17 @@ def train_and_save():
     X = df[feature_cols].astype(float).fillna(0.0)
     y = df[price_col].astype(float)
 
-    # safe split
+    # --- time-aware split if Date exists ---
     test_size = 0.2 if df.shape[0] >= 5 else 0.5
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+    if "Date" in df.columns and df["Date"].notna().sum() > 0:
+        df_sorted = df.sort_values("Date").reset_index(drop=True)
+        split_idx = int(len(df_sorted) * (1 - test_size))
+        X_train = df_sorted[feature_cols].iloc[:split_idx].astype(float).fillna(0.0)
+        y_train = df_sorted[price_col].iloc[:split_idx].astype(float)
+        X_test = df_sorted[feature_cols].iloc[split_idx:].astype(float).fillna(0.0)
+        y_test = df_sorted[price_col].iloc[split_idx:].astype(float)
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42, shuffle=True)
 
     model = RandomForestRegressor(n_estimators=200, random_state=42)
     model.fit(X_train, y_train)

@@ -22,9 +22,13 @@ def load_model():
         return None, {}, [], None
     data = pickle.load(open(MODEL_FILE, "rb"))
     if isinstance(data, dict) and "model" in data:
+        mappings = data.get("mappings", {}) or {}
+        # normalize category lists to strings to avoid type issues
+        mappings["fishtypes"] = [str(x) for x in mappings.get("fishtypes", [])]
+        mappings["markets"] = [str(x) for x in mappings.get("markets", [])]
         return (
             data["model"],
-            data.get("mappings", {}),
+            mappings,
             data.get("feature_cols", []),
             data.get("price_col", None),
         )
@@ -51,21 +55,25 @@ def home():
     })
 
 def map_category(value, categories):
-    """Map a name or numeric to the category code. Accepts numeric string too."""
+    """Map a name or numeric to the category code. Accepts numeric string too.
+    Matching is case-insensitive and strips whitespace."""
     if value is None:
         return 0
-    # if already numeric
+    # if already numeric index
     try:
         v = int(value)
         if 0 <= v < len(categories):
             return v
     except Exception:
         pass
-    # try match by string
-    val_str = str(value).strip()
-    if val_str in categories:
-        return categories.index(val_str)
-    # not found -> append? we will fallback to 0
+    val_str = str(value).strip().lower()
+    for i, cat in enumerate(categories):
+        try:
+            if str(cat).strip().lower() == val_str:
+                return i
+        except Exception:
+            continue
+    # fallback to 0 if not found
     return 0
 
 @app.route("/predict", methods=["POST"])
