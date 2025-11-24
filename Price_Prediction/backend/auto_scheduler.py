@@ -1,35 +1,36 @@
+# auto_scheduler.py
+import os
 import schedule
 import time
 import subprocess
-import os
+import threading
+import sys
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(__file__)
+FETCH_SCRIPT = os.path.join(BASE_DIR, "fetch_prices.py")
+TRAIN_SCRIPT = os.path.join(BASE_DIR, "model_train.py")
 
-def run_automation():
-    print("\n🕐 Starting weekly automation:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    
+def run_script(script_path):
+    print(f"🔁 Running script: {script_path} at {datetime.now()}")
     try:
-        # 1️⃣ Scrape latest prices
-        print("📡 Fetching latest fish prices...")
-        subprocess.run(["python", os.path.join(BASE_DIR, "fetch_prices.py")], check=True)
-
-        # 2️⃣ Retrain model
-        print("🤖 Training model with updated dataset...")
-        subprocess.run(["python", os.path.join(BASE_DIR, "model_train.py")], check=True)
-
-        print("✅ Weekly automation completed successfully!\n")
-
+        subprocess.run([sys.executable, script_path], check=True)
+        print(f"✅ Finished: {script_path}")
     except subprocess.CalledProcessError as e:
-        print("❌ Error during automation process:", e)
+        print(f"❌ Script failed: {script_path} -> {e}")
 
-# Schedule job (run every Monday at 08:00 AM)
-schedule.every().monday.at("08:00").do(run_automation)
+def job():
+    # run fetch then train sequentially
+    run_script(FETCH_SCRIPT)
+    run_script(TRAIN_SCRIPT)
 
-print("🔁 Weekly automation scheduler started (Every Monday 8:00 AM)")
-print("Press Ctrl+C to stop.\n")
+# Schedule: every Monday at 08:00 local time
+schedule.every().monday.at("08:00").do(job)
+print("🔔 Scheduler started: every Monday at 08:00 (local)")
 
-# Keep running
-while True:
-    schedule.run_pending()
-    time.sleep(60)
+try:
+    while True:
+        schedule.run_pending()
+        time.sleep(60)  # check once per minute
+except KeyboardInterrupt:
+    print("Scheduler stopped by user.")
