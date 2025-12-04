@@ -15,7 +15,7 @@ BACKEND_DIR = SCRIPT_DIR.parent
 OUTPUT_DIR = BACKEND_DIR / "dataset" / "raw" / "festivals"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-OUTPUT_CSV = OUTPUT_DIR / "festivals_2021_2025.csv"
+OUTPUT_CSV = OUTPUT_DIR / "festivals_2020_2026.csv"
 
 # ----------------------------------
 # LOAD API KEY
@@ -26,7 +26,8 @@ load_dotenv(env_file)
 API_KEY = os.getenv("CALENDARIFIC_API_KEY")
 BASE_URL = "https://calendarific.com/api/v2/holidays"
 
-YEARS = list(range(2020, 2026))
+# ✅ FIX: 2020 → 2026 INCLUDE
+YEARS = list(range(2020, 2027))
 rows = []
 
 # ======================================================
@@ -64,7 +65,7 @@ hijri_map = {
     2023: 1444,
     2024: 1445,
     2025: 1446,
-    2026: 1447,
+    2026: 1447
 }
 
 for year, hijri_year in hijri_map.items():
@@ -107,7 +108,7 @@ if API_KEY:
             print(f"❌ API Error {year}: {e}")
 
 else:
-    print("⚠ API KEY missing → Skipping Poya/Vesak/Poson from API")
+    print("⚠ API KEY missing → Skipping Poya / Vesak / Poson")
 
 # ======================================================
 # FINAL SAVE
@@ -121,3 +122,4 @@ df.to_csv(OUTPUT_CSV, index=False)
 print("\n✅ FESTIVAL MASTER CSV GENERATED SUCCESSFULLY")
 print(f"📁 {OUTPUT_CSV}")
 print(df.head(15))
+print(df.tail(15))
