@@ -6,39 +6,43 @@ import sys
 def run_python(file_path, args=None):
     args = args or []
     print("\n" + "="*60)
-    print(f"▶ Running: {file_path} {' '.join(args)}")
+    print(f"▶ Running: {file_path.name} {' '.join(args)}")
     print("="*60)
 
     result = subprocess.run([sys.executable, str(file_path)] + args)
     if result.returncode != 0:
-        print(f"❌ Error running {file_path} (exit {result.returncode})")
+        print(f"❌ Error running {file_path.name} (exit {result.returncode})")
         sys.exit(result.returncode)
     else:
-        print(f"✅ Completed: {file_path}")
+        print(f"✅ Completed: {file_path.name}")
 
 def main():
     base = Path(__file__).resolve().parent
     scripts_dir = base / "scripts"
 
-    # scripts (assume in same folder)
-    fetch_holidays_script = scripts_dir / "fetch_holidays.py"
+    # Script files
+    festival_generator = scripts_dir / "festival_master_generator.py"
     merge_script = scripts_dir / "merge_all_data.py"
+    festival_features_script = scripts_dir / "generate_festival_window_features.py"
     feature_script = scripts_dir / "feature_engineering.py"
 
-    print("\n🚀 Starting Pipeline: fetch_holidays -> merge -> feature_engineering\n")
+    print("\n🚀 Starting Pipeline: festivals → merge → features → engineering\n")
 
-    # 1) Fetch holidays (change years as needed)
-    # Example: to fetch 2019-2025 use ["--start", "2019", "--end", "2025"]
-    run_python(fetch_holidays_script, args=["--start", "2019", "--end", "2025"])
+    # 1) Generate festival master data
+    run_python(festival_generator)
 
-    # 2) Merge all data
+    # 2) Merge all data (price + weather + festivals)
     run_python(merge_script)
 
-    # 3) Feature engineering
+    # 3) Generate festival window features
+    run_python(festival_features_script)
+
+    # 4) Feature engineering
     run_python(feature_script)
 
     print("\n" + "="*60)
     print("🎉 Pipeline Successfully Completed!")
+    print("📊 Output: backend/dataset/processed/features_dataset.csv")
     print("="*60)
 
 if __name__ == "__main__":
