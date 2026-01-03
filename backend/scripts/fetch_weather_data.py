@@ -1,25 +1,19 @@
-import os
 import datetime
 import requests
 import pandas as pd
 from pathlib import Path
-from dotenv import load_dotenv
 import socket
 
 # Paths
 script_dir = Path(__file__).parent            # backend/scripts
 backend_dir = script_dir.parent               # backend/
-project_root = backend_dir.parent             # project root
-env_file = backend_dir / ".env"               # backend/.env
-
-# Load .env correctly
-load_dotenv(dotenv_path=env_file, override=True)
-
-API_KEY = os.getenv("OPENWEATHER_API_KEY")
-CITY = "Colombo"
 
 # Output CSV path
-OUT_FILE = backend_dir / "dataset" / "raw" / "weather" / "weather_data.csv"
+OUT_FILE = backend_dir / "dataset" / "processed" / "weather_dataset.csv"
+
+# Colombo coordinates
+LATITUDE = 6.9271
+LONGITUDE = 79.8612
 
 
 def ensure_output_dir():
@@ -29,113 +23,174 @@ def ensure_output_dir():
 def check_connectivity():
     """Check if DNS resolution works"""
     try:
-        socket.gethostbyname("api.openweathermap.org")
+        socket.gethostbyname("archive-api.open-meteo.com")
         return True
     except socket.gaierror:
         return False
 
 
-def fetch_weather():
+def fetch_weather_open_meteo(start_date, end_date):
+    """
+    Fetch historical weather data from Open-Meteo API (FREE, no API key needed)
+    
+    Args:
+        start_date: datetime object or string (YYYY-MM-DD)
+        end_date: datetime object or string (YYYY-MM-DD)
+    """
     ensure_output_dir()
-
-    # Check API key
-    if not API_KEY or len(API_KEY) < 10:
-        print("[ERROR] No valid API key found in .env file!")
-        print("Please add: OPENWEATHER_API_KEY=YOUR_KEY")
-        print("Get a free API key from: https://openweathermap.org/api")
-        return
 
     # Check internet
     if not check_connectivity():
         print("\n" + "="*60)
         print("⚠️  Internet / DNS Problem")
         print("="*60)
-        print("Cannot resolve api.openweathermap.org")
+        print("Cannot resolve archive-api.open-meteo.com")
         print("\n💡 Weather data is OPTIONAL — app works fine without it.")
         print("="*60 + "\n")
         return
 
-    url = f"https://api.openweathermap.org/data/2.5/weather?q={CITY}&appid={API_KEY}&units=metric"
+    # Format dates
+    if isinstance(start_date, datetime.datetime):
+        start_str = start_date.strftime("%Y-%m-%d")
+    else:
+        start_str = str(start_date)
+    
+    if isinstance(end_date, datetime.datetime):
+        end_str = end_date.strftime("%Y-%m-%d")
+    else:
+        end_str = str(end_date)
 
-    print(f"\n📡 Fetching weather data for {CITY}...")
+    # Open-Meteo API endpoint (FREE, no key needed)
+    url = "https://archive-api.open-meteo.com/v1/archive"
+    
+    params = {
+        "latitude": LATITUDE,
+        "longitude": LONGITUDE,
+        "start_date": start_str,
+        "end_date": end_str,
+        "daily": "temperature_2m_mean,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum",
+        "timezone": "Asia/Colombo"
+    }
+
+    print(f"\n📡 Fetching weather data for Colombo ({start_str} to {end_str})...")
+    print("🌐 Using Open-Meteo API (FREE, no API key needed)")
 
     try:
-        resp = requests.get(url, timeout=10)
+        resp = requests.get(url, params=params, timeout=30)
+        print(f"✅ API Response Status: {resp.status_code}")
 
         if resp.status_code != 200:
             print(f"[ERROR] API request failed: {resp.status_code}")
-
-            if resp.status_code == 401:
-                print("❌ Invalid API key. Please check your .env file.")
-            elif resp.status_code == 404:
-                print(f"❌ City '{CITY}' not found.")
-            else:
-                print("Response:", resp.text[:200])
+            print("Response:", resp.text[:200])
             return
 
         payload = resp.json()
+        print("✅ Successfully parsed JSON response")
 
     except Exception as e:
         print(f"[ERROR] Network error: {e}")
         return
 
-    # Extract fields safely
-    main = payload.get("main", {})
-    wind = payload.get("wind", {})
-    weather_list = payload.get("weather", [{}])
-    condition = weather_list[0].get("main")
-
-    temp = main.get("temp")
-    humidity = main.get("humidity")
-    wind_speed = wind.get("speed")
-
-    if None in (temp, humidity, wind_speed, condition):
-        print("[ERROR] Missing fields in API response.")
+    # Extract daily data
+    if "daily" not in payload:
+        print("[ERROR] No daily data in API response.")
         return
 
-    today = datetime.date.today().isoformat()
+    daily = payload["daily"]
+    print("\n📊 Extracting weather data fields...")
+    
+    dates = daily.get("time", [])
+    temps = daily.get("temperature_2m_mean", [])
+    humidity = daily.get("relative_humidity_2m_mean", [])
+    wind = daily.get("wind_speed_10m_max", [])
+    precip = daily.get("precipitation_sum", [])
+    
+    # Log data retrieval status
+    print(f"  ✓ Dates: {len(dates)} records")
+    print(f"  ✓ Temperature: {len(temps)} records")
+    print(f"  ✓ Humidity: {len(humidity)} records")
+    print(f"  ✓ Wind Speed: {len(wind)} records")
+    print(f"  ✓ Precipitation: {len(precip)} records")
 
-    # Avoid duplicates
+    if not dates:
+        print("[ERROR] No dates in API response.")
+        return
+    
+    print(f"\n✅ All weather fields retrieved successfully!")
+
+    # Create DataFrame
+    print("\n🔄 Processing weather data...")
+    weather_data = []
+    bad_weather_count = 0
+    
+    for i in range(len(dates)):
+        # Determine bad weather (rain > 5mm or wind > 30 km/h)
+        rain = precip[i] if i < len(precip) else 0
+        wind_speed = wind[i] if i < len(wind) else 0
+        bad_weather = 1 if (rain > 5 or wind_speed > 30) else 0
+        
+        if bad_weather:
+            bad_weather_count += 1
+        
+        weather_data.append({
+            "date": dates[i],
+            "temp_c": round(temps[i], 2) if i < len(temps) else None,
+            "humidity": round(humidity[i], 1) if i < len(humidity) else None,
+            "wind_speed": round(wind_speed, 2) if i < len(wind) else None,
+            "condition": "Rainy" if rain > 5 else "Clear",
+            "city": "Colombo",
+            "bad_weather": bad_weather
+        })
+    
+    print(f"  ✓ Processed {len(weather_data)} weather records")
+    print(f"  ✓ Bad weather days detected: {bad_weather_count}")
+
+    df = pd.DataFrame(weather_data)
+    print(f"  ✓ DataFrame created with {len(df)} rows")
+
+    # Remove any existing data for these dates and append new
     if OUT_FILE.exists():
+        print("\n📝 Merging with existing weather data...")
         try:
             existing = pd.read_csv(OUT_FILE)
-            if today in existing.get("date", []).astype(str).values:
-                print(f"[SKIP] Weather already saved for {today}")
-                return
+            print(f"  ✓ Found existing data: {len(existing)} records")
+            existing = existing[~existing["date"].isin(df["date"])]
+            print(f"  ✓ After removing duplicates: {len(existing)} records")
+            df = pd.concat([existing, df], ignore_index=True)
+            df = df.sort_values("date").drop_duplicates(subset=["date"])
+            print(f"  ✓ Final merged data: {len(df)} records")
         except Exception as e:
             print("[WARN] Failed reading existing CSV:", e)
-
-    df = pd.DataFrame({
-        "date": [today],
-        "temp_c": [round(float(temp), 2)],
-        "humidity": [humidity],
-        "wind_speed": [wind_speed],
-        "condition": [condition],
-        "city": [CITY]
-    })
+    else:
+        print("\n📝 Creating new weather dataset file...")
 
     try:
-        df.to_csv(
-            OUT_FILE,
-            mode='a' if OUT_FILE.exists() else 'w',
-            header=not OUT_FILE.exists(),
-            index=False
-        )
+        print("\n💾 Saving weather data to CSV...")
+        df.to_csv(OUT_FILE, index=False)
 
-        print("\n✅ Weather data saved!")
+        print("\n" + "="*60)
+        print("✅ WEATHER DATA SUCCESSFULLY SAVED!")
+        print("="*60)
         print(f"📁 File: {OUT_FILE}")
-        print(f"🌡️ Temp: {temp}°C")
-        print(f"💧 Humidity: {humidity}%")
-        print(f"💨 Wind: {wind_speed} m/s")
-        print(f"☁️ Condition: {condition}\n")
+        print(f"📊 Total Records: {len(df)}")
+        print(f"📅 Date range: {df['date'].min()} to {df['date'].max()}")
+        print(f"🌡️ Temp range: {df['temp_c'].min():.1f}°C - {df['temp_c'].max():.1f}°C")
+        print(f"💧 Humidity range: {df['humidity'].min():.0f}% - {df['humidity'].max():.0f}%")
+        print(f"🌧️ Bad weather days: {df['bad_weather'].sum()}/{len(df)}")
+        print("="*60 + "\n")
 
     except Exception as e:
         print(f"[ERROR] Failed writing CSV: {e}")
 
 
 def main():
-    fetch_weather()
+    # Fetch weather for 2024-2025
+    start = datetime.datetime(2024, 1, 1)
+    # Open-Meteo archive API only allows up to today
+    end = datetime.datetime.now()
+    fetch_weather_open_meteo(start, end)
 
 
 if __name__ == "__main__":
     main()
+

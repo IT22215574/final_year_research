@@ -76,9 +76,29 @@ for year, hijri_year in hijri_map.items():
     rows.append({"festival_name": "Eid_al_Adha", "festival_date": pd.Timestamp(eid_adha)})
 
 # ======================================================
-# 4️⃣ POYA, VESAK, POSON → VIA API (AUTO EACH YEAR)
+# 4️⃣ POYA DAYS (MANUAL - Full Moon Days)
 # ======================================================
-if API_KEY:
+# Poya days are on full moon - approximate dates (can be ±1 day)
+poya_dates = {
+    2024: ["01-25", "02-24", "03-25", "04-23", "05-23", "06-21", "07-21", "08-19", "09-17", "10-17", "11-15", "12-14"],
+    2025: ["01-13", "02-12", "03-14", "04-13", "05-12", "06-11", "07-10", "08-09", "09-07", "10-06", "11-05", "12-04"]
+}
+
+for year, dates in poya_dates.items():
+    for mmdd in dates:
+        m, d = map(int, mmdd.split("-"))
+        month_names = ["", "Duruthu", "Navam", "Medin", "Bak", "Vesak", "Poson", 
+                      "Esala", "Nikini", "Binara", "Vap", "Il", "Unduvap"]
+        poya_name = f"{month_names[m]} Poya"
+        rows.append({
+            "festival_name": poya_name,
+            "festival_date": pd.Timestamp(year=year, month=m, day=d)
+        })
+
+# ======================================================
+# 5️⃣ POYA, VESAK, POSON → VIA API (OPTIONAL BACKUP)
+# ======================================================
+if API_KEY and API_KEY != "GET_FREE_KEY_FROM_https://calendarific.com/" and len(API_KEY) > 10:
     for year in YEARS:
         params = {
             "api_key": API_KEY,
@@ -89,13 +109,32 @@ if API_KEY:
         try:
             r = requests.get(BASE_URL, params=params, timeout=10).json()
 
+            # Check if response is valid
+            if not isinstance(r, dict):
+                print(f"⚠ Invalid API response for {year}: expected dict, got {type(r)}")
+                continue
+            
             if "response" not in r:
-                print(f"⚠ No API data for {year}")
+                print(f"⚠ No 'response' key in API data for {year}")
+                continue
+            
+            if "holidays" not in r["response"]:
+                print(f"⚠ No 'holidays' in API response for {year}")
                 continue
 
-            for h in r["response"]["holidays"]:
-                name = h["name"]
-                date_str = h["date"]["iso"][:10]
+            holidays = r["response"]["holidays"]
+            if not isinstance(holidays, list):
+                print(f"⚠ Holidays is not a list for {year}")
+                continue
+
+            for h in holidays:
+                name = h.get("name", "")
+                date_info = h.get("date", {})
+                date_str = date_info.get("iso", "")[:10] if isinstance(date_info, dict) else ""
+                
+                if not date_str:
+                    continue
+                
                 date_obj = pd.to_datetime(date_str)
 
                 if any(k in name.lower() for k in ["poya", "vesak", "poson"]):
@@ -105,10 +144,12 @@ if API_KEY:
                     })
 
         except Exception as e:
-            print(f"❌ API Error {year}: {e}")
+            print(f"⚠ API Error {year}: {e}")
 
 else:
-    print("⚠ API KEY missing → Skipping Poya / Vesak / Poson")
+    print("⚠ API KEY missing or invalid → Skipping Poya / Vesak / Poson")
+    print("ℹ️  Get free API key from: https://calendarific.com/")
+    print("ℹ️  Using fallback festivals (New Year, Independence Day, Sinhala NY, Eid, Christmas)")
 
 # ======================================================
 # FINAL SAVE

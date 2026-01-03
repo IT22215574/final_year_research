@@ -82,7 +82,14 @@ def extract_fish_prices_from_csv(csv_folder):
             print(f"⚠ Error reading {csv_file.name}: {e}")
     
     if fish_prices:
-        return pd.DataFrame(fish_prices)
+        df = pd.DataFrame(fish_prices)
+        
+        # Remove duplicates: keep the record with highest price for same date+fish
+        df = df.sort_values('price', ascending=False)
+        df = df.drop_duplicates(subset=['date', 'fish_id'], keep='first')
+        
+        print(f"📊 After removing duplicates: {len(df)} records")
+        return df
     return None
 
 def merge_all():

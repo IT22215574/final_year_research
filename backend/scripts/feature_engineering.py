@@ -87,7 +87,11 @@ def add_features():
         df["weather_effect"] = 0
 
     # Festival and price behavior signals
-    df["poya_effect"] = (df["festival_name"].str.lower().str.contains("poya", na=False)).astype(int)
+    # FIX: Better Poya detection
+    df["poya_effect"] = (
+        df["festival_name"].str.lower().str.contains("poya", na=False) |
+        df["festival_name"].str.lower().str.contains("full moon", na=False)
+    ).astype(int)
     df["festival_effect"] = df["is_festival_day"]
 
     # Final price behavior signal
