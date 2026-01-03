@@ -47,7 +47,7 @@ def generate_festival_features(
 
     df["is_festival_day"] = (df["festival_name"] != "None").astype(int)
 
-    window_size = 14  # 2 weeks before festival
+    window_size = 7   # 1 week window before/after festival
     df = df.sort_values("date")
 
     df["days_to_festival"] = 999

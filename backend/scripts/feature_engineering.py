@@ -80,9 +80,10 @@ def add_features():
     df["day_of_week"] = df["date"].dt.dayofweek
     df["is_weekend"] = df["day_of_week"].isin([5, 6]).astype(int)
 
-    # Weather effect simulation
-    if "rainfall" in df.columns:
-        df["weather_effect"] = (df["rainfall"] > 10).astype(int)
+    # Weather effect using aggregated rainfall if present
+    rain_col = "rainfall_sum" if "rainfall_sum" in df.columns else ("rainfall" if "rainfall" in df.columns else None)
+    if rain_col:
+        df["weather_effect"] = (df[rain_col] > 10).astype(int)
     else:
         df["weather_effect"] = 0
 

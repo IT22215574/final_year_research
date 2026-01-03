@@ -78,7 +78,8 @@ def prepare_training_data(df):
         'fish_encoded', 'day_of_week', 'month', 'year', 'week_of_year',
         'month_sin', 'month_cos', 'season',
         'is_weekend', 'is_festival_day', 'before_festival_window',
-        'days_to_festival', 'weather_effect', 'poya_effect', 'festival_effect'
+        'days_to_festival', 'weather_effect', 'poya_effect', 'festival_effect',
+        'temp_c_mean', 'humidity_mean', 'wind_speed_max', 'rainfall_sum', 'bad_weather_any'
     ]
     
     # Filter to columns that exist

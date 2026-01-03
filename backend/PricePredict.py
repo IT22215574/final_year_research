@@ -288,8 +288,9 @@ class FishPricePredictorGUI:
                     'festival_effect': 0
                 }
                 
-                available_features = [f for f in self.feature_names if f in features_dict]
-                features = pd.DataFrame([{f: features_dict[f] for f in available_features}])
+                # Ensure every trained feature exists; fill unseen ones with 0
+                feature_row = {name: features_dict.get(name, 0) for name in self.feature_names}
+                features = pd.DataFrame([feature_row])
                 
                 # Make predictions
                 rf_pred = self.rf_model.predict(features)[0]

@@ -11,9 +11,16 @@ backend_dir = script_dir.parent               # backend/
 # Output CSV path
 OUT_FILE = backend_dir / "dataset" / "processed" / "weather_dataset.csv"
 
-# Colombo coordinates
-LATITUDE = 6.9271
-LONGITUDE = 79.8612
+# Sri Lanka main ports with lat/lon (approx.)
+PORTS = {
+    "Colombo": (6.9271, 79.8612),
+    "Negombo": (7.2083, 79.8358),
+    "Galle": (6.0535, 80.2210),
+    "Trincomalee": (8.5874, 81.2152),
+    "Jaffna": (9.6615, 80.0255),
+    "Hambantota": (6.1246, 81.1185),
+    "Kalpitiya": (8.4020, 79.7557)
+}
 
 
 def ensure_output_dir():
@@ -29,7 +36,7 @@ def check_connectivity():
         return False
 
 
-def fetch_weather_open_meteo(start_date, end_date):
+def fetch_weather_open_meteo(city, lat, lon, start_date, end_date):
     """
     Fetch historical weather data from Open-Meteo API (FREE, no API key needed)
     
@@ -64,15 +71,15 @@ def fetch_weather_open_meteo(start_date, end_date):
     url = "https://archive-api.open-meteo.com/v1/archive"
     
     params = {
-        "latitude": LATITUDE,
-        "longitude": LONGITUDE,
+        "latitude": lat,
+        "longitude": lon,
         "start_date": start_str,
         "end_date": end_str,
         "daily": "temperature_2m_mean,relative_humidity_2m_mean,wind_speed_10m_max,precipitation_sum",
         "timezone": "Asia/Colombo"
     }
 
-    print(f"\n📡 Fetching weather data for Colombo ({start_str} to {end_str})...")
+    print(f"\n📡 Fetching weather data for {city} ({start_str} to {end_str})...")
     print("🌐 Using Open-Meteo API (FREE, no API key needed)")
 
     try:
@@ -137,8 +144,9 @@ def fetch_weather_open_meteo(start_date, end_date):
             "temp_c": round(temps[i], 2) if i < len(temps) else None,
             "humidity": round(humidity[i], 1) if i < len(humidity) else None,
             "wind_speed": round(wind_speed, 2) if i < len(wind) else None,
+            "rainfall": round(rain, 2),
             "condition": "Rainy" if rain > 5 else "Clear",
-            "city": "Colombo",
+            "city": city,
             "bad_weather": bad_weather
         })
     
@@ -154,10 +162,10 @@ def fetch_weather_open_meteo(start_date, end_date):
         try:
             existing = pd.read_csv(OUT_FILE)
             print(f"  ✓ Found existing data: {len(existing)} records")
-            existing = existing[~existing["date"].isin(df["date"])]
-            print(f"  ✓ After removing duplicates: {len(existing)} records")
+            existing = existing[~((existing["date"].isin(df["date"])) & (existing["city"] == city))]
+            print(f"  ✓ After removing duplicates for {city}: {len(existing)} records")
             df = pd.concat([existing, df], ignore_index=True)
-            df = df.sort_values("date").drop_duplicates(subset=["date"])
+            df = df.sort_values(["date", "city"]).drop_duplicates(subset=["date", "city"])
             print(f"  ✓ Final merged data: {len(df)} records")
         except Exception as e:
             print("[WARN] Failed reading existing CSV:", e)
@@ -184,11 +192,12 @@ def fetch_weather_open_meteo(start_date, end_date):
 
 
 def main():
-    # Fetch weather for 2024-2025
+    # Fetch weather for 2024-2025 for all ports
     start = datetime.datetime(2024, 1, 1)
-    # Open-Meteo archive API only allows up to today
     end = datetime.datetime.now()
-    fetch_weather_open_meteo(start, end)
+
+    for city, (lat, lon) in PORTS.items():
+        fetch_weather_open_meteo(city, lat, lon, start, end)
 
 
 if __name__ == "__main__":

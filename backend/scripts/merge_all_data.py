@@ -117,12 +117,31 @@ def merge_all():
     price_df = fish_price_df.sort_values("date")
     price_df.to_csv(processed / "merged_price.csv", index=False)
 
-    # 2️⃣ Load WEATHER
+    # 2️⃣ Load WEATHER (aggregate across ports)
     if weather_path.exists():
         weather_df = pd.read_csv(weather_path)
         weather_df["date"] = pd.to_datetime(weather_df["date"], errors="coerce")
         weather_df = weather_df.dropna(subset=["date"])
-        print("✅ Weather data loaded")
+
+        # Aggregate by date so we do not explode rows when merging
+        agg = weather_df.groupby("date").agg({
+            "temp_c": "mean",
+            "humidity": "mean",
+            "wind_speed": "max",
+            "rainfall": "sum",
+            "bad_weather": "max"
+        }).reset_index()
+
+        agg = agg.rename(columns={
+            "temp_c": "temp_c_mean",
+            "humidity": "humidity_mean",
+            "wind_speed": "wind_speed_max",
+            "rainfall": "rainfall_sum",
+            "bad_weather": "bad_weather_any"
+        })
+
+        weather_df = agg
+        print("✅ Weather data loaded and aggregated across ports")
     else:
         print("⚠ No weather dataset found")
         weather_df = None
