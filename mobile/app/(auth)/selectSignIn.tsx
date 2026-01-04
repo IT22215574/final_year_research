@@ -228,8 +228,15 @@ const SelectSignIn = () => {
         <View style={styles.iconsLayer}>{renderDistributedIcons()}</View>
 
         {/* Title - Only Learn APP in top section */}
-        <Text style={styles.header}>Learn APP</Text>
-
+        <Text style={styles.header}>
+          <Text className="text-blue-400">S</Text>
+          <Text>MART </Text>
+          <Text className="text-blue-400">F</Text>
+          <Text>ISHER </Text>
+        </Text>
+        <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">
+          LANKA{" "}
+        </Text>
         {/* Light Blue Wave - BELOW the white wave */}
         <View style={styles.lightBlueWaveContainer}>
           <Svg
@@ -313,9 +320,7 @@ const SelectSignIn = () => {
               <Image source={icons.BuyerIcon} style={styles.icon} />
               <View style={styles.roleTextContainer}>
                 <Text style={styles.roleTitle}>Customer</Text>
-                <Text style={styles.roleDesc}>
-                  Explore as a customer
-                </Text>
+                <Text style={styles.roleDesc}>Explore as a customer</Text>
               </View>
             </View>
 
