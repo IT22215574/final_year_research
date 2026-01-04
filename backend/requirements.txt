@@ -3,3 +3,8 @@ numpy
 scikit-learn
 openpyxl
 tkcalendar
+requests
+python-dotenv
+hijridate
+matplotlib
+seaborn
