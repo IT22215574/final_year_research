@@ -80,6 +80,7 @@ def main():
     print("📊 Outputs:")
     print("   - backend/dataset/processed/features_dataset.csv (train)")
     print("   - backend/models/*.pkl (rf, gb, encoders)")
+    print("   - backend/models/model_accuracy_chart.png (accuracy visualization)")
     print("   - backend/dataset/processed/future_price_predictions.csv")
     print("="*60)
 

@@ -7,8 +7,14 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import matplotlib.pyplot as plt
+import seaborn as sns
 import warnings
 warnings.filterwarnings('ignore')
+
+# Set matplotlib style
+plt.style.use('seaborn-v0_8-darkgrid')
+sns.set_palette("husl")
 
 def load_features_dataset(backend_dir):
     """Load the processed features dataset"""
@@ -171,7 +177,75 @@ def train_model(X, y):
     print(f"   MAE: Rs. {mae_ensemble:.2f}")
     print(f"   R² Score: {r2_ensemble:.4f}")
     
-    return rf_model, gb_model, X.columns.tolist()
+    # Store metrics for visualization
+    metrics = {
+        'models': ['Random Forest', 'Gradient Boosting', 'Ensemble'],
+        'mae': [mae_rf, mae_gb, mae_ensemble],
+        'r2': [r2_rf, r2_gb, r2_ensemble],
+        'predictions': {
+            'rf': rf_pred,
+            'gb': gb_pred,
+            'ensemble': ensemble_pred
+        },
+        'y_test': y_test
+    }
+    
+    return rf_model, gb_model, X.columns.tolist(), metrics
+
+def visualize_model_accuracy(metrics, backend_dir):
+    """Create and save accuracy visualization in presentation style"""
+    print("\n" + "="*60)
+    print("GENERATING ACCURACY CHART")
+    print("="*60)
+    
+    # Create output directory
+    charts_folder = backend_dir / "models"
+    charts_folder.mkdir(exist_ok=True)
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=(12, 8))
+    fig.patch.set_facecolor('#f8f9fa')
+    ax.set_facecolor('#ffffff')
+    
+    # Convert R² scores to percentages
+    accuracy_percentages = [r2 * 100 for r2 in metrics['r2']]
+    
+    # Colors for bars
+    colors = ['#3498db', '#2ecc71', '#e74c3c']
+    
+    # Create horizontal bar chart
+    bars = ax.barh(metrics['models'], accuracy_percentages, color=colors, alpha=0.85, height=0.6)
+    
+    # Add percentage labels on bars
+    for i, (bar, accuracy) in enumerate(zip(bars, accuracy_percentages)):
+        width = bar.get_width()
+        ax.text(width + 2, bar.get_y() + bar.get_height()/2, 
+                f'{accuracy:.1f}%',
+                ha='left', va='center', fontsize=22, fontweight='bold', color=colors[i])
+    
+    # Styling
+    ax.set_xlabel('Accuracy (%)', fontsize=16, fontweight='bold', color='#2c3e50')
+    ax.set_title('Fish Price Prediction Model Accuracy', 
+                 fontsize=20, fontweight='bold', pad=20, color='#2c3e50')
+    ax.set_xlim([0, 105])
+    ax.grid(axis='x', alpha=0.3, linestyle='--', linewidth=1)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    
+    # Adjust tick labels
+    ax.tick_params(axis='y', labelsize=14, colors='#2c3e50')
+    ax.tick_params(axis='x', labelsize=12, colors='#2c3e50')
+    
+    plt.tight_layout()
+    
+    # Save the chart
+    chart_path = charts_folder / "model_accuracy_chart.png"
+    plt.savefig(chart_path, dpi=300, bbox_inches='tight', facecolor='#f8f9fa')
+    print(f"\n✅ Accuracy chart saved: {chart_path}")
+    
+    # Display the chart
+    plt.show()
+    print("📊 Chart displayed successfully!")
 
 def save_model(rf_model, gb_model, feature_names, le_sinhala):
     """Save trained models"""
@@ -226,7 +300,10 @@ def main():
         return
     
     # Train models
-    rf_model, gb_model, feature_names = train_model(X, y)
+    rf_model, gb_model, feature_names, metrics = train_model(X, y)
+    
+    # Visualize model accuracy
+    visualize_model_accuracy(metrics, backend_dir)
     
     # Save models
     save_model(rf_model, gb_model, feature_names, le_sinhala)
