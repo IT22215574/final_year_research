@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "react-native-reanimated";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { StatusBar } from "expo-status-bar";
 
@@ -33,18 +34,14 @@ export default function RootLayout() {
 
   // Render the navigation stack
   return (
-    <>
-      <StatusBar 
-        style="light" 
-        backgroundColor="#3b82f6" 
-        translucent={false}
-      />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <StatusBar style="light" backgroundColor="#3b82f6" translucent={false} />
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(root)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
-    </>
+    </GestureHandlerRootView>
   );
 }

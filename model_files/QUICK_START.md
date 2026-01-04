@@ -3,6 +3,7 @@
 ## 🚀 Getting Started in 5 Minutes
 
 ### Prerequisites
+
 ```bash
 pip install pandas numpy scikit-learn xgboost joblib
 ```
@@ -15,6 +16,7 @@ python test_model_loading.py
 ```
 
 This will:
+
 - Load the trained model
 - Run 3 test predictions
 - Display results and integration guide
@@ -61,6 +63,7 @@ print(f"Predicted Cost: LKR {cost:,.2f}")
 ## 📊 Valid Input Values
 
 ### Boat Types
+
 - `MTRB` - Multiday Trawler Boat (large, deep-sea)
 - `OFRP` - One-day Fiber Reinforced Plastic (small day boat)
 - `NTRB` - Non-mechanized Traditional Boat (medium)
@@ -69,6 +72,7 @@ print(f"Predicted Cost: LKR {cost:,.2f}")
 - `Beach Seine` - Shore-based fishing
 
 ### Ports
+
 - `Colombo`
 - `Negombo`
 - `Galle`
@@ -79,6 +83,7 @@ print(f"Predicted Cost: LKR {cost:,.2f}")
 - `Kalpitiya`
 
 ### Numerical Ranges
+
 - **engine_hp**: 5-250 HP
 - **trip_days**: 1-7 days
 - **distance_km**: 10-600 km
@@ -90,6 +95,7 @@ print(f"Predicted Cost: LKR {cost:,.2f}")
 ## 🎯 Example Predictions
 
 ### Small Day Boat Trip
+
 ```python
 cost = predict_fishing_cost(
     boat_type='OFRP',
@@ -108,6 +114,7 @@ cost = predict_fishing_cost(
 ```
 
 ### Large Multi-day Trip
+
 ```python
 cost = predict_fishing_cost(
     boat_type='MTRB',
@@ -128,6 +135,7 @@ cost = predict_fishing_cost(
 ## 🔧 Integration with NestJS Backend
 
 ### Step 1: Install Python Dependencies in Backend
+
 ```bash
 cd Backend
 pip install pandas numpy scikit-learn xgboost joblib
@@ -169,10 +177,10 @@ if __name__ == "__main__":
 Create `Backend/src/fishing-cost/fishing-cost.service.ts`:
 
 ```typescript
-import { Injectable } from '@nestjs/common';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import * as path from 'path';
+import { Injectable } from "@nestjs/common";
+import { exec } from "child_process";
+import { promisify } from "util";
+import * as path from "path";
 
 const execAsync = promisify(exec);
 
@@ -180,11 +188,11 @@ const execAsync = promisify(exec);
 export class FishingCostService {
   private readonly pythonScript = path.join(
     __dirname,
-    '..',
-    '..',
-    'src',
-    'ml',
-    'predict_cost.py'
+    "..",
+    "..",
+    "src",
+    "ml",
+    "predict_cost.py"
   );
 
   async predictCost(params: {
@@ -202,7 +210,7 @@ export class FishingCostService {
   }): Promise<number> {
     const jsonInput = JSON.stringify(params);
     const command = `python "${this.pythonScript}" '${jsonInput}'`;
-    
+
     try {
       const { stdout } = await execAsync(command);
       const result = JSON.parse(stdout);
@@ -267,12 +275,14 @@ curl -X POST http://localhost:5000/api/fishing/predict-cost \
 ## ⚠️ Common Issues
 
 ### Issue 1: Module Not Found
+
 ```bash
 # Solution: Install in correct Python environment
 pip install pandas numpy scikit-learn xgboost joblib
 ```
 
 ### Issue 2: Encoder Error (Unknown Category)
+
 ```python
 # Solution: Validate input before prediction
 valid_boat_types = ['MTRB', 'OFRP', 'NTRB', 'IDAY', 'Vallam', 'Beach Seine']
@@ -281,6 +291,7 @@ if boat_type not in valid_boat_types:
 ```
 
 ### Issue 3: Model File Not Found
+
 ```python
 # Solution: Use absolute path
 from pathlib import Path

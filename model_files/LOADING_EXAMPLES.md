@@ -28,10 +28,10 @@ MODEL_DIR = Path(__file__).parent
 # Load model components separately
 with open(MODEL_DIR / 'fishing_cost_model.pkl', 'rb') as f:
     model = pickle.load(f)
-    
+
 with open(MODEL_DIR / 'scaler.pkl', 'rb') as f:
     scaler = pickle.load(f)
-    
+
 with open(MODEL_DIR / 'label_encoders.pkl', 'rb') as f:
     encoders = pickle.load(f)
 

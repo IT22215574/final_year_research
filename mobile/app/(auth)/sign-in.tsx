@@ -10,7 +10,7 @@ import {
   Animated,
   Image,
   ImageSourcePropType,
-  Alert
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Controller, useForm } from "react-hook-form";
@@ -25,22 +25,32 @@ import useAuthStore from "@/stores/authStore";
 const API = process.env.EXPO_PUBLIC_API_KEY;
 
 const SignIn = () => {
-  const { control, handleSubmit, formState: { errors }, setError, clearErrors } = useForm();
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    setError,
+    clearErrors,
+  } = useForm();
   const [secureText, setSecureText] = useState(true);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [apiErrors, setApiErrors] = useState({
     email: "",
-    password: ""
+    password: "",
   });
-  
+
   const router = useRouter();
   const params = useLocalSearchParams();
   const { signIn, isSignedIn } = useAuthStore();
 
   // Animation values for icons - FIXED: Create refs for animated values
-  const animatedValues = useRef(Array(15).fill(0).map(() => new Animated.Value(0))).current;
+  const animatedValues = useRef(
+    Array(15)
+      .fill(0)
+      .map(() => new Animated.Value(0))
+  ).current;
   const animationRefs = useRef<Animated.CompositeAnimation[]>([]);
 
   // Get role from navigation params
@@ -54,16 +64,16 @@ const SignIn = () => {
   // Animation functions - FIXED: Improved animation sequence
   const startAnimations = () => {
     // Clear any existing animations
-    animationRefs.current.forEach(animation => animation.stop());
+    animationRefs.current.forEach((animation) => animation.stop());
     animationRefs.current = [];
 
     // Reset all animated values to start position
-    animatedValues.forEach(value => value.setValue(0));
+    animatedValues.forEach((value) => value.setValue(0));
 
     // Start floating animations for all icons
     const iconAnimations = animatedValues.map((animValue, index) => {
       const delay = index * 150 + Math.random() * 400;
-      
+
       // Create a continuous floating animation
       const animation = Animated.loop(
         Animated.sequence([
@@ -83,17 +93,17 @@ const SignIn = () => {
           }),
         ])
       );
-      
+
       animationRefs.current.push(animation);
       return animation;
     });
 
     // Start all animations
-    iconAnimations.forEach(animation => animation.start());
+    iconAnimations.forEach((animation) => animation.start());
   };
 
   const stopAnimations = () => {
-    animationRefs.current.forEach(animation => animation.stop());
+    animationRefs.current.forEach((animation) => animation.stop());
     animationRefs.current = [];
   };
 
@@ -108,9 +118,9 @@ const SignIn = () => {
 
   // Clear API errors when user starts typing
   const clearApiErrors = (field: string) => {
-    setApiErrors(prev => ({
+    setApiErrors((prev) => ({
       ...prev,
-      [field]: ""
+      [field]: "",
     }));
     clearErrors(field);
   };
@@ -125,44 +135,68 @@ const SignIn = () => {
 
   // Pick only the icons you want
   const selectedIcons: ImageSourcePropType[] = [
-    icons.Icon1, icons.Icon2, icons.Icon3, icons.Icon4, icons.Icon5, icons.Icon6,
-    icons.Icon1, icons.Icon3, icons.Icon2, icons.Icon4, icons.Icon3, icons.Icon5,
-    icons.Icon1, icons.Icon6, icons.Icon2,
+    icons.Icon1,
+    icons.Icon2,
+    icons.Icon3,
+    icons.Icon4,
+    icons.Icon5,
+    icons.Icon6,
+    icons.Icon1,
+    icons.Icon3,
+    icons.Icon2,
+    icons.Icon4,
+    icons.Icon3,
+    icons.Icon5,
+    icons.Icon1,
+    icons.Icon6,
+    icons.Icon2,
   ];
 
   const getPredefinedPositions = () => {
     const positions = [
       // Top row
-      { top: 25, left: 10 }, { top: 25, left: 50 }, { top: 25, left: 90 },
+      { top: 25, left: 10 },
+      { top: 25, left: 50 },
+      { top: 25, left: 90 },
       // Upper middle row
-      { top: 60, left: 20 }, { top: 60, left: 80 },
+      { top: 60, left: 20 },
+      { top: 60, left: 80 },
       // Middle row
-      { top: 95, left: 5 }, { top: 95, left: 35 }, { top: 95, left: 65 }, { top: 95, left: 95 },
+      { top: 95, left: 5 },
+      { top: 95, left: 35 },
+      { top: 95, left: 65 },
+      { top: 95, left: 95 },
       // Lower middle row
-      { top: 130, left: 15 }, { top: 130, left: 50 }, { top: 130, left: 85 },
+      { top: 130, left: 15 },
+      { top: 130, left: 50 },
+      { top: 130, left: 85 },
       // Bottom row
-      { top: 165, left: 25 }, { top: 165, left: 75 },
+      { top: 165, left: 25 },
+      { top: 165, left: 75 },
       // Very bottom row
-      { top: 200, left: 5 }, { top: 200, left: 40 }, { top: 200, left: 60 }, { top: 200, left: 95 },
+      { top: 200, left: 5 },
+      { top: 200, left: 40 },
+      { top: 200, left: 60 },
+      { top: 200, left: 95 },
     ];
     return positions;
   };
 
   const renderDistributedIcons = () => {
     const predefinedPositions = getPredefinedPositions();
-    
+
     return selectedIcons.map((icon, index) => {
       let position;
-      
+
       if (index < predefinedPositions.length) {
         position = predefinedPositions[index];
       } else {
         position = {
           top: 30 + Math.random() * 140,
-          left: 15 + Math.random() * 70
+          left: 15 + Math.random() * 70,
         };
       }
-      
+
       const randomOpacity = 0.8 + Math.random() * 0.2;
       const randomSize = 20 + Math.random() * 12;
       const randomRotation = Math.random() * 20 - 10;
@@ -218,74 +252,90 @@ const SignIn = () => {
     });
   };
 
-const onSubmit = async (data: any) => {
-  setLoading(true);
-  setApiErrors({ email: "", password: "" });
-  
-  try {
-    console.log("📧 Form data:", data);
-    
-    const response = await fetch(`${API}/api/v1/auth/signin`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: data.email,
-        password: data.password,
-      }),
-      credentials: 'include',
-    });
+  const onSubmit = async (data: any) => {
+    setLoading(true);
+    setApiErrors({ email: "", password: "" });
 
-    const result = await response.json();
-    console.log("📱 FULL API Response:", result);
+    try {
+      console.log("📧 Form data:", data);
 
-    if (!response.ok) {
-      throw new Error(result.message || "Sign in failed");
-    }
-
-    // ✅ Transform API response to match authStore User interface
-    const userData = {
-      id: result._id, // Convert _id to id
-      _id: result._id,
-      email: result.email,
-      firstName: result.firstName,
-      lastName: result.lastName,
-      username: result.username,
-      phone: result.phone,
-      role: "student", // Add default role since API doesn't provide it
-      isAdmin: result.isAdmin || false,
-      // Add any optional fields that might be needed
-      profilePicture: result.profilePicture,
-    };
-
-    console.log("✅ Transformed user data for authStore:", userData);
-    
-    // Now call signIn with the transformed data
-    await signIn(userData);
-    
-    Alert.alert("Success", "Signed in successfully!");
-    
-    router.replace({
-      pathname: "/(root)/(tabs)/home",
-      params: { refresh: Date.now() }
-    });
-
-  } catch (error: any) {
-    console.error("❌ Sign in error:", error);
-    
-    if (error.message.includes("User not found") || error.message.includes("Invalid credentials")) {
-      setApiErrors({
-        email: "Invalid email or password",
-        password: "Invalid email or password"
+      const response = await fetch(`${API}/api/v1/auth/signin`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+        }),
+        credentials: "include",
       });
-    } else {
-      Alert.alert("Error", error.message || "Sign in failed. Please try again.");
+
+      const result = await response.json();
+      console.log("📱 FULL API Response:", result);
+
+      if (!response.ok) {
+        throw new Error(result.message || "Sign in failed");
+      }
+
+      // ✅ Transform API response to match authStore User interface
+      const userData = {
+        id: result._id, // Convert _id to id
+        _id: result._id,
+        email: result.email,
+        firstName: result.firstName,
+        lastName: result.lastName,
+        username: result.username,
+        phone: result.phone,
+        role: result.role || "customer", // ✅ Use actual role from API
+        isAdmin: result.isAdmin || false,
+        // Add any optional fields that might be needed
+        profilePicture: result.profilePicture,
+      };
+
+      console.log("✅ Transformed user data for authStore:", userData);
+      console.log("🔍 User role from API:", result.role);
+      console.log("🔍 User role in userData:", userData.role);
+      console.log("🔍 Role check result:", userData.role === "Fisher man");
+
+      // Now call signIn with the transformed data
+      await signIn(userData);
+
+      Alert.alert("Success", "Signed in successfully!");
+
+      // Route based on user role
+      console.log("🔍 Checking role for routing...");
+      if (userData.role === "Fisher man") {
+        console.log("✅ Routing to fisherman dashboard");
+        router.replace("/(root)/(fisherman)/dashboard");
+      } else {
+        console.log("✅ Routing to regular home");
+        router.replace({
+          pathname: "/(root)/(tabs)/home",
+          params: { refresh: Date.now() },
+        });
+      }
+    } catch (error: any) {
+      console.error("❌ Sign in error:", error);
+
+      if (
+        error.message.includes("User not found") ||
+        error.message.includes("Invalid credentials")
+      ) {
+        setApiErrors({
+          email: "Invalid email or password",
+          password: "Invalid email or password",
+        });
+      } else {
+        Alert.alert(
+          "Error",
+          error.message || "Sign in failed. Please try again."
+        );
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
   // Helper function to determine input border color
   const getInputBorderColor = (fieldName: string) => {
     if (errors[fieldName] || apiErrors[fieldName]) {
@@ -307,8 +357,13 @@ const onSubmit = async (data: any) => {
         <View style={styles.iconsLayer}>{renderDistributedIcons()}</View>
 
         {/* Title - Only Learn APP in top section */}
-        <Text style={styles.header}><Text  className="text-blue-400">S</Text>MART  <Text  className="text-blue-400">F</Text>ISHER </Text>
-        <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">LANKA </Text>
+        <Text style={styles.header}>
+          <Text className="text-blue-400">S</Text>MART{" "}
+          <Text className="text-blue-400">F</Text>ISHER{" "}
+        </Text>
+        <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">
+          LANKA{" "}
+        </Text>
 
         {/* Light Blue Wave - BELOW the white wave */}
         <View style={styles.lightBlueWaveContainer}>
@@ -347,9 +402,7 @@ const onSubmit = async (data: any) => {
         {/* Heading */}
         <View style={styles.headingContainer}>
           <Text style={styles.welcomeText}>Welcome Back</Text>
-          <Text style={styles.subtitle}>
-            Sign in to your account
-          </Text>
+          <Text style={styles.subtitle}>Sign in to your account</Text>
         </View>
 
         {/* Form */}
@@ -367,14 +420,16 @@ const onSubmit = async (data: any) => {
                 <Text style={styles.label}>
                   Email <Text style={styles.required}>*</Text>
                 </Text>
-                <View style={[
-                  styles.inputWrapper,
-                  { borderColor: getInputBorderColor("email") }
-                ]}>
-                  <Ionicons 
-                    name="mail-outline" 
-                    size={18} 
-                    color={errors.email || apiErrors.email ? "#ef4444" : "gray"} 
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { borderColor: getInputBorderColor("email") },
+                  ]}
+                >
+                  <Ionicons
+                    name="mail-outline"
+                    size={18}
+                    color={errors.email || apiErrors.email ? "#ef4444" : "gray"}
                   />
                   <TextInput
                     placeholder="Enter Your Email"
@@ -392,7 +447,7 @@ const onSubmit = async (data: any) => {
                 </View>
                 {(errors.email || apiErrors.email) && (
                   <Text style={styles.errorText}>
-                    {errors.email?.message as string || apiErrors.email}
+                    {(errors.email?.message as string) || apiErrors.email}
                   </Text>
                 )}
               </View>
@@ -409,14 +464,18 @@ const onSubmit = async (data: any) => {
                 <Text style={styles.label}>
                   Password <Text style={styles.required}>*</Text>
                 </Text>
-                <View style={[
-                  styles.inputWrapper,
-                  { borderColor: getInputBorderColor("password") }
-                ]}>
-                  <Ionicons 
-                    name="lock-closed-outline" 
-                    size={18} 
-                    color={errors.password || apiErrors.password ? "#ef4444" : "gray"} 
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { borderColor: getInputBorderColor("password") },
+                  ]}
+                >
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={18}
+                    color={
+                      errors.password || apiErrors.password ? "#ef4444" : "gray"
+                    }
                   />
                   <TextInput
                     placeholder="Enter Your Password"
@@ -434,13 +493,17 @@ const onSubmit = async (data: any) => {
                     <Ionicons
                       name={secureText ? "eye-off-outline" : "eye-outline"}
                       size={20}
-                      color={errors.password || apiErrors.password ? "#ef4444" : "gray"}
+                      color={
+                        errors.password || apiErrors.password
+                          ? "#ef4444"
+                          : "gray"
+                      }
                     />
                   </TouchableOpacity>
                 </View>
                 {(errors.password || apiErrors.password) && (
                   <Text style={styles.errorText}>
-                    {errors.password?.message as string || apiErrors.password}
+                    {(errors.password?.message as string) || apiErrors.password}
                   </Text>
                 )}
               </View>
@@ -476,14 +539,13 @@ const onSubmit = async (data: any) => {
           </TouchableOpacity>
 
           {/* Sign Up - Only show for External Student */}
-         
-            <View style={styles.signUpContainer}>
-              <Text style={styles.signUpText}>Don't You Have An Account? </Text>
-              <TouchableOpacity onPress={() => router.push("/(auth)/sign-up")}>
-                <Text style={styles.signUpLink}>Sign Up</Text>
-              </TouchableOpacity>
-            </View>
-          
+
+          <View style={styles.signUpContainer}>
+            <Text style={styles.signUpText}>Don't You Have An Account? </Text>
+            <TouchableOpacity onPress={() => router.push("/(auth)/sign-up")}>
+              <Text style={styles.signUpLink}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>

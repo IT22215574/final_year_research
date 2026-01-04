@@ -8,14 +8,15 @@
 
 ### 1. JOBLIB Format (Recommended) ⭐
 
-| File | Size | Description |
-|------|------|-------------|
-| `fishing_cost_model_latest.joblib` | 351 KB | XGBoost trained model |
-| `fishing_cost_model_best_20260104_175416.joblib` | 351 KB | Timestamped backup |
-| `scaler.joblib` | 1.2 KB | StandardScaler for features |
-| `label_encoders.joblib` | 0.83 KB | Categorical encoders |
+| File                                             | Size    | Description                 |
+| ------------------------------------------------ | ------- | --------------------------- |
+| `fishing_cost_model_latest.joblib`               | 351 KB  | XGBoost trained model       |
+| `fishing_cost_model_best_20260104_175416.joblib` | 351 KB  | Timestamped backup          |
+| `scaler.joblib`                                  | 1.2 KB  | StandardScaler for features |
+| `label_encoders.joblib`                          | 0.83 KB | Categorical encoders        |
 
 **Usage:**
+
 ```python
 import joblib
 model = joblib.load('fishing_cost_model_latest.joblib')
@@ -25,13 +26,14 @@ encoders = joblib.load('label_encoders.joblib')
 
 ### 2. PICKLE Format (.pkl) ✅
 
-| File | Size | Description |
-|------|------|-------------|
-| `fishing_cost_model.pkl` | 351 KB | XGBoost trained model |
-| `scaler.pkl` | 0.93 KB | StandardScaler for features |
-| `label_encoders.pkl` | 0.48 KB | Categorical encoders |
+| File                     | Size    | Description                 |
+| ------------------------ | ------- | --------------------------- |
+| `fishing_cost_model.pkl` | 351 KB  | XGBoost trained model       |
+| `scaler.pkl`             | 0.93 KB | StandardScaler for features |
+| `label_encoders.pkl`     | 0.48 KB | Categorical encoders        |
 
 **Usage:**
+
 ```python
 import pickle
 with open('fishing_cost_model.pkl', 'rb') as f:
@@ -40,22 +42,24 @@ with open('fishing_cost_model.pkl', 'rb') as f:
 
 ### 3. COMPLETE BUNDLE (.pkl) - ALL IN ONE 🎁
 
-| File | Size | Description |
-|------|------|-------------|
+| File                        | Size   | Description            |
+| --------------------------- | ------ | ---------------------- |
 | `model_bundle_complete.pkl` | 353 KB | Everything in one file |
 
 **Contains:**
+
 - XGBoost model
 - StandardScaler
 - Label encoders
 - Timestamp
 
 **Usage (Easiest):**
+
 ```python
 import pickle
 with open('model_bundle_complete.pkl', 'rb') as f:
     bundle = pickle.load(f)
-    
+
 model = bundle['model']
 scaler = bundle['scaler']
 encoders = bundle['encoders']
@@ -91,6 +95,7 @@ python test_model_loading.py
 ```
 
 Expected output:
+
 ```
 ✅ All model files loaded successfully!
    Model: XGBoost
@@ -106,18 +111,21 @@ Expected output:
 ## Which Format Should You Use?
 
 ### Use JOBLIB if:
+
 - ✅ Working with scikit-learn models (RECOMMENDED)
 - ✅ Want best compatibility
 - ✅ Need efficient large array storage
 - ✅ Following best practices
 
 ### Use PICKLE (.pkl) if:
+
 - ✅ Need standard Python pickle format
 - ✅ Integrating with non-Python systems
 - ✅ Client specifically requests .pkl format
 - ✅ Need universal Python compatibility
 
 ### Use COMPLETE BUNDLE if:
+
 - ✅ Want simplest loading (one file = everything)
 - ✅ Sharing model with others
 - ✅ Deploying to production (fewer files to manage)
@@ -150,19 +158,19 @@ with open('model_files/model_bundle_complete.pkl', 'rb') as f:
 # Use in API endpoint
 def predict_cost(boat_type, engine_hp, trip_days, ...):
     import pandas as pd
-    
+
     input_data = pd.DataFrame([{
         'boat_type': boat_type,
         'engine_hp': engine_hp,
         # ... other features
     }])
-    
+
     for col, encoder in ml_bundle['encoders'].items():
         input_data[col] = encoder.transform(input_data[col].astype(str))
-    
+
     scaled = ml_bundle['scaler'].transform(input_data)
     cost = ml_bundle['model'].predict(scaled)[0]
-    
+
     return cost
 ```
 
@@ -186,15 +194,15 @@ input_df = pd.DataFrame([{...}])
 
 ## Documentation Files
 
-| File | Purpose |
-|------|---------|
-| `MODEL_REPORT.md` | Complete technical report (12 KB) |
-| `QUICK_START.md` | 5-minute integration guide (8 KB) |
-| `README.md` | Overview and quick reference (8 KB) |
-| `LOADING_EXAMPLES.md` | Code examples for all formats |
-| `test_model_loading.py` | Validation script (6 KB) |
-| `save_and_verify_model.py` | This verification script |
-| `model_metadata.json` | Model configuration and metrics |
+| File                       | Purpose                             |
+| -------------------------- | ----------------------------------- |
+| `MODEL_REPORT.md`          | Complete technical report (12 KB)   |
+| `QUICK_START.md`           | 5-minute integration guide (8 KB)   |
+| `README.md`                | Overview and quick reference (8 KB) |
+| `LOADING_EXAMPLES.md`      | Code examples for all formats       |
+| `test_model_loading.py`    | Validation script (6 KB)            |
+| `save_and_verify_model.py` | This verification script            |
+| `model_metadata.json`      | Model configuration and metrics     |
 
 ---
 
