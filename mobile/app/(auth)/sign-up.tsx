@@ -224,7 +224,7 @@ const handleSignUp = async () => {
       password: formData.password,
       firstName: firstName,
       lastName: lastName,
-      role: "INTERNAL_STUDENT",
+      role: "Fisher man", // Valid roles: 'customer', 'Fisher man', 'Admin', 'SuperAdmin'
       // Optional fields
       ...(formData.district && { district: formData.district }),
       ...(formData.zone && { zone: formData.zone }),
