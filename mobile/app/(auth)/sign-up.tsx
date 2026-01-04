@@ -1,4 +1,4 @@
-import  { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {
   FlatList,
   TouchableWithoutFeedback,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AntDesign, MaterialIcons } from "@expo/vector-icons";
@@ -23,35 +23,338 @@ import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { icons } from "@/constants";
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 // Data arrays
 const districtZoneData = {
-  "Ampara": ["Akkaraipattu", "Ampara", "Kalmunai", "Sainthamaruthu", "Uhana", "Pottuvil", "Damana", "Mahaoya", "Navithanveli", "Irakkamam", "Dehiattakandiya", "Lahugala", "Thirukkovil", "Nintavur", "Addalaichenai"],
-  "Anuradhapura": ["Anuradhapura", "Kekirawa", "Medawachchiya", "Mihintale", "Nochchiyagama", "Thalawa", "Galenbindunuwewa", "Horowpothana", "Kahatagasdigiliya", "Ipalogama", "Palagala", "Palugaswewa", "Rambewa", "Thambuttegama", "Kebithigollewa"],
-  "Badulla": ["Badulla", "Bandarawela", "Mahiyanganaya", "Welimada", "Hali Ela", "Passara", "Kandaketiya", "Lunugala", "Rideemaliyadda", "Soranathota", "Haputale", "Diyatalawa", "Haldummulla", "Ella", "Uva Paranagama"],
-  "Batticaloa": ["Batticaloa", "Kattankudy", "Eravur", "Valaichchenai", "Vakarai", "Porativu", "Koralai Pattu", "Manmunai", "Eravur Pattu", "Kiran", "Vellavely", "Oddamavadi", "Vantharamoolai"],
-  "Colombo": ["Colombo", "Dehiwala", "Moratuwa", "Sri Jayawardenepura Kotte", "Kolonnawa", "Kaduwela", "Homagama", "Maharagama", "Kesbewa", "Ratmalana", "Boralesgamuwa", "Nugegoda", "Pannipitiya", "Hanwella", "Padukka"],
-  "Galle": ["Galle", "Ambalangoda", "Hikkaduwa", "Elpitiya", "Bentota", "Karapitiya", "Baddegama", "Imaduwa", "Neluwa", "Nagoda", "Thawalama", "Akmeemana", "Habaraduwa", "Yakkalamulla", "Udugama"],
-  "Gampaha": ["Gampaha", "Negombo", "Kelaniya", "Kadawatha", "Ja-Ela", "Wattala", "Minuwangoda", "Divulapitiya", "Mirigama", "Veyangoda", "Biyagama", "Dompe", "Mahara", "Katana", "Attanagalla"],
-  "Hambantota": ["Hambantota", "Tangalle", "Ambalantota", "Tissamaharama", "Beliatta", "Weeraketiya", "Lunugamwehera", "Okewela", "Sooriyawewa", "Angunakolapelessa", "Katuwana", "Walasmulla", "Middeniya"],
-  "Jaffna": ["Jaffna", "Chavakachcheri", "Nallur", "Point Pedro", "Karainagar", "Kayts", "Vaddukoddai", "Uduppidy", "Kopay", "Tellippalai", "Maruthnkerny", "Chankanai", "Sandilipay"],
-  "Kalutara": ["Kalutara", "Panadura", "Horana", "Beruwala", "Matugama", "Agalawatta", "Bandaragama", "Bulathsinhala", "Madurawala", "Millaniya", "Palindanuwara", "Walallavita", "Ingiriya"],
-  "Kandy": ["Kandy", "Gampola", "Nawalapitiya", "Kadugannawa", "Peradeniya", "Kundasale", "Akurana", "Ampitiya", "Pilimatalawa", "Galagedara", "Harispattuwa", "Pathadumbara", "Udunuwara", "Yatinuwara", "Udapalatha", "Minipe", "Hatharaliyadda"],
-  "Kegalle": ["Kegalle", "Mawanella", "Rambukkana", "Warakapola", "Galigamuwa", "Yatiyantota", "Dehiowita", "Deraniyagala", "Aranayaka", "Ruwanwella"],
-  "Kilinochchi": ["Kilinochchi", "Pallai", "Kandavalai", "Karachchi", "Poonakary"],
-  "Kurunegala": ["Kurunegala", "Kuliyapitiya", "Pannala", "Narammala", "Polgahawela", "Alawwa", "Bingiriya", "Wariyapola", "Giriulla", "Melsiripura", "Nikaweratiya", "Mahawa", "Galgamuwa", "Panduwasnuwara", "Kobeigane", "Ibbagamuwa"],
-  "Mannar": ["Mannar", "Nanattan", "Madhu", "Musali", "Manthai West"],
-  "Matale": ["Matale", "Dambulla", "Galewela", "Ukuwela", "Rattota", "Palapathwela", "Naula", "Wilgamuwa", "Yatawatta"],
-  "Matara": ["Matara", "Weligama", "Hakmana", "Devinuwara", "Akuressa", "Kamburupitiya", "Athuraliya", "Malimbada", "Thihagoda", "Pasgoda", "Kotapola", "Dickwella"],
-  "Moneragala": ["Moneragala", "Wellawaya", "Bibile", "Buttala", "Katharagama", "Madulla", "Sevanagala", "Siyambalanduwa", "Thanamalwila", "Medagana"],
-  "Mullaitivu": ["Mullaitivu", "Oddusuddan", "Puthukudiyiruppu", "Thunukkai", "Manthai East", "Maritimepattu", "Welioya"],
-  "Nuwara Eliya": ["Nuwara Eliya", "Hatton", "Talawakele", "Kotagala", "Ginigathena", "Hanguranketha", "Walapane", "Ragala", "Ambagamuwa", "Maskeliya"],
-  "Polonnaruwa": ["Polonnaruwa", "Kaduruwela", "Hingurakgoda", "Medirigiriya", "Lankapura", "Thamankaduwa", "Welikanda", "Dimbulagala"],
-  "Puttalam": ["Puttalam", "Chilaw", "Wennappuwa", "Dankotuwa", "Nattandiya", "Marawila", "Anamaduwa", "Kalpitiya", "Pallama", "Vanathavilluwa", "Madampe"],
-  "Ratnapura": ["Ratnapura", "Balangoda", "Embilipitiya", "Pelmadulla", "Eheliyagoda", "Kuruwita", "Nivithigala", "Kahawatta", "Godakawela", "Ayagama", "Kalawana", "Opanayaka", "Weligepola", "Rakwana"],
-  "Trincomalee": ["Trincomalee", "Kinniya", "Muthur", "Kuchchaveli", "Gomarankadawala", "Morawewa", "Seruvila", "Thambalagamuwa", "Verugal"],
-  "Vavuniya": ["Vavuniya", "Vengalacheddikulam", "Nedunkerny", "Cheddikulam"]
+  Ampara: [
+    "Akkaraipattu",
+    "Ampara",
+    "Kalmunai",
+    "Sainthamaruthu",
+    "Uhana",
+    "Pottuvil",
+    "Damana",
+    "Mahaoya",
+    "Navithanveli",
+    "Irakkamam",
+    "Dehiattakandiya",
+    "Lahugala",
+    "Thirukkovil",
+    "Nintavur",
+    "Addalaichenai",
+  ],
+  Anuradhapura: [
+    "Anuradhapura",
+    "Kekirawa",
+    "Medawachchiya",
+    "Mihintale",
+    "Nochchiyagama",
+    "Thalawa",
+    "Galenbindunuwewa",
+    "Horowpothana",
+    "Kahatagasdigiliya",
+    "Ipalogama",
+    "Palagala",
+    "Palugaswewa",
+    "Rambewa",
+    "Thambuttegama",
+    "Kebithigollewa",
+  ],
+  Badulla: [
+    "Badulla",
+    "Bandarawela",
+    "Mahiyanganaya",
+    "Welimada",
+    "Hali Ela",
+    "Passara",
+    "Kandaketiya",
+    "Lunugala",
+    "Rideemaliyadda",
+    "Soranathota",
+    "Haputale",
+    "Diyatalawa",
+    "Haldummulla",
+    "Ella",
+    "Uva Paranagama",
+  ],
+  Batticaloa: [
+    "Batticaloa",
+    "Kattankudy",
+    "Eravur",
+    "Valaichchenai",
+    "Vakarai",
+    "Porativu",
+    "Koralai Pattu",
+    "Manmunai",
+    "Eravur Pattu",
+    "Kiran",
+    "Vellavely",
+    "Oddamavadi",
+    "Vantharamoolai",
+  ],
+  Colombo: [
+    "Colombo",
+    "Dehiwala",
+    "Moratuwa",
+    "Sri Jayawardenepura Kotte",
+    "Kolonnawa",
+    "Kaduwela",
+    "Homagama",
+    "Maharagama",
+    "Kesbewa",
+    "Ratmalana",
+    "Boralesgamuwa",
+    "Nugegoda",
+    "Pannipitiya",
+    "Hanwella",
+    "Padukka",
+  ],
+  Galle: [
+    "Galle",
+    "Ambalangoda",
+    "Hikkaduwa",
+    "Elpitiya",
+    "Bentota",
+    "Karapitiya",
+    "Baddegama",
+    "Imaduwa",
+    "Neluwa",
+    "Nagoda",
+    "Thawalama",
+    "Akmeemana",
+    "Habaraduwa",
+    "Yakkalamulla",
+    "Udugama",
+  ],
+  Gampaha: [
+    "Gampaha",
+    "Negombo",
+    "Kelaniya",
+    "Kadawatha",
+    "Ja-Ela",
+    "Wattala",
+    "Minuwangoda",
+    "Divulapitiya",
+    "Mirigama",
+    "Veyangoda",
+    "Biyagama",
+    "Dompe",
+    "Mahara",
+    "Katana",
+    "Attanagalla",
+  ],
+  Hambantota: [
+    "Hambantota",
+    "Tangalle",
+    "Ambalantota",
+    "Tissamaharama",
+    "Beliatta",
+    "Weeraketiya",
+    "Lunugamwehera",
+    "Okewela",
+    "Sooriyawewa",
+    "Angunakolapelessa",
+    "Katuwana",
+    "Walasmulla",
+    "Middeniya",
+  ],
+  Jaffna: [
+    "Jaffna",
+    "Chavakachcheri",
+    "Nallur",
+    "Point Pedro",
+    "Karainagar",
+    "Kayts",
+    "Vaddukoddai",
+    "Uduppidy",
+    "Kopay",
+    "Tellippalai",
+    "Maruthnkerny",
+    "Chankanai",
+    "Sandilipay",
+  ],
+  Kalutara: [
+    "Kalutara",
+    "Panadura",
+    "Horana",
+    "Beruwala",
+    "Matugama",
+    "Agalawatta",
+    "Bandaragama",
+    "Bulathsinhala",
+    "Madurawala",
+    "Millaniya",
+    "Palindanuwara",
+    "Walallavita",
+    "Ingiriya",
+  ],
+  Kandy: [
+    "Kandy",
+    "Gampola",
+    "Nawalapitiya",
+    "Kadugannawa",
+    "Peradeniya",
+    "Kundasale",
+    "Akurana",
+    "Ampitiya",
+    "Pilimatalawa",
+    "Galagedara",
+    "Harispattuwa",
+    "Pathadumbara",
+    "Udunuwara",
+    "Yatinuwara",
+    "Udapalatha",
+    "Minipe",
+    "Hatharaliyadda",
+  ],
+  Kegalle: [
+    "Kegalle",
+    "Mawanella",
+    "Rambukkana",
+    "Warakapola",
+    "Galigamuwa",
+    "Yatiyantota",
+    "Dehiowita",
+    "Deraniyagala",
+    "Aranayaka",
+    "Ruwanwella",
+  ],
+  Kilinochchi: [
+    "Kilinochchi",
+    "Pallai",
+    "Kandavalai",
+    "Karachchi",
+    "Poonakary",
+  ],
+  Kurunegala: [
+    "Kurunegala",
+    "Kuliyapitiya",
+    "Pannala",
+    "Narammala",
+    "Polgahawela",
+    "Alawwa",
+    "Bingiriya",
+    "Wariyapola",
+    "Giriulla",
+    "Melsiripura",
+    "Nikaweratiya",
+    "Mahawa",
+    "Galgamuwa",
+    "Panduwasnuwara",
+    "Kobeigane",
+    "Ibbagamuwa",
+  ],
+  Mannar: ["Mannar", "Nanattan", "Madhu", "Musali", "Manthai West"],
+  Matale: [
+    "Matale",
+    "Dambulla",
+    "Galewela",
+    "Ukuwela",
+    "Rattota",
+    "Palapathwela",
+    "Naula",
+    "Wilgamuwa",
+    "Yatawatta",
+  ],
+  Matara: [
+    "Matara",
+    "Weligama",
+    "Hakmana",
+    "Devinuwara",
+    "Akuressa",
+    "Kamburupitiya",
+    "Athuraliya",
+    "Malimbada",
+    "Thihagoda",
+    "Pasgoda",
+    "Kotapola",
+    "Dickwella",
+  ],
+  Moneragala: [
+    "Moneragala",
+    "Wellawaya",
+    "Bibile",
+    "Buttala",
+    "Katharagama",
+    "Madulla",
+    "Sevanagala",
+    "Siyambalanduwa",
+    "Thanamalwila",
+    "Medagana",
+  ],
+  Mullaitivu: [
+    "Mullaitivu",
+    "Oddusuddan",
+    "Puthukudiyiruppu",
+    "Thunukkai",
+    "Manthai East",
+    "Maritimepattu",
+    "Welioya",
+  ],
+  "Nuwara Eliya": [
+    "Nuwara Eliya",
+    "Hatton",
+    "Talawakele",
+    "Kotagala",
+    "Ginigathena",
+    "Hanguranketha",
+    "Walapane",
+    "Ragala",
+    "Ambagamuwa",
+    "Maskeliya",
+  ],
+  Polonnaruwa: [
+    "Polonnaruwa",
+    "Kaduruwela",
+    "Hingurakgoda",
+    "Medirigiriya",
+    "Lankapura",
+    "Thamankaduwa",
+    "Welikanda",
+    "Dimbulagala",
+  ],
+  Puttalam: [
+    "Puttalam",
+    "Chilaw",
+    "Wennappuwa",
+    "Dankotuwa",
+    "Nattandiya",
+    "Marawila",
+    "Anamaduwa",
+    "Kalpitiya",
+    "Pallama",
+    "Vanathavilluwa",
+    "Madampe",
+  ],
+  Ratnapura: [
+    "Ratnapura",
+    "Balangoda",
+    "Embilipitiya",
+    "Pelmadulla",
+    "Eheliyagoda",
+    "Kuruwita",
+    "Nivithigala",
+    "Kahawatta",
+    "Godakawela",
+    "Ayagama",
+    "Kalawana",
+    "Opanayaka",
+    "Weligepola",
+    "Rakwana",
+  ],
+  Trincomalee: [
+    "Trincomalee",
+    "Kinniya",
+    "Muthur",
+    "Kuchchaveli",
+    "Gomarankadawala",
+    "Morawewa",
+    "Seruvila",
+    "Thambalagamuwa",
+    "Verugal",
+  ],
+  Vavuniya: ["Vavuniya", "Vengalacheddikulam", "Nedunkerny", "Cheddikulam"],
 };
 
 const districts = Object.keys(districtZoneData);
@@ -85,23 +388,25 @@ const SignUp = () => {
 
   // Animation values for icons
   const animatedValues = useRef(
-    Array(15).fill(0).map(() => new Animated.Value(0))
+    Array(15)
+      .fill(0)
+      .map(() => new Animated.Value(0))
   ).current;
   const animationRefs = useRef<Animated.CompositeAnimation[]>([]);
 
   // Animation functions
   const startAnimations = () => {
     // Clear any existing animations
-    animationRefs.current.forEach(animation => animation.stop());
+    animationRefs.current.forEach((animation) => animation.stop());
     animationRefs.current = [];
 
     // Reset all animated values to start position
-    animatedValues.forEach(value => value.setValue(0));
+    animatedValues.forEach((value) => value.setValue(0));
 
     // Start floating animations for all icons
     const iconAnimations = animatedValues.map((animValue, index) => {
       const delay = index * 150 + Math.random() * 400;
-      
+
       // Create a continuous floating animation
       const animation = Animated.loop(
         Animated.sequence([
@@ -121,17 +426,17 @@ const SignUp = () => {
           }),
         ])
       );
-      
+
       animationRefs.current.push(animation);
       return animation;
     });
 
     // Start all animations
-    iconAnimations.forEach(animation => animation.start());
+    iconAnimations.forEach((animation) => animation.start());
   };
 
   const stopAnimations = () => {
-    animationRefs.current.forEach(animation => animation.stop());
+    animationRefs.current.forEach((animation) => animation.stop());
     animationRefs.current = [];
   };
 
@@ -152,10 +457,9 @@ const SignUp = () => {
 
     if (name === "district") {
       setAvailableZones(districtZoneData[value] || []);
-      setFormData(prev => ({ ...prev, zone: "" }));
+      setFormData((prev) => ({ ...prev, zone: "" }));
     }
   };
-
 
   const handleMediumSelect = (medium) => {
     handleChange("medium", medium);
@@ -173,7 +477,6 @@ const SignUp = () => {
     setShowZoneDropdown(false);
   };
 
-
   // Render dropdown items
   const renderDropdownItem = ({ item, onSelect }) => (
     <TouchableOpacity
@@ -184,194 +487,234 @@ const SignUp = () => {
     </TouchableOpacity>
   );
 
-const handleSignUp = async () => {
-  // Validate required fields
-  if (!formData.email || !formData.phone || !formData.firstName || !formData.lastName || 
-      !formData.password || !formData.confirmPassword) {
-    Alert.alert("Error", "Please fill all required fields");
-    return;
-  }
+  const handleSignUp = async () => {
+    // Validate required fields
+    if (
+      !formData.email ||
+      !formData.phone ||
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.password ||
+      !formData.confirmPassword
+    ) {
+      Alert.alert("Error", "Please fill all required fields");
+      return;
+    }
 
-  if (formData.password !== formData.confirmPassword) {
-    Alert.alert("Error", "Passwords do not match");
-    return;
-  }
+    if (formData.password !== formData.confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
 
-  if (formData.password.length < 6) {
-    Alert.alert("Error", "Password must be at least 6 characters long");
-    return;
-  }
+    if (formData.password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters long");
+      return;
+    }
 
-  // Validate mobile number format (Sri Lankan)
-  const mobileRegex = /^(071|076|077|075|078|070|074|072)\d{7}$/;
-  if (!mobileRegex.test(formData.phone)) {
-    Alert.alert("Error", "Please enter a valid Sri Lankan mobile number (e.g., 0712345678)");
-    return;
-  }
+    // Validate mobile number format (Sri Lankan)
+    const mobileRegex = /^(071|076|077|075|078|070|074|072)\d{7}$/;
+    if (!mobileRegex.test(formData.phone)) {
+      Alert.alert(
+        "Error",
+        "Please enter a valid Sri Lankan mobile number (e.g., 0712345678)"
+      );
+      return;
+    }
 
-  setLoading(true);
-  try {
-    
-    const firstName = formData.firstName;
-    const lastName = formData.lastName;
-
-    // Format phone number with country code
-    const formattedPhone = `+94${formData.phone.substring(1)}`;
-
-    const requestBody = {
-      phone: formattedPhone,
-      email: formData.email,
-      password: formData.password,
-      firstName: firstName,
-      lastName: lastName,
-      role: "Fisher man", // Valid roles: 'customer', 'Fisher man', 'Admin', 'SuperAdmin'
-      // Optional fields
-      ...(formData.district && { district: formData.district }),
-      ...(formData.zone && { zone: formData.zone }),
-      ...(formData.medium && { medium: formData.medium }),
-
-    };
-
-    console.log("📤 Sending signup request to:", `${API}/api/v1/auth/complete-signup`);
-    console.log("📦 Request body:", JSON.stringify(requestBody, null, 2));
-
-    const response = await fetch(`${API}/api/v1/auth/complete-signup`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    console.log("📥 Response status:", response.status);
-    
-    const responseText = await response.text();
-    console.log("📥 Raw response:", responseText);
-
-    let data;
+    setLoading(true);
     try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("❌ Failed to parse response as JSON:", parseError);
-      throw new Error(`Server returned invalid JSON: ${responseText}`);
-    }
+      const firstName = formData.firstName;
+      const lastName = formData.lastName;
 
-    console.log("📥 Parsed response data:", data);
+      // Format phone number with country code
+      const formattedPhone = `+94${formData.phone.substring(1)}`;
 
-    if (!response.ok) {
-      console.error("❌ API Error:", {
-        status: response.status,
-        statusText: response.statusText,
-        data: data
+      const requestBody = {
+        phone: formattedPhone,
+        email: formData.email,
+        password: formData.password,
+        firstName: firstName,
+        lastName: lastName,
+        role: "Fisher man", // Valid roles: 'customer', 'Fisher man', 'Admin', 'SuperAdmin'
+        // Optional fields
+        ...(formData.district && { district: formData.district }),
+        ...(formData.zone && { zone: formData.zone }),
+        ...(formData.medium && { medium: formData.medium }),
+      };
+
+      console.log(
+        "📤 Sending signup request to:",
+        `${API}/api/v1/auth/complete-signup`
+      );
+      console.log("📦 Request body:", JSON.stringify(requestBody, null, 2));
+
+      const response = await fetch(`${API}/api/v1/auth/complete-signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
       });
-      
-      if (data.message) {
-        throw new Error(data.message);
-      } else if (response.status === 400) {
-        throw new Error("Bad request - please check your input");
-      } else if (response.status === 409) {
-        throw new Error("User already exists");
-      } else if (response.status === 500) {
-        throw new Error("Server error - please try again later");
-      } else {
-        throw new Error(`Request failed with status ${response.status}`);
+
+      console.log("📥 Response status:", response.status);
+
+      const responseText = await response.text();
+      console.log("📥 Raw response:", responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("❌ Failed to parse response as JSON:", parseError);
+        throw new Error(`Server returned invalid JSON: ${responseText}`);
       }
-    }
 
-    console.log("✅ Signup successful:", data);
+      console.log("📥 Parsed response data:", data);
 
-    // Show success message and redirect to sign-in
-    Alert.alert(
-      "Success", 
-      "Account created successfully! Please sign in to continue.",
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            // Reset form and navigate to sign-in
-            setFormData({
-              email: "",
-              phone: "",
-              firstName: "",
-              lastName: "",
-              district: "",
-              zone: "",
-              medium: "",
-              password: "",
-              confirmPassword: "",
-            });
-            router.replace("/sign-in");
-          }
+      if (!response.ok) {
+        console.error("❌ API Error:", {
+          status: response.status,
+          statusText: response.statusText,
+          data: data,
+        });
+
+        if (data.message) {
+          throw new Error(data.message);
+        } else if (response.status === 400) {
+          throw new Error("Bad request - please check your input");
+        } else if (response.status === 409) {
+          throw new Error("User already exists");
+        } else if (response.status === 500) {
+          throw new Error("Server error - please try again later");
+        } else {
+          throw new Error(`Request failed with status ${response.status}`);
         }
-      ]
-    );
+      }
 
-  } catch (error) {
-    console.error("❌ Signup error details:", {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
-    
-    let errorMessage = error.message || "Failed to sign up. Please try again.";
-    
-    // Make error messages more user-friendly
-    if (error.message.includes("User with this phone number already exists")) {
-      errorMessage = "This phone number is already registered.";
-    } else if (error.message.includes("Email already registered")) {
-      errorMessage = "This email address is already registered.";
-    } else if (error.message.includes("network") || error.message.includes("fetch")) {
-      errorMessage = "Network error. Please check your internet connection.";
-    } else if (error.message.includes("Internal teacher accounts")) {
-      errorMessage = "This account type cannot be created through self-registration.";
+      console.log("✅ Signup successful:", data);
+
+      // Show success message and redirect to sign-in
+      Alert.alert(
+        "Success",
+        "Account created successfully! Please sign in to continue.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              // Reset form and navigate to sign-in
+              setFormData({
+                email: "",
+                phone: "",
+                firstName: "",
+                lastName: "",
+                district: "",
+                zone: "",
+                medium: "",
+                password: "",
+                confirmPassword: "",
+              });
+              router.replace("/sign-in");
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("❌ Signup error details:", {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      });
+
+      let errorMessage =
+        error.message || "Failed to sign up. Please try again.";
+
+      // Make error messages more user-friendly
+      if (
+        error.message.includes("User with this phone number already exists")
+      ) {
+        errorMessage = "This phone number is already registered.";
+      } else if (error.message.includes("Email already registered")) {
+        errorMessage = "This email address is already registered.";
+      } else if (
+        error.message.includes("network") ||
+        error.message.includes("fetch")
+      ) {
+        errorMessage = "Network error. Please check your internet connection.";
+      } else if (error.message.includes("Internal teacher accounts")) {
+        errorMessage =
+          "This account type cannot be created through self-registration.";
+      }
+
+      Alert.alert("Sign Up Error", errorMessage);
+    } finally {
+      setLoading(false);
     }
-    
-    Alert.alert("Sign Up Error", errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // Pick only the icons you want
   const selectedIcons: ImageSourcePropType[] = [
-    icons.Icon1, icons.Icon2, icons.Icon3, icons.Icon4, icons.Icon5, icons.Icon6,
-    icons.Icon1, icons.Icon3, icons.Icon2, icons.Icon4, icons.Icon3, icons.Icon5,
-    icons.Icon1, icons.Icon6, icons.Icon2,
+    icons.Icon1,
+    icons.Icon2,
+    icons.Icon3,
+    icons.Icon4,
+    icons.Icon5,
+    icons.Icon6,
+    icons.Icon1,
+    icons.Icon3,
+    icons.Icon2,
+    icons.Icon4,
+    icons.Icon3,
+    icons.Icon5,
+    icons.Icon1,
+    icons.Icon6,
+    icons.Icon2,
   ];
 
   const getPredefinedPositions = () => {
     const positions = [
       // Top row
-      { top: 25, left: 10 }, { top: 25, left: 50 }, { top: 25, left: 90 },
+      { top: 25, left: 10 },
+      { top: 25, left: 50 },
+      { top: 25, left: 90 },
       // Upper middle row
-      { top: 60, left: 20 }, { top: 60, left: 80 },
+      { top: 60, left: 20 },
+      { top: 60, left: 80 },
       // Middle row
-      { top: 95, left: 5 }, { top: 95, left: 35 }, { top: 95, left: 65 }, { top: 95, left: 95 },
+      { top: 95, left: 5 },
+      { top: 95, left: 35 },
+      { top: 95, left: 65 },
+      { top: 95, left: 95 },
       // Lower middle row
-      { top: 130, left: 15 }, { top: 130, left: 50 }, { top: 130, left: 85 },
+      { top: 130, left: 15 },
+      { top: 130, left: 50 },
+      { top: 130, left: 85 },
       // Bottom row
-      { top: 165, left: 25 }, { top: 165, left: 75 },
+      { top: 165, left: 25 },
+      { top: 165, left: 75 },
       // Very bottom row
-      { top: 200, left: 5 }, { top: 200, left: 40 }, { top: 200, left: 60 }, { top: 200, left: 95 },
+      { top: 200, left: 5 },
+      { top: 200, left: 40 },
+      { top: 200, left: 60 },
+      { top: 200, left: 95 },
     ];
     return positions;
   };
 
   const renderDistributedIcons = () => {
     const predefinedPositions = getPredefinedPositions();
-    
+
     return selectedIcons.map((icon, index) => {
       let position;
-      
+
       if (index < predefinedPositions.length) {
         position = predefinedPositions[index];
       } else {
         position = {
           top: 30 + Math.random() * 140,
-          left: 15 + Math.random() * 70
+          left: 15 + Math.random() * 70,
         };
       }
-      
+
       const randomOpacity = 0.8 + Math.random() * 0.2;
       const randomSize = 20 + Math.random() * 12;
       const randomRotation = Math.random() * 20 - 10;
@@ -440,9 +783,13 @@ const handleSignUp = async () => {
         <View style={styles.iconsLayer}>{renderDistributedIcons()}</View>
 
         {/* Title - Only Learn APP in top section */}
-        <Text style={styles.header}><Text  className="text-blue-400">S</Text>MART  <Text  className="text-blue-400">F</Text>ISHER </Text>
-        <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">LANKA </Text>
-
+        <Text style={styles.header}>
+          <Text className="text-blue-400">S</Text>MART{" "}
+          <Text className="text-blue-400">F</Text>ISHER{" "}
+        </Text>
+        <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">
+          LANKA{" "}
+        </Text>
 
         {/* Light Blue Wave - BELOW the white wave */}
         <View style={styles.lightBlueWaveContainer}>
@@ -477,7 +824,7 @@ const handleSignUp = async () => {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -499,7 +846,12 @@ const handleSignUp = async () => {
                 First Name <Text style={styles.required}>*</Text>
               </Text>
               <View style={styles.inputWrapper}>
-                <AntDesign name="user" size={18} color="#999" style={styles.icon} />
+                <AntDesign
+                  name="user"
+                  size={18}
+                  color="#999"
+                  style={styles.icon}
+                />
                 <TextInput
                   style={styles.textInput}
                   placeholder="First Name"
@@ -510,13 +862,18 @@ const handleSignUp = async () => {
               </View>
             </View>
 
-             {/* Last Name */}
+            {/* Last Name */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>
                 Last Name <Text style={styles.required}>*</Text>
               </Text>
               <View style={styles.inputWrapper}>
-                <AntDesign name="user" size={18} color="#999" style={styles.icon} />
+                <AntDesign
+                  name="user"
+                  size={18}
+                  color="#999"
+                  style={styles.icon}
+                />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Last Name"
@@ -533,7 +890,12 @@ const handleSignUp = async () => {
                 Phone Number <Text style={styles.required}>*</Text>
               </Text>
               <View style={styles.inputWrapper}>
-                <MaterialIcons name="phone" size={18} color="#999" style={styles.icon} />
+                <MaterialIcons
+                  name="phone"
+                  size={18}
+                  color="#999"
+                  style={styles.icon}
+                />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Phone Number (e.g., 0712345678)"
@@ -541,7 +903,7 @@ const handleSignUp = async () => {
                   keyboardType="phone-pad"
                   value={formData.phone}
                   onChangeText={(text) => {
-                    const cleanedText = text.replace(/[^0-9]/g, '');
+                    const cleanedText = text.replace(/[^0-9]/g, "");
                     if (cleanedText.length <= 10) {
                       handleChange("phone", cleanedText);
                     }
@@ -557,7 +919,12 @@ const handleSignUp = async () => {
                 Email <Text style={styles.required}>*</Text>
               </Text>
               <View style={styles.inputWrapper}>
-                <MaterialIcons name="email" size={18} color="#999" style={styles.icon} />
+                <MaterialIcons
+                  name="email"
+                  size={18}
+                  color="#999"
+                  style={styles.icon}
+                />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Email"
@@ -577,12 +944,22 @@ const handleSignUp = async () => {
             {/* District */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>District</Text>
-              <TouchableOpacity 
-                style={styles.inputWrapper} 
+              <TouchableOpacity
+                style={styles.inputWrapper}
                 onPress={() => setShowDistrictDropdown(true)}
               >
-                <MaterialIcons name="location-on" size={18} color="#999" style={styles.icon} />
-                <Text style={[styles.textInput, !formData.district && { color: '#9ca3af' }]}>
+                <MaterialIcons
+                  name="location-on"
+                  size={18}
+                  color="#999"
+                  style={styles.icon}
+                />
+                <Text
+                  style={[
+                    styles.textInput,
+                    !formData.district && { color: "#9ca3af" },
+                  ]}
+                >
                   {formData.district || "District"}
                 </Text>
                 <AntDesign name="down" size={16} color="#999" />
@@ -594,16 +971,20 @@ const handleSignUp = async () => {
                 animationType="fade"
                 onRequestClose={() => setShowDistrictDropdown(false)}
               >
-                <TouchableWithoutFeedback onPress={() => setShowDistrictDropdown(false)}>
+                <TouchableWithoutFeedback
+                  onPress={() => setShowDistrictDropdown(false)}
+                >
                   <View style={styles.modalOverlay}>
                     <View style={styles.dropdownContainer}>
                       <FlatList
                         data={districts}
                         keyExtractor={(item) => item}
-                        renderItem={({ item }) => renderDropdownItem({ 
-                          item, 
-                          onSelect: handleDistrictSelect 
-                        })}
+                        renderItem={({ item }) =>
+                          renderDropdownItem({
+                            item,
+                            onSelect: handleDistrictSelect,
+                          })
+                        }
                         showsVerticalScrollIndicator={false}
                       />
                     </View>
@@ -615,14 +996,28 @@ const handleSignUp = async () => {
             {/* Zone */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Zone</Text>
-              <TouchableOpacity 
-                style={[styles.inputWrapper, !formData.district && styles.disabledInput]} 
+              <TouchableOpacity
+                style={[
+                  styles.inputWrapper,
+                  !formData.district && styles.disabledInput,
+                ]}
                 onPress={() => formData.district && setShowZoneDropdown(true)}
                 disabled={!formData.district}
               >
-                <MaterialIcons name="map" size={18} color="#999" style={styles.icon} />
-                <Text style={[styles.textInput, !formData.zone && { color: '#9ca3af' }]}>
-                  {formData.zone || (formData.district ? "Zone" : "Select District First")}
+                <MaterialIcons
+                  name="map"
+                  size={18}
+                  color="#999"
+                  style={styles.icon}
+                />
+                <Text
+                  style={[
+                    styles.textInput,
+                    !formData.zone && { color: "#9ca3af" },
+                  ]}
+                >
+                  {formData.zone ||
+                    (formData.district ? "Zone" : "Select District First")}
                 </Text>
                 <AntDesign name="down" size={16} color="#999" />
               </TouchableOpacity>
@@ -633,16 +1028,20 @@ const handleSignUp = async () => {
                 animationType="fade"
                 onRequestClose={() => setShowZoneDropdown(false)}
               >
-                <TouchableWithoutFeedback onPress={() => setShowZoneDropdown(false)}>
+                <TouchableWithoutFeedback
+                  onPress={() => setShowZoneDropdown(false)}
+                >
                   <View style={styles.modalOverlay}>
                     <View style={styles.dropdownContainer}>
                       <FlatList
                         data={availableZones}
                         keyExtractor={(item) => item}
-                        renderItem={({ item }) => renderDropdownItem({ 
-                          item, 
-                          onSelect: handleZoneSelect 
-                        })}
+                        renderItem={({ item }) =>
+                          renderDropdownItem({
+                            item,
+                            onSelect: handleZoneSelect,
+                          })
+                        }
                         showsVerticalScrollIndicator={false}
                       />
                     </View>
@@ -654,12 +1053,22 @@ const handleSignUp = async () => {
             {/* Medium */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Medium</Text>
-              <TouchableOpacity 
-                style={styles.inputWrapper} 
+              <TouchableOpacity
+                style={styles.inputWrapper}
                 onPress={() => setShowMediumDropdown(true)}
               >
-                <MaterialIcons name="translate" size={18} color="#999" style={styles.icon} />
-                <Text style={[styles.textInput, !formData.medium && { color: '#9ca3af' }]}>
+                <MaterialIcons
+                  name="translate"
+                  size={18}
+                  color="#999"
+                  style={styles.icon}
+                />
+                <Text
+                  style={[
+                    styles.textInput,
+                    !formData.medium && { color: "#9ca3af" },
+                  ]}
+                >
                   {formData.medium || "Medium"}
                 </Text>
                 <AntDesign name="down" size={16} color="#999" />
@@ -671,16 +1080,20 @@ const handleSignUp = async () => {
                 animationType="fade"
                 onRequestClose={() => setShowMediumDropdown(false)}
               >
-                <TouchableWithoutFeedback onPress={() => setShowMediumDropdown(false)}>
+                <TouchableWithoutFeedback
+                  onPress={() => setShowMediumDropdown(false)}
+                >
                   <View style={styles.modalOverlay}>
                     <View style={styles.dropdownContainer}>
                       <FlatList
                         data={mediums}
                         keyExtractor={(item) => item}
-                        renderItem={({ item }) => renderDropdownItem({ 
-                          item, 
-                          onSelect: handleMediumSelect 
-                        })}
+                        renderItem={({ item }) =>
+                          renderDropdownItem({
+                            item,
+                            onSelect: handleMediumSelect,
+                          })
+                        }
                         showsVerticalScrollIndicator={false}
                       />
                     </View>
@@ -688,7 +1101,6 @@ const handleSignUp = async () => {
                 </TouchableWithoutFeedback>
               </Modal>
             </View>
-
 
             {/* Password Section */}
             <Text style={styles.sectionTitle}>Password</Text>
@@ -699,7 +1111,12 @@ const handleSignUp = async () => {
                 Password <Text style={styles.required}>*</Text>
               </Text>
               <View style={styles.inputWrapper}>
-                <MaterialIcons name="lock" size={18} color="#999" style={styles.icon} />
+                <MaterialIcons
+                  name="lock"
+                  size={18}
+                  color="#999"
+                  style={styles.icon}
+                />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Password"
@@ -717,7 +1134,12 @@ const handleSignUp = async () => {
                 Confirm Password <Text style={styles.required}>*</Text>
               </Text>
               <View style={styles.inputWrapper}>
-                <MaterialIcons name="lock" size={18} color="#999" style={styles.icon} />
+                <MaterialIcons
+                  name="lock"
+                  size={18}
+                  color="#999"
+                  style={styles.icon}
+                />
                 <TextInput
                   style={styles.textInput}
                   placeholder="Confirm Password"
@@ -730,8 +1152,8 @@ const handleSignUp = async () => {
             </View>
 
             {/* Sign Up Button */}
-            <TouchableOpacity 
-              style={[styles.signUpButton, loading && styles.disabledButton]} 
+            <TouchableOpacity
+              style={[styles.signUpButton, loading && styles.disabledButton]}
               onPress={handleSignUp}
               disabled={loading}
             >
@@ -859,8 +1281,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#f3f4f6",
     borderColor: "#e5e7eb",
   },
-  icon: { 
-    marginRight: 8 
+  icon: {
+    marginRight: 8,
   },
   textInput: {
     flex: 1,
