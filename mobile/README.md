@@ -1,223 +1,50 @@
-# Fish Price Prediction Mobile App
+# Welcome to your Expo app 👋
 
-A React Native mobile application for viewing and analyzing fish price predictions from the trained ML model.
+This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
-## Features
+## Get started
 
-✅ **Real-time Predictions** - View latest fish price predictions
-✅ **Historical Data** - Analyze past predictions and actual prices
-✅ **Price Charts** - Visual representation of price trends
-✅ **Auto-refresh** - Keep data updated automatically
-✅ **Bilingual UI** - Full English and Sinhala support
-✅ **Offline Support** - Data caching capability
+1. Install dependencies
 
-## Requirements
+   ```bash
+   npm install
+   ```
 
-- Node.js 16+
-- npm or yarn
-- React Native CLI
-- Android Studio (for Android)
-- Xcode (for iOS)
-- Backend API running
+2. Start the app
 
-## Installation
+   ```bash
+   npx expo start
+   ```
 
-```bash
-# Install dependencies
-npm install
+In the output, you'll find options to open the app in a
 
-# or use yarn
-yarn install
-```
+- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
+- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
+- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-## Running the App
+You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-### Android
+## Get a fresh project
+
+When you're ready, run:
 
 ```bash
-npm run android
+npm run reset-project
 ```
 
-### iOS
+This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
-```bash
-npm run ios
-```
+## Learn more
 
-### Start Metro Server
+To learn more about developing your project with Expo, look at the following resources:
 
-```bash
-npm start
-```
+- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
+- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-## Backend Configuration
+## Join the community
 
-Update the API base URL in `src/api/client.ts`:
+Join our community of developers creating universal apps.
 
-```typescript
-const API_BASE_URL = 'http://your-backend-url:5000';
-```
-
-## Project Structure
-
-```
-mobile/
-├── src/
-│   ├── api/
-│   │   └── client.ts                # API client
-│   ├── screens/
-│   │   ├── HomeScreen.tsx           # Dashboard screen
-│   │   ├── PredictionsScreen.tsx    # Predictions view
-│   │   ├── HistoryScreen.tsx        # Historical data
-│   │   └── SettingsScreen.tsx       # Settings
-│   └── types/
-│       └── index.ts                 # TypeScript types
-├── App.tsx                          # Main app component
-├── index.js                         # Entry point
-├── package.json                     # Dependencies
-├── app.json                         # App configuration
-└── README.md                        # This file
-```
-
-## Required Backend Endpoints
-
-The backend API should provide these endpoints:
-
-### GET /api/predictions
-Returns latest price predictions
-
-```json
-[
-  {
-    "id": 1,
-    "fish_name": "Tilapia",
-    "predicted_price": 450.50,
-    "confidence": 0.95,
-    "date": "2024-01-04"
-  }
-]
-```
-
-### GET /api/history
-Returns historical prices
-
-```json
-[
-  {
-    "id": 1,
-    "fish_name": "Tilapia",
-    "actual_price": 450.00,
-    "predicted_price": 450.50,
-    "accuracy": 0.95,
-    "date": "2024-01-03"
-  }
-]
-```
-
-### GET /api/model-metrics
-Returns model performance metrics
-
-```json
-{
-  "accuracy": 0.92,
-  "mse": 1234.56,
-  "rmse": 35.12
-}
-```
-
-### GET /api/weather
-Returns current weather data
-
-```json
-{
-  "temperature": 28.5,
-  "humidity": 65,
-  "wind_speed": 12.3
-}
-```
-
-## Available Screens
-
-1. **Home Screen** - Dashboard with latest predictions and metrics
-2. **Predictions Screen** - Detailed price predictions with charts
-3. **History Screen** - Historical data and price trends
-4. **Settings Screen** - Configuration and preferences
-
-## Settings Options
-
-- Enable/disable notifications
-- Auto-refresh interval
-- Dark mode
-- Server configuration
-- API key management
-- Cache management
-
-## Development
-
-### Lint Check
-
-```bash
-npm run lint
-```
-
-### Run Tests
-
-```bash
-npm test
-```
-
-## Building for Production
-
-### Android Release Build
-
-```bash
-cd android
-./gradlew assembleRelease
-```
-
-### iOS Release Build
-
-```bash
-cd ios
-xcodebuild -workspace FishPricePredictorApp.xcworkspace -scheme FishPricePredictorApp -configuration Release
-```
-
-## Troubleshooting
-
-### Metro Server Issues
-```bash
-npm start -- --reset-cache
-```
-
-### Android Build Issues
-```bash
-cd android
-./gradlew clean
-./gradlew assembleDebug
-```
-
-### iOS Pod Issues
-```bash
-cd ios
-pod install --repo-update
-cd ..
-npm run ios
-```
-
-## Contributing
-
-Pull requests are welcome. Please create an issue first to discuss changes.
-
-## License
-
-MIT License - see LICENSE file for details
-
-## Support
-
-For questions or issues, please open a GitHub issue.
-
----
-
-**Built by:** Research Team
-**Version:** 1.0.0
-**Last Updated:** 2026-01-04
+- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
+- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
