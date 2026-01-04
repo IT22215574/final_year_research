@@ -1,118 +1,266 @@
 import { Tabs, router } from "expo-router";
-import { Image, Text, TouchableOpacity, View, Linking, StyleSheet } from "react-native";
+import {
+  Image,
+  Text,
+  TouchableOpacity,
+  View,
+  Linking,
+  StyleSheet,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { icons } from "@/constants";
 import useAuthStore from "@/stores/authStore";
+import { useState } from "react";
+import Sidebar from "@/components/Sidebar";
+import Overlay from "@/components/Overlay";
 
 const TabsLayout = () => {
-  const phoneNumber = "+94720804389";
-  const whatsappNumber = "94720804389";
+  const [activeTab, setActiveTab] = useState("home");
+  const [sidebarVisible, setSidebarVisible] = useState(false);
 
-  const handlePhoneCall = () => {
-    Linking.openURL(`tel:${phoneNumber}`);
-  };
 
-  const handleWhatsApp = () => {
-    const message = "Hello, I'm interested in your services";
-    const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-      message
-    )}`;
-
-    Linking.openURL(url).catch(() => {
-      Linking.openURL(`https://api.whatsapp.com/send?phone=${whatsappNumber}`);
-    });
-  };
-
-  const handleSubmitAd = () => {
+  const handleProfileNavigation = () => {
     const state = useAuthStore.getState();
     if (state.isSignedIn) {
-      router.push("/#");
+      setActiveTab("profile");
+      router.push("/profile");
     } else {
-      router.push("/#");
+      router.push("/sign-in");
     }
+  };
+
+  const handleTabPress = (tabName: string, route: string) => {
+    setActiveTab(tabName);
+    router.push(route);
+  };
+
+  const toggleSidebar = () => {
+    setSidebarVisible(!sidebarVisible);
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Blue Status Bar */}
-      <StatusBar 
-        style="light" 
-        backgroundColor="#3b82f6" 
-        translucent={false}
-      />
-      
+      <StatusBar style="light" backgroundColor="#f8fafc" translucent={false} />
+
       <Tabs
         initialRouteName="home"
         screenOptions={{
-          headerShown: false,
+          headerShown: true,
+          headerShadowVisible: false,
+          headerTintColor: "black",
+          headerTitleStyle: {
+            fontWeight: "bold",
+          },
+          headerLeft: () => (
+            <TouchableOpacity
+              style={{ marginLeft: 15 }}
+              onPress={toggleSidebar}
+            >
+              <Image
+                source={icons.burgermenu}
+                style={styles.menuIcon}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          ),
+          headerStyle: {
+            elevation: 0,
+            shadowOpacity: 0,
+            borderBottomWidth: 0,
+          },
           tabBarShowLabel: false,
           tabBarStyle: {
-            display: 'none', // Hide the default tab bar
+            display: "none",
           },
         }}
       >
-        <Tabs.Screen name="home" options={{ headerShown: false }} />
         <Tabs.Screen
-          name="SubmitPost"
+          name="home"
           options={{
-            href: null,
+            title: "",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF", // Blue only for home
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="exams"
+          options={{
+            title: "",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF", // Default color for other tabs
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="publications"
+          options={{
+            title: "Publications",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#fff", // Default color for other tabs
+            },
+          }}
+        />
+
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "Profile",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0B3D91", // Default color for other tabs
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="update_profile"
+          options={{
+            title: "Edit Profile",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#fff", // Default color for other tabs
+            },
           }}
         />
       </Tabs>
 
+      {/* Sidebar and Overlay */}
+      <Sidebar
+        isVisible={sidebarVisible}
+        onClose={() => setSidebarVisible(false)}
+      />
+      <Overlay
+        isVisible={sidebarVisible}
+        onClose={() => setSidebarVisible(false)}
+      />
+
       {/* Custom Bottom Navigation */}
       <View style={styles.customTabBar} className="rounded-t-3xl shadow-lg">
-        
-
         {/* Navigation Items */}
         <View style={styles.navItemsContainer}>
-          <TouchableOpacity style={styles.navItem}>
-            <View style={[styles.iconContainer, styles.iconContainerActive]}>
-              <Image 
-                source={icons.nav_home} 
-                style={styles.navIcon}
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => handleTabPress("home", "/(tabs)/home")}
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                activeTab === "home" && styles.iconContainerActive,
+              ]}
+            >
+              <Image
+                source={icons.nav_home}
+                style={[
+                  styles.navIcon,
+                  activeTab === "home" && styles.navIconActive,
+                ]}
                 resizeMode="contain"
               />
             </View>
-            <Text style={[styles.navText, styles.navTextActive]}>Home</Text>
+            <Text
+              style={[
+                styles.navText,
+                activeTab === "home" && styles.navTextActive,
+              ]}
+            >
+              Home
+            </Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.navItem}>
-            <View style={styles.iconContainer}>
-              <Image 
-                source={icons.nav_exam} 
-                style={styles.navIcon}
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => handleTabPress("exams", "/(tabs)/exams")}
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                activeTab === "exams" && styles.iconContainerActive,
+              ]}
+            >
+              <Image
+                source={icons.nav_exam}
+                style={[
+                  styles.navIcon,
+                  activeTab === "exams" && styles.navIconActive,
+                ]}
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.navText}>Exams</Text>
+            <Text
+              style={[
+                styles.navText,
+                activeTab === "exams" && styles.navTextActive,
+              ]}
+            >
+              Exams
+            </Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.navItem}>
-            <View style={styles.iconContainer}>
-              <Image 
-                source={icons.home_publication} 
-                style={styles.navIcon}
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() =>
+              handleTabPress("publication", "/(tabs)/publications")
+            }
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                activeTab === "publication" && styles.iconContainerActive,
+              ]}
+            >
+              <Image
+                source={icons.home_publication}
+                style={[
+                  styles.navIcon,
+                  activeTab === "publication" && styles.navIconActive,
+                ]}
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.navText}>Publication</Text>
+            <Text
+              style={[
+                styles.navText,
+                activeTab === "publication" && styles.navTextActive,
+              ]}
+            >
+              Publication
+            </Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.navItem}>
-            <View style={styles.iconContainer}>
-              <Image 
-                source={icons.nav_user} 
-                style={styles.navIcon}
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={handleProfileNavigation}
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                activeTab === "profile" && styles.iconContainerActive,
+              ]}
+            >
+              <Image
+                source={icons.nav_user}
+                style={[
+                  styles.navIcon,
+                  activeTab === "profile" && styles.navIconActive,
+                ]}
                 resizeMode="contain"
               />
             </View>
-            <Text style={styles.navText}>Profile</Text>
+            <Text
+              style={[
+                styles.navText,
+                activeTab === "profile" && styles.navTextActive,
+              ]}
+            >
+              Profile
+            </Text>
           </TouchableOpacity>
         </View>
-
-        
       </View>
     </SafeAreaView>
   );
@@ -121,43 +269,44 @@ const TabsLayout = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#2C3036",
+    backgroundColor: "#f8fafc",
+    marginTop: -45,
   },
   customTabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: "white",
     height: 90,
     paddingHorizontal: 20,
     borderTopWidth: 1,
     borderTopColor: "white",
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
   },
   contactButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#3A3F47",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     flex: 1,
     marginRight: 10,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   whatsappButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#3A3F47",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     flex: 1,
     marginLeft: 10,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   buttonIcon: {
     width: 20,
@@ -166,17 +315,17 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#FEE01C",
-    fontWeight: '500',
+    fontWeight: "500",
     fontSize: 14,
   },
   navItemsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     flex: 2,
   },
   navItem: {
-    alignItems: 'center',
+    alignItems: "center",
     marginHorizontal: 8,
     flex: 1,
   },
@@ -184,35 +333,39 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#9E9E9E',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#f1f5f9",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 4,
   },
   iconContainerActive: {
-    backgroundColor: '#005CFF',
+    backgroundColor: "#005CFF",
   },
   navIcon: {
     width: 25,
     height: 25,
-    tintColor: 'white',
+    tintColor: "#64748b",
+  },
+  navIconActive: {
+    tintColor: "white",
   },
   navText: {
     fontSize: 12,
-    color: "#9E9E9E",
+    color: "#64748b",
     marginTop: 4,
+    fontWeight: "500",
   },
   navTextActive: {
     color: "#005CFF",
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   submitButton: {
     backgroundColor: "#FEE01C",
     width: 56,
     height: 56,
     borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginHorizontal: 8,
     shadowColor: "#000",
     shadowOffset: {
@@ -224,9 +377,14 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   submitButtonText: {
-    color: 'black',
+    color: "black",
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+  },
+  menuIcon: {
+    width: 32,
+    height: 32,
+    tintColor: "black",
   },
 });
 

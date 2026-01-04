@@ -42,7 +42,7 @@ const Home = () => {
       {/* Custom Status Bar */}
       <StatusBar
         barStyle="light-content"
-        backgroundColor="#3b82f6"
+        backgroundColor="#0057FF"
         translucent={false}
       />
 
@@ -95,7 +95,6 @@ const Home = () => {
                     resizeMode="contain"
                   />
                 </View>
-                <Text style={styles.quickAccessText}>Exams</Text>
               </View>
             </TouchableOpacity>
 
@@ -108,38 +107,7 @@ const Home = () => {
                     resizeMode="contain"
                   />
                 </View>
-                <Text style={styles.quickAccessText}>Publications</Text>
               </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Upcoming Schedules Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Upcoming Schedules</Text>
-
-          <View style={styles.scheduleCard}>
-            <Text style={styles.courseTitle}>INTRODUCTION TO MICROBIOLOGY</Text>
-            <Text style={styles.scheduleTitle}>Microbiology Introduction</Text>
-
-            <View style={styles.scheduleDetails}>
-              <View style={styles.scheduleTime}>
-                <Ionicons name="calendar-outline" size={16} color="#64748b" />
-                <Text style={styles.scheduleText}>12th June 2025</Text>
-              </View>
-              <View style={styles.scheduleTime}>
-                <Ionicons name="time-outline" size={16} color="#64748b" />
-                <Text style={styles.scheduleText}>3:00 pm - 5:00 pm</Text>
-              </View>
-            </View>
-
-            <View style={styles.instructorContainer}>
-              <Ionicons name="person-outline" size={16} color="#64748b" />
-              <Text style={styles.instructorText}>Dr. Sarah Johnson</Text>
-            </View>
-
-            <TouchableOpacity style={styles.joinButton}>
-              <Text style={styles.joinButtonText}>Join Seminar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -155,10 +123,10 @@ const styles = StyleSheet.create({
   },
   systemStatusBar: {
     height: StatusBar.currentHeight,
-    backgroundColor: "#3b82f6", // Blue color for system status bar area
+    backgroundColor: "#0057FF", // Blue color for system status bar area
   },
   header: {
-    backgroundColor: "#3b82f6", // Blue background
+    backgroundColor: "#0057FF", // Blue background
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 24,
