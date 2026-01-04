@@ -1,50 +1,45 @@
-import axios, { AxiosError } from 'axios';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
 
-const API_BASE_URL = 'http://localhost:5000'; // Backend URL එක සකසන්න
+export const api = {
+  // Price Predictions
+  getPredictions: async (fishId: number, port: string) => {
+    const response = await fetch(`${API_BASE_URL}/predictions/${fishId}?port=${port}`);
+    return response.json();
+  },
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-});
+  // Historical Data
+  getHistoricalPrices: async (fishId: number, days: number = 30) => {
+    const response = await fetch(`${API_BASE_URL}/prices/historical/${fishId}?days=${days}`);
+    return response.json();
+  },
 
-export const fetchPricePredict = async () => {
-  try {
-    const response = await apiClient.get('/api/predictions');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching predictions:', error);
-    throw error;
-  }
+  // Fish List
+  getFishes: async () => {
+    const response = await fetch(`${API_BASE_URL}/fish`);
+    return response.json();
+  },
+
+  // Weather Data
+  getWeather: async (port: string) => {
+    const response = await fetch(`${API_BASE_URL}/weather/${port}`);
+    return response.json();
+  },
+
+  // Festival Info
+  getFestivals: async (startDate: string, endDate: string) => {
+    const response = await fetch(`${API_BASE_URL}/festivals?start=${startDate}&end=${endDate}`);
+    return response.json();
+  },
+
+  // Current Prices
+  getCurrentPrices: async (port: string) => {
+    const response = await fetch(`${API_BASE_URL}/prices/current?port=${port}`);
+    return response.json();
+  },
+
+  // Port List
+  getPorts: async () => {
+    const response = await fetch(`${API_BASE_URL}/ports`);
+    return response.json();
+  },
 };
-
-export const fetchHistoricalPrices = async () => {
-  try {
-    const response = await apiClient.get('/api/history');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching history:', error);
-    throw error;
-  }
-};
-
-export const fetchWeatherData = async () => {
-  try {
-    const response = await apiClient.get('/api/weather');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching weather:', error);
-    throw error;
-  }
-};
-
-export const fetchModelMetrics = async () => {
-  try {
-    const response = await apiClient.get('/api/model-metrics');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching metrics:', error);
-    throw error;
-  }
-};
-
-export default apiClient;
