@@ -10,15 +10,17 @@ async function bootstrap() {
 
   // Get MongoDB connection
   const connection = app.get<Connection>(getConnectionToken());
-  
+
   // Check current connection state
   const checkConnection = () => {
     const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
     console.log(`MongoDB connection state: ${states[connection.readyState]}`);
-    
+
     if (connection.readyState === 1) {
       console.log('MongoDB connected successfully');
-      console.log(`Database: ${connection.db?.databaseName || 'connecting...'}`);
+      console.log(
+        `Database: ${connection.db?.databaseName || 'connecting...'}`,
+      );
     }
   };
 

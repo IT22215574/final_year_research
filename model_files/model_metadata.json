@@ -1,0 +1,27 @@
+{
+  "model_name": "XGBoost",
+  "feature_names": [
+    "boat_type",
+    "engine_hp",
+    "trip_days",
+    "distance_km",
+    "wind_kph",
+    "wave_m",
+    "month",
+    "port_name",
+    "diesel_price_LKR",
+    "petrol_price_LKR",
+    "kerosene_price_LKR"
+  ],
+  "target_name": "total_cost_LKR",
+  "categorical_features": [
+    "boat_type",
+    "port_name"
+  ],
+  "test_r2": 0.9945853041717907,
+  "test_rmse": 75495.09128495392,
+  "test_mae": 20349.694090080262,
+  "training_date": "2026-01-04T17:54:18.648773",
+  "training_samples": 5120,
+  "test_samples": 1280
+}

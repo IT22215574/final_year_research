@@ -1,0 +1,1360 @@
+================================================================================
+SMART FISHER LANKA - PROJECT DOCUMENTATION
+================================================================================
+Fish Trip Cost Prediction & Management System
+
+PROJECT NAME: SMART FISHER LANKA
+================================================================================
+A comprehensive fishing industry management system with mobile application 
+(React Native) that assists fishermen with trip planning, cost prediction, 
+and fishing activity management. The system uses a hybrid approach combining 
+Machine Learning predictions with rule-based calculations for accurate trip 
+cost estimation.
+
+PROJECT STRUCTURE
+================================================================================
+Root Directory: final_year_research/
+├── Backend/          - NestJS backend server
+├── mobile/           - React Native (Expo) mobile application
+├── model_files/      - Machine Learning model for cost prediction
+├── documentation/    - Project documentation
+├── datasetfiles/     - (Currently empty - for ML training datasets)
+└── README.md         - Project readme
+
+CORE FUNCTIONALITY (PLANNED)
+================================================================================
+The system will calculate total trip costs through two components:
+
+1. ML-BASED BASE COST PREDICTION (Model exists, API integration pending)
+   - Predicts essential/mandatory trip costs that are always required
+   - Base cost items:
+     * Fuel (Kerosene, Petrol, or Diesel) - based on boat type, trip duration, and distance
+     * Ice - for fish preservation
+     * Water - for crew consumption
+   - Cost calculation based on:
+     * Distance from shore to fishing location
+     * Location coordinates (random generated for testing or actual GPS coordinates)
+     * Trip duration
+     * Boat specifications and fuel type
+   - Machine Learning model file: model_files/fish-tripcost-model.ipynb
+   - Backend API endpoints for trip prediction: TO BE IMPLEMENTED
+   
+   NOTE: System does NOT predict where fish are located. It uses location
+   coordinates to calculate trip distance and associated costs.
+
+2. RULE-BASED ADDITIONAL COSTS (To be implemented)
+   - Determined by fisherman's specific needs and requirements
+   - Variable based on:
+     * Fishing type/method
+     * Equipment needed
+     * Crew size
+     * Trip duration
+     * Special requirements
+   - Added dynamically based on user input and business rules
+
+CURRENT IMPLEMENTATION STATUS
+================================================================================
+✅ COMPLETED:
+   - Backend authentication system (JWT + OTP)
+   - User management (CRUD operations)
+   - Mobile app UI/UX (onboarding, auth flows)
+   - Mobile app navigation structure
+   - State management (Zustand)
+   - ML model for trip cost prediction (Jupyter notebook)
+   
+⏳ PENDING IMPLEMENTATION:
+   - Trip prediction API endpoints in backend
+   - Trip management (create, track, complete trips)
+   - Cost calculation integration with ML model
+   - Offline data storage (SQLite)
+   - Data synchronization (offline to online)
+   - Stock management system
+   - Real-time features using WebSocket
+
+TECHNICAL STACK
+================================================================================
+
+BACKEND: NestJS v10.4.20 (Node.js Framework)
+--------------------------------------------------------------------------------
+Location: Backend/
+Package Manager: pnpm
+Description: LearnUp NestJS Backend (base project name, adapted for fish industry)
+
+Purpose:
+- RESTful API server
+- Authentication & Authorization (JWT + OTP)
+- User management and role-based access
+- Database operations with MongoDB
+- File upload handling (Multer)
+- Email notifications (Nodemailer)
+- SMS/OTP services (Twilio)
+
+Core Dependencies:
+- @nestjs/core, @nestjs/common v10.4.20
+- @nestjs/mongoose v10.0.2          - MongoDB ODM
+- @nestjs/jwt v10.2.0               - JWT authentication
+- @nestjs/passport v10.0.3          - Authentication strategies
+- @nestjs/config v3.1.1             - Environment configuration
+- mongoose v8.5.4                   - MongoDB object modeling
+- bcryptjs v2.4.3                   - Password hashing
+- class-validator v0.14.0           - DTO validation
+- class-transformer v0.5.1          - Object transformation
+- multer v2.0.2                     - File upload handling
+- nodemailer v7.0.10                - Email service
+- twilio v5.8.0                     - SMS/OTP service
+- otp-generator v4.0.1              - OTP generation
+- passport-jwt v4.0.1               - JWT strategy
+- passport-local v1.0.0             - Local strategy
+- cookie-parser v1.4.7              - Cookie handling
+
+Key Files Structure:
+Backend/
+├── src/
+│   ├── main.ts                     - Application entry point (port 5000 default)
+│   ├── app.module.ts               - Root module (ConfigModule, MongooseModule)
+│   │
+│   ├── auth/                       - Authentication module
+│   │   ├── auth.module.ts
+│   │   ├── auth.controller.ts      - Auth endpoints
+│   │   ├── auth.service.ts         - Auth business logic (OTP, JWT)
+│   │   └── dto/
+│   │       ├── index.ts
+│   │       ├── signin.dto.ts       - Sign-in validation
+│   │       └── signup.dto.ts       - Sign-up validation
+│   │
+│   ├── user/                       - User management module
+│   │   ├── user.module.ts
+│   │   ├── user.controller.ts      - User CRUD endpoints
+│   │   └── user.service.ts         - User business logic
+│   │
+│   ├── schemas/                    - MongoDB schemas
+│   │   └── user.schema.ts          - User model with timestamps
+│   │
+│   └── common/                     - Shared utilities
+│       └── filters/
+│           └── http-exception.filter.ts - Global error handling
+│
+├── uploads/                        - File upload directory
+├── nest-cli.json                   - NestJS CLI config
+├── tsconfig.json                   - TypeScript config
+├── package.json                    - Dependencies
+└── pnpm-lock.yaml                  - Lock file
+
+Configuration:
+- Port: 5000 (default, configurable via environment)
+- CORS enabled for: http://localhost:5173, http://localhost:3001
+- Cookie-based JWT authentication
+- Global validation pipes
+- MongoDB connection with retry logic
+
+
+MOBILE APPLICATION: React Native v0.81.5 (Expo v54.0.25)
+--------------------------------------------------------------------------------
+Location: mobile/
+Package Name: "battiadds"
+Framework: Expo Router v6.0.15 (file-based routing)
+
+Purpose:
+- Cross-platform mobile application (iOS & Android)
+- User interface for fishermen
+- Trip cost prediction (to be integrated)
+- Role-based access (Customer, Fisher man, Admin, SuperAdmin)
+- Authentication and profile management
+
+Core Dependencies:
+Framework & Navigation:
+- expo v54.0.25                                 - Expo framework
+- react v19.1.0                                 - React library
+- react-native v0.81.5                          - React Native
+- expo-router v6.0.15                           - File-based routing
+- @react-navigation/native v7.0.14              - Navigation core
+- @react-navigation/bottom-tabs v7.2.0          - Tab navigation
+- react-native-screens v4.16.0                  - Native screens
+- react-native-safe-area-context v5.6.0         - Safe area handling
+
+State Management & Storage:
+- zustand v5.0.3                                - State management
+- @react-native-async-storage/async-storage 2.2.0 - Async storage
+
+UI & Styling:
+- nativewind v4.1.23                            - TailwindCSS for RN
+- tailwindcss v3.4.17                           - CSS framework
+- expo-linear-gradient v15.0.7                  - Gradients
+- react-native-svg v15.12.1                     - SVG support
+- @expo/vector-icons v15.0.3                    - Icon library
+- react-native-modal v14.0.0-rc.1               - Modal component
+- react-native-swiper v1.6.0                    - Swiper component
+
+Forms & Inputs:
+- react-hook-form v7.54.2                       - Form management
+- @react-native-picker/picker 2.11.1            - Picker component
+- @react-native-community/datetimepicker 8.4.4  - Date/time picker
+- expo-checkbox v5.0.7                          - Checkbox component
+- react-native-picker-select v9.3.1             - Select dropdown
+- react-native-keyboard-aware-scroll-view v0.9.5 - Keyboard handling
+
+Media & File Handling:
+- expo-image-picker v17.0.8                     - Image picker
+- react-native-image-picker v8.2.0              - Alternative image picker
+- expo-sharing v14.0.7                          - File sharing
+
+Communication:
+- socket.io-client v4.8.1                       - WebSocket client
+- react-native-gifted-chat v2.8.0               - Chat UI (for future features)
+
+Other Features:
+- expo-haptics v15.0.7                          - Haptic feedback
+- react-native-toast-message v2.2.1             - Toast notifications
+- expo-crypto v15.0.7                           - Cryptographic operations
+- expo-constants v18.0.10                       - App constants
+- react-native-reanimated v4.1.1                - Animations
+- react-native-gesture-handler v2.28.0          - Gesture handling
+
+DevDependencies:
+- typescript v5.3.3
+- @types/react v19.1.10
+- jest v29.2.1, jest-expo v54.0.13              - Testing
+
+App Structure (mobile/app/):
+
+1. Entry Point:
+   - index.tsx                      - App entry, redirects based on auth status
+   - _layout.tsx                    - Root layout wrapper
+
+2. Authentication Flow (app/(auth)/)
+   File-based routing with auth group:
+   - _layout.tsx                    - Auth layout wrapper
+   - onBoard1.tsx                   - Onboarding: "AI Catch Quality Analysis" (marketing/future)
+   - onBoard2.tsx                   - Onboarding: "Smart Trip Planning" (cost prediction based on distance)
+   - onBoard3.tsx                   - Onboarding: Third screen
+   - OnboardingContainer.tsx        - Onboarding wrapper component
+   - selectSignIn.tsx               - Role selection (Customer/Fisher man)
+   - sign-in.tsx                    - Email/phone + password sign-in
+   - sign-up.tsx                    - Registration with OTP verification
+   - otprequest.tsx                 - OTP input screen
+   - forgetpassword.tsx             - Password recovery initiation
+   - resetpassword.tsx              - Password reset with OTP
+   - success.tsx                    - Success confirmation screen
+
+3. Main Application (app/(root)/)
+   Protected routes for authenticated users:
+   - _layout.tsx                    - Root layout with navigation
+   
+   Screens (app/(root)/(screens)/):
+   - _layout.tsx                    - Screens layout
+   - Account.tsx                    - User account settings
+   - single_profile.tsx             - View profile details
+   - update_profile.tsx             - Edit user profile
+   
+   Bottom Tabs (app/(root)/(tabs)/):
+   - _layout.tsx                    - Tab navigation with WhatsApp/Phone actions
+   - home.tsx                       - Home/Dashboard with header, search, sign-out
+   - profile.tsx                    - User profile tab
+
+4. Not Found:
+   - +not-found.tsx                 - 404 error page
+
+Reusable Components (mobile/components/):
+- CustomButton.tsx                  - Styled button component
+- GooglleTextInput.tsx              - Google-style text input
+- Header.tsx                        - App header with title
+- InputField.tsx                    - Generic input field with label
+
+State Management (mobile/stores/):
+- authStore.tsx                     - Zustand store for authentication
+  * isSignedIn: boolean
+  * currentUser: User | null
+  * signIn(user): Store user in AsyncStorage
+  * signOut(): Clear auth state
+  * checkAuthStatus(): Check if user logged in
+  * userupdate(user): Update user data
+
+Utilities (mobile/utils/):
+- socket.ts                         - Socket.io client connection setup
+- localUpload.ts                    - Local file upload handling
+
+Constants (mobile/constants/):
+- index.tsx                         - App constants, icons, images exports
+  * Icon exports (home, profile, search, menu, chat, etc.)
+  * Image exports (LearnupLogo, Onboard images, etc.)
+
+Assets (mobile/assets/):
+- fonts/                            - Custom fonts (Poppins family)
+- icons/                            - PNG icon files
+- images/                           - App images and graphics
+
+Type Definitions (mobile/types/):
+- image.d.ts                        - Image type declarations
+- type.d.ts                         - Custom type definitions (User, etc.)
+
+Android Native (mobile/android/):
+- Native Android project structure
+- Gradle build configuration
+- AndroidManifest.xml
+- Resources (drawables, mipmaps)
+
+Configuration Files:
+- app.json                          - Expo app configuration
+- babel.config.js                   - Babel configuration
+- eas.json                          - Expo Application Services config
+- metro.config.js                   - Metro bundler config
+- tailwind.config.js                - TailwindCSS/NativeWind config
+- tsconfig.json                     - TypeScript configuration
+- nativewind-env.d.ts               - NativeWind type declarations
+- expo-env.d.ts                     - Expo type declarations
+
+
+DATABASE: MongoDB (Primary) + SQLite (Planned for Offline)
+--------------------------------------------------------------------------------
+
+MONGODB (Cloud/Server Database - CURRENTLY ACTIVE):
+Purpose:
+- Primary database for persistent storage
+- Centralized data repository
+- User accounts and authentication
+- Future: Trip records, cost predictions, historical data
+
+Current Implementation:
+- Connected via @nestjs/mongoose
+- Connection string in environment variable (MONGO)
+- Connection monitoring with state logging
+- Database name logged on successful connection
+
+Current Collections/Schemas:
+1. users (Backend/src/schemas/user.schema.ts)
+   Fields:
+   - _id: ObjectId (auto-generated)
+   - username: String (unique, sparse, trimmed)
+   - email: String (unique, sparse, lowercase)
+   - phone: String (required, unique, trimmed) *PRIMARY IDENTIFIER*
+   - password: String (bcrypt hashed)
+   - firstName: String
+   - lastName: String
+   - role: Enum ['customer', 'Fisher man', 'Admin', 'SuperAdmin']
+   - district: String
+   - zone: String
+   - medium: Enum ['Sinhala', 'Tamil', 'English']
+   - isVerified: Boolean (default: false)
+   - isAdmin: Boolean (default: false)
+   - otp: String (temporary OTP for verification)
+   - otpExpires: Date (OTP expiration time)
+   - verifytoken: String (reset token)
+   - profilePicture: String (URL)
+   - timestamps: { createdAt, updatedAt } (auto-managed)
+
+Future Collections (TO BE IMPLEMENTED):
+- trips: Trip records with cost data
+- predictions: ML prediction history
+- stocks: Inventory/stock management
+- expenses: Detailed expense tracking
+
+SQLITE (Local/Offline Database - PLANNED, NOT YET IMPLEMENTED):
+Purpose:
+- Offline-first mobile storage when network unavailable
+- Local data persistence during sea trips
+- Stock management while offline
+- Temporary data storage before sync with MongoDB
+
+Planned Use Cases:
+1. Offline Trip Recording:
+   - Record trip data while at sea (no network)
+   - Store fuel consumption, catches, expenses
+   - Track stock usage (ice, water, fuel)
+   - Queue operations for later synchronization
+
+2. Data Synchronization (TO BE IMPLEMENTED):
+   - Detect network restoration
+   - Batch sync queued operations to backend
+   - Update MongoDB via NestJS API
+   - Handle sync conflicts
+   - Clear synced data from local queue
+
+Planned SQLite Schema:
+   
+   TABLE: trips_offline
+   - id, user_id, trip_data, sync_status, created_at
+   
+   TABLE: stock_usage_offline
+   - id, trip_id, item_type, quantity, timestamp, sync_status
+   
+   TABLE: sync_queue
+   - id, operation_type, table_name, data_json, status, retry_count
+
+Planned Sync Workflow:
+   Mobile (SQLite) → [Network Check] → Backend API → MongoDB
+   MongoDB ← Backend API ← Mobile (Update local cache)
+
+NOTE: SQLite integration is NOT currently in package.json.
+      To implement, add: expo-sqlite or react-native-sqlite-storage
+
+
+MACHINE LEARNING MODEL
+--------------------------------------------------------------------------------
+Location: model_files/fish-tripcost-model.ipynb
+Status: MODEL EXISTS (Python Jupyter Notebook)
+Integration Status: NOT YET INTEGRATED WITH BACKEND API
+
+Purpose:
+- Predict BASE COSTS for fishing trips based on distance and parameters
+- Train on historical trip data
+- Calculate costs based on location distance from shore
+- Consider multiple fuel types and base resources
+
+Planned Input Features:
+- Boat type/size
+- Engine specifications
+- Fuel type (Kerosene/Petrol/Diesel)
+- Trip duration estimate
+- Distance from shore to fishing location (calculated from coordinates)
+- Current location (shore base)
+- Target location coordinates (can be random generated or actual GPS)
+- Seasonal factors (optional)
+- Weather conditions (optional)
+- Historical fuel prices (optional)
+
+Location Handling:
+- Uses coordinate-based distance calculation
+- Accepts random generated locations for testing
+- Calculates distance from current shore location to target fishing area
+- Distance is primary factor in fuel cost prediction
+- NO fish location/abundance prediction - only cost calculation
+
+Planned Output Predictions:
+- Fuel cost estimate
+- Ice cost estimate
+- Water cost estimate
+- Total base cost prediction
+
+Model Integration (TO BE IMPLEMENTED):
+- Export trained model for production use
+- Create NestJS backend endpoints for predictions
+- Mobile app calls backend API for cost predictions
+- Real-time prediction results
+- Historical prediction tracking
+
+NOTE: The ML model exists as a Jupyter notebook but needs:
+1. Model training/refinement with actual data
+2. Model export (pickle/ONNX/TensorFlow format)
+3. Backend API endpoint implementation
+4. Mobile app integration with API
+
+
+ENVIRONMENT CONFIGURATION
+================================================================================
+
+Backend Environment Variables (.env):
+- MONGO                              - MongoDB connection string
+- JWT_SECRET                         - JWT signing secret
+- JWT_EXPIRY                         - Token expiration time
+- GMAIL_USER                         - Email service username
+- GMAIL_PASS                         - Email service app password
+- TWILIO_ACCOUNT_SID                 - Twilio account SID
+- TWILIO_AUTH_TOKEN                  - Twilio auth token
+- TWILIO_PHONE_NUMBER                - Twilio phone number
+- PORT                               - Server port (default: 5000)
+
+Mobile Environment Variables (.env - Example from .env.example):
+- EXPO_PUBLIC_API_URL                - Backend API URL (http://localhost:5000)
+- EXPO_PUBLIC_WS_URL                 - WebSocket URL (ws://localhost:5000)
+- EXPO_PUBLIC_API_KEY                - API key for backend
+- EXPO_PUBLIC_APP_NAME               - Application name
+- EXPO_PUBLIC_APP_VERSION            - App version
+- EXPO_PUBLIC_JWT_EXPIRY             - JWT expiration time
+- EXPO_PUBLIC_PAYMENT_GATEWAY_URL    - Payment gateway URL (future)
+- EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY - Stripe key (future)
+
+Security Notes:
+- .env files are gitignored
+- Use .env.example as template
+- Never commit actual credentials
+- Use different values for dev/staging/production
+
+
+APPLICATION WORKFLOW
+================================================================================
+
+CURRENT IMPLEMENTED WORKFLOW:
+
+1. USER REGISTRATION
+   Mobile App → POST /auth/request-mobile-verification
+   - User enters phone number
+   - Backend generates 4-digit OTP
+   - OTP expires in 10 minutes
+   - User stored with isVerified: false
+   ↓
+2. OTP VERIFICATION
+   Mobile App → POST /auth/verify-mobile-otp
+   - User enters OTP code
+   - Backend validates OTP and expiry
+   - Returns temp user ID for signup completion
+   ↓
+3. COMPLETE SIGNUP
+   Mobile App → POST /auth/complete-signup
+   - User provides: email, password, firstName, lastName, role, district, zone, medium
+   - User marked as isVerified: true
+   - Account creation successful
+   ↓
+4. USER LOGIN
+   Mobile App → POST /auth/signin
+   - User enters email/phone + password
+   - Backend validates credentials (bcrypt)
+   - JWT token generated and set in HTTP-only cookie
+   - User data returned (without password)
+   - Stored in Zustand authStore + AsyncStorage
+   ↓
+5. AUTHENTICATED APP USAGE
+   - User redirected to (root)/(tabs)/home
+   - Header shows user info with sign-out option
+   - Bottom tabs: Home, Profile
+   - Access to screens: Account, Update Profile
+   ↓
+6. PASSWORD RESET (if needed)
+   Mobile App → POST /auth/check-account (check if account exists)
+   Mobile App → POST /auth/send-password-reset-otp
+   Mobile App → POST /auth/verify-password-reset-otp
+   Mobile App → POST /auth/reset-password
+   ↓
+7. SIGN OUT
+   Mobile App → POST /auth/signout
+   - Cookie cleared on backend
+   - Auth state cleared in mobile (Zustand + AsyncStorage)
+   - User redirected to onboarding
+
+FUTURE PLANNED WORKFLOW (TRIP PREDICTION FEATURES):
+
+1. TRIP PLANNING
+   - User inputs trip details (boat type, fuel type, duration)
+   - User inputs or app generates target fishing location coordinates
+   - System uses current location (shore base) automatically
+   - Distance calculated from current location to target location
+   ↓
+2. BASE COST PREDICTION (ML)
+   Mobile App → POST /trips/predict-base-cost (TO BE IMPLEMENTED)
+   - Backend receives current location and target location coordinates
+   - Calculates distance from shore to fishing area
+   - Backend calls ML model with trip parameters + distance
+   - Model predicts fuel, ice, water costs based on distance and parameters
+   - Returns distance and base cost breakdown to mobile
+   
+   NOTE: Target location can be:
+   - Random generated coordinates (for testing/simulation)
+   - User-selected coordinates from map
+   - Actual GPS coordinates
+   - Previously saved fishing locations
+   ↓
+3. ADDITIONAL COSTS (Rule-Based)
+   - User selects fishing method, equipment, crew size
+   - Mobile app calculates additional costs using business rules
+   - Total Cost = Base Cost (ML) + Additional Costs (Rules)
+   ↓
+4. TRIP CREATION
+   Mobile App → POST /trips (TO BE IMPLEMENTED)
+   - If ONLINE: Save trip plan to MongoDB via backend
+   - If OFFLINE: Save to SQLite locally (pending implementation)
+   ↓
+5. DURING TRIP (At Sea - Usually Offline)
+   - Record actual expenses in mobile app
+   - Track stock usage (ice, water, fuel)
+   - Log catches and quantities
+   - All stored locally (SQLite - pending implementation)
+   ↓
+6. TRIP COMPLETION
+   - Calculate actual vs predicted costs
+   - Show variance analysis
+   - If ONLINE: Sync immediately to MongoDB
+   - If OFFLINE: Queue for synchronization
+   ↓
+7. DATA SYNCHRONIZATION
+   - When network available, sync local SQLite data to MongoDB
+   - Update trip records with actual costs
+   - Feed data back to ML model for continuous improvement
+
+
+BACKEND API ENDPOINTS (IMPLEMENTED)
+================================================================================
+
+Authentication Endpoints:
+POST   /auth/request-mobile-verification
+       Body: { phone: string }
+       Response: { success, message, tempUserId, otpExpires }
+       Description: Send OTP to phone number
+
+POST   /auth/verify-mobile-otp
+       Body: { phone: string, otp: string }
+       Response: { success, message, tempUserId }
+       Description: Verify OTP code
+
+POST   /auth/complete-signup
+       Body: { 
+         tempUserId: string,
+         email: string,
+         password: string,
+         firstName: string,
+         lastName: string,
+         role: 'customer' | 'Fisher man' | 'Admin' | 'SuperAdmin',
+         district?: string,
+         zone?: string,
+         medium?: 'Sinhala' | 'Tamil' | 'English'
+       }
+       Response: { success, message, user }
+       Description: Complete user registration
+
+POST   /auth/signin
+       Body: { email: string, password: string }
+       Response: User object (without password)
+       Cookies: access_token (HTTP-only, 1 hour expiry)
+       Description: User login with JWT token in cookie
+
+POST   /auth/signout
+       Response: { success, message }
+       Description: Clear authentication cookie
+
+POST   /auth/check-account
+       Body: { emailOrPhone: string }
+       Response: { exists: boolean, isEmail: boolean, user? }
+       Description: Check if account exists for password reset
+
+POST   /auth/send-password-reset-otp
+       Body: { emailOrPhone: string, isEmail: boolean }
+       Response: { success, message }
+       Description: Send OTP for password reset
+
+POST   /auth/verify-password-reset-otp
+       Body: { emailOrPhone: string, isEmail: boolean, otp: string }
+       Response: { success, message, resetToken }
+       Description: Verify OTP and return reset token
+
+POST   /auth/reset-password
+       Body: { resetToken: string, newPassword: string, confirmPassword: string }
+       Response: { success, message }
+       Description: Reset password with reset token
+
+User Management Endpoints:
+GET    /users
+       Response: Array of all users
+       Description: Get all users (admin function)
+
+GET    /users/search?q=query
+       Query: q (search term)
+       Response: Array of matching users
+       Description: Search users by username, email, name
+
+GET    /users/:id
+       Params: id (user MongoDB ObjectId)
+       Response: User object
+       Description: Get user by ID
+
+PUT    /users/:id
+       Params: id (user MongoDB ObjectId)
+       Body: Partial user data (firstName, lastName, etc.)
+       Response: Updated user object
+       Description: Update user information
+
+DELETE /users/:id
+       Params: id (user MongoDB ObjectId)
+       Response: { success, message }
+       Description: Delete user account
+
+
+BACKEND API ENDPOINTS (TO BE IMPLEMENTED)
+================================================================================
+
+Trip Prediction & Management (FUTURE):
+POST   /trips/predict-base-cost
+       Body: { 
+         boatType: string,
+         fuelType: 'Kerosene' | 'Petrol' | 'Diesel',
+         tripDuration: number,
+         currentLocation: { latitude: number, longitude: number },
+         targetLocation: { latitude: number, longitude: number },
+         weatherCondition?: string
+       }
+       Response: {
+         distance: number,              // Calculated distance from shore
+         fuelCost: number,
+         iceCost: number,
+         waterCost: number,
+         totalBaseCost: number,
+         predictionId: string
+       }
+       Description: Predict base trip costs using ML model based on distance calculation.
+                    Target location can be random generated or actual GPS coordinates.
+                    NO fish abundance/location prediction - only cost calculation.
+
+POST   /trips
+       Body: {
+         userId: string,
+         boatType: string,
+         fuelType: string,
+         predictedBaseCost: number,
+         additionalCosts: object,
+         totalEstimatedCost: number,
+         tripDate: Date,
+         status: 'planned' | 'ongoing' | 'completed'
+       }
+       Response: Created trip object
+       Description: Create new trip record
+
+GET    /trips
+       Query: userId (optional filter)
+       Response: Array of trips
+       Description: Get all trips (filtered by user)
+
+GET    /trips/:id
+       Params: id (trip ID)
+       Response: Trip object with full details
+       Description: Get trip by ID
+
+PUT    /trips/:id
+       Params: id (trip ID)
+       Body: Partial trip update (actualCosts, status, etc.)
+       Response: Updated trip object
+       Description: Update trip (e.g., add actual costs)
+
+DELETE /trips/:id
+       Params: id (trip ID)
+       Response: { success, message }
+       Description: Delete trip record
+
+POST   /trips/sync
+       Body: Array of offline trip records from SQLite
+       Response: { synced: number, failed: number, errors: [] }
+       Description: Batch sync offline trips to MongoDB
+
+Stock Management (FUTURE):
+GET    /stock
+       Query: userId
+       Response: Current stock levels
+       Description: Get user's stock inventory
+
+POST   /stock/usage
+       Body: {
+         tripId: string,
+         itemType: 'fuel' | 'ice' | 'water',
+         quantity: number,
+         timestamp: Date
+       }
+       Response: Stock usage record
+       Description: Record stock consumption
+
+PUT    /stock/update
+       Body: {
+         itemType: string,
+         quantity: number,
+         operation: 'add' | 'subtract'
+       }
+       Response: Updated stock levels
+       Description: Update stock quantities
+
+
+MOBILE APP STATE MANAGEMENT (ZUSTAND)
+--------------------------------------------------------------------------------
+
+Current Implementation (mobile/stores/authStore.tsx):
+
+Interface: AuthState
+- isSignedIn: boolean                    - Authentication status
+- currentUser: User | null               - Current logged-in user object
+- signIn(user): Promise<void>            - Store user, set isSignedIn=true
+- signOut(): Promise<void>               - Clear auth state and AsyncStorage
+- checkAuthStatus(): Promise<void>       - Check AsyncStorage on app start
+- userupdate(user): Promise<void>        - Update user data
+
+User Interface:
+- id: string                             - MongoDB ObjectId
+- phone: string                          - Phone number (primary identifier)
+- email: string                          - Email address
+- firstName: string                      - First name
+- lastName: string                       - Last name
+- role: string                           - User role
+- username?: string                      - Username (optional)
+- isAdmin?: boolean                      - Admin flag
+- verifytoken?: string                   - Reset token
+- profilePicture?: string                - Profile pic URL
+- joinDate?: Date                        - Registration date
+
+Storage Strategy:
+- User data stored in AsyncStorage (key: "user")
+- JWT tokens handled via HTTP-only cookies (NOT stored in mobile)
+- Cookie-based authentication for security
+- On app launch: checkAuthStatus() reads from AsyncStorage
+
+Future Stores (TO BE IMPLEMENTED):
+- tripStore.tsx                          - Trip management state
+- stockStore.tsx                         - Stock/inventory state
+- syncStore.tsx                          - Offline sync queue management
+
+
+OFFLINE-FIRST ARCHITECTURE (PLANNED)
+--------------------------------------------------------------------------------
+NOTE: This is the PLANNED architecture. SQLite is NOT yet installed or implemented.
+
+1. NETWORK DETECTION (TO BE IMPLEMENTED):
+   Library: @react-native-community/netinfo (NOT in package.json yet)
+   - Monitor connection state changes
+   - Update UI based on connectivity
+   - Trigger sync when connection restored
+
+2. LOCAL STORAGE (SQLITE - TO BE IMPLEMENTED):
+   Library Options:
+   - expo-sqlite (recommended for Expo projects)
+   - react-native-sqlite-storage
+   
+   NEITHER library is currently installed!
+   
+   To implement SQLite:
+   ```bash
+   cd mobile
+   npx expo install expo-sqlite
+   ```
+
+   Planned SQLite Schema:
+   
+   TABLE: trips_offline
+   - id (PRIMARY KEY)
+   - user_id
+   - boat_type
+   - fuel_type
+   - predicted_base_cost
+   - additional_costs (JSON)
+   - actual_costs (JSON)
+   - status (planned/ongoing/completed)
+   - sync_status (pending/synced/failed)
+   - created_at
+   - updated_at
+   
+   TABLE: stock_usage_offline
+   - id (PRIMARY KEY)
+   - trip_id
+   - item_type (fuel/ice/water)
+   - quantity_used
+   - timestamp
+   - sync_status
+   
+   TABLE: sync_queue
+   - id (PRIMARY KEY)
+   - operation_type (create/update/delete)
+   - table_name
+   - data_json (TEXT)
+   - status (pending/failed)
+   - retry_count
+   - created_at
+
+3. SYNC LOGIC (TO BE IMPLEMENTED):
+   
+   Planned Function: syncPendingData()
+   - Check network with NetInfo
+   - Query sync_queue for pending operations (ORDER BY created_at ASC)
+   - For each operation:
+     * Make API call to backend
+     * If success: Mark as synced, delete from sync_queue
+     * If fail: Increment retry_count
+     * If retry_count > MAX_RETRIES: Mark failed, notify user
+   - Update last_sync_timestamp
+   - Show toast notification on completion
+
+4. CONFLICT RESOLUTION STRATEGY (TO BE IMPLEMENTED):
+   Options:
+   - Last Write Wins (timestamp-based)
+   - Server Wins (server data overwrites local)
+   - Manual Resolution (prompt user)
+   - Operational Transformation (complex, for real-time edits)
+   
+   Recommended: Last Write Wins for simplicity
+
+Implementation Steps for Offline Support:
+1. Install expo-sqlite or react-native-sqlite-storage
+2. Create SQLite database initialization code
+3. Create data access layer (DAO) for CRUD operations
+4. Implement sync queue manager
+5. Add NetInfo for connectivity monitoring
+6. Build sync service that runs on app startup and connectivity changes
+7. Update tripStore to save to both SQLite (offline) and API (online)
+8. Add UI indicators for sync status (pending, syncing, synced, failed)
+
+
+REAL-TIME COMMUNICATION (WEBSOCKET)
+--------------------------------------------------------------------------------
+
+Current Setup (mobile/utils/socket.ts):
+- Library: socket.io-client v4.8.1 (INSTALLED)
+- Configuration:
+  ```typescript
+  const API = process.env.EXPO_PUBLIC_API_KEY;
+  export const socket = io(`${API}`, {
+    transports: ["websocket"],
+  });
+  ```
+
+Status: Socket.io client is INSTALLED but NOT actively used in app yet.
+
+Backend WebSocket Setup: NOT YET IMPLEMENTED
+- NestJS WebSocket Gateway needed (@nestjs/websockets)
+- Socket.io server-side integration needed
+
+Future Use Cases for WebSocket:
+- Real-time trip updates
+- Live stock level notifications
+- Chat/messaging between fishermen
+- Push notifications for weather alerts
+- Real-time catch reporting
+- Admin dashboard live updates
+
+To Implement WebSocket on Backend:
+1. Install @nestjs/websockets and @nestjs/platform-socket.io
+2. Create WebSocket Gateway
+3. Implement event handlers (connection, disconnect, custom events)
+4. Integrate with authentication (JWT validation)
+5. Connect mobile app socket to specific rooms/channels
+
+
+DEPLOYMENT & INFRASTRUCTURE
+================================================================================
+
+DEVELOPMENT ENVIRONMENT (CURRENT):
+
+Backend:
+- Platform: Local development server
+- Command: npm run start:dev (or pnpm start:dev)
+- Port: 5000 (default)
+- Hot reload: Enabled (--watch flag)
+- Database: MongoDB Atlas (cloud) or local MongoDB
+- Environment: .env file with development credentials
+
+Mobile:
+- Platform: Expo Development Client
+- Command: npx expo start
+- Options:
+  * Press 'a' - Open on Android emulator
+  * Press 'i' - Open on iOS simulator
+  * Scan QR - Open on physical device (Expo Go app)
+- Hot reload: Enabled (Fast Refresh)
+- Metro bundler: JavaScript bundling
+- Platform: Both iOS and Android development
+
+PRODUCTION DEPLOYMENT (PLANNED):
+
+Backend Deployment Options:
+1. Platform-as-a-Service (Recommended for simplicity):
+   - Heroku
+   - Railway.app
+   - Render.com
+   - DigitalOcean App Platform
+   
+2. Cloud Providers (More control):
+   - AWS EC2 + Elastic Beanstalk
+   - Google Cloud Run
+   - Microsoft Azure App Service
+   
+3. Containerized (Docker):
+   - AWS ECS/EKS
+   - Google Kubernetes Engine
+   - DigitalOcean Kubernetes
+
+Backend Deployment Setup:
+- Node.js runtime (v18+ recommended)
+- MongoDB Atlas (cloud database)
+- Environment variables via platform secrets
+- Process manager: PM2 (for VPS deployments)
+- Reverse proxy: Nginx (optional, for VPS)
+- SSL/HTTPS: Let's Encrypt or platform SSL
+- Build command: npm run build
+- Start command: npm run start:prod
+
+Mobile Deployment:
+- Android: Google Play Store
+  * Build: npx expo build:android or EAS Build
+  * Format: AAB (Android App Bundle)
+  * Requirements: Google Play Developer account ($25 one-time)
+  
+- iOS: Apple App Store
+  * Build: npx expo build:ios or EAS Build
+  * Format: IPA
+  * Requirements: Apple Developer account ($99/year)
+  
+- Expo EAS (Recommended):
+  * Command: eas build --platform android/ios
+  * Over-the-air updates: eas update
+  * No need for local Xcode/Android Studio
+  * Cloud-based build service
+  * Automatic code signing
+
+Build Process:
+1. Configure app.json with version, bundle ID, etc.
+2. Run: eas build:configure (first time)
+3. Build: eas build --platform all
+4. Submit: eas submit --platform all
+5. OTA Updates: eas update --branch production
+
+Development Workflow:
+- Version control: Git
+- Branching: main/develop/feature branches
+- CI/CD Pipeline (to be implemented):
+  * GitHub Actions / GitLab CI
+  * Automated testing on push
+  * Automated builds on merge to main
+  * Automated deployment to staging/production
+
+
+SECURITY CONSIDERATIONS
+================================================================================
+
+Current Security Measures:
+
+1. Authentication & Authorization:
+   - JWT-based authentication
+   - HTTP-only cookies (prevents XSS attacks)
+   - Token expiry: 1 hour (configurable)
+   - Password hashing with bcryptjs (salt rounds: 10)
+   - OTP expiration: 10 minutes
+   - Reset tokens for password recovery
+
+2. Input Validation:
+   - class-validator DTOs in NestJS
+   - Global validation pipes
+   - Whitelist unknown properties
+   - Transform and sanitize inputs
+
+3. API Security:
+   - CORS enabled only for specific origins
+   - Cookie parser for cookie validation
+   - Global exception filters
+
+4. Database Security:
+   - MongoDB connection string in environment variables
+   - Unique constraints on email/phone
+   - Sparse indexes for optional unique fields
+
+5. Mobile Storage:
+   - AsyncStorage for non-sensitive data only
+   - JWT tokens NOT stored in mobile (cookie-based)
+   - Sensitive data never in plain text
+
+Additional Security Recommendations (TO BE IMPLEMENTED):
+
+1. Rate Limiting:
+   - Install: @nestjs/throttler
+   - Limit API requests per IP
+   - Prevent brute force attacks on login/OTP
+
+2. Helmet.js:
+   - Install: helmet
+   - Secure HTTP headers
+   - Protection against common web vulnerabilities
+
+3. Input Sanitization:
+   - Install: express-mongo-sanitize
+   - Prevent NoSQL injection
+
+4. API Key Authentication:
+   - Implement API key verification
+   - Different keys for dev/staging/production
+
+5. Encryption:
+   - HTTPS/SSL for all API communication (in production)
+   - Encrypt sensitive fields in database (if needed)
+   - Use expo-secure-store for highly sensitive mobile data
+
+6. Authentication Improvements:
+   - Implement refresh tokens (longer expiry)
+   - Add device fingerprinting
+   - Two-factor authentication (2FA)
+   - Account lockout after failed attempts
+
+7. Logging & Monitoring:
+   - Log all authentication attempts
+   - Monitor suspicious activity
+   - Use Winston or similar logger
+   - Error tracking: Sentry
+
+8. Dependency Security:
+   - Regularly update dependencies
+   - Run npm audit / pnpm audit
+   - Use dependabot for automated updates
+
+9. Code Security:
+   - Never commit .env files
+   - Use environment-specific configs
+   - Rotate API keys and secrets regularly
+   - Code reviews for security issues
+
+
+TESTING STRATEGY (TO BE IMPLEMENTED)
+================================================================================
+
+Backend Testing:
+- Framework: Jest (included with NestJS)
+- Types:
+  * Unit tests: Service and controller logic
+  * Integration tests: API endpoint testing
+  * E2E tests: Full workflow testing
+- Command: npm run test
+- Coverage: npm run test:cov
+
+Mobile Testing:
+- Framework: Jest + React Native Testing Library
+- Configuration: jest-expo v54.0.13 (installed)
+- Types:
+  * Component tests: UI component rendering
+  * Integration tests: Screen workflows
+  * E2E tests: Detox or Maestro
+- Command: npm run test
+
+Recommended Test Structure:
+```
+Backend/
+  src/
+    auth/
+      auth.service.spec.ts
+      auth.controller.spec.ts
+    user/
+      user.service.spec.ts
+      user.controller.spec.ts
+  test/
+    e2e/
+      auth.e2e-spec.ts
+      user.e2e-spec.ts
+
+mobile/
+  __tests__/
+    components/
+      CustomButton.test.tsx
+    screens/
+      SignIn.test.tsx
+    stores/
+      authStore.test.ts
+```
+
+
+DEVELOPMENT GUIDELINES
+================================================================================
+
+Code Style:
+- Backend: TypeScript with NestJS conventions
+- Mobile: TypeScript + React functional components + hooks
+- Formatting: Prettier (configured in both projects)
+- Linting: ESLint
+- File naming: camelCase for files, PascalCase for components
+
+Git Workflow:
+- Branches: feature/*, bugfix/*, hotfix/*
+- Commit messages: Conventional Commits format
+  * feat: New feature
+  * fix: Bug fix
+  * docs: Documentation
+  * refactor: Code refactoring
+  * test: Test addition/modification
+  * chore: Maintenance tasks
+
+Best Practices:
+1. Backend:
+   - Use DTOs for all input validation
+   - Separate concerns: Controller → Service → Repository
+   - Use dependency injection
+   - Handle errors with custom exceptions
+   - Log important events
+   - Document complex logic
+
+2. Mobile:
+   - Use functional components with hooks
+   - Separate logic from UI (custom hooks)
+   - Use TypeScript interfaces for props
+   - Memoize expensive computations
+   - Optimize images and assets
+   - Handle loading/error states
+   - Provide offline feedback to users
+
+3. Database:
+   - Index frequently queried fields
+   - Use lean() for read-only queries
+   - Avoid N+1 queries
+   - Use aggregation for complex queries
+   - Regular backups
+
+
+FUTURE ENHANCEMENTS & ROADMAP
+================================================================================
+
+Phase 1: Complete Core Features (Current Priority)
+- [ ] Implement trip prediction API endpoints
+- [ ] Integrate ML model with backend
+- [ ] Build trip management CRUD in mobile app
+- [ ] Implement cost calculation UI
+- [ ] Add trip history and tracking
+
+Phase 2: Offline Capability
+- [ ] Install and configure SQLite
+- [ ] Implement offline data storage
+- [ ] Build sync queue system
+- [ ] Add network detection (NetInfo)
+- [ ] Create sync status UI indicators
+- [ ] Test offline → online sync workflow
+
+Phase 3: Stock Management
+- [ ] Design stock/inventory schema
+- [ ] Backend stock management APIs
+- [ ] Mobile stock tracking UI
+- [ ] Stock usage during trips
+- [ ] Low stock alerts
+
+Phase 4: Advanced Features
+- [ ] Real-time WebSocket integration
+- [ ] Weather API integration
+- [ ] GPS-based location tracking and distance calculation
+- [ ] Location selection (map interface)
+- [ ] Random location generator for testing
+- [ ] Saved fishing locations (favorites)
+- [ ] Catch logging with photos
+- [ ] Fish species identification (image recognition - future)
+- [ ] Market price predictions
+
+Phase 5: Analytics & Reporting
+- [ ] Trip cost analysis dashboard
+- [ ] Profit/loss calculations
+- [ ] Historical trend charts
+- [ ] Export reports (PDF/CSV)
+- [ ] Admin analytics panel
+
+Phase 6: Social & Community
+- [ ] Crew management
+- [ ] Trip sharing between fishermen
+- [ ] Community forum/chat
+- [ ] Best practices and tips sharing
+- [ ] Location sharing (favorite fishing spots)
+
+Phase 7: Business Features
+- [ ] Multi-language support (Sinhala, Tamil, English)
+- [ ] Push notifications
+- [ ] In-app messaging
+- [ ] Subscription/premium features
+- [ ] Payment integration
+- [ ] Invoice generation
+
+Phase 8: Optimization & Scale
+- [ ] Performance optimization
+- [ ] Database indexing and query optimization
+- [ ] Image compression and CDN
+- [ ] Caching strategies (Redis)
+- [ ] Load balancing
+- [ ] Horizontal scaling
+
+
+TROUBLESHOOTING & COMMON ISSUES
+================================================================================
+
+Backend Issues:
+
+1. MongoDB Connection Failed:
+   - Check MONGO environment variable
+   - Verify MongoDB Atlas IP whitelist
+   - Check network connectivity
+   - Verify credentials
+
+2. Port Already in Use:
+   - Change PORT in .env
+   - Kill process: netstat -ano | findstr :5000 → taskkill /F /PID <PID>
+
+3. JWT Token Invalid:
+   - Verify JWT_SECRET matches between requests
+   - Check token expiration
+   - Clear cookies and re-login
+
+Mobile Issues:
+
+1. Expo Not Starting:
+   - Clear cache: npx expo start -c
+   - Delete node_modules: rm -rf node_modules && npm install
+   - Check Expo CLI version: npx expo --version
+
+2. Network Request Failed:
+   - Check EXPO_PUBLIC_API_URL in .env
+   - Use correct IP for physical devices (not localhost)
+   - Verify backend is running
+   - Check firewall settings
+
+3. Build Errors:
+   - Clear Metro cache: rm -rf node_modules/.cache
+   - Reset project: npm run reset-project
+   - Check for TypeScript errors: npx tsc --noEmit
+
+4. Android Build Issues:
+   - Clean Gradle: cd android && ./gradlew clean
+   - Check JDK version (11 or 17 recommended)
+   - Verify Android SDK installation
+
+Common Development Commands:
+
+Backend:
+```bash
+cd Backend
+pnpm install              # Install dependencies
+pnpm start:dev            # Start dev server with hot reload
+pnpm build                # Build for production
+pnpm start:prod           # Start production server
+pnpm lint                 # Run ESLint
+pnpm format               # Format code with Prettier
+```
+
+Mobile:
+```bash
+cd mobile
+npm install               # Install dependencies
+npx expo start            # Start Expo dev server
+npx expo start -c         # Start with cache cleared
+npm run android           # Run on Android
+npm run ios               # Run on iOS
+npm run web               # Run in browser
+npm run lint              # Run ESLint
+npm run test              # Run tests
+eas build --platform all  # Build for production
+eas update                # Push OTA update
+```
+
+
+DOCUMENTATION & RESOURCES
+================================================================================
+
+Official Documentation:
+- NestJS: https://nestjs.com
+- React Native: https://reactnative.dev
+- Expo: https://docs.expo.dev
+- Expo Router: https://expo.github.io/router/docs
+- MongoDB: https://docs.mongodb.com
+- Mongoose: https://mongoosejs.com
+- Socket.io: https://socket.io/docs
+- Zustand: https://zustand-demo.pmnd.rs
+- TailwindCSS: https://tailwindcss.com
+- NativeWind: https://www.nativewind.dev
+
+Useful Resources:
+- TypeScript Handbook: https://www.typescriptlang.org/docs
+- React Hooks: https://react.dev/reference/react
+- Expo SQLite: https://docs.expo.dev/versions/latest/sdk/sqlite (when implementing)
+- NetInfo: https://github.com/react-native-netinfo/react-native-netinfo (when implementing)
+- JWT Best Practices: https://jwt.io/introduction
+
+Project-Specific Documentation:
+- This file: documentation/project-overview.txt
+- Backend README: Backend/README.md (if exists)
+- Mobile README: mobile/README.md (if exists)
+
+
+CONTACT & SUPPORT
+================================================================================
+
+For technical questions about:
+- Backend architecture: Refer to NestJS documentation
+- Mobile development: Refer to Expo/React Native documentation
+- Database design: Refer to MongoDB documentation
+- ML model integration: Refer to model_files/fish-tripcost-model.ipynb
+
+Development Team:
+- Project: Smart Fisher Lanka
+- Type: Final Year Research Project
+- Tech Stack: NestJS + React Native + MongoDB + ML
+
+================================================================================
+END OF DOCUMENTATION
+Last Updated: January 4, 2026
+Documentation Version: 2.0 (Based on actual project analysis)
+================================================================================
