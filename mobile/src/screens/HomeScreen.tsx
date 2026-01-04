@@ -1,4 +1,4 @@
-import React from 'react';
+import { FC, useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 
 interface Price {
@@ -8,11 +8,11 @@ interface Price {
   date: string;
 }
 
-export const HomeScreen = () => {
-  const [prices, setPrices] = React.useState<Price[]>([]);
-  const [loading, setLoading] = React.useState(true);
+export const HomeScreen: FC = () => {
+  const [prices] = useState<Price[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     // TODO: Fetch data from API
     setLoading(false);
   }, []);
@@ -34,7 +34,7 @@ export const HomeScreen = () => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Today's Prices</Text>
+        <Text style={styles.sectionTitle}>Today&apos;s Prices</Text>
         {prices.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No data available</Text>

@@ -1,9 +1,10 @@
 import React from 'react';
+import { FC, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 
-export const SettingsScreen = () => {
-  const [language, setLanguage] = React.useState<'en' | 'si'>('en');
-  const [selectedPort, setSelectedPort] = React.useState('Colombo');
+export const SettingsScreen: FC = () => {
+  const [language, setLanguage] = useState<'en' | 'si'>('en');
+  const [selectedPort, setSelectedPort] = useState('Colombo');
 
   return (
     <ScrollView style={styles.container}>

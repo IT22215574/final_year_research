@@ -19,6 +19,23 @@ export interface PricePrediction {
   port: string;
 }
 
+export interface ModelPrediction {
+  date: string;
+  predicted_price: number;
+  fish_name: string;
+  model_type: string;
+}
+
+export interface ModelStatus {
+  trained: boolean;
+  last_trained: string;
+  mae: number;
+  rmse: number;
+  r2_score: number;
+  total_records: number;
+  fish_species: string[];
+}
+
 export interface WeatherData {
   date: string;
   temp_c_mean: number;

@@ -1,4 +1,4 @@
-import React from 'react';
+import { FC } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 interface PriceCardProps {
@@ -8,7 +8,7 @@ interface PriceCardProps {
   change?: number;
 }
 
-export const PriceCard: React.FC<PriceCardProps> = ({ fishName, price, port, change }) => {
+export const PriceCard: FC<PriceCardProps> = ({ fishName, price, port, change }) => {
   const isPositive = change && change > 0;
 
   return (

@@ -1,6 +1,30 @@
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
 
 export const api = {
+  // Model Predictions (trained model output)
+  getModelPredictions: async (fishName: string, days: number = 7) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/predict?fish=${encodeURIComponent(fishName)}&days=${days}`);
+      if (!response.ok) throw new Error('Failed to fetch predictions');
+      return response.json();
+    } catch (error) {
+      console.error('Error fetching model predictions:', error);
+      return { predictions: [], error: 'Failed to load predictions' };
+    }
+  },
+
+  // Training Status & Metrics
+  getModelStatus: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/model/status`);
+      if (!response.ok) throw new Error('Failed to fetch model status');
+      return response.json();
+    } catch (error) {
+      console.error('Error fetching model status:', error);
+      return { trained: false, error: 'Failed to load model status' };
+    }
+  },
+
   // Price Predictions
   getPredictions: async (fishId: number, port: string) => {
     const response = await fetch(`${API_BASE_URL}/predictions/${fishId}?port=${port}`);

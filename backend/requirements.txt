@@ -8,3 +8,5 @@ python-dotenv
 hijridate
 matplotlib
 seaborn
+fastapi
+uvicorn
