@@ -1,92 +1,303 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { useState, useEffect } from 'react';
-import { api } from '@/src/api/client';
-import { ModelPrediction, ModelStatus } from '@/src/types';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { useEffect, useState } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import axios from 'axios';
+import API_CONFIG from '@/src/config/api';
 
-const FISH_OPTIONS = ['කෙලවල්ලා', 'බාලයා', 'තලපත්', 'තෝරා'];
+interface FishOption {
+  fish_id: number;
+  sinhala_name: string;
+  common_name: string;
+}
+
+const sampleFish: FishOption[] = [
+  { fish_id: 2, sinhala_name: 'පරව් (ලොකු)', common_name: 'Trevally (L)' },
+  { fish_id: 6, sinhala_name: 'කෙළවල්ලා', common_name: 'Yellowfin tuna' },
+  { fish_id: 7, sinhala_name: 'සාලයා (මට්ට)', common_name: 'Sardinella' },
+  { fish_id: 9, sinhala_name: 'හුරුල්ලා', common_name: 'Herrings' },
+  { fish_id: 10, sinhala_name: 'කුම්බලා', common_name: 'Indian Mackerel' },
+];
+
+interface PriceHistory {
+  date: string;
+  price: number;
+}
 
 export default function PredictionsScreen() {
-  const [predictions, setPredictions] = useState<ModelPrediction[]>([]);
-  const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
-  const [selectedFish, setSelectedFish] = useState<string>(FISH_OPTIONS[0]);
-  const [loading, setLoading] = useState(true);
+  const [fishList, setFishList] = useState<FishOption[]>([]);
+  const [selectedFishId, setSelectedFishId] = useState<number | null>(null);
+  const [predictedFishId, setPredictedFishId] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [predictedPrice, setPredictedPrice] = useState<number | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
+  const [loadingPredict, setLoadingPredict] = useState(false);
+  const [loadingFish, setLoadingFish] = useState(false);
 
   useEffect(() => {
-    loadModelData();
-  }, [selectedFish]);
+    const loadFish = async () => {
+      try {
+        setLoadingFish(true);
+        const res = await axios.get(`${API_CONFIG.PREDICTION_API}/fish`);
+        const data = res.data as FishOption[];
+        const list = data.length > 0 ? data : sampleFish;
+        setFishList(list);
+        if (list.length > 0) {
+          setSelectedFishId(list[0].fish_id);
+        }
+      } catch (err) {
+        const list = sampleFish;
+        setFishList(list);
+        if (list.length > 0) setSelectedFishId(list[0].fish_id);
+        Alert.alert('Notice', 'Using sample fish list (backend not reachable).');
+      } finally {
+        setLoadingFish(false);
+      }
+    };
+    loadFish();
+  }, []);
 
-  const loadModelData = async () => {
-    setLoading(true);
+  const handleDateChange = (event: any, date?: Date) => {
+    if (date) {
+      setSelectedDate(date);
+    }
+    setShowDatePicker(false);
+  };
+
+  const handlePredictPrice = async () => {
+    if (!selectedFishId) {
+      Alert.alert('Select fish', 'Please select a fish first.');
+      return;
+    }
+    setLoadingPredict(true);
     try {
-      const [predsData, statusData] = await Promise.all([
-        api.getModelPredictions(selectedFish, 7),
-        api.getModelStatus()
-      ]);
-      setPredictions(predsData.predictions || []);
-      setModelStatus(statusData);
-    } catch (error) {
-      console.error('Error loading model data:', error);
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      const res = await axios.post(`${API_CONFIG.PREDICTION_API}/predict`, {
+        fish_id: selectedFishId,
+        date: dateStr,
+      });
+      const data = res.data;
+      setPredictedFishId(selectedFishId);
+      setPredictedPrice(data.predicted);
+      setPriceHistory(data.series as PriceHistory[]);
+    } catch (err) {
+      Alert.alert('Prediction failed', 'Please check backend API and try again.');
     } finally {
-      setLoading(false);
+      setLoadingPredict(false);
     }
   };
 
+  const selectedFishName = fishList.find(f => f.fish_id === selectedFishId);
+  const predictedFishName = fishList.find(f => f.fish_id === predictedFishId);
+  const minPrice = priceHistory.length > 0 ? Math.min(...priceHistory.map(p => p.price)) : 0;
+  const maxPrice = priceHistory.length > 0 ? Math.max(...priceHistory.map(p => p.price)) : 0;
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>මිල අනාවැකි</Text>
-        <Text style={styles.subtitle}>7-දින මිල පුරෝකථනය</Text>
+        <Text style={styles.headerTitle}>🐟 Fish Price Predictor</Text>
+        <Text style={styles.headerSubtitle}>Real-time market data for Sri Lanka</Text>
       </View>
 
-      {modelStatus && (
-        <View style={styles.statusCard}>
-          <Text style={styles.statusTitle}>Model Status</Text>
-          <Text style={styles.statusText}>Trained: {modelStatus.trained ? '✅' : '❌'}</Text>
-          <Text style={styles.statusText}>MAE: {modelStatus.mae?.toFixed(2) || 'N/A'}</Text>
-          <Text style={styles.statusText}>R² Score: {modelStatus.r2_score?.toFixed(3) || 'N/A'}</Text>
-          <Text style={styles.statusText}>Records: {modelStatus.total_records || 0}</Text>
+      {/* Selection Panel */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Step 1: Select Fish</Text>
+        <Text style={styles.label}>Choose a fish species (සිංහල නම):</Text>
+        <View style={styles.dropdownList}>
+          {loadingFish ? (
+            <View style={styles.dropdownLoading}>
+              <ActivityIndicator size="small" color="#1e40af" />
+              <Text style={styles.dropdownLoadingText}>Loading fish...</Text>
+            </View>
+          ) : (
+            <ScrollView 
+              style={styles.dropdownListScroll}
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={true}>
+              {fishList.map(fish => {
+                const selected = selectedFishId === fish.fish_id;
+                return (
+                  <TouchableOpacity
+                    key={fish.fish_id}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.dropdownRow,
+                      selected && styles.dropdownRowSelected,
+                    ]}
+                    onPress={() => {
+                      setSelectedFishId(fish.fish_id);
+                    }}>
+                    <View style={styles.dropdownRowTextWrap}>
+                      <Text style={[
+                        styles.dropdownOptionText,
+                        selected && styles.dropdownOptionTextSelected,
+                      ]}>
+                        {fish.sinhala_name}
+                      </Text>
+                      {fish.common_name ? (
+                        <Text style={styles.dropdownOptionSub}>{fish.common_name}</Text>
+                      ) : null}
+                    </View>
+                    {selected ? <Text style={styles.dropdownCheck}>✓</Text> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
+
+        {/* Selected Fish Display */}
+        {selectedFishName && (
+          <View style={styles.selectedFishInfo}>
+            <Text style={styles.selectedFishLabel}>Selected:</Text>
+            <Text style={styles.selectedFishName}>{selectedFishName.sinhala_name}</Text>
+            <Text style={styles.selectedFishCommon}>{selectedFishName.common_name}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Date Selection */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Step 2: Select Date</Text>
+        <Text style={styles.label}>Choose a future date for prediction:</Text>
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => setShowDatePicker(true)}>
+          <Text style={styles.dateIcon}>📅</Text>
+          <View style={styles.dateButtonContent}>
+            <Text style={styles.dateButtonLabel}>Prediction Date</Text>
+            <Text style={styles.dateButtonText}>
+              {selectedDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+          />
+        )}
+      </View>
+
+      {/* Prediction Button */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Step 3: Get Prediction</Text>
+        <TouchableOpacity
+          style={[styles.predictButton, loadingPredict && styles.predictButtonDisabled]}
+          onPress={handlePredictPrice}
+          disabled={loadingPredict || !selectedFishId}>
+          {loadingPredict ? (
+            <>
+              <ActivityIndicator color="#fff" />
+              <Text style={styles.predictButtonText}>Predicting...</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.predictButtonIcon}>⚡</Text>
+              <Text style={styles.predictButtonText}>Predict Price</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Price Prediction Result */}
+      {predictedPrice !== null && predictedFishName && (
+        <View style={styles.resultCard}>
+          <View style={styles.resultHeader}>
+            <Text style={styles.resultTitle}>💰 Price Prediction</Text>
+          </View>
+
+          <View style={styles.priceBox}>
+            <Text style={styles.priceLabel}>Predicted Price</Text>
+            <Text style={styles.priceText}>Rs. {predictedPrice.toFixed(2)}</Text>
+            <Text style={styles.priceUnit}>per Kilogram</Text>
+          </View>
+
+          <View style={styles.predictionDetails}>
+            <View style={styles.detailItem}>
+              <Text style={styles.detailLabel}>Fish Species</Text>
+              <Text style={styles.detailValue}>{predictedFishName.sinhala_name}</Text>
+              <Text style={styles.detailSubtext}>{predictedFishName.common_name}</Text>
+            </View>
+            <View style={[styles.detailItem, styles.detailItemBorder]}>
+              <Text style={styles.detailLabel}>Prediction Date</Text>
+              <Text style={styles.detailValue}>
+                {selectedDate.toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </Text>
+            </View>
+          </View>
         </View>
       )}
 
-      <View style={styles.fishSelector}>
-        <Text style={styles.sectionTitle}>මාළු තෝරන්න</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {FISH_OPTIONS.map((fish) => (
-            <TouchableOpacity
-              key={fish}
-              style={[styles.fishButton, selectedFish === fish && styles.fishButtonActive]}
-              onPress={() => setSelectedFish(fish)}
-            >
-              <Text style={[styles.fishButtonText, selectedFish === fish && styles.fishButtonTextActive]}>
-                {fish}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>අනාවැකි</Text>
-        {loading ? (
-          <ActivityIndicator size="large" color="#3b82f6" />
-        ) : predictions.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>මිල අනාවැකි නැත</Text>
-          </View>
-        ) : (
-          predictions.map((pred, index) => (
-            <View key={index} style={styles.predictionCard}>
-              <View style={styles.predictionHeader}>
-                <Text style={styles.predictionDate}>{new Date(pred.date).toLocaleDateString('si-LK')}</Text>
-                <Text style={styles.predictionModel}>{pred.model_type}</Text>
-              </View>
-              <Text style={styles.predictionPrice}>රු. {pred.predicted_price.toFixed(2)}</Text>
-              <Text style={styles.predictionFish}>{pred.fish_name}</Text>
+      {/* Price Trend */}
+      {priceHistory.length > 0 && (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>📊 Price Trend (30 Days)</Text>
+          
+          <View style={styles.statsGrid}>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Min Price</Text>
+              <Text style={styles.statValue}>Rs. {minPrice.toFixed(0)}</Text>
             </View>
-          ))
-        )}
-      </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Avg Price</Text>
+              <Text style={styles.statValue}>
+                Rs. {(priceHistory.reduce((a, b) => a + b.price, 0) / priceHistory.length).toFixed(0)}
+              </Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>Max Price</Text>
+              <Text style={styles.statValue}>Rs. {maxPrice.toFixed(0)}</Text>
+            </View>
+          </View>
+
+          {/* Simple bar chart representation */}
+          <View style={styles.sparklineContainer}>
+            <View style={styles.sparkline}>
+              {priceHistory.map((item, idx) => {
+                const normalized = ((item.price - minPrice) / (maxPrice - minPrice)) * 60 + 10;
+                return (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.sparklineBar,
+                      { height: normalized },
+                    ]}
+                  />
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.dateRange}>
+            <Text style={styles.dateRangeText}>
+              {priceHistory[0]?.date} to {priceHistory[priceHistory.length - 1]?.date}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Empty State */}
+      {predictedPrice === null && (
+        <View style={styles.card}>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>📈</Text>
+            <Text style={styles.emptyText}>Select a fish and date, then click "Predict Price" to see the market forecast</Text>
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -94,122 +305,322 @@ export default function PredictionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f8f9fa',
   },
   header: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 24,
     backgroundColor: '#1e40af',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
-  title: {
-    fontSize: 24,
+  headerTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#fff',
+    marginBottom: 4,
   },
-  subtitle: {
+  headerSubtitle: {
     fontSize: 14,
-    color: '#bfdbfe',
-    marginTop: 4,
+    color: '#dbeafe',
   },
-  statusCard: {
-    margin: 16,
-    padding: 16,
+  card: {
     backgroundColor: '#fff',
-    borderRadius: 8,
+    margin: 16,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  statusTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#1f2937',
-  },
-  statusText: {
-    fontSize: 14,
-    color: '#4b5563',
-    marginVertical: 2,
-  },
-  fishSelector: {
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  fishButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+  resultCard: {
     backgroundColor: '#fff',
-    borderRadius: 20,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  fishButtonActive: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
-  },
-  fishButtonText: {
-    fontSize: 14,
-    color: '#4b5563',
-    fontWeight: '500',
-  },
-  fishButtonTextActive: {
-    color: '#fff',
-  },
-  section: {
+    margin: 16,
+    marginBottom: 12,
     padding: 16,
+    borderRadius: 12,
+    borderTopWidth: 4,
+    borderTopColor: '#10b981',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
+    fontSize: 16,
+    fontWeight: '700',
     color: '#1f2937',
-  },
-  predictionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
-  predictionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  predictionDate: {
+  label: {
     fontSize: 14,
-    color: '#6b7280',
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 10,
   },
-  predictionModel: {
+  dropdownList: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    backgroundColor: '#f9fafb',
+    maxHeight: 220,
+  },
+  dropdownListScroll: {
+    paddingVertical: 4,
+  },
+  dropdownLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  dropdownLoadingText: {
+    fontSize: 14,
+    color: '#4b5563',
+    marginLeft: 8,
+  },
+  dropdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  dropdownRowSelected: {
+    backgroundColor: '#dbeafe',
+  },
+  dropdownRowTextWrap: {
+    flexShrink: 1,
+  },
+  dropdownOptionText: {
+    fontSize: 15,
+    color: '#1f2937',
+    fontWeight: '600',
+  },
+  dropdownOptionSub: {
     fontSize: 12,
-    color: '#9ca3af',
-    fontStyle: 'italic',
+    color: '#6b7280',
+    marginTop: 2,
   },
-  predictionPrice: {
-    fontSize: 28,
+  dropdownOptionTextSelected: {
+    color: '#1e40af',
+  },
+  dropdownCheck: {
+    fontSize: 16,
+    color: '#1e40af',
+    marginLeft: 8,
+  },
+  selectedFishInfo: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#f0f9ff',
+    borderLeftWidth: 4,
+    borderLeftColor: '#0284c7',
+    borderRadius: 8,
+  },
+  selectedFishLabel: {
+    fontSize: 12,
+    color: '#0c4a6e',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  selectedFishName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0c4a6e',
+  },
+  selectedFishCommon: {
+    fontSize: 13,
+    color: '#0c4a6e',
+    marginTop: 2,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#f9fafb',
+  },
+  dateIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  dateButtonContent: {
+    flex: 1,
+  },
+  dateButtonLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  dateButtonText: {
+    fontSize: 14,
+    color: '#1f2937',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  predictButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  predictButtonDisabled: {
+    backgroundColor: '#d1d5db',
+    opacity: 0.6,
+  },
+  predictButtonIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  predictButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  resultHeader: {
+    marginBottom: 16,
+  },
+  resultTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  priceBox: {
+    backgroundColor: '#ecfdf5',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10b981',
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  priceLabel: {
+    fontSize: 12,
+    color: '#059669',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  priceText: {
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#059669',
-    marginVertical: 4,
   },
-  predictionFish: {
-    fontSize: 16,
-    color: '#4b5563',
+  priceUnit: {
+    fontSize: 12,
+    color: '#059669',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  predictionDetails: {
+    flexDirection: 'row',
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  detailItem: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+  },
+  detailItemBorder: {
+    borderLeftWidth: 1,
+    borderLeftColor: '#e5e7eb',
+  },
+  detailLabel: {
+    fontSize: 11,
+    color: '#6b7280',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1f2937',
+  },
+  detailSubtext: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  statBox: {
+    flex: 1,
+    marginHorizontal: 4,
+    backgroundColor: '#f3f4f6',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#6b7280',
+    marginBottom: 4,
+    fontWeight: '600',
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1f2937',
+  },
+  sparklineContainer: {
+    marginVertical: 12,
+  },
+  sparkline: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 80,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  sparklineBar: {
+    width: '2.5%',
+    backgroundColor: '#3b82f6',
+    borderRadius: 2,
+  },
+  dateRange: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  dateRangeText: {
+    fontSize: 12,
+    color: '#9ca3af',
     fontWeight: '500',
   },
   emptyState: {
-    padding: 32,
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    paddingVertical: 32,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 12,
   },
   emptyText: {
+    fontSize: 14,
     color: '#6b7280',
-    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
