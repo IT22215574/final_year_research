@@ -13,13 +13,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
-  FlatList,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Picker } from "@react-native-picker/picker";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker, Polyline } from "react-native-maps";
 import useAuthStore from "@/stores/authStore";
 
 const API = process.env.EXPO_PUBLIC_API_KEY;
@@ -1026,13 +1026,16 @@ export default function TripCostPrediction() {
           {/* Map View */}
           <MapView
             style={styles.map}
-            provider={PROVIDER_GOOGLE}
             initialRegion={{
               latitude: portCoordinates[tripData.port_name]?.lat || 7.8731,
               longitude: portCoordinates[tripData.port_name]?.lon || 80.7718,
               latitudeDelta: 5,
               longitudeDelta: 5,
             }}
+            showsUserLocation={false}
+            showsMyLocationButton={false}
+            showsCompass={true}
+            showsScale={true}
           >
             {/* Current Port Marker */}
             {portCoordinates[tripData.port_name] && (
