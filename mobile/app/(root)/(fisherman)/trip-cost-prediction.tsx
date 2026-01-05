@@ -375,6 +375,7 @@ export default function TripCostPrediction() {
     setNewCostType("");
     setNewCostAmount("");
     setNewCostDescription("");
+    setSelectedZone(null);
   };
 
   const handleSaveTrip = async () => {
@@ -420,7 +421,7 @@ export default function TripCostPrediction() {
         status: "planned",
       };
 
-      const response = await axios.post(`${API}/trips`, tripPayload);
+      const response = await axios.post(`${API}/api/v1/trips`, tripPayload);
 
       if (response.data.status === "success") {
         Alert.alert(
@@ -1519,7 +1520,7 @@ const styles = StyleSheet.create({
   resetButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#6b7280",
+    color: "#ffffff",
   },
   predictButton: {
     backgroundColor: "#3b82f6",

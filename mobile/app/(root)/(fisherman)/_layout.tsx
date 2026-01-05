@@ -49,6 +49,12 @@ function CustomDrawerContent(props: any) {
       activeIcon: "boat",
     },
     {
+      name: "Trip Logger",
+      route: "/(root)/(fisherman)/trip-logger",
+      icon: "create-outline",
+      activeIcon: "create",
+    },
+    {
       name: "Profile",
       route: "/(root)/(fisherman)/profile",
       icon: "person",
@@ -164,6 +170,14 @@ export default function FishermanLayout() {
         options={{
           drawerLabel: "My Trips",
           title: "My Fishing Trips",
+          headerShown: true,
+        }}
+      />
+      <Drawer.Screen
+        name="trip-logger"
+        options={{
+          drawerLabel: "Trip Logger",
+          title: "Log New Trip",
           headerShown: true,
         }}
       />

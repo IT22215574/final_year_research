@@ -88,7 +88,7 @@ export default function MyTrips() {
   const loadTrips = async (uid: string) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API}/trips/user/${uid}/recent`, {
+      const response = await axios.get(`${API}/api/v1/trips/user/${uid}/recent`, {
         params: { limit: 20 },
       });
       if (response.data.status === "success") {
@@ -104,7 +104,7 @@ export default function MyTrips() {
 
   const loadStats = async (uid: string) => {
     try {
-      const response = await axios.get(`${API}/trips/user/${uid}/stats`);
+      const response = await axios.get(`${API}/api/v1/trips/user/${uid}/stats`);
       if (response.data.status === "success") {
         setStats(response.data.data);
       }

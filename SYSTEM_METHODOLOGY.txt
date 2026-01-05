@@ -1,0 +1,2710 @@
+================================================================================
+                    SMART FISHER LANKA - SYSTEM METHODOLOGY
+           Complete Integration Architecture & Workflow Documentation
+================================================================================
+
+TABLE OF CONTENTS
+=================
+1. System Overview
+2. Architecture & Data Flow
+3. Component Details
+4. Dataset Generation & ML Pipeline
+5. Integration Flow
+6. Startup & Execution Order
+7. API Communication
+8. File Structure & Dependencies
+9. Development Workflow
+10. Troubleshooting Guide
+
+================================================================================
+1. SYSTEM OVERVIEW
+================================================================================
+
+Smart Fisher Lanka is a fishing trip cost prediction system with 3 main layers:
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                          │
+│  📱 MOBILE APP (React Native/Expo)                                      │
+│     - User Interface (Fisherman Dashboard, Trip Logger, Predictor)      │
+│     - Authentication & Profile Management                                │
+│     - Trip Management & History                                          │
+│     - Real-time Cost Predictions                                         │
+│                                                                          │
+│                              ↓ REST API (axios)                          │
+│                                                                          │
+│  🏢 BACKEND (NestJS + MongoDB)                                          │
+│     - User Authentication & Authorization (JWT)                          │
+│     - Trip Data Management (CRUD)                                        │
+│     - ML Prediction Proxy Service                                        │
+│     - Database Operations                                                │
+│                                                                          │
+│                              ↓ HTTP API (axios)                          │
+│                                                                          │
+│  🤖 ML SERVICE (Flask + Python)                                         │
+│     - ML Model Loading & Management                                      │
+│     - Trip Cost Predictions                                              │
+│     - Batch Processing                                                   │
+│     - Model Info & Health Checks                                         │
+│                                                                          │
+│                              ↓ joblib                                    │
+│                                                                          │
+│  🧠 ML MODEL (Scikit-learn Pipeline)                                    │
+│     - Trained Random Forest / XGBoost Model                              │
+│     - Preprocessing Pipeline (Scaler + Encoder)                          │
+│     - Multi-Output Regression (Fuel, Ice, Water, Total)                 │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+2. ARCHITECTURE & DATA FLOW
+================================================================================
+
+COMPLETE DATA FLOW
+==================
+
+[USER ACTION] → [MOBILE APP] → [BACKEND] → [ML SERVICE] → [ML MODEL]
+                                                               ↓
+[USER SEES RESULT] ← [MOBILE APP] ← [BACKEND] ← [ML SERVICE] ← [PREDICTION]
+
+
+DETAILED FLOW WITH PORTS
+=========================
+
+Mobile App (Port: Variable/8081)
+    ↓ POST http://localhost:3000/api/ml-prediction/predict
+    ↓ Body: { boat_type, distance_km, trip_days, engine_hp, ... }
+    ↓
+Backend NestJS (Port: 3000)
+    ├─ AuthGuard validates JWT token
+    ├─ MlPredictionController receives request
+    ├─ MlPredictionService processes request
+    ↓ POST http://localhost:5000/predict
+    ↓ Body: Same prediction parameters
+    ↓
+Flask ML Service (Port: 5000)
+    ├─ CORS enabled for cross-origin requests
+    ├─ /predict endpoint receives data
+    ├─ TripCostPredictor.prepare_input() formats data
+    ↓ predictor.predict(trip_data)
+    ↓
+ML Model (Loaded in Memory)
+    ├─ Preprocessing pipeline transforms input
+    ├─ StandardScaler normalizes numerical features
+    ├─ OneHotEncoder encodes categorical features
+    ├─ MultiOutputRegressor predicts 4 costs
+    ↓ Returns: [fuel_cost, ice_cost, water_cost, total_cost]
+    ↓
+Flask Response (JSON)
+    ↓ { success: true, predictions: {...}, confidence: {...} }
+    ↓
+Backend Response (JSON)
+    ↓ Forwards prediction + adds metadata
+    ↓
+Mobile App Receives & Displays
+    └─ Shows cost breakdown in LKR
+    └─ Displays confidence intervals
+    └─ Saves to trip history
+
+
+SYSTEM COMMUNICATION DIAGRAM
+==============================
+
+┌────────────────────┐
+│   Mobile App       │
+│   (Expo/RN)        │
+│   Port: 8081       │
+└─────────┬──────────┘
+          │
+          │ axios.post('/api/ml-prediction/predict')
+          │ Headers: { Authorization: 'Bearer <JWT>' }
+          │ Body: { boat_type, distance_km, ... }
+          │
+          ↓
+┌────────────────────┐
+│  NestJS Backend    │
+│  Port: 3000        │
+├────────────────────┤
+│ Modules:           │
+│  • AuthModule      │
+│  • UserModule      │
+│  • TripModule      │
+│  • MlPrediction    │
+│  • FishingModule   │
+└─────────┬──────────┘
+          │
+          │ axios.post('http://localhost:5000/predict')
+          │ Body: { boat_type, distance_km, ... }
+          │
+          ↓
+┌────────────────────┐
+│  Flask ML Service  │
+│  Port: 5000        │
+├────────────────────┤
+│ Endpoints:         │
+│  • POST /predict   │
+│  • POST /predict/  │
+│     batch          │
+│  • GET /model/info │
+│  • GET /health     │
+└─────────┬──────────┘
+          │
+          │ joblib.load('trip_cost_predictor.pkl')
+          │ predictor.predict(input_df)
+          │
+          ↓
+┌────────────────────┐
+│  ML Model Files    │
+│  (Disk Storage)    │
+├────────────────────┤
+│ Files:             │
+│  • trip_cost_      │
+│    predictor.pkl   │
+│  • model_          │
+│    metadata.json   │
+└────────────────────┘
+
+
+================================================================================
+3. COMPONENT DETAILS
+================================================================================
+
+3.1 MOBILE APP (React Native + Expo)
+=====================================
+
+Technology Stack:
+-----------------
+- React Native 0.81.5
+- Expo SDK ~54.0
+- Expo Router (File-based routing)
+- TypeScript
+- NativeWind (Tailwind CSS for RN)
+- Zustand (State Management)
+- Axios (HTTP Client)
+
+Key Features:
+-------------
+• Authentication System
+  - Sign In / Sign Up
+  - JWT Token Storage (AsyncStorage)
+  - Password Reset (OTP)
+  - Role-based access (Fisherman, Admin)
+
+• Fisherman Dashboard
+  - Trip statistics
+  - Weather information
+  - Quick actions
+  - Navigation drawer
+
+• Trip Cost Predictor
+  - Interactive form for trip details
+  - Real-time predictions
+  - Cost breakdown display
+  - Confidence intervals
+
+• Trip Logger
+  - Manual trip entry
+  - Form validation
+  - Photo upload capability
+  - Trip history
+
+• My Trips
+  - List all trips
+  - Filter by date/status
+  - View trip details
+  - Edit/Delete trips
+
+File Structure:
+--------------
+mobile/
+├── app/                        # Expo Router pages
+│   ├── (auth)/                 # Authentication screens
+│   │   ├── sign-in.tsx
+│   │   ├── sign-up.tsx
+│   │   └── _layout.tsx
+│   ├── (root)/                 # Authenticated screens
+│   │   ├── (fisherman)/        # Fisherman role screens
+│   │   │   ├── dashboard.tsx
+│   │   │   ├── trip-cost-prediction.tsx
+│   │   │   ├── trip-logger.tsx
+│   │   │   ├── my-trips.tsx
+│   │   │   └── _layout.tsx    # Drawer navigation
+│   │   └── _layout.tsx
+│   └── index.tsx              # App entry point
+├── components/                 # Reusable components
+├── stores/                     # Zustand stores
+│   └── authStore.ts           # Auth state management
+├── constants/                  # App constants
+├── utils/                      # Utility functions
+└── assets/                     # Images, fonts
+
+
+3.2 BACKEND (NestJS + MongoDB)
+================================
+
+Technology Stack:
+-----------------
+- NestJS 10.4.20
+- MongoDB + Mongoose
+- JWT Authentication
+- Passport.js
+- Class Validator
+- Axios (ML Service Communication)
+
+Architecture Pattern:
+--------------------
+• Module-based architecture
+• Repository pattern
+• Dependency Injection
+• Guard-based authorization
+
+Modules:
+--------
+1. AuthModule
+   - JWT strategy
+   - Local strategy
+   - Registration/Login
+   - Password management
+
+2. UserModule
+   - User CRUD operations
+   - Profile management
+   - Role management
+
+3. TripModule
+   - Trip CRUD operations
+   - Trip history
+   - Trip filtering
+
+4. MlPredictionModule
+   - Proxy to ML service
+   - Request validation
+   - Response formatting
+
+5. FishingModule
+   - Fishing-related data
+   - Boat information
+   - Location data
+
+File Structure:
+--------------
+Backend/
+├── src/
+│   ├── auth/
+│   │   ├── auth.controller.ts
+│   │   ├── auth.service.ts
+│   │   ├── auth.module.ts
+│   │   └── guards/
+│   ├── user/
+│   │   ├── user.controller.ts
+│   │   ├── user.service.ts
+│   │   └── user.module.ts
+│   ├── trip/
+│   │   ├── trip.controller.ts
+│   │   ├── trip.service.ts
+│   │   └── trip.module.ts
+│   ├── ml-prediction/
+│   │   ├── ml-prediction.controller.ts
+│   │   ├── ml-prediction.service.ts
+│   │   └── ml-prediction.module.ts
+│   ├── schemas/                # MongoDB schemas
+│   ├── common/                 # DTOs, interfaces
+│   ├── app.module.ts          # Root module
+│   └── main.ts                # Entry point
+├── package.json
+└── tsconfig.json
+
+
+3.3 ML SERVICE (Flask + Python)
+=================================
+
+Technology Stack:
+-----------------
+- Flask 2.0+
+- Flask-CORS
+- Scikit-learn 1.3+
+- XGBoost 2.0+
+- Pandas
+- NumPy
+- Joblib
+
+Purpose:
+--------
+Wraps the ML model in a REST API that the NestJS backend can call.
+This separates Python ML code from TypeScript backend code.
+
+Endpoints:
+----------
+1. GET /health
+   - Health check
+   - Returns: { status, service, version }
+
+2. GET /model/info
+   - Model metadata
+   - Returns: { model_type, features, targets, performance }
+
+3. POST /predict
+   - Single trip prediction
+   - Body: { boat_type, distance_km, ... }
+   - Returns: { success, predictions, confidence }
+
+4. POST /predict/batch
+   - Multiple trip predictions
+   - Body: { trips: [...] }
+   - Returns: { success, predictions: [...] }
+
+File Structure:
+--------------
+model_files/
+├── ml_service.py              # Flask API
+├── production_predictor.py    # Prediction logic
+├── production_model/          # Saved model files
+│   ├── trip_cost_predictor.pkl
+│   └── model_metadata.json
+├── requirements.txt
+└── README.md
+
+
+3.4 ML MODEL (Scikit-learn Pipeline)
+======================================
+
+Model Type:
+-----------
+MultiOutputRegressor(RandomForestRegressor / XGBoostRegressor)
+
+Input Features (17):
+-------------------
+1. boat_type (categorical: IMUL, MDBT, OBFR, TKBO, NMTR)
+2. engine_hp (numerical: 0-400)
+3. fuel_type (categorical: diesel, petrol, kerosene, none)
+4. crew_size (numerical: 1-20)
+5. ice_capacity_kg (numerical: 0-15000)
+6. water_capacity_L (numerical: 0-50000)
+7. avg_speed_kmh (numerical: 5-50)
+8. trip_days (numerical: 1-30)
+9. trip_month (numerical: 1-12)
+10. distance_km (numerical: 5-1000)
+11. wind_kph (numerical: 0-50)
+12. wave_height_m (numerical: 0-5)
+13. weather_factor (numerical: 0.8-1.5)
+14. region (categorical: Western, Southern, Northern, Eastern)
+15. is_multi_day (binary: 0/1)
+16. has_engine (binary: 0/1)
+17. is_deep_sea (binary: 0/1)
+
+Output Targets (4):
+------------------
+1. fuel_cost_lkr - Fuel cost in LKR
+2. ice_cost_lkr - Ice cost in LKR
+3. water_cost_lkr - Water cost in LKR
+4. total_base_cost_lkr - Total base cost in LKR
+
+Performance Metrics:
+-------------------
+- R² Score: 85-92%
+- RMSE: ~5,000-15,000 LKR
+- MAE: ~3,000-10,000 LKR
+- MAPE: 8-12%
+
+
+================================================================================
+4. DATASET GENERATION & ML PIPELINE
+================================================================================
+
+4.1 DATASET GENERATION PROCESS
+===============================
+
+Location: datasetfiles/datasetgeneration.ipynb
+
+Step 1: Fuel Price Scraping
+----------------------------
+• Scrape CEYPETCO website for historical fuel prices
+• Extract: diesel, petrol, kerosene prices
+• Store with dates (2020-2026)
+• Format: { date, diesel, petrol, kerosene }
+
+Step 2: Boat Configuration
+---------------------------
+Define 5 boat types with realistic parameters:
+
+1. IMUL (Industrial Multi-day)
+   - Engine: 200-400 HP, diesel
+   - Crew: 10-20 people
+   - Ice: 5000-15000 kg
+   - Water: 20000-50000 L
+   - Range: 300-1000 km
+   - Duration: 10-30 days
+
+2. MDBT (Motorized Day Boat)
+   - Engine: 100-200 HP, diesel
+   - Crew: 5-10 people
+   - Ice: 1000-3000 kg
+   - Water: 5000-15000 L
+   - Range: 100-300 km
+   - Duration: 3-10 days
+
+3. OBFR (Outboard Fiberglass)
+   - Engine: 75-150 HP, petrol
+   - Crew: 2-6 people
+   - Ice: 300-800 kg
+   - Water: 500-2000 L
+   - Range: 20-100 km
+   - Duration: 1-3 days
+
+4. TKBO (Traditional Kerosene Boat)
+   - Engine: 20-50 HP, kerosene
+   - Crew: 2-4 people
+   - Ice: 100-300 kg
+   - Water: 200-500 L
+   - Range: 10-50 km
+   - Duration: 1-2 days
+
+5. NMTR (Non-motorized Traditional)
+   - Engine: 0 HP, none
+   - Crew: 1-3 people
+   - Ice: 50-150 kg
+   - Water: 50-200 L
+   - Range: 5-20 km
+   - Duration: 1 day
+
+Step 3: Environmental Factors
+------------------------------
+• Wind speed: 0-50 km/h (affects fuel consumption)
+• Wave height: 0-5 m (affects speed and fuel)
+• Weather factor: 0.8-1.5 (multiplier for adverse conditions)
+• Season: 1-12 months (affects fish availability)
+• Region: Western, Southern, Northern, Eastern
+
+Step 4: Cost Calculation
+-------------------------
+Formula: Fuel Cost = (distance_km / avg_speed_kmh) * fuel_consumption_rate 
+                     * fuel_price * weather_factor
+         Ice Cost = ice_capacity_kg * ice_price_per_kg * trip_days
+         Water Cost = water_capacity_L * water_price_per_liter * trip_days
+         Total = Fuel + Ice + Water
+
+Step 5: Data Generation
+------------------------
+• Generate 10,000+ synthetic records
+• Realistic parameter combinations
+• Validate data integrity
+• Split: 80% train, 20% test
+
+Output Files:
+-------------
+• smart_fisher_full_dataset.csv (10,000+ rows, 25+ columns)
+• smart_fisher_train.csv (8,000+ rows)
+• smart_fisher_test.csv (2,000+ rows)
+
+
+4.2 ML TRAINING PIPELINE
+=========================
+
+Location: model_files/complete_ml_training_pipeline.py
+         model_files/fishingcostmodeltrain_fixed.ipynb
+
+Training Process Flow:
+----------------------
+
+1. Load Data
+   ├─ Read smart_fisher_train.csv
+   ├─ Validate columns
+   ├─ Check for missing values
+   └─ Display statistics
+
+2. Feature Selection
+   ├─ Select 17 input features (boat, trip, environment)
+   ├─ Exclude cost columns (prevent data leakage)
+   ├─ Exclude revenue/profit columns
+   └─ Select 4 target columns (fuel, ice, water, total costs)
+
+3. Preprocessing Pipeline
+   ├─ Identify categorical features (boat_type, fuel_type, region)
+   ├─ Identify numerical features (14 features)
+   ├─ StandardScaler for numerical features
+   ├─ OneHotEncoder for categorical features
+   └─ ColumnTransformer to combine both
+
+4. Train-Test Split
+   ├─ Split: 80% train, 20% test
+   ├─ Stratify by boat_type (ensure balanced distribution)
+   └─ Validate no data leakage
+
+5. Model Training
+   ├─ Train 5 models:
+   │   ├─ Random Forest (MultiOutput)
+   │   ├─ XGBoost (MultiOutput)
+   │   ├─ Gradient Boosting (MultiOutput)
+   │   ├─ Ridge Regression (MultiOutput)
+   │   └─ Lasso Regression (MultiOutput)
+   │
+   ├─ Each model predicts 4 targets simultaneously
+   ├─ Use cross-validation for stability
+   └─ Track training time
+
+6. Model Evaluation
+   ├─ Calculate metrics for each target:
+   │   ├─ R² Score (coefficient of determination)
+   │   ├─ RMSE (root mean squared error)
+   │   ├─ MAE (mean absolute error)
+   │   └─ MAPE (mean absolute percentage error)
+   │
+   ├─ Average metrics across all targets
+   ├─ Check overfitting (train R² - test R²)
+   └─ Visualize actual vs predicted
+
+7. Model Selection
+   ├─ Rank models by average test R²
+   ├─ Consider overfitting (prefer lower gap)
+   ├─ Select best performing model
+   └─ Verify on test set
+
+8. Production Predictor Creation
+   ├─ Wrap model in TripCostPredictor class
+   ├─ Implement prepare_input() method
+   ├─ Implement predict() method
+   ├─ Add confidence intervals
+   └─ Add metadata handling
+
+9. Model Saving
+   ├─ Save pipeline: trip_cost_predictor.pkl
+   ├─ Save metadata: model_metadata.json
+   ├─ Save examples: example_predictions.json
+   ├─ Save visualizations: model_evaluation.png
+   └─ Create timestamped backup
+
+
+Training Output Files:
+---------------------
+production_model/
+├── trip_cost_predictor.pkl      # Complete pipeline (preprocessor + model)
+├── model_metadata.json           # Performance metrics & configuration
+├── example_predictions.json      # Sample predictions for verification
+└── production_predictor.pkl      # Wrapped predictor class
+
+
+4.3 PRODUCTION PREDICTOR CLASS
+===============================
+
+Location: model_files/production_predictor.py
+
+Class: TripCostPredictor
+------------------------
+
+Initialization:
+__init__(model_path, metadata_path)
+   ├─ Load model pipeline with joblib
+   ├─ Load metadata (features, targets, performance)
+   ├─ Store feature names and order
+   └─ Initialize price configuration
+
+Methods:
+--------
+
+1. prepare_input(trip_data)
+   Purpose: Convert dict to DataFrame matching training format
+   ├─ Validate input keys
+   ├─ Fill missing values with defaults
+   ├─ Ensure correct data types
+   ├─ Maintain feature order
+   └─ Return pandas DataFrame
+
+2. predict(trip_data, include_confidence=True)
+   Purpose: Make single trip prediction
+   ├─ Prepare input data
+   ├─ Call model.predict()
+   ├─ Map outputs to target names
+   ├─ Calculate confidence intervals (±15%)
+   ├─ Add metadata (boat name, timestamp)
+   └─ Return JSON-friendly dict
+
+3. predict_batch(trips_data)
+   Purpose: Predict multiple trips efficiently
+   ├─ Process all trips in one DataFrame
+   ├─ Vectorized prediction
+   ├─ Return list of predictions
+   └─ Better performance for bulk operations
+
+4. get_model_info()
+   Purpose: Return model metadata
+   ├─ Model type and version
+   ├─ Feature names and types
+   ├─ Target names
+   ├─ Performance metrics
+   └─ Training date
+
+Example Usage:
+--------------
+predictor = TripCostPredictor(
+    model_path="production_model/trip_cost_predictor.pkl",
+    metadata_path="production_model/model_metadata.json"
+)
+
+trip = {
+    "boat_type": "OBFR",
+    "engine_hp": 100,
+    "fuel_type": "petrol",
+    "distance_km": 50,
+    "trip_days": 2,
+    ...
+}
+
+result = predictor.predict(trip)
+# Returns:
+# {
+#   "success": True,
+#   "predictions": {
+#     "fuel_cost_lkr": 25000.0,
+#     "ice_cost_lkr": 12000.0,
+#     "water_cost_lkr": 2000.0,
+#     "total_base_cost_lkr": 39000.0
+#   },
+#   "confidence": {
+#     "lower_bound": 33150.0,
+#     "upper_bound": 44850.0,
+#     "margin_percent": 15.0
+#   },
+#   "metadata": {
+#     "boat_name": "Outboard Fiberglass",
+#     "timestamp": "2026-01-05T10:30:00"
+#   }
+# }
+
+
+================================================================================
+5. INTEGRATION FLOW
+================================================================================
+
+5.1 COMPLETE REQUEST-RESPONSE FLOW
+===================================
+
+USER INITIATES PREDICTION
+--------------------------
+1. User opens "Trip Cost Predictor" screen in mobile app
+2. User fills form with trip details:
+   - Boat type: OBFR
+   - Distance: 50 km
+   - Trip duration: 2 days
+   - Engine HP: 100
+   - Fuel type: Petrol
+   - Weather conditions
+   - etc.
+
+3. User clicks "Predict Cost" button
+
+
+MOBILE APP PROCESSING
+----------------------
+4. App validates form inputs (client-side)
+5. App retrieves JWT token from AsyncStorage
+6. App constructs API request:
+
+```javascript
+const response = await axios.post(
+  'http://localhost:3000/api/ml-prediction/predict',
+  {
+    boat_type: 'OBFR',
+    engine_hp: 100,
+    fuel_type: 'petrol',
+    distance_km: 50,
+    trip_days: 2,
+    crew_size: 4,
+    ice_capacity_kg: 500,
+    water_capacity_L: 200,
+    avg_speed_kmh: 37.04,
+    trip_month: 6,
+    wind_kph: 15,
+    wave_height_m: 1.2,
+    weather_factor: 1.1,
+    region: 'Western',
+    is_multi_day: 1,
+    has_engine: 1,
+    is_deep_sea: 0,
+    total_hours: 10,
+    fuel_per_km: 0.5
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${jwtToken}`,
+      'Content-Type': 'application/json'
+    }
+  }
+);
+```
+
+
+BACKEND PROCESSING
+------------------
+7. NestJS receives request at MlPredictionController
+8. JwtAuthGuard validates JWT token
+9. Controller calls MlPredictionService.predictTripCost()
+10. Service makes HTTP request to Flask ML service:
+
+```typescript
+const mlResponse = await axios.post(
+  'http://localhost:5000/predict',
+  requestBody,
+  { timeout: 10000 }
+);
+```
+
+
+ML SERVICE PROCESSING
+---------------------
+11. Flask receives POST /predict request
+12. Extracts trip_data from request body
+13. Calls predictor.predict(trip_data)
+14. TripCostPredictor.prepare_input() formats data
+15. Model pipeline processes input:
+    ├─ StandardScaler normalizes numerical features
+    ├─ OneHotEncoder encodes categorical features
+    └─ MultiOutputRegressor predicts 4 costs
+16. Returns predictions with confidence intervals
+
+
+RESPONSE FLOW
+-------------
+17. ML Service returns JSON to Backend:
+```json
+{
+  "success": true,
+  "predictions": {
+    "fuel_cost_lkr": 25000.0,
+    "ice_cost_lkr": 12000.0,
+    "water_cost_lkr": 2000.0,
+    "total_base_cost_lkr": 39000.0
+  },
+  "confidence": {
+    "total_cost": 39000.0,
+    "lower_bound": 33150.0,
+    "upper_bound": 44850.0,
+    "margin_percent": 15.0
+  },
+  "metadata": {
+    "boat_type": "OBFR",
+    "boat_name": "Outboard Fiberglass",
+    "distance_km": 50,
+    "trip_days": 2,
+    "timestamp": "2026-01-05T10:30:00"
+  }
+}
+```
+
+18. Backend forwards response to Mobile App
+19. Mobile App displays results to user:
+    - Cost breakdown (Fuel, Ice, Water)
+    - Total cost with confidence range
+    - Boat and trip details
+    - Option to save prediction
+
+
+5.2 AUTHENTICATION FLOW
+========================
+
+REGISTRATION
+------------
+1. User fills registration form in mobile app
+2. App sends POST /api/auth/register with user details
+3. Backend validates data, hashes password (bcrypt)
+4. Backend saves user to MongoDB
+5. Backend generates JWT token
+6. App stores token in AsyncStorage
+7. App navigates to dashboard
+
+LOGIN
+-----
+1. User enters email & password
+2. App sends POST /api/auth/login
+3. Backend validates credentials
+4. Backend checks password with bcrypt.compare()
+5. Backend generates JWT token
+6. App stores token
+7. App navigates to role-specific dashboard
+
+
+5.3 TRIP LOGGING FLOW
+======================
+
+1. User fills trip logger form
+2. App sends POST /api/trips with trip details
+3. Backend validates data with class-validator
+4. Backend saves trip to MongoDB (Trip schema)
+5. Backend returns saved trip with ID
+6. App shows success message
+7. App navigates to "My Trips"
+
+
+5.4 TRIP HISTORY FLOW
+======================
+
+1. User opens "My Trips" screen
+2. App sends GET /api/trips?userId=xxx
+3. Backend queries MongoDB for user's trips
+4. Backend returns array of trips (sorted by date)
+5. App displays trips in list format
+6. User can tap to view details, edit, or delete
+
+
+================================================================================
+6. STARTUP & EXECUTION ORDER
+================================================================================
+
+DEVELOPMENT ENVIRONMENT STARTUP
+================================
+
+Terminal 1: ML Service (MUST START FIRST)
+------------------------------------------
+Location: model_files/
+Command: python ml_service.py
+Port: 5000
+
+Steps:
+1. Activate Python environment (if using venv)
+2. Ensure requirements installed: pip install -r requirements.txt
+3. Verify model files exist:
+   - production_model/trip_cost_predictor.pkl
+   - production_model/model_metadata.json
+4. Run: python ml_service.py
+5. Wait for: "✅ ML Service ready!"
+6. Verify: http://localhost:5000/health returns {"status":"healthy"}
+
+Expected Output:
+```
+🚀 Initializing ML Service...
+📁 Loading model from: production_model/trip_cost_predictor.pkl
+📊 Loading metadata from: production_model/model_metadata.json
+✅ ML Service ready!
+
+🚀 STARTING ML PREDICTION SERVICE
+📊 Available Endpoints:
+   GET  /health          - Health check
+   GET  /model/info      - Model information
+   POST /predict         - Single trip prediction
+   POST /predict/batch   - Batch trip prediction
+
+ * Running on http://127.0.0.1:5000
+ * Press CTRL+C to quit
+```
+
+Status: ✅ Keep running - DO NOT CLOSE
+
+
+Terminal 2: Backend (START SECOND)
+-----------------------------------
+Location: Backend/
+Command: pnpm run start:dev
+Port: 3000
+
+Steps:
+1. Ensure dependencies installed: pnpm install
+2. Verify MongoDB connection in .env
+3. Ensure ML_SERVICE_URL=http://localhost:5000 in config
+4. Run: pnpm run start:dev
+5. Wait for: "Nest application successfully started"
+6. Verify: http://localhost:3000/api/ml-prediction/health
+
+Expected Output:
+```
+[Nest] 12345  - LOG [NestFactory] Starting Nest application...
+[Nest] 12345  - LOG [InstanceLoader] ConfigModule dependencies initialized
+[Nest] 12345  - LOG [InstanceLoader] MongooseModule dependencies initialized
+[Nest] 12345  - LOG [InstanceLoader] AuthModule dependencies initialized
+[Nest] 12345  - LOG [InstanceLoader] UserModule dependencies initialized
+[Nest] 12345  - LOG [InstanceLoader] TripModule dependencies initialized
+[Nest] 12345  - LOG [InstanceLoader] MlPredictionModule dependencies initialized
+[Nest] 12345  - LOG [RoutesResolver] AppController {/}:
+[Nest] 12345  - LOG [RouterExplorer] Mapped {/health, GET} route
+[Nest] 12345  - LOG [RoutesResolver] AuthController {/api/auth}:
+[Nest] 12345  - LOG [RoutesResolver] TripController {/api/trips}:
+[Nest] 12345  - LOG [RoutesResolver] MlPredictionController {/api/ml-prediction}:
+[Nest] 12345  - LOG [RouterExplorer] Mapped {/api/ml-prediction/health, GET}
+[Nest] 12345  - LOG [RouterExplorer] Mapped {/api/ml-prediction/predict, POST}
+[Nest] 12345  - LOG [NestApplication] Nest application successfully started
+Application is running on: http://localhost:3000
+```
+
+Status: ✅ Keep running - DO NOT CLOSE
+
+
+Terminal 3: Mobile App (START LAST)
+------------------------------------
+Location: mobile/
+Command: npx expo start
+Port: 8081 (Metro Bundler)
+
+Steps:
+1. Ensure dependencies installed: npm install
+2. Update API_BASE_URL in constants if needed
+3. Run: npx expo start
+4. Choose platform:
+   - Press 'a' for Android emulator
+   - Press 'i' for iOS simulator
+   - Scan QR code for physical device
+
+Expected Output:
+```
+Starting Metro Bundler
+
+Metro waiting on exp://192.168.1.100:8081
+
+› Press a │ open Android
+› Press i │ open iOS simulator
+› Press w │ open web
+› Press r │ reload app
+› Press m │ toggle menu
+› Press j │ open debugger
+
+› Opening on Android...
+```
+
+Status: ✅ App running on device/emulator
+
+
+STARTUP VERIFICATION CHECKLIST
+===============================
+□ ML Service: http://localhost:5000/health → {"status":"healthy"}
+□ Backend: http://localhost:3000/health → OK
+□ Backend ML Proxy: http://localhost:3000/api/ml-prediction/health → {"status":"healthy"}
+□ Mobile App: Opens and shows onboarding/login screen
+□ MongoDB: Connected (check backend logs)
+
+
+================================================================================
+7. API COMMUNICATION
+================================================================================
+
+7.1 MOBILE APP → BACKEND APIs
+==============================
+
+Base URL: http://localhost:3000
+
+Authentication APIs
+-------------------
+POST /api/auth/register
+Body: { email, password, firstName, lastName, role, phone }
+Response: { user, token }
+
+POST /api/auth/login
+Body: { email, password }
+Response: { user, token }
+
+POST /api/auth/forgot-password
+Body: { email }
+Response: { success, message }
+
+POST /api/auth/reset-password
+Body: { token, newPassword }
+Response: { success, message }
+
+
+User APIs
+---------
+GET /api/users/profile
+Headers: { Authorization: Bearer <token> }
+Response: { user }
+
+PATCH /api/users/profile
+Headers: { Authorization: Bearer <token> }
+Body: { firstName, lastName, phone, ... }
+Response: { user }
+
+
+Trip APIs
+---------
+GET /api/trips
+Headers: { Authorization: Bearer <token> }
+Query: ?userId=xxx&startDate=xxx&endDate=xxx
+Response: { trips: [...] }
+
+POST /api/trips
+Headers: { Authorization: Bearer <token> }
+Body: { tripDate, destination, distance, costs, ... }
+Response: { trip }
+
+GET /api/trips/:id
+Headers: { Authorization: Bearer <token> }
+Response: { trip }
+
+PATCH /api/trips/:id
+Headers: { Authorization: Bearer <token> }
+Body: { destination, distance, ... }
+Response: { trip }
+
+DELETE /api/trips/:id
+Headers: { Authorization: Bearer <token> }
+Response: { success }
+
+
+ML Prediction APIs
+------------------
+POST /api/ml-prediction/predict
+Headers: { Authorization: Bearer <token> }
+Body: {
+  boat_type: string,
+  engine_hp: number,
+  fuel_type: string,
+  distance_km: number,
+  trip_days: number,
+  crew_size: number,
+  ice_capacity_kg: number,
+  water_capacity_L: number,
+  avg_speed_kmh: number,
+  trip_month: number,
+  wind_kph: number,
+  wave_height_m: number,
+  weather_factor: number,
+  region: string,
+  is_multi_day: number,
+  has_engine: number,
+  is_deep_sea: number,
+  total_hours: number,
+  fuel_per_km: number
+}
+Response: {
+  success: true,
+  predictions: {
+    fuel_cost_lkr: number,
+    ice_cost_lkr: number,
+    water_cost_lkr: number,
+    total_base_cost_lkr: number
+  },
+  confidence: {
+    total_cost: number,
+    lower_bound: number,
+    upper_bound: number,
+    margin_percent: number
+  },
+  metadata: {
+    boat_type: string,
+    boat_name: string,
+    distance_km: number,
+    trip_days: number,
+    timestamp: string
+  }
+}
+
+GET /api/ml-prediction/health
+Response: { status: "healthy", mlService: "connected" }
+
+
+7.2 BACKEND → ML SERVICE APIs
+==============================
+
+Base URL: http://localhost:5000
+
+POST /predict
+Body: { boat_type, engine_hp, ... } (same as above)
+Response: { success, predictions, confidence, metadata }
+
+POST /predict/batch
+Body: { trips: [ {...}, {...}, ... ] }
+Response: { success, predictions: [ {...}, {...}, ... ] }
+
+GET /model/info
+Response: {
+  model_type: string,
+  model_version: string,
+  features: [...],
+  targets: [...],
+  performance: { r2, rmse, mae, mape },
+  training_date: string
+}
+
+GET /health
+Response: { status: "healthy", service: "ml-prediction-service" }
+
+
+================================================================================
+8. FILE STRUCTURE & DEPENDENCIES
+================================================================================
+
+PROJECT ROOT STRUCTURE
+======================
+
+final_year_research/
+│
+├── Backend/                              # NestJS Backend
+│   ├── src/
+│   │   ├── auth/                         # Authentication module
+│   │   │   ├── auth.controller.ts
+│   │   │   ├── auth.service.ts
+│   │   │   ├── auth.module.ts
+│   │   │   ├── guards/
+│   │   │   │   ├── jwt-auth.guard.ts
+│   │   │   │   └── local-auth.guard.ts
+│   │   │   └── strategies/
+│   │   │       ├── jwt.strategy.ts
+│   │   │       └── local.strategy.ts
+│   │   │
+│   │   ├── user/                         # User management
+│   │   │   ├── user.controller.ts
+│   │   │   ├── user.service.ts
+│   │   │   ├── user.module.ts
+│   │   │   └── dto/
+│   │   │
+│   │   ├── trip/                         # Trip management
+│   │   │   ├── trip.controller.ts
+│   │   │   ├── trip.service.ts
+│   │   │   ├── trip.module.ts
+│   │   │   └── dto/
+│   │   │
+│   │   ├── ml-prediction/                # ML prediction proxy
+│   │   │   ├── ml-prediction.controller.ts
+│   │   │   ├── ml-prediction.service.ts
+│   │   │   └── ml-prediction.module.ts
+│   │   │
+│   │   ├── fishing/                      # Fishing data
+│   │   │   ├── fishing.controller.ts
+│   │   │   ├── fishing.service.ts
+│   │   │   └── fishing.module.ts
+│   │   │
+│   │   ├── schemas/                      # MongoDB schemas
+│   │   │   ├── user.schema.ts
+│   │   │   ├── trip.schema.ts
+│   │   │   └── fishing.schema.ts
+│   │   │
+│   │   ├── common/                       # Shared code
+│   │   │   ├── decorators/
+│   │   │   ├── filters/
+│   │   │   └── interceptors/
+│   │   │
+│   │   ├── app.module.ts                 # Root module
+│   │   └── main.ts                       # Entry point
+│   │
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── nest-cli.json
+│   └── .env
+│
+├── mobile/                               # React Native Mobile App
+│   ├── app/                              # Expo Router pages
+│   │   ├── (auth)/                       # Authentication flow
+│   │   │   ├── sign-in.tsx
+│   │   │   ├── sign-up.tsx
+│   │   │   ├── onBoard1.tsx
+│   │   │   ├── onBoard2.tsx
+│   │   │   ├── onBoard3.tsx
+│   │   │   └── _layout.tsx
+│   │   │
+│   │   ├── (root)/                       # Authenticated area
+│   │   │   ├── (fisherman)/              # Fisherman screens
+│   │   │   │   ├── dashboard.tsx
+│   │   │   │   ├── trip-cost-prediction.tsx
+│   │   │   │   ├── trip-logger.tsx
+│   │   │   │   ├── my-trips.tsx
+│   │   │   │   ├── profile.tsx
+│   │   │   │   └── _layout.tsx          # Drawer navigation
+│   │   │   │
+│   │   │   └── _layout.tsx
+│   │   │
+│   │   ├── _layout.tsx                   # Root layout
+│   │   └── index.tsx                     # Entry point
+│   │
+│   ├── components/                       # Reusable components
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   ├── Card.tsx
+│   │   └── ...
+│   │
+│   ├── stores/                           # Zustand state
+│   │   └── authStore.ts
+│   │
+│   ├── constants/                        # App constants
+│   │   ├── index.ts
+│   │   └── colors.ts
+│   │
+│   ├── utils/                            # Utilities
+│   │   ├── api.ts
+│   │   └── helpers.ts
+│   │
+│   ├── assets/                           # Images, fonts
+│   │   ├── images/
+│   │   └── fonts/
+│   │
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── app.json
+│   └── tailwind.config.js
+│
+├── model_files/                          # ML Model & Service
+│   ├── production_model/                 # Saved model files
+│   │   ├── trip_cost_predictor.pkl       # Trained model pipeline
+│   │   ├── model_metadata.json           # Model info & metrics
+│   │   └── example_predictions.json      # Sample predictions
+│   │
+│   ├── ml_service.py                     # Flask API service
+│   ├── production_predictor.py           # Predictor class
+│   ├── complete_ml_training_pipeline.py  # Training script
+│   │
+│   ├── fishingcostmodeltrain_fixed.ipynb # Training notebook
+│   ├── fish-tripcost-model.ipynb         # Exploratory notebook
+│   │
+│   ├── requirements.txt                  # Python dependencies
+│   ├── ARCHITECTURE.md                   # Architecture docs
+│   ├── INTEGRATION_GUIDE.md              # Integration guide
+│   └── README.md
+│
+├── datasetfiles/                         # Dataset files
+│   ├── smart_fisher_full_dataset.csv     # Complete dataset
+│   ├── smart_fisher_train.csv            # Training data
+│   ├── smart_fisher_test.csv             # Test data
+│   ├── ml_features.csv                   # Feature data
+│   ├── ml_targets.csv                    # Target data
+│   │
+│   ├── datasetgeneration.ipynb           # Dataset generation
+│   └── prediction_input_template.json    # API template
+│
+├── documentation/                        # Project docs
+│   ├── AUTO_WEATHER_FETCH_IMPLEMENTATION.md
+│   ├── FISHERMAN_DASHBOARD_IMPLEMENTATION.md
+│   └── FISHERMAN_NAVIGATION_FIX.md
+│
+├── HOW_TO_RUN.md                         # Startup guide
+├── README.md                             # Project overview
+├── TRIP_API_DOCUMENTATION.md             # API documentation
+└── SYSTEM_METHODOLOGY.txt                # This file
+
+
+DEPENDENCY TREE
+===============
+
+Backend Dependencies (package.json)
+------------------------------------
+Core:
+- @nestjs/core, @nestjs/common: NestJS framework
+- @nestjs/platform-express: HTTP server
+- express: Web framework
+
+Database:
+- @nestjs/mongoose: MongoDB integration
+- mongoose: MongoDB ODM
+
+Authentication:
+- @nestjs/jwt: JWT tokens
+- @nestjs/passport: Auth middleware
+- passport-jwt, passport-local: Auth strategies
+- bcryptjs: Password hashing
+
+Validation:
+- class-validator: DTO validation
+- class-transformer: Object transformation
+
+HTTP:
+- axios: HTTP client (for ML service)
+
+Development:
+- @nestjs/cli: CLI tools
+- typescript: TypeScript compiler
+- @types/*: Type definitions
+
+
+Mobile Dependencies (package.json)
+-----------------------------------
+Core:
+- react, react-native: UI framework
+- expo: Development framework
+- expo-router: File-based routing
+
+UI:
+- @expo/vector-icons: Icons
+- expo-linear-gradient: Gradients
+- nativewind: Tailwind CSS for RN
+
+Navigation:
+- @react-navigation/native: Navigation
+- @react-navigation/drawer: Drawer menu
+- react-native-gesture-handler: Gestures
+- react-native-screens: Native screens
+
+State:
+- zustand: State management
+- @react-native-async-storage/async-storage: Storage
+
+HTTP:
+- axios: API client
+
+Forms:
+- react-hook-form: Form management
+- @react-native-picker/picker: Picker
+
+Utilities:
+- expo-constants: App constants
+- expo-haptics: Haptic feedback
+- expo-image-picker: Image selection
+
+
+ML Service Dependencies (requirements.txt)
+-------------------------------------------
+Web Framework:
+- flask: Web server
+- flask-cors: CORS support
+
+ML & Data:
+- scikit-learn: ML models & preprocessing
+- xgboost: Gradient boosting
+- pandas: Data manipulation
+- numpy: Numerical operations
+- joblib: Model serialization
+
+Utilities:
+- python-dotenv: Environment variables
+
+
+================================================================================
+9. DEVELOPMENT WORKFLOW
+================================================================================
+
+9.1 ADDING NEW FEATURES
+========================
+
+Adding New Mobile Screen
+------------------------
+1. Create new file in appropriate directory:
+   mobile/app/(root)/(fisherman)/new-feature.tsx
+
+2. Add to drawer navigation:
+   Update mobile/app/(root)/(fisherman)/_layout.tsx:
+   - Add menu item to menuItems array
+   - Add Drawer.Screen configuration
+
+3. Create API service in utils/api.ts if needed
+
+4. Test navigation and functionality
+
+
+Adding New Backend API
+----------------------
+1. Create DTO in module's dto/ directory:
+   Backend/src/module/dto/create-something.dto.ts
+
+2. Add service method:
+   Backend/src/module/module.service.ts
+
+3. Add controller endpoint:
+   Backend/src/module/module.controller.ts
+
+4. Add guard if authentication required:
+   @UseGuards(JwtAuthGuard)
+
+5. Update MongoDB schema if needed
+
+6. Test with Postman or Thunder Client
+
+
+Adding New ML Feature
+---------------------
+1. Update dataset generation:
+   datasetfiles/datasetgeneration.ipynb
+   - Add new feature column
+
+2. Regenerate dataset:
+   Run all cells in notebook
+
+3. Update training pipeline:
+   model_files/complete_ml_training_pipeline.py
+   - Add feature to input_features list
+
+4. Retrain model:
+   python complete_ml_training_pipeline.py
+
+5. Update production predictor:
+   model_files/production_predictor.py
+   - Add default value for new feature
+
+6. Restart ML service:
+   python ml_service.py
+
+7. Update mobile app form to include new feature
+
+
+9.2 TESTING WORKFLOW
+=====================
+
+Unit Testing
+------------
+Backend:
+- Use Jest for unit tests
+- Run: pnpm test
+- Location: Backend/src/**/*.spec.ts
+
+Mobile:
+- Use Jest + React Native Testing Library
+- Run: npm test
+- Location: mobile/__tests__/
+
+
+Integration Testing
+-------------------
+1. Start all services (ML → Backend → Mobile)
+2. Test complete flow from mobile app to ML prediction
+3. Verify data persistence in MongoDB
+4. Check logs for errors
+
+
+Manual Testing Checklist
+-------------------------
+□ User Registration & Login
+□ JWT Token Storage & Refresh
+□ Dashboard Data Loading
+□ Trip Cost Prediction
+□ Trip Logger Form Submission
+□ Trip History Display
+□ Profile Management
+□ Drawer Navigation
+□ Error Handling
+□ Offline Behavior (mobile)
+
+
+9.3 DEPLOYMENT WORKFLOW
+========================
+
+Backend Deployment
+------------------
+1. Build: pnpm run build
+2. Output: Backend/dist/
+3. Set environment variables:
+   - DATABASE_URL
+   - JWT_SECRET
+   - ML_SERVICE_URL
+4. Deploy to server (AWS, Heroku, DigitalOcean)
+5. Configure MongoDB Atlas for production
+
+ML Service Deployment
+---------------------
+1. Package model files
+2. Install Python dependencies
+3. Set up gunicorn for production:
+   gunicorn -w 4 -b 0.0.0.0:5000 ml_service:app
+4. Deploy to Python-friendly host
+5. Ensure model files accessible
+
+Mobile App Deployment
+--------------------
+1. Update API_BASE_URL to production backend
+2. Build for Android:
+   eas build --platform android
+3. Build for iOS:
+   eas build --platform ios
+4. Submit to Play Store / App Store:
+   eas submit
+
+
+================================================================================
+10. TROUBLESHOOTING GUIDE
+================================================================================
+
+COMMON ISSUES & SOLUTIONS
+==========================
+
+Issue: ML Service Won't Start
+------------------------------
+Symptoms:
+- Error: "FileNotFoundError: production_model/trip_cost_predictor.pkl"
+
+Solutions:
+1. Verify model files exist:
+   ls model_files/production_model/
+2. Train model if missing:
+   python complete_ml_training_pipeline.py
+3. Check file paths in ml_service.py
+4. Verify working directory:
+   cd model_files/
+
+
+Issue: Backend Can't Connect to ML Service
+-------------------------------------------
+Symptoms:
+- Error: "ECONNREFUSED 127.0.0.1:5000"
+- Backend logs: "ML Service connection failed"
+
+Solutions:
+1. Verify ML service is running:
+   curl http://localhost:5000/health
+2. Check ML_SERVICE_URL in backend config
+3. Verify no firewall blocking port 5000
+4. Check ML service logs for errors
+5. Restart ML service
+
+
+Issue: Mobile App Can't Connect to Backend
+-------------------------------------------
+Symptoms:
+- Network Error in mobile app
+- Timeout errors
+
+Solutions:
+1. Verify backend is running:
+   curl http://localhost:3000/health
+2. Check API_BASE_URL in mobile app constants
+3. For physical device: Use local IP instead of localhost
+   - Find IP: ipconfig (Windows) or ifconfig (Mac/Linux)
+   - Update API_BASE_URL: http://192.168.x.x:3000
+4. Verify phone and computer on same network
+5. Check firewall settings
+
+
+Issue: MongoDB Connection Failed
+---------------------------------
+Symptoms:
+- Backend error: "MongooseError: connect ECONNREFUSED"
+
+Solutions:
+1. Verify MongoDB is running:
+   - Local: mongod --version
+   - Atlas: Check network access
+2. Check DATABASE_URL in .env
+3. Verify IP whitelist in MongoDB Atlas
+4. Check username/password
+5. Restart MongoDB service
+
+
+Issue: JWT Token Invalid
+-------------------------
+Symptoms:
+- 401 Unauthorized errors
+- "Token expired" or "Invalid token"
+
+Solutions:
+1. Check JWT_SECRET matches in backend
+2. Verify token expiration time
+3. Clear AsyncStorage in mobile app:
+   - AsyncStorage.clear()
+4. Re-login to get new token
+5. Check token format in Authorization header
+
+
+Issue: Model Predictions Inaccurate
+------------------------------------
+Symptoms:
+- Predictions seem unrealistic
+- Very high or very low costs
+
+Solutions:
+1. Verify input data format matches training data
+2. Check for missing or invalid values
+3. Verify feature scaling is applied
+4. Review model_metadata.json for expected ranges
+5. Retrain model with more/better data
+6. Check for data leakage in training
+
+
+Issue: Expo Build Fails
+------------------------
+Symptoms:
+- Build errors during eas build
+- Native module errors
+
+Solutions:
+1. Clear cache: npx expo start -c
+2. Reinstall dependencies:
+   rm -rf node_modules && npm install
+3. Update Expo SDK: npx expo upgrade
+4. Check eas.json configuration
+5. Verify all native dependencies compatible
+
+
+DEBUGGING TIPS
+==============
+
+Backend Debugging
+-----------------
+1. Enable debug mode:
+   pnpm run start:debug
+2. Check logs in console
+3. Use VS Code debugger:
+   - Set breakpoints
+   - Launch configuration
+4. Use Postman to test endpoints directly
+
+
+Mobile App Debugging
+---------------------
+1. Enable Remote Debugging:
+   - Shake device → "Debug Remote JS"
+2. Use React Native Debugger
+3. Check Metro Bundler logs
+4. Use console.log() statements
+5. Inspect network requests in Chrome DevTools
+
+
+ML Service Debugging
+---------------------
+1. Enable Flask debug mode:
+   app.run(debug=True)
+2. Check Python console for errors
+3. Test predictor directly:
+   python -c "from production_predictor import TripCostPredictor; ..."
+4. Verify model loading:
+   import joblib; model = joblib.load('...')
+5. Check input data format
+
+
+PERFORMANCE OPTIMIZATION
+=========================
+
+Backend
+-------
+- Use Redis for caching
+- Implement request throttling
+- Optimize MongoDB queries
+- Use connection pooling
+- Enable compression
+
+ML Service
+----------
+- Load model once at startup (not per request)
+- Use batch prediction for multiple trips
+- Cache frequent predictions
+- Use gunicorn with multiple workers
+- Optimize model size (prune features)
+
+Mobile App
+----------
+- Implement pagination for trip lists
+- Use React.memo for expensive components
+- Lazy load screens
+- Cache API responses
+- Optimize images (compression, WebP)
+- Use FlatList instead of ScrollView for lists
+
+
+================================================================================
+11. COMPLETE STEP-BY-STEP EXECUTION GUIDE
+================================================================================
+
+11.1 DATA GENERATION TO PRODUCTION FLOW
+========================================
+
+COMPLETE WORKFLOW FROM SCRATCH
+===============================
+
+This section shows EVERY step from generating data to running the complete
+application, with actual terminal commands and file paths.
+
+
+PHASE 1: DATASET GENERATION
+============================
+
+Step 1.1: Navigate to Dataset Directory
+----------------------------------------
+Terminal Command:
+```powershell
+cd "C:\Users\Piuminda Jayaweera\Desktop\RESEARCH\new\final_year_research\datasetfiles"
+```
+
+Expected Path:
+C:\Users\Piuminda Jayaweera\Desktop\RESEARCH\new\final_year_research\datasetfiles\
+
+Files in this directory BEFORE generation:
+- datasetgeneration.ipynb (Jupyter notebook for data generation)
+- prediction_input_template.json (API input template)
+- fishing_base_cost_model/ (directory with boat configs)
+
+
+Step 1.2: Start Jupyter Notebook
+---------------------------------
+Terminal Command:
+```powershell
+jupyter notebook
+```
+
+OR use VS Code:
+```powershell
+code datasetgeneration.ipynb
+```
+
+Expected Result:
+- Jupyter opens in browser OR VS Code opens the notebook
+- Notebook contains cells for data generation
+
+
+Step 1.3: Run Data Generation Notebook
+---------------------------------------
+Execute ALL cells in sequence (Ctrl+Enter for each cell):
+
+Cell 1: Import Libraries
+```python
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+import random
+```
+
+Cell 2: Define Boat Configurations
+```python
+boat_configs = {
+    'IMUL': { 'engine_hp': (200, 400), 'crew': (10, 20), ... },
+    'MDBT': { 'engine_hp': (100, 200), 'crew': (5, 10), ... },
+    'OBFR': { 'engine_hp': (75, 150), 'crew': (2, 6), ... },
+    'TKBO': { 'engine_hp': (20, 50), 'crew': (2, 4), ... },
+    'NMTR': { 'engine_hp': (0, 0), 'crew': (1, 3), ... }
+}
+```
+
+Cell 3: Generate Fuel Prices (scraping or predefined)
+```python
+fuel_prices = {
+    'diesel': 310.0,
+    'petrol': 320.0,
+    'kerosene': 180.0
+}
+```
+
+Cell 4: Generate Synthetic Data
+```python
+data_records = []
+for i in range(10000):
+    boat_type = random.choice(['IMUL', 'MDBT', 'OBFR', 'TKBO', 'NMTR'])
+    # Generate realistic parameters for each trip...
+    data_records.append(record)
+
+df = pd.DataFrame(data_records)
+```
+
+Cell 5: Calculate Costs
+```python
+df['fuel_cost_lkr'] = (df['distance_km'] / df['avg_speed_kmh']) * 
+                       df['fuel_consumption_rate'] * df['fuel_price'] * 
+                       df['weather_factor']
+
+df['ice_cost_lkr'] = df['ice_capacity_kg'] * 12.0 * df['trip_days']
+df['water_cost_lkr'] = df['water_capacity_L'] * 5.0 * df['trip_days']
+df['total_base_cost_lkr'] = df['fuel_cost_lkr'] + df['ice_cost_lkr'] + 
+                             df['water_cost_lkr']
+```
+
+Cell 6: Save Dataset Files
+```python
+# Save full dataset
+df.to_csv('smart_fisher_full_dataset.csv', index=False)
+
+# Split train/test
+train_df = df.sample(frac=0.8, random_state=42)
+test_df = df.drop(train_df.index)
+
+train_df.to_csv('smart_fisher_train.csv', index=False)
+test_df.to_csv('smart_fisher_test.csv', index=False)
+```
+
+Expected Output After Running All Cells:
+```
+✅ Generated 10,000 records
+✅ Saved smart_fisher_full_dataset.csv (10,000 rows, 25 columns)
+✅ Saved smart_fisher_train.csv (8,000 rows)
+✅ Saved smart_fisher_test.csv (2,000 rows)
+```
+
+
+Step 1.4: Verify Generated Files
+---------------------------------
+Terminal Command:
+```powershell
+ls *.csv
+```
+
+Expected Output:
+```
+smart_fisher_full_dataset.csv
+smart_fisher_train.csv
+smart_fisher_test.csv
+ml_features.csv (if generated)
+ml_targets.csv (if generated)
+```
+
+Check File Sizes:
+```powershell
+Get-ChildItem *.csv | Select-Object Name, Length
+```
+
+Expected Sizes:
+- smart_fisher_full_dataset.csv: ~2-5 MB
+- smart_fisher_train.csv: ~1.5-4 MB
+- smart_fisher_test.csv: ~0.5-1 MB
+
+
+Step 1.5: Inspect Generated Data
+---------------------------------
+Terminal Command (using Python):
+```powershell
+python -c "import pandas as pd; df = pd.read_csv('smart_fisher_train.csv'); print(df.shape); print(df.head())"
+```
+
+Expected Output:
+```
+(8000, 25)
+   trip_id boat_type  engine_hp fuel_type  crew_size  distance_km  trip_days  ...
+0        1      OBFR        100    petrol          4           50          2  ...
+1        2      IMUL        350    diesel         15          500         30  ...
+...
+```
+
+✅ PHASE 1 COMPLETE: Dataset generated in datasetfiles/
+
+
+PHASE 2: MODEL TRAINING
+========================
+
+Step 2.1: Navigate to Model Directory
+--------------------------------------
+Terminal Command:
+```powershell
+cd "C:\Users\Piuminda Jayaweera\Desktop\RESEARCH\new\final_year_research\model_files"
+```
+
+Current Path:
+C:\Users\Piuminda Jayaweera\Desktop\RESEARCH\new\final_year_research\model_files\
+
+
+Step 2.2: Verify Python Environment
+------------------------------------
+Terminal Command:
+```powershell
+python --version
+```
+
+Expected Output:
+```
+Python 3.9.0 (or higher)
+```
+
+Check Required Libraries:
+```powershell
+pip list | Select-String -Pattern "scikit-learn|xgboost|pandas|numpy|joblib|flask"
+```
+
+Expected Output:
+```
+scikit-learn     1.3.0
+xgboost          2.0.0
+pandas           2.0.3
+numpy            1.24.3
+joblib           1.3.0
+flask            2.3.0
+flask-cors       4.0.0
+```
+
+If Missing, Install:
+```powershell
+pip install -r requirements.txt
+```
+
+
+Step 2.3: Run Training Pipeline (Method 1: Python Script)
+----------------------------------------------------------
+Terminal Command:
+```powershell
+python complete_ml_training_pipeline.py
+```
+
+Expected Output (Real-time):
+```
+================================================================================
+                    ML TRAINING PIPELINE STARTED
+================================================================================
+
+📊 Step 1: Loading Dataset...
+   ✅ Loaded: smart_fisher_train.csv - 8,000 rows
+   ✅ Loaded: smart_fisher_test.csv - 2,000 rows
+   
+📋 Step 2: Feature Engineering...
+   ✅ Selected 17 input features
+   ✅ Selected 4 target variables
+   
+🔧 Step 3: Preprocessing...
+   ✅ Identified 3 categorical features
+   ✅ Identified 14 numerical features
+   ✅ Created preprocessing pipeline
+   
+✂️ Step 4: Train-Test Split...
+   ✅ Training samples: 8,000
+   ✅ Test samples: 2,000
+   
+🤖 Step 5: Training Models...
+   
+   Training Random Forest...
+   ✅ Random Forest - R² Score: 0.9124
+   
+   Training XGBoost...
+   ✅ XGBoost - R² Score: 0.9087
+   
+   Training Gradient Boosting...
+   ✅ Gradient Boosting - R² Score: 0.8956
+   
+   Training Ridge Regression...
+   ✅ Ridge Regression - R² Score: 0.8523
+   
+   Training Lasso Regression...
+   ✅ Lasso Regression - R² Score: 0.8401
+   
+📊 Step 6: Model Evaluation...
+   
+   Best Model: Random Forest
+   Average Test R²: 0.9124 (91.24%)
+   Average Test RMSE: 8,523 LKR
+   Average Test MAE: 5,234 LKR
+   Average Test MAPE: 9.45%
+   
+💾 Step 7: Saving Model...
+   ✅ Saved: production_model/trip_cost_predictor.pkl
+   ✅ Saved: production_model/model_metadata.json
+   ✅ Saved: production_model/example_predictions.json
+   ✅ Saved: fishing_cost_model_best_20260105_081259.joblib
+   ✅ Saved: fishing_cost_model_latest.joblib
+   
+🎉 TRAINING COMPLETE!
+
+================================================================================
+```
+
+Execution Time: ~5-15 minutes (depending on hardware)
+
+
+Step 2.4: OR Run Training Notebook (Method 2: Jupyter)
+-------------------------------------------------------
+Terminal Command:
+```powershell
+jupyter notebook fishingcostmodeltrain_fixed.ipynb
+```
+
+OR in VS Code:
+```powershell
+code fishingcostmodeltrain_fixed.ipynb
+```
+
+Then: Run All Cells (Cell → Run All)
+
+Expected Result: Same as above, but interactive with visualizations
+
+
+Step 2.5: Verify Model Files Created
+-------------------------------------
+Terminal Command:
+```powershell
+ls production_model\
+```
+
+Expected Output:
+```
+trip_cost_predictor.pkl       (50-200 MB - trained model)
+model_metadata.json            (5-20 KB - model info)
+example_predictions.json       (2-10 KB - test predictions)
+production_predictor.pkl       (50-200 MB - wrapped predictor)
+```
+
+Also check timestamped backups:
+```powershell
+ls fishing_cost_model_*.joblib
+```
+
+Expected Output:
+```
+fishing_cost_model_best_20260105_081259.joblib
+fishing_cost_model_latest.joblib
+```
+
+
+Step 2.6: Test Model Loading
+-----------------------------
+Terminal Command:
+```powershell
+python -c "import joblib; model = joblib.load('production_model/trip_cost_predictor.pkl'); print('✅ Model loaded successfully'); print('Model type:', type(model))"
+```
+
+Expected Output:
+```
+✅ Model loaded successfully
+Model type: <class 'sklearn.pipeline.Pipeline'>
+```
+
+
+Step 2.7: Test Prediction
+--------------------------
+Terminal Command:
+```powershell
+python -c "from production_predictor import TripCostPredictor; predictor = TripCostPredictor('production_model/trip_cost_predictor.pkl', 'production_model/model_metadata.json'); result = predictor.predict({'boat_type': 'OBFR', 'engine_hp': 100, 'fuel_type': 'petrol', 'distance_km': 50, 'trip_days': 2, 'crew_size': 4, 'ice_capacity_kg': 500, 'water_capacity_L': 200, 'avg_speed_kmh': 37.04, 'trip_month': 6, 'wind_kph': 15, 'wave_height_m': 1.2, 'weather_factor': 1.1, 'region': 'Western', 'is_multi_day': 1, 'has_engine': 1, 'is_deep_sea': 0, 'total_hours': 10, 'fuel_per_km': 0.5}); print('Prediction:', result['predictions'])"
+```
+
+Expected Output:
+```
+Prediction: {
+  'fuel_cost_lkr': 25000.0,
+  'ice_cost_lkr': 12000.0,
+  'water_cost_lkr': 2000.0,
+  'total_base_cost_lkr': 39000.0
+}
+```
+
+✅ PHASE 2 COMPLETE: Model trained and saved in model_files/production_model/
+
+
+PHASE 3: START ML SERVICE
+==========================
+
+Step 3.1: Ensure in Model Directory
+------------------------------------
+Terminal Command:
+```powershell
+cd "C:\Users\Piuminda Jayaweera\Desktop\RESEARCH\new\final_year_research\model_files"
+pwd
+```
+
+Expected Output:
+```
+C:\Users\Piuminda Jayaweera\Desktop\RESEARCH\new\final_year_research\model_files
+```
+
+
+Step 3.2: Start Flask ML Service
+---------------------------------
+Terminal Command (KEEP THIS TERMINAL OPEN):
+```powershell
+python ml_service.py
+```
+
+Expected Output:
+```
+🚀 Initializing ML Service...
+📁 Loading model from: production_model/trip_cost_predictor.pkl
+📊 Loading metadata from: production_model/model_metadata.json
+   Model Type: Pipeline
+   Features: 17
+   Targets: 4
+   Performance: R²=0.9124, RMSE=8523.45, MAE=5234.12
+✅ ML Service ready!
+
+🚀 STARTING ML PREDICTION SERVICE
+
+📊 Available Endpoints:
+   GET  /health          - Health check
+   GET  /model/info      - Model information
+   POST /predict         - Single trip prediction
+   POST /predict/batch   - Batch trip prediction
+
+ * Serving Flask app 'ml_service'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+```
+
+✅ ML Service running on Port 5000
+⚠️ DO NOT CLOSE THIS TERMINAL
+
+
+Step 3.3: Test ML Service (Open NEW Terminal)
+----------------------------------------------
+Open PowerShell Terminal 2:
+```powershell
+# Test health endpoint
+curl http://localhost:5000/health
+
+# OR use Invoke-WebRequest (PowerShell)
+Invoke-WebRequest -Uri "http://localhost:5000/health" | Select-Object -ExpandProperty Content
+```
+
+Expected Response:
+```json
+{
+  "status": "healthy",
+  "service": "ml-prediction-service",
+  "version": "1.0.0"
+}
+```
+
+
+Step 3.4: Test Prediction Endpoint
+-----------------------------------
+Terminal Command (PowerShell):
+```powershell
+$body = @{
+    boat_type = "OBFR"
+    engine_hp = 100
+    fuel_type = "petrol"
+    distance_km = 50
+    trip_days = 2
+    crew_size = 4
+    ice_capacity_kg = 500
+    water_capacity_L = 200
+    avg_speed_kmh = 37.04
+    trip_month = 6
+    wind_kph = 15
+    wave_height_m = 1.2
+    weather_factor = 1.1
+    region = "Western"
+    is_multi_day = 1
+    has_engine = 1
+    is_deep_sea = 0
+    total_hours = 10
+    fuel_per_km = 0.5
+} | ConvertTo-Json
+
+Invoke-WebRequest -Uri "http://localhost:5000/predict" -Method POST -Body $body -ContentType "application/json" | Select-Object -ExpandProperty Content
+```
+
+Expected Response:
+```json
+{
+  "success": true,
+  "predictions": {
+    "fuel_cost_lkr": 25234.56,
+    "ice_cost_lkr": 12000.0,
+    "water_cost_lkr": 2000.0,
+    "total_base_cost_lkr": 39234.56
+  },
+  "confidence": {
+    "total_cost": 39234.56,
+    "lower_bound": 33349.38,
+    "upper_bound": 45119.74,
+    "margin_percent": 15.0
+  },
+  "metadata": {
+    "boat_type": "OBFR",
+    "boat_name": "Outboard Fiberglass",
+    "distance_km": 50,
+    "trip_days": 2,
+    "timestamp": "2026-01-05T10:30:45.123456"
+  }
+}
+```
+
+You should also see in Terminal 1 (ML Service logs):
+```
+127.0.0.1 - - [05/Jan/2026 10:30:45] "POST /predict HTTP/1.1" 200 -
+```
+
+✅ PHASE 3 COMPLETE: ML Service running and responding
+
+
+PHASE 4: START BACKEND
+=======================
+
+Step 4.1: Navigate to Backend Directory
+----------------------------------------
+Open PowerShell Terminal 3:
+```powershell
+cd "C:\Users\Piuminda Jayaweera\Desktop\RESEARCH\new\final_year_research\Backend"
+pwd
+```
+
+Expected Output:
+```
+C:\Users\Piuminda Jayaweera\Desktop\RESEARCH\new\final_year_research\Backend
+```
+
+
+Step 4.2: Install Dependencies (First Time Only)
+-------------------------------------------------
+Terminal Command:
+```powershell
+pnpm install
+```
+
+Expected Output:
+```
+Packages: +150
++++++++++++++++++++++++++++++++++
+Progress: resolved 150, reused 150, downloaded 0, added 150, done
+```
+
+Verify Installation:
+```powershell
+ls node_modules\ | Measure-Object
+```
+
+Expected: ~150-200 folders
+
+
+Step 4.3: Configure Environment Variables
+------------------------------------------
+Check if .env file exists:
+```powershell
+ls .env
+```
+
+If missing, create:
+```powershell
+New-Item .env -ItemType File
+```
+
+Edit .env:
+```powershell
+code .env
+```
+
+Required Contents:
+```env
+# MongoDB
+DATABASE_URL=mongodb://localhost:27017/smart_fisher
+# OR for MongoDB Atlas:
+# DATABASE_URL=mongodb+srv://username:password@cluster.mongodb.net/smart_fisher
+
+# JWT
+JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
+JWT_EXPIRATION=7d
+
+# ML Service
+ML_SERVICE_URL=http://localhost:5000
+
+# Server
+PORT=3000
+```
+
+
+Step 4.4: Start NestJS Backend
+-------------------------------
+Terminal Command (KEEP THIS TERMINAL OPEN):
+```powershell
+pnpm run start:dev
+```
+
+Expected Output:
+```
+> learnup-nestjs-backend@1.0.0 start:dev
+> nest start --watch
+
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [NestFactory] Starting Nest application...
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [InstanceLoader] ConfigModule dependencies initialized +15ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [InstanceLoader] MongooseModule dependencies initialized +125ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [InstanceLoader] MongooseCoreModule dependencies initialized +8ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [InstanceLoader] PassportModule dependencies initialized +2ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [InstanceLoader] JwtModule dependencies initialized +1ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [InstanceLoader] AuthModule dependencies initialized +3ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [InstanceLoader] UserModule dependencies initialized +2ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [InstanceLoader] TripModule dependencies initialized +1ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [InstanceLoader] MlPredictionModule dependencies initialized +2ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [InstanceLoader] FishingModule dependencies initialized +1ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [InstanceLoader] AppModule dependencies initialized +1ms
+
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RoutesResolver] AppController {/}:
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RouterExplorer] Mapped {/health, GET} route +3ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RoutesResolver] AuthController {/api/auth}:
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RouterExplorer] Mapped {/api/auth/register, POST} route +1ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RouterExplorer] Mapped {/api/auth/login, POST} route +0ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RoutesResolver] UserController {/api/users}:
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RouterExplorer] Mapped {/api/users/profile, GET} route +1ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RoutesResolver] TripController {/api/trips}:
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RouterExplorer] Mapped {/api/trips, GET} route +0ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RouterExplorer] Mapped {/api/trips, POST} route +1ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RoutesResolver] MlPredictionController {/api/ml-prediction}:
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RouterExplorer] Mapped {/api/ml-prediction/health, GET} route +1ms
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [RouterExplorer] Mapped {/api/ml-prediction/predict, POST} route +0ms
+
+[Nest] 12345  - 01/05/2026, 10:35:12 AM     LOG [NestApplication] Nest application successfully started +3ms
+
+Application is running on: http://localhost:3000
+```
+
+✅ Backend running on Port 3000
+⚠️ DO NOT CLOSE THIS TERMINAL
+
+
+Step 4.5: Test Backend (Open NEW Terminal)
+-------------------------------------------
+Open PowerShell Terminal 4:
+```powershell
+# Test health endpoint
+Invoke-WebRequest -Uri "http://localhost:3000/health" | Select-Object -ExpandProperty Content
+```
+
+Expected Response:
+```
+OK
+```
+
+Test ML Proxy:
+```powershell
+Invoke-WebRequest -Uri "http://localhost:3000/api/ml-prediction/health" | Select-Object -ExpandProperty Content
+```
+
+Expected Response:
+```json
+{
+  "status": "healthy",
+  "mlService": "connected"
+}
+```
+
+
+Step 4.6: Test Complete Flow (Backend → ML Service)
+----------------------------------------------------
+Terminal Command:
+```powershell
+$body = @{
+    boat_type = "OBFR"
+    engine_hp = 100
+    fuel_type = "petrol"
+    distance_km = 50
+    trip_days = 2
+    crew_size = 4
+    ice_capacity_kg = 500
+    water_capacity_L = 200
+    avg_speed_kmh = 37.04
+    trip_month = 6
+    wind_kph = 15
+    wave_height_m = 1.2
+    weather_factor = 1.1
+    region = "Western"
+    is_multi_day = 1
+    has_engine = 1
+    is_deep_sea = 0
+    total_hours = 10
+    fuel_per_km = 0.5
+} | ConvertTo-Json
+
+Invoke-WebRequest -Uri "http://localhost:3000/api/ml-prediction/predict" -Method POST -Body $body -ContentType "application/json" | Select-Object -ExpandProperty Content
+```
+
+Expected Response (same as ML service but proxied through backend):
+```json
+{
+  "success": true,
+  "predictions": {
+    "fuel_cost_lkr": 25234.56,
+    "ice_cost_lkr": 12000.0,
+    "water_cost_lkr": 2000.0,
+    "total_base_cost_lkr": 39234.56
+  },
+  ...
+}
+```
+
+You should see logs in:
+- Terminal 1 (ML Service): Request received
+- Terminal 3 (Backend): Request proxied
+
+✅ PHASE 4 COMPLETE: Backend running and connected to ML Service
+
+
+PHASE 5: START MOBILE APP
+==========================
+
+Step 5.1: Navigate to Mobile Directory
+---------------------------------------
+Open PowerShell Terminal 5:
+```powershell
+cd "C:\Users\Piuminda Jayaweera\Desktop\RESEARCH\new\final_year_research\mobile"
+pwd
+```
+
+Expected Output:
+```
+C:\Users\Piuminda Jayaweera\Desktop\RESEARCH\new\final_year_research\mobile
+```
+
+
+Step 5.2: Install Dependencies (First Time Only)
+-------------------------------------------------
+Terminal Command:
+```powershell
+npm install
+```
+
+Expected Output:
+```
+added 1500 packages, and audited 1501 packages in 2m
+```
+
+Verify Installation:
+```powershell
+ls node_modules\ | Measure-Object
+```
+
+Expected: ~1500+ folders
+
+
+Step 5.3: Configure API Base URL
+---------------------------------
+Check constants file:
+```powershell
+code constants\index.ts
+```
+
+Ensure correct API URL:
+```typescript
+// For emulator/simulator (localhost)
+export const API_BASE_URL = 'http://localhost:3000';
+
+// For physical device (use your computer's IP)
+// Find IP: ipconfig (Windows) or ifconfig (Mac/Linux)
+// export const API_BASE_URL = 'http://192.168.1.100:3000';
+```
+
+
+Step 5.4: Start Expo Development Server
+----------------------------------------
+Terminal Command (KEEP THIS TERMINAL OPEN):
+```powershell
+npx expo start
+```
+
+Expected Output:
+```
+Starting Metro Bundler
+
+  ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+  █ ▄▄▄▄▄ █ ▀█▀ █ ▄▄▄▄▄ █
+  █ █   █ █▀ █  █ █   █ █
+  █ █▄▄▄█ ██▄▀ ██ █▄▄▄█ █
+  █▄▄▄▄▄▄▄█ ▀ ▀ █▄▄▄▄▄▄▄█
+  
+Metro waiting on exp://192.168.1.100:8081
+
+› Press a │ open Android
+› Press i │ open iOS simulator  
+› Press w │ open web
+
+› Press r │ reload app
+› Press m │ toggle menu
+› Press j │ open debugger
+› Press ? │ show all commands
+
+Logs for your project will appear below. Press Ctrl+C to exit.
+```
+
+✅ Expo running on Port 8081
+⚠️ DO NOT CLOSE THIS TERMINAL
+
+
+Step 5.5: Launch App on Device/Emulator
+----------------------------------------
+
+Option A: Android Emulator
+```powershell
+# Press 'a' in Terminal 5
+# OR
+npx expo run:android
+```
+
+Option B: iOS Simulator (Mac only)
+```powershell
+# Press 'i' in Terminal 5
+# OR
+npx expo run:ios
+```
+
+Option C: Physical Device
+```powershell
+# Scan QR code with Expo Go app
+# Make sure device is on same WiFi network
+```
+
+Expected Result:
+```
+› Opening on Android...
+› Opening exp://192.168.1.100:8081 on SM-G998B
+
+Build finished in 45s
+App installed successfully
+```
+
+
+Step 5.6: App Opens - Expected Screens
+---------------------------------------
+
+First Launch:
+1. Onboarding screens (swipe through)
+2. Sign In / Sign Up screen
+
+After Sign Up/Sign In:
+3. Fisherman Dashboard
+4. Drawer menu with:
+   - Dashboard
+   - Trip Cost Predictor
+   - My Trips
+   - Trip Logger
+   - Profile
+
+
+Step 5.7: Test Trip Cost Prediction in App
+-------------------------------------------
+
+User Actions:
+1. Open drawer menu (swipe right or tap menu icon)
+2. Tap "Trip Cost Predictor"
+3. Fill form:
+   - Boat Type: OBFR
+   - Distance: 50 km
+   - Trip Days: 2
+   - Engine HP: 100
+   - Fuel Type: Petrol
+   - Weather conditions: Normal
+4. Tap "Predict Cost"
+
+Expected Flow:
+```
+Mobile App: POST http://localhost:3000/api/ml-prediction/predict
+    ↓
+Backend: Receives request, validates JWT
+    ↓
+Backend: POST http://localhost:5000/predict
+    ↓
+ML Service: Receives request, loads model
+    ↓
+ML Model: Predicts costs
+    ↓
+ML Service: Returns prediction
+    ↓
+Backend: Forwards to mobile app
+    ↓
+Mobile App: Displays results
+```
+
+Expected Display:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━
+💰 Predicted Trip Costs
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Fuel Cost:     LKR 25,235
+Ice Cost:      LKR 12,000
+Water Cost:    LKR  2,000
+━━━━━━━━━━━━━━━━━━━━━━━━
+Total Cost:    LKR 39,235
+
+📊 Confidence Range:
+   LKR 33,350 - 45,120
+   (±15% margin)
+
+🚤 Trip Details:
+   Boat: Outboard Fiberglass
+   Distance: 50 km
+   Duration: 2 days
+```
+
+You should see logs in:
+- Terminal 5 (Mobile): API call made
+- Terminal 3 (Backend): Request received, proxied
+- Terminal 1 (ML Service): Prediction generated
+
+✅ PHASE 5 COMPLETE: Mobile app running and making predictions!
+
+
+DATA FLOW VISUALIZATION
+========================
+
+Complete Flow Summary:
+
+[Jupyter Notebook]
+datasetgeneration.ipynb
+    ↓ Run All Cells
+    ↓
+[Generated CSV Files]
+smart_fisher_train.csv (8,000 rows)
+smart_fisher_test.csv (2,000 rows)
+    ↓ python complete_ml_training_pipeline.py
+    ↓
+[Trained Model]
+production_model/trip_cost_predictor.pkl
+    ↓ python ml_service.py
+    ↓
+[ML Service - Terminal 1]
+Flask API on Port 5000
+    ↑ HTTP POST
+    ↑
+[Backend - Terminal 3]
+NestJS on Port 3000
+    ↑ HTTP POST
+    ↑
+[Mobile App - Terminal 5]
+React Native on Port 8081
+    ↑ User Input
+    ↑
+[User Device]
+Android/iOS App
+
+
+TERMINAL STATUS CHECK
+=====================
+
+At this point, you should have 5 terminals open:
+
+Terminal 1 (model_files/): python ml_service.py
+   Status: Running, Port 5000
+   Logs: ML predictions
+
+Terminal 2 (optional): Testing commands
+   Status: Free for ad-hoc commands
+
+Terminal 3 (Backend/): pnpm run start:dev
+   Status: Running, Port 3000
+   Logs: API requests, database queries
+
+Terminal 4 (optional): Testing commands
+   Status: Free for ad-hoc commands
+
+Terminal 5 (mobile/): npx expo start
+   Status: Running, Port 8081
+   Logs: Metro bundler, app logs
+
+
+QUICK VERIFICATION COMMANDS
+============================
+
+Check All Services Running:
+```powershell
+# Check ML Service
+curl http://localhost:5000/health
+
+# Check Backend
+curl http://localhost:3000/health
+
+# Check ML Proxy
+curl http://localhost:3000/api/ml-prediction/health
+
+# Check Expo
+curl http://localhost:8081/status
+```
+
+
+STOPPING THE SYSTEM
+===================
+
+To stop all services (press Ctrl+C in each terminal):
+
+1. Terminal 5: Ctrl+C (Stop Expo)
+2. Terminal 3: Ctrl+C (Stop Backend)
+3. Terminal 1: Ctrl+C (Stop ML Service)
+
+
+RESTARTING THE SYSTEM
+======================
+
+Next time, follow this order:
+
+1. Start ML Service (Terminal 1):
+   ```powershell
+   cd "C:\...\model_files"
+   python ml_service.py
+   ```
+
+2. Start Backend (Terminal 3):
+   ```powershell
+   cd "C:\...\Backend"
+   pnpm run start:dev
+   ```
+
+3. Start Mobile App (Terminal 5):
+   ```powershell
+   cd "C:\...\mobile"
+   npx expo start
+   ```
+
+
+================================================================================
+END OF COMPLETE EXECUTION GUIDE
+================================================================================
+
+This guide shows every command, every file path, and every expected output
+from data generation to running the complete application.
+
+For troubleshooting specific issues, refer to Section 10.
+
+================================================================================
+END OF SYSTEM METHODOLOGY
+================================================================================
+
+This document provides a complete overview of the Smart Fisher Lanka system
+architecture, integration, and workflows. For specific implementation details,
+refer to individual component documentation.
+
+Last Updated: January 5, 2026
+Version: 1.1.0
