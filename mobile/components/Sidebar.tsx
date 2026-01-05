@@ -23,6 +23,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
   const menuItems = [
   
     { name: "Exams", path: "/(root)/(tabs)/exams", icon: icons.nav_exam },
+    { name: "Exams", path: "/(root)/(tabs)/exams", icon: icons.nav_exam },
+
     {
       name: "Class Links",
       path: "/class-links",

@@ -342,7 +342,7 @@ const OnBoard3: React.FC = () => {
     stopAnimations();
 
     // Navigate to Signup screen
-    router.push("/selectSignIn");
+    router.push("/sign-in");
 
     setTimeout(() => {
       isNavigating.current = false;

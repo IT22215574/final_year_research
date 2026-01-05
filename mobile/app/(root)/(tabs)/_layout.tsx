@@ -155,7 +155,7 @@ const TabsLayout = () => {
           }}
         />
         <Tabs.Screen
-          name="exams"
+          name="Market"
           options={{
             title: "",
             headerShown: true,
@@ -165,9 +165,9 @@ const TabsLayout = () => {
           }}
         />
         <Tabs.Screen
-          name="publications"
+          name="Qualitys"
           options={{
-            title: "Publications",
+            title: "Qualitys",
             headerShown: true,
             headerStyle: {
               backgroundColor: "#0057FF",
@@ -177,7 +177,7 @@ const TabsLayout = () => {
         <Tabs.Screen
           name="Notifications"
           options={{
-            title: "Notifications",
+            title: "",
             headerShown: true,
             headerStyle: {
               backgroundColor: "#0057FF",
@@ -261,10 +261,7 @@ const TabsLayout = () => {
         {/* Navigation Items - This remains exactly the same */}
         <View style={styles.navItemsContainer}>
           {/* ... all your existing navigation items remain the same ... */}
-          {currentUser?.role === "Internal" ||
-          currentUser?.role === "External" ||
-          currentUser?.role === "INTERNAL_STUDENT" ||
-          currentUser?.role == "EXTERNAL_STUDENT" ? (
+          
             <TouchableOpacity
               style={styles.navItem}
               onPress={() => handleTabPress("home", "/(tabs)/home")}
@@ -293,39 +290,7 @@ const TabsLayout = () => {
                 Home
               </Text>
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() =>
-                handleTabPress("TeacherHome", "/(tabs)/TeacherHome")
-              }
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "TeacherHome" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.nav_home}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "TeacherHome" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "TeacherHome" && styles.navTextActive,
-                ]}
-              >
-                Home
-              </Text>
-            </TouchableOpacity>
-          )}
-
+          
           {(currentUser?.role === "Teacher" ||
             currentUser?.role === "INTERNAL_TEACHER" ||
             currentUser?.role === "EXTERNAL_TEACHER") && (
@@ -359,25 +324,22 @@ const TabsLayout = () => {
             </TouchableOpacity>
           )}
 
-          {(currentUser?.role === "Internal" ||
-            currentUser?.role === "External" ||
-            currentUser?.role === "INTERNAL_STUDENT" ||
-            currentUser?.role == "EXTERNAL_STUDENT") && (
+          
             <TouchableOpacity
               style={styles.navItem}
-              onPress={() => handleTabPress("exams", "/(tabs)/exams")}
+              onPress={() => handleTabPress("Market", "/(tabs)/exams")}
             >
               <View
                 style={[
                   styles.iconContainer,
-                  activeTab === "exams" && styles.iconContainerActive,
+                  activeTab === "Market" && styles.iconContainerActive,
                 ]}
               >
                 <Image
-                  source={icons.nav_exam}
+                  source={icons.HouseSale}
                   style={[
                     styles.navIcon,
-                    activeTab === "exams" && styles.navIconActive,
+                    activeTab === "Market" && styles.navIconActive,
                   ]}
                   resizeMode="contain"
                 />
@@ -385,13 +347,13 @@ const TabsLayout = () => {
               <Text
                 style={[
                   styles.navText,
-                  activeTab === "exams" && styles.navTextActive,
+                  activeTab === "Market" && styles.navTextActive,
                 ]}
               >
-                Exams
+                Market
               </Text>
             </TouchableOpacity>
-          )}
+          
 
           {(currentUser?.role === "Teacher" ||
             currentUser?.role === "INTERNAL_TEACHER" ||
@@ -438,20 +400,20 @@ const TabsLayout = () => {
             <TouchableOpacity
               style={styles.navItem}
               onPress={() =>
-                handleTabPress("publication", "/(tabs)/publications")
+                handleTabPress("Quality", "/(tabs)/Qualitys")
               }
             >
               <View
                 style={[
                   styles.iconContainer,
-                  activeTab === "publication" && styles.iconContainerActive,
+                  activeTab === "Quality" && styles.iconContainerActive,
                 ]}
               >
                 <Image
-                  source={icons.home_publication}
+                  source={icons.home_Quality}
                   style={[
                     styles.navIcon,
-                    activeTab === "publication" && styles.navIconActive,
+                    activeTab === "Quality" && styles.navIconActive,
                   ]}
                   resizeMode="contain"
                 />
@@ -459,10 +421,10 @@ const TabsLayout = () => {
               <Text
                 style={[
                   styles.navText,
-                  activeTab === "publication" && styles.navTextActive,
+                  activeTab === "Quality" && styles.navTextActive,
                 ]}
               >
-                Publication
+                Quality
               </Text>
             </TouchableOpacity>
           )}

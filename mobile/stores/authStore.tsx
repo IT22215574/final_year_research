@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 
 interface User {
   id: string;
@@ -55,12 +56,16 @@ const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     try {
-      // ✅ Call backend logout endpoint to clear cookies
+      // ✅ Call backend signout endpoint (clears cookie sessions for web)
+      // ✅ Mobile also clears local tokens below
       const API = process.env.EXPO_PUBLIC_API_KEY;
-      await fetch(`${API}/api/v1/auth/logout`, {
+      await fetch(`${API}/api/v1/auth/signout`, {
         method: "POST",
         credentials: 'include', // Important for cookies
       });
+
+      await SecureStore.deleteItemAsync("access_token");
+      await SecureStore.deleteItemAsync("refresh_token");
       
       set({ isSignedIn: false, currentUser: null });
       await AsyncStorage.removeItem("user");
@@ -69,6 +74,8 @@ const useAuthStore = create<AuthState>((set) => ({
     } catch (error) {
       console.error("Sign-out error:", error);
       // Still clear local state even if backend call fails
+      await SecureStore.deleteItemAsync("access_token");
+      await SecureStore.deleteItemAsync("refresh_token");
       set({ isSignedIn: false, currentUser: null });
       await AsyncStorage.removeItem("user");
     }
@@ -82,14 +89,22 @@ const useAuthStore = create<AuthState>((set) => ({
       if (user) {
         // ✅ Verify with backend that the session is still valid
         const API = process.env.EXPO_PUBLIC_API_KEY;
-        const response = await fetch(`${API}/api/v1/auth/profile`, {
-          credentials: 'include', // Important for cookies
+        const accessToken = await SecureStore.getItemAsync("access_token");
+        const response = await fetch(`${API}/api/v1/users/profile`, {
+          method: "GET",
+          credentials: 'include',
+          headers: {
+            "x-client-type": "mobile",
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
         });
         
         if (response.ok) {
           set({ isSignedIn: true, currentUser: user });
         } else {
           // Session expired or invalid
+          await SecureStore.deleteItemAsync("access_token");
+          await SecureStore.deleteItemAsync("refresh_token");
           set({ isSignedIn: false, currentUser: null });
           await AsyncStorage.removeItem("user");
         }

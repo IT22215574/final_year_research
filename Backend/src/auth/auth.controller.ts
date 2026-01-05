@@ -5,6 +5,7 @@ import {
   Res,
   HttpCode,
   HttpStatus,
+  Headers,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
@@ -24,8 +25,22 @@ export class AuthController {
   async signIn(
     @Body() signInDto: SignInDto,
     @Res({ passthrough: true }) response: Response,
+    @Headers('x-client-type') clientType?: string,
   ) {
     const result = await this.authService.signIn(signInDto);
+
+    // Mobile clients (React Native) often don't reliably persist HTTP-only cookies.
+    // Return a token in the response body for mobile, while keeping cookie-based auth for web.
+    if (clientType?.toLowerCase() === 'mobile') {
+      const { token, ...user } = result;
+      return {
+        success: true,
+        data: {
+          ...user,
+          accessToken: token,
+        },
+      };
+    }
 
     const expiryDate = new Date(Date.now() + 3600000);
     response.cookie('access_token', result.token, {
