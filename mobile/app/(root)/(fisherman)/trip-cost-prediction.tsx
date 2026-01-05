@@ -944,9 +944,7 @@ export default function TripCostPrediction() {
                     </View>
                   </View>
 
-                  <Text style={styles.resultSubtext}>
-                    ✨ Base cost predicted by ML model with 99.46% accuracy
-                  </Text>
+                  
                 </LinearGradient>
               </View>
             )}

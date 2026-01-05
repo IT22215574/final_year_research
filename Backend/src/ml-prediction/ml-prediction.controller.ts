@@ -3,8 +3,18 @@
  * REST API endpoints for trip cost prediction
  */
 
-import { Controller, Post, Get, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { MlPredictionService, TripPredictionInput } from './ml-prediction.service';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import {
+  MlPredictionService,
+  TripPredictionInput,
+} from './ml-prediction.service';
 
 @Controller('api/ml-prediction')
 export class MlPredictionController {
@@ -39,7 +49,7 @@ export class MlPredictionController {
   /**
    * Predict trip cost for a single trip
    * POST /api/ml-prediction/predict
-   * 
+   *
    * Body example:
    * {
    *   "boat_type": "IMUL",
@@ -74,7 +84,7 @@ export class MlPredictionController {
   /**
    * Predict trip costs for multiple trips (batch)
    * POST /api/ml-prediction/predict/batch
-   * 
+   *
    * Body example:
    * {
    *   "trips": [
@@ -86,7 +96,9 @@ export class MlPredictionController {
   @Post('predict/batch')
   @HttpCode(HttpStatus.OK)
   async predictBatchTripCosts(@Body() data: { trips: TripPredictionInput[] }) {
-    const predictions = await this.mlPredictionService.predictBatchTripCosts(data.trips);
+    const predictions = await this.mlPredictionService.predictBatchTripCosts(
+      data.trips,
+    );
     return {
       status: 'success',
       count: predictions.length,
@@ -97,7 +109,7 @@ export class MlPredictionController {
   /**
    * Helper endpoint to predict from simplified input
    * POST /api/ml-prediction/predict-simple
-   * 
+   *
    * Body example:
    * {
    *   "boatType": "IMUL",
@@ -111,11 +123,13 @@ export class MlPredictionController {
   @HttpCode(HttpStatus.OK)
   async predictSimple(@Body() tripDetails: any) {
     // Convert simplified input to full prediction input
-    const predictionInput = this.mlPredictionService.createPredictionInput(tripDetails);
-    
+    const predictionInput =
+      this.mlPredictionService.createPredictionInput(tripDetails);
+
     // Make prediction
-    const prediction = await this.mlPredictionService.predictTripCost(predictionInput);
-    
+    const prediction =
+      await this.mlPredictionService.predictTripCost(predictionInput);
+
     return {
       status: 'success',
       data: prediction,

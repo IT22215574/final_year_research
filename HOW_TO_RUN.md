@@ -27,6 +27,7 @@ python ml_service.py
 ```
 
 **Expected Output:**
+
 ```
 🚀 STARTING ML PREDICTION SERVICE
 📊 Available Endpoints:
@@ -56,6 +57,7 @@ pnpm run start:dev
 ```
 
 **Expected Output:**
+
 ```
 [Nest] 12345  - LOG [NestFactory] Starting Nest application...
 [Nest] 12345  - LOG [InstanceLoader] MlPredictionModule dependencies initialized
@@ -81,6 +83,7 @@ npx expo start
 ```
 
 **Expected Output:**
+
 ```
 Starting Metro Bundler
 Metro waiting on exp://192.168.x.x:8081
@@ -94,6 +97,7 @@ Metro waiting on exp://192.168.x.x:8081
 ```
 
 **Options:**
+
 - Press **`a`** - Open on Android device/emulator
 - Press **`i`** - Open on iOS simulator
 - Press **`w`** - Open in web browser
@@ -187,6 +191,7 @@ curl -X POST http://localhost:3000/api/ml-prediction/predict-simple `
 ### Problem: ML Service won't start
 
 **Solution:**
+
 ```powershell
 # Check if port 5000 is in use
 netstat -ano | findstr :5000
@@ -201,6 +206,7 @@ python ml_service.py
 ### Problem: Backend can't connect to ML service
 
 **Solution:**
+
 ```powershell
 # Check if ML service is running
 curl http://localhost:5000/health
@@ -214,6 +220,7 @@ curl http://localhost:5000/health
 ### Problem: Mobile app can't connect to backend
 
 **Solution:**
+
 1. Check backend is running on port 3000
 2. Update API URL in mobile app:
    - For Android emulator: `http://10.0.2.2:3000`
@@ -224,6 +231,7 @@ curl http://localhost:5000/health
 ### Problem: "Module not found" errors
 
 **Solution:**
+
 ```powershell
 # Python packages
 pip install -r requirements.txt
@@ -263,19 +271,21 @@ netstat -ano | findstr ":3000 :5000 :8081"
 
 **Required Running Terminals:**
 
-| Terminal | Service        | Port | Command                        |
-|----------|----------------|------|--------------------------------|
-| 1        | ML Service     | 5000 | `python ml_service.py`         |
-| 2        | Backend        | 3000 | `pnpm run start:dev`           |
-| 3        | Mobile App     | 8081 | `npx expo start`               |
-| 4        | Testing        | -    | Test commands                  |
+| Terminal | Service    | Port | Command                |
+| -------- | ---------- | ---- | ---------------------- |
+| 1        | ML Service | 5000 | `python ml_service.py` |
+| 2        | Backend    | 3000 | `pnpm run start:dev`   |
+| 3        | Mobile App | 8081 | `npx expo start`       |
+| 4        | Testing    | -    | Test commands          |
 
 **Startup Order:**
+
 1. ✅ Start ML Service first (Terminal 1)
 2. ✅ Start Backend second (Terminal 2)
 3. ✅ Start Mobile App last (Terminal 3)
 
 **Access URLs:**
+
 - ML Service: http://localhost:5000
 - Backend API: http://localhost:3000
 - Mobile App: Expo Dev Tools in browser

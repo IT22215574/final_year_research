@@ -66,7 +66,7 @@ export class MlPredictionService {
   constructor() {
     // ML Service URL (Flask service running on port 5000)
     this.mlServiceUrl = process.env.ML_SERVICE_URL || 'http://localhost:5000';
-    
+
     // Create axios instance with timeout
     this.httpClient = axios.create({
       baseURL: this.mlServiceUrl,
@@ -82,7 +82,11 @@ export class MlPredictionService {
   /**
    * Check if ML service is healthy
    */
-  async checkHealth(): Promise<{ status: string; service: string; version: string }> {
+  async checkHealth(): Promise<{
+    status: string;
+    service: string;
+    version: string;
+  }> {
     try {
       const response = await this.httpClient.get('/health');
       return response.data;
@@ -101,7 +105,7 @@ export class MlPredictionService {
   async getModelInfo(): Promise<any> {
     try {
       const response = await this.httpClient.get('/model/info');
-      
+
       if (response.data.status === 'success') {
         return response.data.data;
       } else {
@@ -123,10 +127,12 @@ export class MlPredictionService {
     tripData: TripPredictionInput,
   ): Promise<PredictionResult> {
     try {
-      this.logger.log(`Predicting cost for trip: ${JSON.stringify(tripData.boat_type)}`);
-      
+      this.logger.log(
+        `Predicting cost for trip: ${JSON.stringify(tripData.boat_type)}`,
+      );
+
       const response = await this.httpClient.post('/predict', tripData);
-      
+
       if (response.data.status === 'success') {
         this.logger.log('Prediction successful');
         return response.data.data;
@@ -135,7 +141,7 @@ export class MlPredictionService {
       }
     } catch (error) {
       this.logger.error('Prediction failed:', error.message);
-      
+
       if (error.response) {
         // ML service returned an error
         throw new HttpException(
@@ -166,20 +172,22 @@ export class MlPredictionService {
   ): Promise<PredictionResult[]> {
     try {
       this.logger.log(`Predicting costs for ${tripsData.length} trips`);
-      
+
       const response = await this.httpClient.post('/predict/batch', {
         trips: tripsData,
       });
-      
+
       if (response.data.status === 'success') {
-        this.logger.log(`Batch prediction successful: ${response.data.count} predictions`);
+        this.logger.log(
+          `Batch prediction successful: ${response.data.count} predictions`,
+        );
         return response.data.data;
       } else {
         throw new Error(response.data.error || 'Batch prediction failed');
       }
     } catch (error) {
       this.logger.error('Batch prediction failed:', error.message);
-      
+
       if (error.response) {
         throw new HttpException(
           error.response.data.error || 'Batch prediction failed',

@@ -7,14 +7,16 @@ This guide explains the complete ML integration for trip cost prediction in the 
 ## 📦 Components
 
 ### 1. Dataset Generation
+
 - **File**: `datasetgeneration.ipynb`
 - **Purpose**: Generate synthetic training data with realistic Sri Lankan fisheries parameters
-- **Output**: 
+- **Output**:
   - `smart_fisher_full_dataset.csv` (complete dataset)
   - `smart_fisher_train.csv` (training subset)
   - `smart_fisher_test.csv` (test subset)
 
 ### 2. ML Training Pipeline
+
 - **File**: `complete_ml_training_pipeline.py`
 - **Purpose**: Train multiple ML models and select the best performer
 - **Models Tested**:
@@ -29,6 +31,7 @@ This guide explains the complete ML integration for trip cost prediction in the 
   - `production_model/all_model_results.json` (comparison results)
 
 ### 3. Production Predictor
+
 - **File**: `production_predictor.py`
 - **Purpose**: Python class for making predictions in production
 - **Features**:
@@ -38,6 +41,7 @@ This guide explains the complete ML integration for trip cost prediction in the 
   - Input validation with defaults
 
 ### 4. ML Service (Flask API)
+
 - **File**: `ml_service.py`
 - **Purpose**: REST API wrapper for the ML model
 - **Port**: 5000
@@ -48,6 +52,7 @@ This guide explains the complete ML integration for trip cost prediction in the 
   - `POST /predict/batch` - Batch prediction
 
 ### 5. NestJS Integration
+
 - **Files**:
   - `Backend/src/ml-prediction/ml-prediction.service.ts`
   - `Backend/src/ml-prediction/ml-prediction.controller.ts`
@@ -71,6 +76,7 @@ jupyter notebook datasetgeneration.ipynb
 ```
 
 **Required Output**:
+
 - `smart_fisher_full_dataset.csv`
 - `smart_fisher_train.csv`
 - `smart_fisher_test.csv`
@@ -86,6 +92,7 @@ python complete_ml_training_pipeline.py
 ```
 
 **Expected Output**:
+
 ```
 ✅ ALL MODELS TRAINED SUCCESSFULLY
 🏆 BEST MODEL: Random Forest (or XGBoost)
@@ -95,6 +102,7 @@ python complete_ml_training_pipeline.py
 ```
 
 **Generated Files**:
+
 - `production_model/trip_cost_predictor.pkl`
 - `production_model/model_metadata.json`
 - `production_model/all_model_results.json`
@@ -107,6 +115,7 @@ python production_predictor.py
 ```
 
 **Expected Output**:
+
 ```
 ✅ Predictor ready!
 📊 Predictions:
@@ -127,6 +136,7 @@ python ml_service.py
 ```
 
 **Expected Output**:
+
 ```
 🚀 STARTING ML PREDICTION SERVICE
 📊 Available Endpoints:
@@ -139,6 +149,7 @@ python ml_service.py
 ```
 
 **Test ML Service**:
+
 ```bash
 # Health check
 curl http://localhost:5000/health
@@ -164,8 +175,8 @@ curl -X POST http://localhost:5000/predict \
 
 ```typescript
 // Backend/src/app.module.ts
-import { Module } from '@nestjs/common';
-import { MlPredictionModule } from './ml-prediction/ml-prediction.module';
+import { Module } from "@nestjs/common";
+import { MlPredictionModule } from "./ml-prediction/ml-prediction.module";
 
 @Module({
   imports: [
@@ -248,6 +259,7 @@ curl -X POST http://localhost:3000/api/ml-prediction/predict \
 ### Feature List (17 features, NO DATA LEAKAGE)
 
 1. **Boat Specifications**:
+
    - `boat_type`: IMUL, MDBT, OBFR, TKBO, NMTR
    - `engine_hp`: 40-150 HP
    - `fuel_type`: Diesel, Petrol, Kerosene
@@ -257,11 +269,13 @@ curl -X POST http://localhost:3000/api/ml-prediction/predict \
    - `avg_speed_kmh`: 10-18 km/h
 
 2. **Trip Parameters**:
+
    - `trip_days`: 1-7 days
    - `trip_month`: 1-12 (monsoon patterns)
    - `distance_km`: 20-500 km
 
 3. **Environmental Factors**:
+
    - `wind_kph`: 5-40 km/h
    - `wave_height_m`: 0.5-3.0 m
    - `weather_factor`: 0.8-1.5 (fuel efficiency)
@@ -291,6 +305,7 @@ curl -X POST http://localhost:3000/api/ml-prediction/predict \
 ### Issue: Model not loading
 
 **Solution**:
+
 ```bash
 # Check if model files exist
 ls production_model/
@@ -306,6 +321,7 @@ python complete_ml_training_pipeline.py
 ### Issue: ML Service connection error
 
 **Solution**:
+
 ```bash
 # Check if ML service is running
 curl http://localhost:5000/health
@@ -320,6 +336,7 @@ netstat -an | grep 5000
 ### Issue: Import errors in Python
 
 **Solution**:
+
 ```bash
 # Install all dependencies
 pip install pandas numpy scikit-learn xgboost matplotlib seaborn joblib flask flask-cors
@@ -331,6 +348,7 @@ pip install -r requirements.txt
 ### Issue: NestJS can't connect to ML service
 
 **Solution**:
+
 ```typescript
 // Check ML_SERVICE_URL in .env
 ML_SERVICE_URL=http://localhost:5000
@@ -348,6 +366,7 @@ constructor() {
 ### Issue: Predictions seem unrealistic
 
 **Solution**:
+
 1. Check input data ranges (see Feature List above)
 2. Verify model was trained on correct dataset
 3. Check model performance metrics in `model_metadata.json`
@@ -392,6 +411,7 @@ constructor() {
 ### POST /api/ml-prediction/predict
 
 **Request**:
+
 ```json
 {
   "boat_type": "IMUL",
@@ -415,25 +435,26 @@ constructor() {
 ```
 
 **Response**:
+
 ```json
 {
   "status": "success",
   "data": {
     "predictions": {
       "fuel_cost_lkr": 15234.56,
-      "ice_cost_lkr": 2400.00,
-      "water_cost_lkr": 500.00,
+      "ice_cost_lkr": 2400.0,
+      "water_cost_lkr": 500.0,
       "total_base_cost_lkr": 18134.56
     },
     "confidence_intervals": {
       "fuel_cost_lkr": {
-        "lower": 13500.00,
-        "upper": 17000.00,
+        "lower": 13500.0,
+        "upper": 17000.0,
         "confidence_level": 0.68
       },
       "total_base_cost_lkr": {
-        "lower": 16000.00,
-        "upper": 20000.00,
+        "lower": 16000.0,
+        "upper": 20000.0,
         "confidence_level": 0.68
       }
     },
@@ -445,7 +466,7 @@ constructor() {
     },
     "model_info": {
       "model_name": "Random Forest",
-      "model_r2": 0.8750,
+      "model_r2": 0.875,
       "model_smape": 8.45,
       "version": "1.0.0"
     }

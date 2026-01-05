@@ -22,7 +22,11 @@ export class FishingService {
     base_cost: number;
     fuel_cost_estimate: number;
     ice_cost_estimate: number;
-    external_costs: Array<{ type: string; amount: number; description?: string }>;
+    external_costs: Array<{
+      type: string;
+      amount: number;
+      description?: string;
+    }>;
     external_costs_total: number;
     total_trip_cost: number;
     currency: string;
