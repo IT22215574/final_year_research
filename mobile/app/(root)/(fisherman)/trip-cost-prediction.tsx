@@ -21,6 +21,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Picker } from "@react-native-picker/picker";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import useAuthStore from "@/stores/authStore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 
 const API = process.env.EXPO_PUBLIC_API_KEY;
 
@@ -109,6 +111,7 @@ export default function TripCostPrediction() {
   const [loading, setLoading] = useState(false);
   const [fetchingWeather, setFetchingWeather] = useState(false);
   const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
+  const [saving, setSaving] = useState(false);
   const [tripData, setTripData] = useState<TripData>({
     boat_type: "OFRP",
     engine_hp: "",
@@ -372,6 +375,71 @@ export default function TripCostPrediction() {
     setNewCostType("");
     setNewCostAmount("");
     setNewCostDescription("");
+  };
+
+  const handleSaveTrip = async () => {
+    if (!predictionResult) {
+      Alert.alert("Error", "No prediction result to save");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const userJson = await AsyncStorage.getItem("user");
+      const user = userJson ? JSON.parse(userJson) : null;
+      const userId = user?.id;
+      
+      if (!userId) {
+        Alert.alert("Error", "User not logged in. Please sign in first.");
+        return;
+      }
+
+      const tripPayload = {
+        userId,
+        boatType: tripData.boat_type,
+        engineHp: parseFloat(tripData.engine_hp),
+        tripDays: parseInt(tripData.trip_days),
+        distanceKm: parseFloat(tripData.distance_km),
+        windKph: parseFloat(tripData.wind_kph),
+        waveM: parseFloat(tripData.wave_m),
+        month: parseInt(tripData.month),
+        portName: tripData.port_name,
+        fishingZone: selectedZone?.name,
+        fishingZoneId: selectedZone?.id,
+        dieselPriceLKR: parseFloat(tripData.diesel_price_LKR),
+        petrolPriceLKR: parseFloat(tripData.petrol_price_LKR),
+        kerosenePriceLKR: parseFloat(tripData.kerosene_price_LKR),
+        baseCost: predictionResult.base_cost,
+        fuelCostEstimate: predictionResult.fuel_cost_estimate,
+        iceCostEstimate: predictionResult.ice_cost_estimate,
+        externalCosts: predictionResult.external_costs,
+        externalCostsTotal: predictionResult.external_costs_total,
+        totalTripCost: predictionResult.total_trip_cost,
+        currency: predictionResult.currency,
+        breakdown: predictionResult.breakdown,
+        status: "planned",
+      };
+
+      const response = await axios.post(`${API}/trips`, tripPayload);
+
+      if (response.data.status === "success") {
+        Alert.alert(
+          "Trip Saved!",
+          "Your trip has been saved successfully. You can view it in My Trips.",
+          [
+            { text: "OK", onPress: () => handleReset() }
+          ]
+        );
+      }
+    } catch (error: any) {
+      console.error("Save trip error:", error);
+      Alert.alert(
+        "Error",
+        error.response?.data?.message || "Failed to save trip. Please try again."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addExternalCost = () => {
@@ -944,6 +1012,31 @@ export default function TripCostPrediction() {
                     </View>
                   </View>
 
+                  {/* Action Buttons */}
+                  <View style={styles.actionButtonsRow}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.saveButton]}
+                      onPress={handleSaveTrip}
+                      disabled={saving}
+                    >
+                      {saving ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <>
+                          <Ionicons name="save" size={20} color="#ffffff" />
+                          <Text style={styles.actionButtonText}>Save Trip</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.resetButton]}
+                      onPress={handleReset}
+                    >
+                      <Ionicons name="refresh" size={20} color="#ffffff" />
+                      <Text style={styles.actionButtonText}>New Trip</Text>
+                    </TouchableOpacity>
+                  </View>
+
                   
                 </LinearGradient>
               </View>
@@ -1367,6 +1460,32 @@ const styles = StyleSheet.create({
     color: '#d1fae5',
     fontSize: 12,
   },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  saveButton: {
+    backgroundColor: '#10b981',
+  },
+  resetButton: {
+    backgroundColor: '#6b7280',
+  },
+  actionButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   resultValue: {
     fontSize: 32,
     fontWeight: "bold",
@@ -1392,7 +1511,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  resetButton: {
+  oldResetButton: {
     backgroundColor: "#f3f4f6",
     borderWidth: 1,
     borderColor: "#d1d5db",

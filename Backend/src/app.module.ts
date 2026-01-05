@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { FishingModule } from './fishing/fishing.module';
 import { MlPredictionModule } from './ml-prediction/ml-prediction.module';
+import { TripModule } from './trip/trip.module';
 import * as path from 'path';
 
 @Module({
@@ -36,6 +37,7 @@ import * as path from 'path';
     UserModule,
     FishingModule,
     MlPredictionModule,
+    TripModule,
   ],
 })
 export class AppModule {}
