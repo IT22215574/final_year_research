@@ -12,11 +12,14 @@ import {
   TouchableWithoutFeedback,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Picker } from "@react-native-picker/picker";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import useAuthStore from "@/stores/authStore";
 
 const API = process.env.EXPO_PUBLIC_API_KEY;
@@ -67,6 +70,40 @@ const portCoordinates: { [key: string]: { lat: number; lon: number } } = {
   Kalpitiya: { lat: 8.232, lon: 79.7718 },
 };
 
+// Fishing zones around Sri Lanka (coordinates and typical fish types)
+interface FishingZone {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  depth_m: number;
+  fish_types: string[];
+  region: string;
+}
+
+const fishingZones: FishingZone[] = [
+  // West Coast Zones
+  { id: "WC1", name: "Colombo Deep Sea Zone", lat: 6.5, lon: 79.5, depth_m: 800, fish_types: ["Tuna", "Swordfish", "Marlin"], region: "West" },
+  { id: "WC2", name: "Negombo Lagoon Zone", lat: 7.35, lon: 79.7, depth_m: 450, fish_types: ["Skipjack", "Yellowfin"], region: "West" },
+  { id: "WC3", name: "Chilaw Offshore Zone", lat: 7.8, lon: 79.6, depth_m: 600, fish_types: ["Barracuda", "Mackerel"], region: "West" },
+  { id: "WC4", name: "Kalpitiya Deep Waters", lat: 8.5, lon: 79.5, depth_m: 950, fish_types: ["Tuna", "Sailfish"], region: "West" },
+  
+  // South Coast Zones
+  { id: "SC1", name: "Galle Continental Shelf", lat: 5.8, lon: 80.0, depth_m: 700, fish_types: ["Snapper", "Grouper"], region: "South" },
+  { id: "SC2", name: "Matara Deep Zone", lat: 5.7, lon: 80.5, depth_m: 850, fish_types: ["Tuna", "Swordfish"], region: "South" },
+  { id: "SC3", name: "Tangalle Fishing Grounds", lat: 6.0, lon: 80.8, depth_m: 600, fish_types: ["Kingfish", "Barracuda"], region: "South" },
+  
+  // East Coast Zones
+  { id: "EC1", name: "Trincomalee Bay Zone", lat: 8.8, lon: 81.5, depth_m: 500, fish_types: ["Trevally", "Grouper"], region: "East" },
+  { id: "EC2", name: "Batticaloa Offshore", lat: 7.5, lon: 82.0, depth_m: 650, fish_types: ["Tuna", "Mackerel"], region: "East" },
+  { id: "EC3", name: "Kalmunai Deep Waters", lat: 7.2, lon: 81.9, depth_m: 750, fish_types: ["Sailfish", "Marlin"], region: "East" },
+  
+  // North Coast Zones
+  { id: "NC1", name: "Jaffna Peninsula Zone", lat: 10.0, lon: 80.2, depth_m: 400, fish_types: ["Snapper", "Trevally"], region: "North" },
+  { id: "NC2", name: "Mannar Gulf Zone", lat: 9.2, lon: 79.6, depth_m: 550, fish_types: ["Barracuda", "Kingfish"], region: "North" },
+  { id: "NC3", name: "Point Pedro Deep Sea", lat: 9.9, lon: 80.5, depth_m: 800, fish_types: ["Tuna", "Swordfish"], region: "North" },
+];
+
 export default function TripCostPrediction() {
   const { currentUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
@@ -88,6 +125,9 @@ export default function TripCostPrediction() {
 
   const [externalCosts, setExternalCosts] = useState<ExternalCost[]>([]);
   const [newCostType, setNewCostType] = useState("");
+  const [showZoneModal, setShowZoneModal] = useState(false);
+  const [selectedZone, setSelectedZone] = useState<FishingZone | null>(null);
+  const [hoveredZone, setHoveredZone] = useState<FishingZone | null>(null);
   const [newCostAmount, setNewCostAmount] = useState("");
   const [newCostDescription, setNewCostDescription] = useState("");
 
@@ -371,6 +411,53 @@ export default function TripCostPrediction() {
     }
   };
 
+  // Calculate distance between two coordinates (Haversine formula)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Handle fishing zone selection (set as destination)
+  const handleZoneSelect = (zone: FishingZone) => {
+    setSelectedZone(zone);
+    
+    // Get current port coordinates
+    const portCoords = portCoordinates[tripData.port_name];
+    if (portCoords) {
+      // Calculate distance from port to fishing zone
+      const distance = calculateDistance(
+        portCoords.lat,
+        portCoords.lon,
+        zone.lat,
+        zone.lon
+      );
+      
+      // Update distance field (round to 1 decimal place)
+      updateField("distance_km", distance.toFixed(1));
+      
+      Alert.alert(
+        "✅ Destination Set",
+        `${zone.name}\n\n📍 Distance from ${tripData.port_name}: ${distance.toFixed(1)} km\n📊 Depth: ${zone.depth_m}m\n🐟 Target Fish: ${zone.fish_types.join(", ")}\n\nThe distance has been automatically set for cost prediction.`,
+        [{ text: "OK" }]
+      );
+    }
+    
+    setHoveredZone(null);
+    setShowZoneModal(false);
+  };
+
+  // Handle zone marker press (show info)
+  const handleZoneMarkerPress = (zone: FishingZone) => {
+    setHoveredZone(zone);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -465,6 +552,34 @@ export default function TripCostPrediction() {
                   />
                   <Text style={styles.hint}>1-800 km</Text>
                 </View>
+              </View>
+
+              {/* Fishing Zone Selector */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Select Fishing Zone (Optional)</Text>
+                <TouchableOpacity
+                  style={styles.zoneButton}
+                  onPress={() => setShowZoneModal(true)}
+                >
+                  <Ionicons name="location" size={20} color="#3b82f6" />
+                  <Text style={styles.zoneButtonText}>
+                    {selectedZone ? selectedZone.name : "Choose Fishing Zone"}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+                </TouchableOpacity>
+                {selectedZone && (
+                  <View style={styles.zoneInfo}>
+                    <Text style={styles.zoneInfoText}>
+                      📍 Distance: {tripData.distance_km} km • Depth: {selectedZone.depth_m}m
+                    </Text>
+                    <Text style={styles.zoneInfoText}>
+                      🐟 {selectedZone.fish_types.join(", ")}
+                    </Text>
+                  </View>
+                )}
+                <Text style={styles.hint}>
+                  Auto-calculates distance from your departure port
+                </Text>
               </View>
 
               <View style={styles.inputGroup}>
@@ -879,6 +994,185 @@ export default function TripCostPrediction() {
           </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
+
+      {/* Fishing Zone Selection Modal with Map */}
+      <Modal
+        visible={showZoneModal}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => {
+          setShowZoneModal(false);
+          setHoveredZone(null);
+        }}
+      >
+        <SafeAreaView style={styles.mapModalContainer}>
+          {/* Map Header */}
+          <View style={styles.mapHeader}>
+            <View>
+              <Text style={styles.mapTitle}>Select Fishing Zone</Text>
+              <Text style={styles.mapSubtitle}>Tap a fish marker to see details</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                setShowZoneModal(false);
+                setHoveredZone(null);
+              }}
+              style={styles.mapCloseButton}
+            >
+              <Ionicons name="close-circle" size={32} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Map View */}
+          <MapView
+            style={styles.map}
+            provider={PROVIDER_GOOGLE}
+            initialRegion={{
+              latitude: portCoordinates[tripData.port_name]?.lat || 7.8731,
+              longitude: portCoordinates[tripData.port_name]?.lon || 80.7718,
+              latitudeDelta: 5,
+              longitudeDelta: 5,
+            }}
+          >
+            {/* Current Port Marker */}
+            {portCoordinates[tripData.port_name] && (
+              <Marker
+                coordinate={{
+                  latitude: portCoordinates[tripData.port_name].lat,
+                  longitude: portCoordinates[tripData.port_name].lon,
+                }}
+                title={`📍 ${tripData.port_name} (Your Port)`}
+                description="Departure location"
+                pinColor="#10b981"
+              >
+                <View style={styles.portMarker}>
+                  <Ionicons name="boat" size={24} color="#ffffff" />
+                </View>
+              </Marker>
+            )}
+
+            {/* Fishing Zone Markers */}
+            {fishingZones.map((zone) => (
+              <Marker
+                key={zone.id}
+                coordinate={{
+                  latitude: zone.lat,
+                  longitude: zone.lon,
+                }}
+                onPress={() => handleZoneMarkerPress(zone)}
+              >
+                <View style={[
+                  styles.fishMarker,
+                  selectedZone?.id === zone.id && styles.fishMarkerSelected,
+                  hoveredZone?.id === zone.id && styles.fishMarkerHovered,
+                ]}>
+                  <Text style={styles.fishMarkerText}>🐟</Text>
+                </View>
+              </Marker>
+            ))}
+
+            {/* Route Line from Port to Selected/Hovered Zone */}
+            {(hoveredZone || selectedZone) && portCoordinates[tripData.port_name] && (
+              <Polyline
+                coordinates={[
+                  {
+                    latitude: portCoordinates[tripData.port_name].lat,
+                    longitude: portCoordinates[tripData.port_name].lon,
+                  },
+                  {
+                    latitude: (hoveredZone || selectedZone)!.lat,
+                    longitude: (hoveredZone || selectedZone)!.lon,
+                  },
+                ]}
+                strokeColor={hoveredZone ? "#f59e0b" : "#3b82f6"}
+                strokeWidth={3}
+                lineDashPattern={[10, 5]}
+              />
+            )}
+          </MapView>
+
+          {/* Zone Info Card (when zone is tapped) */}
+          {hoveredZone && (
+            <View style={styles.zoneInfoCard}>
+              <View style={styles.zoneInfoHeader}>
+                <View>
+                  <View style={styles.zoneInfoBadge}>
+                    <Text style={styles.zoneInfoBadgeText}>{hoveredZone.region}</Text>
+                  </View>
+                  <Text style={styles.zoneInfoTitle}>{hoveredZone.name}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setHoveredZone(null)}
+                  style={styles.zoneInfoClose}
+                >
+                  <Ionicons name="close" size={20} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.zoneInfoDetails}>
+                <View style={styles.zoneInfoRow}>
+                  <Ionicons name="navigate" size={16} color="#3b82f6" />
+                  <Text style={styles.zoneInfoLabel}>Distance from {tripData.port_name}:</Text>
+                  <Text style={styles.zoneInfoValue}>
+                    {calculateDistance(
+                      portCoordinates[tripData.port_name]?.lat || 0,
+                      portCoordinates[tripData.port_name]?.lon || 0,
+                      hoveredZone.lat,
+                      hoveredZone.lon
+                    ).toFixed(1)} km
+                  </Text>
+                </View>
+
+                <View style={styles.zoneInfoRow}>
+                  <Ionicons name="water" size={16} color="#06b6d4" />
+                  <Text style={styles.zoneInfoLabel}>Depth:</Text>
+                  <Text style={styles.zoneInfoValue}>{hoveredZone.depth_m}m</Text>
+                </View>
+
+                <View style={styles.zoneInfoRow}>
+                  <Text style={styles.fishIcon}>🐟</Text>
+                  <Text style={styles.zoneInfoLabel}>Fish Types:</Text>
+                  <Text style={styles.zoneInfoValue}>
+                    {hoveredZone.fish_types.join(", ")}
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.setDestinationButton}
+                onPress={() => handleZoneSelect(hoveredZone)}
+              >
+                <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+                <Text style={styles.setDestinationText}>Set as Destination</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Legend */}
+          <View style={styles.mapLegend}>
+            <View style={styles.legendItem}>
+              <View style={styles.portMarker}>
+                <Ionicons name="boat" size={16} color="#ffffff" />
+              </View>
+              <Text style={styles.legendText}>Your Port</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={styles.fishMarker}>
+                <Text style={styles.fishMarkerTextSmall}>🐟</Text>
+              </View>
+              <Text style={styles.legendText}>Fishing Zone</Text>
+            </View>
+            {selectedZone && (
+              <View style={styles.legendItem}>
+                <View style={styles.fishMarkerSelected}>
+                  <Text style={styles.fishMarkerTextSmall}>🐟</Text>
+                </View>
+                <Text style={styles.legendText}>Selected</Text>
+              </View>
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1311,5 +1605,311 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#3b82f6",
     fontWeight: "600",
+  },
+  // Map Modal Styles
+  mapModalContainer: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+  },
+  mapHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "#ffffff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+  },
+  mapTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1f2937",
+  },
+  mapSubtitle: {
+    fontSize: 13,
+    color: "#6b7280",
+    marginTop: 2,
+  },
+  mapCloseButton: {
+    padding: 4,
+  },
+  map: {
+    flex: 1,
+  },
+  // Map Markers
+  portMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#10b981",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  fishMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#3b82f6",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  fishMarkerSelected: {
+    backgroundColor: "#10b981",
+    borderColor: "#ffffff",
+    borderWidth: 4,
+    transform: [{ scale: 1.2 }],
+  },
+  fishMarkerHovered: {
+    backgroundColor: "#f59e0b",
+    transform: [{ scale: 1.3 }],
+  },
+  fishMarkerText: {
+    fontSize: 20,
+  },
+  fishMarkerTextSmall: {
+    fontSize: 14,
+  },
+  // Zone Info Card
+  zoneInfoCard: {
+    position: "absolute",
+    bottom: 20,
+    left: 16,
+    right: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  zoneInfoHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  zoneInfoBadge: {
+    backgroundColor: "#3b82f6",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 6,
+    alignSelf: "flex-start",
+  },
+  zoneInfoBadgeText: {
+    fontSize: 11,
+    color: "#ffffff",
+    fontWeight: "600",
+  },
+  zoneInfoTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1f2937",
+  },
+  zoneInfoClose: {
+    padding: 4,
+  },
+  zoneInfoDetails: {
+    gap: 10,
+    marginBottom: 14,
+  },
+  zoneInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  zoneInfoLabel: {
+    fontSize: 13,
+    color: "#6b7280",
+    flex: 1,
+  },
+  zoneInfoValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1f2937",
+  },
+  fishIcon: {
+    fontSize: 16,
+  },
+  setDestinationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#10b981",
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  setDestinationText: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#ffffff",
+  },
+  // Map Legend
+  mapLegend: {
+    position: "absolute",
+    top: 80,
+    right: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+    gap: 8,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  legendText: {
+    fontSize: 11,
+    color: "#374151",
+    fontWeight: "500",
+  },
+  // Fishing Zone Selector Styles
+  zoneButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 8,
+    padding: 14,
+    gap: 12,
+  },
+  zoneButtonText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#374151",
+    fontWeight: "500",
+  },
+  zoneInfo: {
+    backgroundColor: "#eff6ff",
+    padding: 10,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  zoneInfoText: {
+    fontSize: 12,
+    color: "#1e40af",
+    marginBottom: 4,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1f2937",
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginBottom: 16,
+  },
+  zoneList: {
+    paddingBottom: 16,
+  },
+  zoneItem: {
+    backgroundColor: "#f9fafb",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+  },
+  zoneItemSelected: {
+    backgroundColor: "#eff6ff",
+    borderColor: "#3b82f6",
+    borderWidth: 2,
+  },
+  zoneItemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  zoneRegionBadge: {
+    backgroundColor: "#3b82f6",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  zoneRegionText: {
+    fontSize: 11,
+    color: "#ffffff",
+    fontWeight: "600",
+  },
+  zoneDistance: {
+    fontSize: 14,
+    color: "#6b7280",
+    fontWeight: "600",
+  },
+  zoneName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#1f2937",
+    marginBottom: 6,
+  },
+  zoneDetails: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  zoneDetailText: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
+  modalCancelButton: {
+    backgroundColor: "#f3f4f6",
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#6b7280",
   },
 });
