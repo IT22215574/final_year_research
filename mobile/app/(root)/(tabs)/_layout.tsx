@@ -11,14 +11,46 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { icons } from "@/constants";
 import useAuthStore from "@/stores/authStore";
-import { useState } from "react";
+import useNotificationStore from "@/stores/notificationStore";
+import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import Overlay from "@/components/Overlay";
+import { useFocusEffect } from "@react-navigation/native";
 
 const TabsLayout = () => {
+
   const [activeTab, setActiveTab] = useState("home");
   const [sidebarVisible, setSidebarVisible] = useState(false);
+  const { currentUser } = useAuthStore();
+  const { unreadCount, fetchUnreadCount } = useNotificationStore();
 
+  // Fetch unread count on focus and component mount
+  useFocusEffect(
+    useCallback(() => {
+      if (currentUser?.id) {
+        console.log("🎯 TabsLayout focused, fetching unread count...");
+        fetchUnreadCount();
+      }
+    }, [currentUser?.id, fetchUnreadCount])
+  );
+
+  // Initial fetch
+  useEffect(() => {
+    if (currentUser?.id) {
+      fetchUnreadCount();
+    }
+  }, [currentUser?.id, fetchUnreadCount]);
+
+
+
+  const handleSubmitAd = () => {
+    const state = useAuthStore.getState();
+    if (state.isSignedIn) {
+      router.push("/#");
+    } else {
+      router.push("/#");
+    }
+  };
 
   const handleProfileNavigation = () => {
     const state = useAuthStore.getState();
@@ -52,23 +84,48 @@ const TabsLayout = () => {
           headerTintColor: "black",
           headerTitleStyle: {
             fontWeight: "bold",
+            color: "white",
+            fontFamily: "Inter-Bold",
           },
           headerLeft: () => (
+            <View>
+              <TouchableOpacity
+                style={{ marginLeft: 15 }}
+                onPress={toggleSidebar}
+              >
+                <Image
+                  source={icons.burgermenu}
+                  style={styles.menuIcon}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            </View>
+          ),
+          headerRight: () => (
             <TouchableOpacity
-              style={{ marginLeft: 15 }}
-              onPress={toggleSidebar}
+              style={{ marginRight: 20, marginTop: 4 }}
+              onPress={() => router.push("/(root)/(tabs)/Notifications")}
             >
               <Image
-                source={icons.burgermenu}
-                style={styles.menuIcon}
+                source={icons.notification}
+                style={styles.notificationIcon}
                 resizeMode="contain"
               />
+              {/* Conditionally render badge */}
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           ),
           headerStyle: {
             elevation: 0,
             shadowOpacity: 0,
             borderBottomWidth: 0,
+            marginBottom: 10,
           },
           tabBarShowLabel: false,
           tabBarStyle: {
@@ -76,13 +133,24 @@ const TabsLayout = () => {
           },
         }}
       >
+        {/* ... all your Tabs.Screen components remain the same ... */}
         <Tabs.Screen
           name="home"
           options={{
             title: "",
             headerShown: true,
             headerStyle: {
-              backgroundColor: "#0057FF", // Blue only for home
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="TeacherHome"
+          options={{
+            title: "",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
             },
           }}
         />
@@ -92,7 +160,7 @@ const TabsLayout = () => {
             title: "",
             headerShown: true,
             headerStyle: {
-              backgroundColor: "#0057FF", // Default color for other tabs
+              backgroundColor: "#0057FF",
             },
           }}
         />
@@ -102,18 +170,67 @@ const TabsLayout = () => {
             title: "Publications",
             headerShown: true,
             headerStyle: {
-              backgroundColor: "#fff", // Default color for other tabs
+              backgroundColor: "#0057FF",
             },
           }}
         />
-
+        <Tabs.Screen
+          name="Notifications"
+          options={{
+            title: "Notifications",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="Requests"
+          options={{
+            title: "Requests",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="CreateTransferRequest"
+          options={{
+            title: "Transfer Request",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="SearchMatches"
+          options={{
+            title: "Search & Matches",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="TeacherTransferRequests"
+          options={{
+            title: "Transfer Requests",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
         <Tabs.Screen
           name="profile"
           options={{
             title: "Profile",
             headerShown: true,
             headerStyle: {
-              backgroundColor: "#0B3D91", // Default color for other tabs
+              backgroundColor: "#0057FF",
             },
           }}
         />
@@ -123,7 +240,7 @@ const TabsLayout = () => {
             title: "Edit Profile",
             headerShown: true,
             headerStyle: {
-              backgroundColor: "#fff", // Default color for other tabs
+              backgroundColor: "#0057FF",
             },
           }}
         />
@@ -139,98 +256,216 @@ const TabsLayout = () => {
         onClose={() => setSidebarVisible(false)}
       />
 
-      {/* Custom Bottom Navigation */}
+      {/* Custom Bottom Navigation - This remains exactly the same */}
       <View style={styles.customTabBar} className="rounded-t-3xl shadow-lg">
-        {/* Navigation Items */}
+        {/* Navigation Items - This remains exactly the same */}
         <View style={styles.navItemsContainer}>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => handleTabPress("home", "/(tabs)/home")}
-          >
-            <View
-              style={[
-                styles.iconContainer,
-                activeTab === "home" && styles.iconContainerActive,
-              ]}
+          {/* ... all your existing navigation items remain the same ... */}
+          {currentUser?.role === "Internal" ||
+          currentUser?.role === "External" ||
+          currentUser?.role === "INTERNAL_STUDENT" ||
+          currentUser?.role == "EXTERNAL_STUDENT" ? (
+            <TouchableOpacity
+              style={styles.navItem}
+              onPress={() => handleTabPress("home", "/(tabs)/home")}
             >
-              <Image
-                source={icons.nav_home}
+              <View
                 style={[
-                  styles.navIcon,
-                  activeTab === "home" && styles.navIconActive,
+                  styles.iconContainer,
+                  activeTab === "home" && styles.iconContainerActive,
                 ]}
-                resizeMode="contain"
-              />
-            </View>
-            <Text
-              style={[
-                styles.navText,
-                activeTab === "home" && styles.navTextActive,
-              ]}
+              >
+                <Image
+                  source={icons.nav_home}
+                  style={[
+                    styles.navIcon,
+                    activeTab === "home" && styles.navIconActive,
+                  ]}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text
+                style={[
+                  styles.navText,
+                  activeTab === "home" && styles.navTextActive,
+                ]}
+              >
+                Home
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.navItem}
+              onPress={() =>
+                handleTabPress("TeacherHome", "/(tabs)/TeacherHome")
+              }
             >
-              Home
-            </Text>
-          </TouchableOpacity>
+              <View
+                style={[
+                  styles.iconContainer,
+                  activeTab === "TeacherHome" && styles.iconContainerActive,
+                ]}
+              >
+                <Image
+                  source={icons.nav_home}
+                  style={[
+                    styles.navIcon,
+                    activeTab === "TeacherHome" && styles.navIconActive,
+                  ]}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text
+                style={[
+                  styles.navText,
+                  activeTab === "TeacherHome" && styles.navTextActive,
+                ]}
+              >
+                Home
+              </Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => handleTabPress("exams", "/(tabs)/exams")}
-          >
-            <View
-              style={[
-                styles.iconContainer,
-                activeTab === "exams" && styles.iconContainerActive,
-              ]}
+          {(currentUser?.role === "Teacher" ||
+            currentUser?.role === "INTERNAL_TEACHER" ||
+            currentUser?.role === "EXTERNAL_TEACHER") && (
+            <TouchableOpacity
+              style={styles.navItem}
+              onPress={() => handleTabPress("search", "/(tabs)/SearchMatches")}
             >
-              <Image
-                source={icons.nav_exam}
+              <View
                 style={[
-                  styles.navIcon,
-                  activeTab === "exams" && styles.navIconActive,
+                  styles.iconContainer,
+                  activeTab === "search" && styles.iconContainerActive,
                 ]}
-                resizeMode="contain"
-              />
-            </View>
-            <Text
-              style={[
-                styles.navText,
-                activeTab === "exams" && styles.navTextActive,
-              ]}
-            >
-              Exams
-            </Text>
-          </TouchableOpacity>
+              >
+                <Image
+                  source={icons.search}
+                  style={[
+                    styles.navIcon,
+                    activeTab === "search" && styles.navIconActive,
+                  ]}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text
+                style={[
+                  styles.navText,
+                  activeTab === "search" && styles.navTextActive,
+                ]}
+              >
+                Search
+              </Text>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() =>
-              handleTabPress("publication", "/(tabs)/publications")
-            }
-          >
-            <View
-              style={[
-                styles.iconContainer,
-                activeTab === "publication" && styles.iconContainerActive,
-              ]}
+          {(currentUser?.role === "Internal" ||
+            currentUser?.role === "External" ||
+            currentUser?.role === "INTERNAL_STUDENT" ||
+            currentUser?.role == "EXTERNAL_STUDENT") && (
+            <TouchableOpacity
+              style={styles.navItem}
+              onPress={() => handleTabPress("exams", "/(tabs)/exams")}
             >
-              <Image
-                source={icons.home_publication}
+              <View
                 style={[
-                  styles.navIcon,
-                  activeTab === "publication" && styles.navIconActive,
+                  styles.iconContainer,
+                  activeTab === "exams" && styles.iconContainerActive,
                 ]}
-                resizeMode="contain"
-              />
-            </View>
-            <Text
-              style={[
-                styles.navText,
-                activeTab === "publication" && styles.navTextActive,
-              ]}
+              >
+                <Image
+                  source={icons.nav_exam}
+                  style={[
+                    styles.navIcon,
+                    activeTab === "exams" && styles.navIconActive,
+                  ]}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text
+                style={[
+                  styles.navText,
+                  activeTab === "exams" && styles.navTextActive,
+                ]}
+              >
+                Exams
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {(currentUser?.role === "Teacher" ||
+            currentUser?.role === "INTERNAL_TEACHER" ||
+            currentUser?.role === "EXTERNAL_TEACHER") && (
+            <TouchableOpacity
+              style={styles.navItem}
+              onPress={() =>
+                handleTabPress(
+                  "TransferRequest",
+                  "/(tabs)/TeacherTransferRequests"
+                )
+              }
             >
-              Publication
-            </Text>
-          </TouchableOpacity>
+              <View
+                style={[
+                  styles.iconContainer,
+                  activeTab === "TransferRequest" && styles.iconContainerActive,
+                ]}
+              >
+                <Image
+                  source={icons.requests}
+                  style={[
+                    styles.navIcon,
+                    activeTab === "TransferRequest" && styles.navIconActive,
+                  ]}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text
+                style={[
+                  styles.navText,
+                  activeTab === "TransferRequest" && styles.navTextActive,
+                ]}
+              >
+                Requests
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {(currentUser?.role === "Internal" ||
+            currentUser?.role === "External" ||
+            currentUser?.role === "INTERNAL_STUDENT" ||
+            currentUser?.role == "EXTERNAL_STUDENT") && (
+            <TouchableOpacity
+              style={styles.navItem}
+              onPress={() =>
+                handleTabPress("publication", "/(tabs)/publications")
+              }
+            >
+              <View
+                style={[
+                  styles.iconContainer,
+                  activeTab === "publication" && styles.iconContainerActive,
+                ]}
+              >
+                <Image
+                  source={icons.home_publication}
+                  style={[
+                    styles.navIcon,
+                    activeTab === "publication" && styles.navIconActive,
+                  ]}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text
+                style={[
+                  styles.navText,
+                  activeTab === "publication" && styles.navTextActive,
+                ]}
+              >
+                Publication
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.navItem}
@@ -384,7 +619,32 @@ const styles = StyleSheet.create({
   menuIcon: {
     width: 32,
     height: 32,
-    tintColor: "black",
+    tintColor: "white",
+  },
+  notificationIcon: {
+    width: 32,
+    height: 32,
+    tintColor: "white",
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: "#EF4444",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: "#FFFFFF", // Changed to white for better visibility on blue header
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "bold", // Made bold for better visibility
+    fontFamily: "Inter-SemiBold",
   },
 });
 

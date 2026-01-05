@@ -21,19 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
   };
 
   const menuItems = [
-    { name: "Teachers", path: "/(root)/(screens)/teachers", icon: icons.sidebar_teachers },
-    { name: "Payments", path: "/(tabs)/exams", icon: icons.credit },
-    { name: "Subjects", path: "/(root)/(screens)/Subjects", icon: icons.sidebar_video },
-    {
-      name: "Instructions",
-      path: "/instructions",
-      icon: icons.sidebar_instruction,
-    },
-    {
-      name: "Publications",
-      path: "/(tabs)/publications",
-      icon: icons.sidebar_publications,
-    },
+  
     { name: "Exams", path: "/(root)/(tabs)/exams", icon: icons.nav_exam },
     {
       name: "Class Links",

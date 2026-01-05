@@ -15,7 +15,6 @@ import nav_home from "@/assets/icons/nav_home.png";
 
 
 // background images
-import LearnupLogo from "@/assets/images/LearnUpLogo.png";
 import Onboard from "@/assets/images/onboard.png";
 import Onboard01 from "@/assets/images/OnBoard1.png";
 import Onboard02 from "@/assets/images/OnBoard2.png";
@@ -44,6 +43,10 @@ import ourP from "@/assets/icons/ourP.png"
 import Duty from "@/assets/icons/duty.png"
 import catside from "@/assets/icons/catside.png"
 import Bug from "@/assets/icons/bug.png"
+import burgermenu from "@/assets/icons/burgermenu.png"
+import notification from "@/assets/icons/notification.png"
+
+
 import Traingle from "@/assets/images/traingle.png"
 import Vector from "@/assets/images/vector.png"
 import Eclips from "@/assets/images/eclips.png"
@@ -82,7 +85,6 @@ import SFLLogo from "@/assets/images/SFLLogo.png"
 
 export const images = {
   Onboard,
-  LearnupLogo,
   Onboard01,
   Onboard03,
   Onboard02,
@@ -129,7 +131,8 @@ export const icons = {
   Icon66,
   FisherIcon,
   BuyerIcon,
-  
+  burgermenu,
+  notification,
   whatsapp,
   phone,
   Home,

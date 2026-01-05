@@ -217,11 +217,7 @@ const Profile = () => {
           colors={["#0B3D91", "#1E90FF", "#00BFFF"]}
           style={styles.gradientBg}
         >
-          <Image
-            source={require("@/assets/images/LearnUpLogo.png")}
-            style={styles.bgPattern}
-            resizeMode="repeat"
-          />
+
           <View style={styles.errorContainer}>
             <View style={styles.errorIconContainer}>
               <Ionicons name="fish-outline" size={60} color="#FFF" />

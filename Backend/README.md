@@ -1,6 +1,5 @@
-# LearnUp Admin Panel - NestJS Backend
+# Smart Fisher Lanka Admin Panel - NestJS Backend
 
-A complete NestJS backend for the LearnUp Admin Panel, migrated from Express.js with MongoDB integration.
 
 ## Features
 
