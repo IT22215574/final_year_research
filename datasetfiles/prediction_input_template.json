@@ -1,0 +1,20 @@
+{
+  "boat_type": "OBFR",
+  "engine_hp": 60,
+  "fuel_type": "petrol",
+  "crew_size": 4,
+  "trip_days": 2,
+  "current_location": {
+    "lat": 7.209,
+    "lon": 79.835
+  },
+  "target_location": {
+    "lat": 7.509,
+    "lon": 80.135
+  },
+  "month": 6,
+  "weather_conditions": {
+    "wind_kph": 15,
+    "wave_height_m": 1.2
+  }
+}

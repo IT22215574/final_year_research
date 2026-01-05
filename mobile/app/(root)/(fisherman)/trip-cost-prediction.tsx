@@ -21,6 +21,12 @@ import useAuthStore from "@/stores/authStore";
 
 const API = process.env.EXPO_PUBLIC_API_KEY;
 
+interface ExternalCost {
+  type: string;
+  amount: number;
+  description?: string;
+}
+
 interface TripData {
   boat_type: string;
   engine_hp: string;
@@ -33,6 +39,20 @@ interface TripData {
   diesel_price_LKR: string;
   petrol_price_LKR: string;
   kerosene_price_LKR: string;
+}
+
+interface PredictionResult {
+  base_cost: number;
+  fuel_cost_estimate: number;
+  ice_cost_estimate: number;
+  external_costs: ExternalCost[];
+  external_costs_total: number;
+  total_trip_cost: number;
+  currency: string;
+  breakdown: {
+    base_cost_percentage: number;
+    external_costs_percentage: number;
+  };
 }
 
 // Port coordinates for Sri Lanka
@@ -51,9 +71,9 @@ export default function TripCostPrediction() {
   const { currentUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [fetchingWeather, setFetchingWeather] = useState(false);
-  const [predictedCost, setPredictedCost] = useState<number | null>(null);
+  const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
   const [tripData, setTripData] = useState<TripData>({
-    boat_type: "MTRB",
+    boat_type: "OFRP",
     engine_hp: "",
     trip_days: "",
     distance_km: "",
@@ -66,13 +86,18 @@ export default function TripCostPrediction() {
     kerosene_price_LKR: "185",
   });
 
+  const [externalCosts, setExternalCosts] = useState<ExternalCost[]>([]);
+  const [newCostType, setNewCostType] = useState("");
+  const [newCostAmount, setNewCostAmount] = useState("");
+  const [newCostDescription, setNewCostDescription] = useState("");
+
   const boatTypes = [
-    { label: "MTRB - Multiday Trawler Boat", value: "MTRB" },
-    { label: "OFRP - One-day Fiber Boat", value: "OFRP" },
-    { label: "NTRB - Non-mechanized Boat", value: "NTRB" },
+    { label: "OFRP - Outboard Fiber Reinforced Boat", value: "OFRP" },
+    { label: "NTRB - Non-motorized Traditional Boat", value: "NTRB" },
+    { label: "IMUL - Inboard Multiday Boat", value: "IMUL" },
+    { label: "MTRB - Motorized Traditional Boat", value: "MTRB" },
+    { label: "NBSB - Non-motorized Beach Seine Boat", value: "NBSB" },
     { label: "IDAY - Inboard Day Boat", value: "IDAY" },
-    { label: "Vallam - Traditional Boat", value: "Vallam" },
-    { label: "Beach Seine", value: "Beach Seine" },
   ];
 
   const ports = [
@@ -176,30 +201,33 @@ export default function TripCostPrediction() {
     const windKph = parseFloat(tripData.wind_kph);
     const waveM = parseFloat(tripData.wave_m);
 
-    if (engineHP < 5 || engineHP > 250) {
-      Alert.alert("Validation Error", "Engine power must be between 5-250 HP");
+    if (engineHP < 0 || engineHP > 350) {
+      Alert.alert("Validation Error", "Engine power must be between 0-350 HP");
       return;
     }
-    if (tripDays < 1 || tripDays > 7) {
-      Alert.alert("Validation Error", "Trip days must be between 1-7 days");
+    if (tripDays < 1 || tripDays > 30) {
+      Alert.alert(
+        "Validation Error",
+        "Trip days must be between 1-30 days.\n\nNote: IMUL boats typically go for 7-30 days, while OFRP/MTRB/IDAY usually do 1-2 day trips."
+      );
       return;
     }
-    if (distanceKm < 10 || distanceKm > 600) {
-      Alert.alert("Validation Error", "Distance must be between 10-600 km");
+    if (distanceKm < 1 || distanceKm > 800) {
+      Alert.alert("Validation Error", "Distance must be between 1-800 km");
       return;
     }
-    if (windKph < 5 || windKph > 30) {
-      Alert.alert("Validation Error", "Wind speed must be between 5-30 km/h");
+    if (windKph < 3 || windKph > 40) {
+      Alert.alert("Validation Error", "Wind speed must be between 3-40 km/h");
       return;
     }
-    if (waveM < 0.5 || waveM > 4.0) {
-      Alert.alert("Validation Error", "Wave height must be between 0.5-4.0 m");
+    if (waveM < 0.2 || waveM > 4.0) {
+      Alert.alert("Validation Error", "Wave height must be between 0.2-4.0 m");
       return;
     }
 
     try {
       setLoading(true);
-      setPredictedCost(null);
+      setPredictionResult(null);
 
       // Convert string values to numbers for API
       const requestData = {
@@ -214,6 +242,7 @@ export default function TripCostPrediction() {
         diesel_price_LKR: parseFloat(tripData.diesel_price_LKR),
         petrol_price_LKR: parseFloat(tripData.petrol_price_LKR),
         kerosene_price_LKR: parseFloat(tripData.kerosene_price_LKR),
+        external_costs: externalCosts,
       };
 
       console.log("Sending prediction request:", requestData);
@@ -237,16 +266,40 @@ export default function TripCostPrediction() {
       }
 
       const data = await response.json();
-      setPredictedCost(data.predicted_cost);
+      console.log("API Response:", data);
+
+      // Handle both old and new response formats
+      let result: PredictionResult;
+      
+      if (data.base_cost !== undefined) {
+        // New format with base_cost breakdown
+        result = data;
+      } else if (data.predicted_cost !== undefined) {
+        // Old format (backward compatibility) - treat predicted_cost as base_cost
+        const baseCost = data.predicted_cost;
+        const externalTotal = externalCosts.reduce((sum, c) => sum + c.amount, 0);
+        result = {
+          base_cost: baseCost,
+          fuel_cost_estimate: baseCost * 0.962,
+          ice_cost_estimate: baseCost * 0.038,
+          external_costs: externalCosts,
+          external_costs_total: externalTotal,
+          total_trip_cost: baseCost + externalTotal,
+          currency: 'LKR',
+          breakdown: {
+            base_cost_percentage: baseCost / (baseCost + externalTotal) * 100,
+            external_costs_percentage: externalTotal / (baseCost + externalTotal) * 100,
+          },
+        };
+        console.log("⚠️ Using OLD model format. Please retrain model for accurate base cost prediction.");
+      } else {
+        throw new Error("Invalid response format from server");
+      }
+
+      setPredictionResult(result);
       Alert.alert(
-        "Cost Prediction",
-        `Estimated Trip Cost: LKR ${data.predicted_cost.toLocaleString(
-          "en-US",
-          {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          }
-        )}`,
+        "Cost Prediction Complete",
+        `Base Cost: LKR ${Math.round(result.base_cost).toLocaleString()}\nExternal Costs: LKR ${Math.round(result.external_costs_total).toLocaleString()}\nTotal: LKR ${Math.round(result.total_trip_cost).toLocaleString()}`,
         [{ text: "OK" }]
       );
     } catch (error: any) {
@@ -262,7 +315,7 @@ export default function TripCostPrediction() {
 
   const handleReset = () => {
     setTripData({
-      boat_type: "MTRB",
+      boat_type: "OFRP",
       engine_hp: "",
       trip_days: "",
       distance_km: "",
@@ -274,11 +327,48 @@ export default function TripCostPrediction() {
       petrol_price_LKR: "195",
       kerosene_price_LKR: "185",
     });
-    setPredictedCost(null);
+    setPredictionResult(null);
+    setExternalCosts([]);
+    setNewCostType("");
+    setNewCostAmount("");
+    setNewCostDescription("");
+  };
+
+  const addExternalCost = () => {
+    if (!newCostType || !newCostAmount) {
+      Alert.alert("Error", "Please enter cost type and amount");
+      return;
+    }
+    const amount = parseFloat(newCostAmount);
+    if (isNaN(amount) || amount <= 0) {
+      Alert.alert("Error", "Please enter a valid amount");
+      return;
+    }
+    setExternalCosts([...externalCosts, {
+      type: newCostType,
+      amount: amount,
+      description: newCostDescription || undefined,
+    }]);
+    setNewCostType("");
+    setNewCostAmount("");
+    setNewCostDescription("");
+  };
+
+  const removeExternalCost = (index: number) => {
+    setExternalCosts(externalCosts.filter((_, i) => i !== index));
   };
 
   const updateField = (field: keyof TripData, value: string) => {
     setTripData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Safe numeric input handler - allows partial input like "12." or ".5" without crashing
+  const handleNumericInput = (field: keyof TripData, value: string) => {
+    // Allow empty string, numbers, and decimal points during typing
+    // Only allow digits, one decimal point, and leading/trailing decimals
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      updateField(field, value);
+    }
   };
 
   return (
@@ -337,11 +427,11 @@ export default function TripCostPrediction() {
                 <TextInput
                   style={styles.input}
                   placeholder="e.g., 150"
-                  keyboardType="numeric"
+                  keyboardType="decimal-pad"
                   value={tripData.engine_hp}
-                  onChangeText={(value) => updateField("engine_hp", value)}
+                  onChangeText={(value) => handleNumericInput("engine_hp", value)}
                 />
-                <Text style={styles.hint}>Range: 5-250 HP</Text>
+                <Text style={styles.hint}>Range: 0-350 HP (0 for non-motorized)</Text>
               </View>
             </View>
 
@@ -357,11 +447,11 @@ export default function TripCostPrediction() {
                   <TextInput
                     style={styles.input}
                     placeholder="e.g., 3"
-                    keyboardType="numeric"
+                    keyboardType="number-pad"
                     value={tripData.trip_days}
-                    onChangeText={(value) => updateField("trip_days", value)}
+                    onChangeText={(value) => handleNumericInput("trip_days", value)}
                   />
-                  <Text style={styles.hint}>1-7 days</Text>
+                  <Text style={styles.hint}>1-30 days (IMUL: 7-30)</Text>
                 </View>
 
                 <View style={styles.inputGroupHalf}>
@@ -369,11 +459,11 @@ export default function TripCostPrediction() {
                   <TextInput
                     style={styles.input}
                     placeholder="e.g., 250"
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                     value={tripData.distance_km}
-                    onChangeText={(value) => updateField("distance_km", value)}
+                    onChangeText={(value) => handleNumericInput("distance_km", value)}
                   />
-                  <Text style={styles.hint}>10-600 km</Text>
+                  <Text style={styles.hint}>1-800 km</Text>
                 </View>
               </View>
 
@@ -452,25 +542,25 @@ export default function TripCostPrediction() {
                   <TextInput
                     style={[styles.input, styles.autoFilledInput]}
                     placeholder="Auto-filled"
-                    keyboardType="numeric"
+                    keyboardType="decimal-pad"
                     value={tripData.wind_kph}
-                    onChangeText={(value) => updateField("wind_kph", value)}
+                    onChangeText={(value) => handleNumericInput("wind_kph", value)}
                     editable={!fetchingWeather}
                   />
-                  <Text style={styles.hint}>5-30 km/h • Live data</Text>
-                </View>
+                <Text style={styles.hint}>3-40 km/h • Live data</Text>
+              </View>
 
-                <View style={styles.inputGroupHalf}>
-                  <Text style={styles.label}>Wave Height (m) *</Text>
-                  <TextInput
-                    style={[styles.input, styles.autoFilledInput]}
-                    placeholder="Auto-filled"
-                    keyboardType="numeric"
-                    value={tripData.wave_m}
-                    onChangeText={(value) => updateField("wave_m", value)}
-                    editable={!fetchingWeather}
-                  />
-                  <Text style={styles.hint}>0.5-4.0 m • Live data</Text>
+              <View style={styles.inputGroupHalf}>
+                <Text style={styles.label}>Wave Height (m) *</Text>
+                <TextInput
+                  style={[styles.input, styles.autoFilledInput]}
+                  placeholder="Auto-filled"
+                  keyboardType="decimal-pad"
+                  value={tripData.wave_m}
+                  onChangeText={(value) => handleNumericInput("wave_m", value)}
+                  editable={!fetchingWeather}
+                />
+                <Text style={styles.hint}>0.2-4.0 m • Live data</Text>
                 </View>
               </View>
 
@@ -484,6 +574,128 @@ export default function TripCostPrediction() {
                   Refresh Weather Data
                 </Text>
               </TouchableOpacity>
+            </View>
+
+            {/* External Costs Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                <Ionicons name="wallet" size={18} /> External Costs (Optional)
+              </Text>
+              <View style={styles.infoBox}>
+                <Ionicons name="information-circle" size={16} color="#3b82f6" />
+                <Text style={styles.infoBoxText}>
+                  Add crew wages, gear costs, food, and other expenses. Base cost (fuel + ice) is predicted by AI. You can add multiple cost items below.
+                </Text>
+              </View>
+
+              {/* Quick Add Buttons */}
+              <View style={styles.quickAddContainer}>
+                <Text style={styles.quickAddLabel}>Quick Add:</Text>
+                <View style={styles.quickAddButtons}>
+                  <TouchableOpacity 
+                    style={styles.quickAddBtn} 
+                    onPress={() => {
+                      setNewCostType('Crew Wages');
+                      setNewCostDescription('');
+                    }}
+                  >
+                    <Text style={styles.quickAddBtnText}>👥 Crew</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.quickAddBtn}
+                    onPress={() => {
+                      setNewCostType('Gear/Equipment');
+                      setNewCostDescription('');
+                    }}
+                  >
+                    <Text style={styles.quickAddBtnText}>🎣 Gear</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.quickAddBtn}
+                    onPress={() => {
+                      setNewCostType('Food & Water');
+                      setNewCostDescription('');
+                    }}
+                  >
+                    <Text style={styles.quickAddBtnText}>🍱 Food</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.quickAddBtn}
+                    onPress={() => {
+                      setNewCostType('Maintenance');
+                      setNewCostDescription('');
+                    }}
+                  >
+                    <Text style={styles.quickAddBtnText}>🔧 Repair</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Existing external costs list */}
+              {externalCosts.length > 0 && (
+                <View style={styles.costsList}>
+                  {externalCosts.map((cost, index) => (
+                    <View key={index} style={styles.costItem}>
+                      <View style={styles.costInfo}>
+                        <Text style={styles.costType}>{cost.type}</Text>
+                        {cost.description && (
+                          <Text style={styles.costDescription}>{cost.description}</Text>
+                        )}
+                      </View>
+                      <View style={styles.costActions}>
+                        <Text style={styles.costAmount}>LKR {cost.amount.toLocaleString()}</Text>
+                        <TouchableOpacity onPress={() => removeExternalCost(index)}>
+                          <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                  <View style={styles.costsTotalRow}>
+                    <Text style={styles.costsTotalLabel}>External Costs Total:</Text>
+                    <Text style={styles.costsTotalAmount}>
+                      LKR {externalCosts.reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Add new external cost */}
+              <View style={styles.addCostForm}>
+                <View style={styles.inputRow}>
+                  <View style={styles.inputGroupHalf}>
+                    <Text style={styles.label}>Cost Type</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., Crew, Gear, Food"
+                      value={newCostType}
+                      onChangeText={setNewCostType}
+                    />
+                  </View>
+                  <View style={styles.inputGroupHalf}>
+                    <Text style={styles.label}>Amount (LKR)</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g., 50000"
+                      keyboardType="numeric"
+                      value={newCostAmount}
+                      onChangeText={setNewCostAmount}
+                    />
+                  </View>
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Description (Optional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g., 4 crew members for 3 days"
+                    value={newCostDescription}
+                    onChangeText={setNewCostDescription}
+                  />
+                </View>
+                <TouchableOpacity style={styles.addButton} onPress={addExternalCost}>
+                  <Ionicons name="add-circle" size={20} color="#ffffff" />
+                  <Text style={styles.addButtonText}>Add External Cost</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Fuel Prices Section */}
@@ -535,7 +747,7 @@ export default function TripCostPrediction() {
             </View>
 
             {/* Prediction Result */}
-            {predictedCost !== null && (
+            {predictionResult !== null && (
               <View style={styles.resultCard}>
                 <LinearGradient
                   colors={["#10b981", "#059669"]}
@@ -544,16 +756,81 @@ export default function TripCostPrediction() {
                   style={styles.resultGradient}
                 >
                   <Ionicons name="checkmark-circle" size={40} color="#ffffff" />
-                  <Text style={styles.resultLabel}>Predicted Trip Cost</Text>
-                  <Text style={styles.resultValue}>
-                    LKR{" "}
-                    {predictedCost.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </Text>
+                  <Text style={styles.resultLabel}>Trip Cost Breakdown</Text>
+                  
+                  {/* Base Cost Section */}
+                  <View style={styles.costBreakdownSection}>
+                    <View style={styles.costMainRow}>
+                      <Text style={styles.costMainLabel}>🔋 Base Cost (Predicted)</Text>
+                      <Text style={styles.costMainValue}>
+                        LKR {Math.round(predictionResult.base_cost).toLocaleString()}
+                      </Text>
+                    </View>
+                    <View style={styles.costSubRow}>
+                      <Text style={styles.costSubLabel}>├─ Fuel Cost</Text>
+                      <Text style={styles.costSubValue}>
+                        LKR {Math.round(predictionResult.fuel_cost_estimate).toLocaleString()}
+                      </Text>
+                    </View>
+                    <View style={styles.costSubRow}>
+                      <Text style={styles.costSubLabel}>└─ Ice Cost</Text>
+                      <Text style={styles.costSubValue}>
+                        LKR {Math.round(predictionResult.ice_cost_estimate).toLocaleString()}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* External Costs Section */}
+                  {predictionResult.external_costs && predictionResult.external_costs.length > 0 ? (
+                    <View style={styles.costBreakdownSection}>
+                      <View style={styles.costMainRow}>
+                        <Text style={styles.costMainLabel}>💼 External Costs (Added)</Text>
+                        <Text style={styles.costMainValue}>
+                          LKR {Math.round(predictionResult.external_costs_total).toLocaleString()}
+                        </Text>
+                      </View>
+                      {predictionResult.external_costs.map((cost, idx) => {
+                        const isLast = idx === predictionResult.external_costs.length - 1;
+                        return (
+                          <View key={idx} style={styles.costSubRow}>
+                            <Text style={styles.costSubLabel}>
+                              {isLast ? '└─' : '├─'} {cost.type}
+                              {cost.description ? ` (${cost.description})` : ''}
+                            </Text>
+                            <Text style={styles.costSubValue}>
+                              LKR {Math.round(cost.amount).toLocaleString()}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <View style={styles.noExternalCosts}>
+                      <Ionicons name="information-circle-outline" size={16} color="#d1fae5" />
+                      <Text style={styles.noExternalCostsText}>
+                        No external costs added. Add crew, gear, or other costs above.
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Total Section */}
+                  <View style={styles.totalSection}>
+                    <View style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>💰 TOTAL TRIP COST</Text>
+                      <Text style={styles.totalValue}>
+                        LKR {Math.round(predictionResult.total_trip_cost).toLocaleString()}
+                      </Text>
+                    </View>
+                    <View style={styles.percentageRow}>
+                      <Text style={styles.percentageText}>
+                        Base: {(predictionResult.breakdown?.base_cost_percentage || 100).toFixed(1)}% | 
+                        External: {(predictionResult.breakdown?.external_costs_percentage || 0).toFixed(1)}%
+                      </Text>
+                    </View>
+                  </View>
+
                   <Text style={styles.resultSubtext}>
-                    Based on ML model with 99% accuracy
+                    ✨ Base cost predicted by ML model with 99.46% accuracy
                   </Text>
                 </LinearGradient>
               </View>
@@ -589,11 +866,15 @@ export default function TripCostPrediction() {
             {/* Info Section */}
             <View style={styles.infoCard}>
               <Ionicons name="information-circle" size={24} color="#3b82f6" />
-              <Text style={styles.infoText}>
-                This prediction uses an AI model trained on 8,000+ fishing trips
-                with 99.46% accuracy. Weather data fetched live from Open-Meteo
-                API.
-              </Text>
+              <View style={{flex: 1}}>
+                <Text style={styles.infoText}>
+                  <Text style={{fontWeight: 'bold'}}>How it works:</Text>{'\n'}
+                  • ML model predicts BASE COST (fuel + ice only){'\n'}
+                  • Add your EXTERNAL COSTS (crew, gear, food, etc.){'\n'}
+                  • Get complete breakdown with total trip cost{'\n\n'}
+                  Model trained on 1,600+ fishing trips with 99.46% accuracy. Weather data fetched live from Open-Meteo API.
+                </Text>
+              </View>
             </View>
           </ScrollView>
         </TouchableWithoutFeedback>
@@ -706,6 +987,91 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 8,
   },
+  costBreakdownSection: {
+    width: '100%',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
+  },
+  costMainRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  costMainLabel: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  costMainValue: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  costSubRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingLeft: 8,
+    marginBottom: 6,
+  },
+  costSubLabel: {
+    color: '#d1fae5',
+    fontSize: 14,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  costSubValue: {
+    color: '#d1fae5',
+    fontSize: 14,
+  },
+  noExternalCosts: {
+    width: '100%',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.2)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  noExternalCostsText: {
+    flex: 1,
+    color: '#d1fae5',
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+  totalSection: {
+    width: '100%',
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 2,
+    borderTopColor: 'rgba(255,255,255,0.4)',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  totalLabel: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  totalValue: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  percentageRow: {
+    alignItems: 'center',
+  },
+  percentageText: {
+    color: '#d1fae5',
+    fontSize: 12,
+  },
   resultValue: {
     fontSize: 32,
     fontWeight: "bold",
@@ -715,6 +1081,7 @@ const styles = StyleSheet.create({
   resultSubtext: {
     fontSize: 12,
     color: "#dcfce7",
+    marginTop: 16,
   },
   buttonContainer: {
     flexDirection: "row",
@@ -825,6 +1192,123 @@ const styles = StyleSheet.create({
   },
   refreshWeatherText: {
     fontSize: 14,
+    color: "#3b82f6",
+    fontWeight: "600",
+  },
+  infoBox: {
+    flexDirection: "row",
+    backgroundColor: "#eff6ff",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  infoBoxText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#1e40af",
+    lineHeight: 18,
+  },
+  costsList: {
+    marginBottom: 16,
+    backgroundColor: "#f9fafb",
+    borderRadius: 8,
+    padding: 12,
+  },
+  costItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+  },
+  costInfo: {
+    flex: 1,
+  },
+  costType: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1f2937",
+    marginBottom: 2,
+  },
+  costDescription: {
+    fontSize: 12,
+    color: "#6b7280",
+  },
+  costActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  costAmount: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#10b981",
+  },
+  costsTotalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingTop: 12,
+    marginTop: 8,
+    borderTopWidth: 2,
+    borderTopColor: "#d1d5db",
+  },
+  costsTotalLabel: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#1f2937",
+  },
+  costsTotalAmount: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#10b981",
+  },
+  addCostForm: {
+    backgroundColor: "#f9fafb",
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 8,
+  },
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#3b82f6",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  addButtonText: {
+    fontSize: 14,
+    color: "#ffffff",
+    fontWeight: "600",
+  },
+  quickAddContainer: {
+    marginBottom: 16,
+  },
+  quickAddLabel: {
+    fontSize: 13,
+    color: "#6b7280",
+    marginBottom: 8,
+    fontWeight: "600",
+  },
+  quickAddButtons: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  quickAddBtn: {
+    backgroundColor: "#eff6ff",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#3b82f6",
+  },
+  quickAddBtnText: {
+    fontSize: 12,
     color: "#3b82f6",
     fontWeight: "600",
   },

@@ -31,7 +31,7 @@ def load_model():
         sys.exit(1)
 
 def predict_cost(input_data, model, scaler, encoders):
-    """Make a cost prediction for the given trip parameters."""
+    """Make a BASE COST prediction (fuel + ice only) for the given trip parameters."""
     try:
         # Create DataFrame from input
         df = pd.DataFrame([input_data])
@@ -60,10 +60,19 @@ def predict_cost(input_data, model, scaler, encoders):
         # Scale features
         df_scaled = scaler.transform(df)
         
-        # Make prediction
-        prediction = model.predict(df_scaled)[0]
+        # Make prediction - BASE COST (fuel + ice)
+        base_cost = model.predict(df_scaled)[0]
         
-        return float(prediction)
+        # Estimate breakdown (approximate ratios from training data)
+        # Fuel is typically 96.2% of base cost, Ice is 3.8%
+        fuel_cost_estimate = base_cost * 0.962
+        ice_cost_estimate = base_cost * 0.038
+        
+        return {
+            'base_cost': float(base_cost),
+            'fuel_cost_estimate': float(fuel_cost_estimate),
+            'ice_cost_estimate': float(ice_cost_estimate)
+        }
     
     except Exception as e:
         print(json.dumps({'error': f'Prediction failed: {str(e)}'}), file=sys.stderr)
@@ -84,13 +93,16 @@ def main():
         # Load model
         model, scaler, encoders = load_model()
         
-        # Make prediction
-        predicted_cost = predict_cost(input_data, model, scaler, encoders)
+        # Make prediction - returns dict with base_cost, fuel_estimate, ice_estimate
+        cost_breakdown = predict_cost(input_data, model, scaler, encoders)
         
-        # Return result as JSON
+        # Return result as JSON with breakdown
         result = {
-            'predicted_cost': predicted_cost,
+            'base_cost': cost_breakdown['base_cost'],
+            'fuel_cost_estimate': cost_breakdown['fuel_cost_estimate'],
+            'ice_cost_estimate': cost_breakdown['ice_cost_estimate'],
             'currency': 'LKR',
+            'note': 'Base cost includes fuel and ice only. Add external costs (crew, gear, etc.) separately.',
             'input_data': input_data
         }
         

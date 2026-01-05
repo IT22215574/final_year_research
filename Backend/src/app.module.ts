@@ -6,6 +6,7 @@ import { diskStorage } from 'multer';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { FishingModule } from './fishing/fishing.module';
+import { MlPredictionModule } from './ml-prediction/ml-prediction.module';
 import * as path from 'path';
 
 @Module({
@@ -34,6 +35,7 @@ import * as path from 'path';
     AuthModule,
     UserModule,
     FishingModule,
+    MlPredictionModule,
   ],
 })
 export class AppModule {}

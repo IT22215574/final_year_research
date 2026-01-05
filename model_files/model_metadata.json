@@ -1,27 +1,35 @@
 {
   "model_name": "XGBoost",
   "feature_names": [
+    "year",
     "boat_type",
     "engine_hp",
     "trip_days",
+    "month",
+    "port_name",
+    "departure_lat",
+    "departure_lon",
+    "fishing_lat",
+    "fishing_lon",
     "distance_km",
     "wind_kph",
     "wave_m",
-    "month",
-    "port_name",
-    "diesel_price_LKR",
-    "petrol_price_LKR",
-    "kerosene_price_LKR"
+    "diesel_liters",
+    "petrol_liters",
+    "kerosene_liters",
+    "water_liters",
+    "water_cost_LKR",
+    "water_cost_share"
   ],
-  "target_name": "total_cost_LKR",
+  "target_name": "base_cost_LKR",
   "categorical_features": [
     "boat_type",
     "port_name"
   ],
-  "test_r2": 0.9945853041717907,
-  "test_rmse": 75495.09128495392,
-  "test_mae": 20349.694090080262,
-  "training_date": "2026-01-04T17:54:18.648773",
+  "test_r2": 0.9822648761182982,
+  "test_rmse": 88100.7667941838,
+  "test_mae": 21449.418254515527,
+  "training_date": "2026-01-05T08:13:06.865674",
   "training_samples": 5120,
   "test_samples": 1280
 }

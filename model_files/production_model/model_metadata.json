@@ -1,0 +1,72 @@
+{
+  "model_info": {
+    "model_name": "Random Forest",
+    "model_type": "MultiOutputRegressor",
+    "training_date": "2026-01-05T10:27:47.187873",
+    "training_samples": 8000,
+    "test_samples": 2000,
+    "performance": {
+      "avg_train_r2": 0.9931400895935988,
+      "avg_test_r2": 0.9826911454023409,
+      "avg_test_rmse": 10356.552806202772,
+      "avg_test_mae": 6846.139143235131,
+      "avg_test_mape": 12.08964937145685,
+      "avg_test_smape": 7.5001327141812855,
+      "r2_gap": 0.010448944191257858
+    },
+    "training_time": 1.4427733421325684,
+    "version": "1.0.0"
+  },
+  "data_info": {
+    "feature_names": [
+      "boat_type",
+      "engine_hp",
+      "fuel_type",
+      "crew_size",
+      "ice_capacity_kg",
+      "water_capacity_L",
+      "avg_speed_kmh",
+      "trip_days",
+      "trip_month",
+      "distance_km",
+      "wind_kph",
+      "wave_height_m",
+      "weather_factor",
+      "region",
+      "is_multi_day",
+      "has_engine",
+      "is_deep_sea"
+    ],
+    "target_names": [
+      "fuel_cost_lkr",
+      "ice_cost_lkr",
+      "water_cost_lkr",
+      "total_base_cost_lkr"
+    ],
+    "categorical_features": [
+      "boat_type",
+      "fuel_type",
+      "region"
+    ],
+    "numerical_features": [
+      "engine_hp",
+      "crew_size",
+      "ice_capacity_kg",
+      "water_capacity_L",
+      "avg_speed_kmh",
+      "trip_days",
+      "trip_month",
+      "distance_km",
+      "wind_kph",
+      "wave_height_m",
+      "weather_factor"
+    ],
+    "total_records": 10000,
+    "train_test_split": 0.2
+  },
+  "preprocessing": {
+    "numerical_scaler": "StandardScaler",
+    "categorical_encoder": "OneHotEncoder",
+    "handle_unknown": "ignore"
+  }
+}
