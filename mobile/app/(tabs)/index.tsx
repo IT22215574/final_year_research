@@ -2,6 +2,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator
 import { useEffect, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
+import API_CONFIG from '@/src/config/api';
 
 interface FishOption {
   fish_id: number;
@@ -22,8 +23,6 @@ interface PriceHistory {
   price: number;
 }
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
-
 export default function HomeScreen() {
   const [fishList, setFishList] = useState<FishOption[]>([]);
   const [selectedFishId, setSelectedFishId] = useState<number | null>(null);
@@ -38,7 +37,7 @@ export default function HomeScreen() {
     const loadFish = async () => {
       try {
         setLoadingFish(true);
-        const res = await axios.get(`${API_BASE}/fish`);
+        const res = await axios.get(`${API_CONFIG.PREDICTION_API}/fish`);
         const data = res.data as FishOption[];
         const list = data.length > 0 ? data : sampleFish;
         setFishList(list);
@@ -72,7 +71,7 @@ export default function HomeScreen() {
     setLoadingPredict(true);
     try {
       const dateStr = selectedDate.toISOString().split('T')[0];
-      const res = await axios.post(`${API_BASE}/predict`, {
+      const res = await axios.post(`${API_CONFIG.PREDICTION_API}/predict`, {
         fish_id: selectedFishId,
         date: dateStr,
       });
