@@ -47,12 +47,6 @@
         }
       ],
       [
-        "react-native-maps",
-        {
-          "useGoogleMaps": true
-        }
-      ],
-      [
         "expo-build-properties",
         {
           "android": {
