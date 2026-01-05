@@ -6,7 +6,8 @@ import pickle
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error
+from sklearn.model_selection import cross_val_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
@@ -111,6 +112,34 @@ def prepare_training_data(df):
     
     return X, y, available_cols, df_processed, le_sinhala
 
+def calculate_detailed_metrics(y_true, y_pred, model_name):
+    """Calculate comprehensive metrics"""
+    mae = mean_absolute_error(y_true, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    r2 = r2_score(y_true, y_pred)
+    mape = mean_absolute_percentage_error(y_true, y_pred)
+    
+    # Calculate accuracy as percentage (1 - normalized MAE)
+    max_price = y_true.max()
+    accuracy_pct = max(0, (1 - (mae / max_price)) * 100)
+    
+    return {
+        'mae': mae,
+        'rmse': rmse,
+        'r2': r2,
+        'mape': mape,
+        'accuracy': accuracy_pct
+    }
+
+def print_model_metrics(model_name, metrics):
+    """Print formatted metrics"""
+    print(f"\n📊 {model_name}:")
+    print(f"   ✓ Accuracy:        {metrics['accuracy']:>7.2f}%")
+    print(f"   ✓ R² Score:        {metrics['r2']:>7.4f}")
+    print(f"   ✓ MAE (Mean Absolute Error):  Rs. {metrics['mae']:>8.2f}")
+    print(f"   ✓ RMSE (Root Mean Squared Error): Rs. {metrics['rmse']:>8.2f}")
+    print(f"   ✓ MAPE (Mean Absolute Percentage Error): {metrics['mape']:>7.2f}%")
+
 def train_model(X, y):
     """Train ensemble prediction models"""
     print("\n" + "="*60)
@@ -148,40 +177,60 @@ def train_model(X, y):
     gb_model.fit(X_train, y_train)
     
     # Evaluate models
-    print("\n" + "-"*60)
-    print("MODEL EVALUATION")
-    print("-"*60)
+    print("\n" + "="*60)
+    print("📊 MODEL EVALUATION")
+    print("="*60)
     
     rf_pred = rf_model.predict(X_test)
     gb_pred = gb_model.predict(X_test)
     ensemble_pred = (rf_pred + gb_pred) / 2
     
-    # Metrics
-    mae_rf = mean_absolute_error(y_test, rf_pred)
-    mae_gb = mean_absolute_error(y_test, gb_pred)
-    mae_ensemble = mean_absolute_error(y_test, ensemble_pred)
+    # Calculate detailed metrics
+    metrics_rf = calculate_detailed_metrics(y_test, rf_pred, "Random Forest")
+    metrics_gb = calculate_detailed_metrics(y_test, gb_pred, "Gradient Boosting")
+    metrics_ensemble = calculate_detailed_metrics(y_test, ensemble_pred, "Ensemble")
     
-    r2_rf = r2_score(y_test, rf_pred)
-    r2_gb = r2_score(y_test, gb_pred)
-    r2_ensemble = r2_score(y_test, ensemble_pred)
+    # Print metrics
+    print_model_metrics("🌳 Random Forest", metrics_rf)
+    print_model_metrics("📈 Gradient Boosting", metrics_gb)
+    print_model_metrics("🎯 Ensemble Model", metrics_ensemble)
     
-    print(f"\n📈 Random Forest:")
-    print(f"   MAE: Rs. {mae_rf:.2f}")
-    print(f"   R² Score: {r2_rf:.4f}")
+    # Cross-validation scores
+    print("\n" + "-"*60)
+    print("🔄 CROSS-VALIDATION SCORES (5-Fold)")
+    print("-"*60)
     
-    print(f"\n📈 Gradient Boosting:")
-    print(f"   MAE: Rs. {mae_gb:.2f}")
-    print(f"   R² Score: {r2_gb:.4f}")
+    cv_scores_rf = cross_val_score(rf_model, X, y, cv=5, scoring='r2')
+    cv_scores_gb = cross_val_score(gb_model, X, y, cv=5, scoring='r2')
     
-    print(f"\n📈 Ensemble Model:")
-    print(f"   MAE: Rs. {mae_ensemble:.2f}")
-    print(f"   R² Score: {r2_ensemble:.4f}")
+    print(f"\n📈 Random Forest CV R² Scores:")
+    print(f"   Fold scores: {[f'{s:.4f}' for s in cv_scores_rf]}")
+    print(f"   Mean: {cv_scores_rf.mean():.4f} (+/- {cv_scores_rf.std():.4f})")
+    
+    print(f"\n📈 Gradient Boosting CV R² Scores:")
+    print(f"   Fold scores: {[f'{s:.4f}' for s in cv_scores_gb]}")
+    print(f"   Mean: {cv_scores_gb.mean():.4f} (+/- {cv_scores_gb.std():.4f})")
+    
+    # Best model selection
+    print("\n" + "="*60)
+    best_accuracy = max(metrics_rf['accuracy'], metrics_gb['accuracy'], metrics_ensemble['accuracy'])
+    if best_accuracy == metrics_ensemble['accuracy']:
+        print("🏆 BEST MODEL: Ensemble (Random Forest + Gradient Boosting)")
+    elif best_accuracy == metrics_gb['accuracy']:
+        print("🏆 BEST MODEL: Gradient Boosting")
+    else:
+        print("🏆 BEST MODEL: Random Forest")
+    print(f"Best Accuracy: {best_accuracy:.2f}%")
+    print("="*60)
     
     # Store metrics for visualization
     metrics = {
         'models': ['Random Forest', 'Gradient Boosting', 'Ensemble'],
-        'mae': [mae_rf, mae_gb, mae_ensemble],
-        'r2': [r2_rf, r2_gb, r2_ensemble],
+        'mae': [metrics_rf['mae'], metrics_gb['mae'], metrics_ensemble['mae']],
+        'rmse': [metrics_rf['rmse'], metrics_gb['rmse'], metrics_ensemble['rmse']],
+        'r2': [metrics_rf['r2'], metrics_gb['r2'], metrics_ensemble['r2']],
+        'accuracy': [metrics_rf['accuracy'], metrics_gb['accuracy'], metrics_ensemble['accuracy']],
+        'mape': [metrics_rf['mape'], metrics_gb['mape'], metrics_ensemble['mape']],
         'predictions': {
             'rf': rf_pred,
             'gb': gb_pred,
