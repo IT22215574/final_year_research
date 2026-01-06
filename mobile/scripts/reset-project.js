@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+npm install socket.io-client@4.6.2 react-native-get-random-values react-native-url-polyfill --legacy-peer-deps#!/usr/bin/env node
 
 /**
  * This script is used to reset the project to a blank state.

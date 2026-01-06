@@ -1,3 +1,5 @@
+import "react-native-get-random-values";
+import "react-native-url-polyfill/auto";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -34,11 +36,7 @@ export default function RootLayout() {
   // Render the navigation stack
   return (
     <>
-      <StatusBar 
-        style="light" 
-        backgroundColor="#3b82f6" 
-        translucent={false}
-      />
+      <StatusBar style="light" backgroundColor="#3b82f6" translucent={false} />
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(root)" options={{ headerShown: false }} />
