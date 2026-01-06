@@ -31,7 +31,10 @@ const Home = () => {
 
   const [selectedCoord, setSelectedCoord] = useState<{ latitude: number; longitude: number } | null>(null);
 
-  const zones = useMemo(() => generateSriLankaDemoZones(inputs, { cellSizeKm: 4 }), [inputs]);
+  const zones = useMemo(
+    () => generateSriLankaDemoZones(inputs, { cellSizeKm: 4, maxCells: 12000 }),
+    [inputs],
+  );
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
