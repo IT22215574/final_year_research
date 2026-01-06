@@ -1,3 +1,4 @@
+import "react-native-gesture-handler";
 import "react-native-get-random-values";
 import "react-native-url-polyfill/auto";
 import { useFonts } from "expo-font";
@@ -7,6 +8,7 @@ import { useEffect } from "react";
 import "react-native-reanimated";
 import "../global.css";
 import { StatusBar } from "expo-status-bar";
+import { Drawer } from "expo-router/drawer";
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();

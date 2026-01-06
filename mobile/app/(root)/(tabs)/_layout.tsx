@@ -15,10 +15,10 @@ import useNotificationStore from "@/stores/notificationStore";
 import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import Overlay from "@/components/Overlay";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 const TabsLayout = () => {
-
+  const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState("home");
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const { currentUser } = useAuthStore();
@@ -40,8 +40,6 @@ const TabsLayout = () => {
       fetchUnreadCount();
     }
   }, [currentUser?.id, fetchUnreadCount]);
-
-
 
   const handleSubmitAd = () => {
     const state = useAuthStore.getState();
@@ -68,7 +66,8 @@ const TabsLayout = () => {
   };
 
   const toggleSidebar = () => {
-    setSidebarVisible(!sidebarVisible);
+    // Open the drawer navigation
+    (navigation as any).openDrawer();
   };
 
   return (
@@ -88,18 +87,21 @@ const TabsLayout = () => {
             fontFamily: "Inter-Bold",
           },
           headerLeft: () => (
-            <View>
-              <TouchableOpacity
-                style={{ marginLeft: 15 }}
-                onPress={toggleSidebar}
-              >
-                <Image
-                  source={icons.burgermenu}
-                  style={styles.menuIcon}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={{
+                marginLeft: 15,
+                padding: 8,
+                backgroundColor: "rgba(255,255,255,0.2)",
+                borderRadius: 8,
+              }}
+              onPress={toggleSidebar}
+            >
+              <Image
+                source={icons.burgermenu}
+                style={styles.menuIcon}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
           ),
           headerRight: () => (
             <TouchableOpacity
@@ -261,36 +263,36 @@ const TabsLayout = () => {
         {/* Navigation Items - This remains exactly the same */}
         <View style={styles.navItemsContainer}>
           {/* ... all your existing navigation items remain the same ... */}
-          
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleTabPress("home", "/(tabs)/home")}
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => handleTabPress("home", "/(tabs)/home")}
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                activeTab === "home" && styles.iconContainerActive,
+              ]}
             >
-              <View
+              <Image
+                source={icons.nav_home}
                 style={[
-                  styles.iconContainer,
-                  activeTab === "home" && styles.iconContainerActive,
+                  styles.navIcon,
+                  activeTab === "home" && styles.navIconActive,
                 ]}
-              >
-                <Image
-                  source={icons.nav_home}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "home" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "home" && styles.navTextActive,
-                ]}
-              >
-                Home
-              </Text>
-            </TouchableOpacity>
-          
+                resizeMode="contain"
+              />
+            </View>
+            <Text
+              style={[
+                styles.navText,
+                activeTab === "home" && styles.navTextActive,
+              ]}
+            >
+              Home
+            </Text>
+          </TouchableOpacity>
+
           {(currentUser?.role === "Teacher" ||
             currentUser?.role === "INTERNAL_TEACHER" ||
             currentUser?.role === "EXTERNAL_TEACHER") && (
@@ -324,36 +326,34 @@ const TabsLayout = () => {
             </TouchableOpacity>
           )}
 
-          
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleTabPress("Market", "/(tabs)/exams")}
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => handleTabPress("Market", "/(tabs)/exams")}
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                activeTab === "Market" && styles.iconContainerActive,
+              ]}
             >
-              <View
+              <Image
+                source={icons.HouseSale}
                 style={[
-                  styles.iconContainer,
-                  activeTab === "Market" && styles.iconContainerActive,
+                  styles.navIcon,
+                  activeTab === "Market" && styles.navIconActive,
                 ]}
-              >
-                <Image
-                  source={icons.HouseSale}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "Market" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "Market" && styles.navTextActive,
-                ]}
-              >
-                Market
-              </Text>
-            </TouchableOpacity>
-          
+                resizeMode="contain"
+              />
+            </View>
+            <Text
+              style={[
+                styles.navText,
+                activeTab === "Market" && styles.navTextActive,
+              ]}
+            >
+              Market
+            </Text>
+          </TouchableOpacity>
 
           {(currentUser?.role === "Teacher" ||
             currentUser?.role === "INTERNAL_TEACHER" ||
@@ -399,9 +399,7 @@ const TabsLayout = () => {
             currentUser?.role == "EXTERNAL_STUDENT") && (
             <TouchableOpacity
               style={styles.navItem}
-              onPress={() =>
-                handleTabPress("Quality", "/(tabs)/Qualitys")
-              }
+              onPress={() => handleTabPress("Quality", "/(tabs)/Qualitys")}
             >
               <View
                 style={[
