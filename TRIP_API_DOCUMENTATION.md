@@ -35,7 +35,7 @@ Save a trip prediction to the database.
   "petrolPriceLKR": 195,
   "kerosenePriceLKR": 185,
   "baseCost": 15234.56,
-  "fuelCostEstimate": 14650.00,
+  "fuelCostEstimate": 14650.0,
   "iceCostEstimate": 584.56,
   "externalCosts": [
     {
@@ -314,7 +314,7 @@ const loadStats = async (userId: string) => {
 {
   _id: ObjectId,
   userId: ObjectId (ref: 'User'),
-  
+
   // Trip Details
   boatType: string,
   engineHp: number,
@@ -326,17 +326,17 @@ const loadStats = async (userId: string) => {
   portName: string,
   fishingZone?: string,
   fishingZoneId?: string,
-  
+
   // Fuel Prices
   dieselPriceLKR: number,
   petrolPriceLKR: number,
   kerosenePriceLKR: number,
-  
+
   // Base Costs (from ML prediction)
   baseCost: number,
   fuelCostEstimate: number,
   iceCostEstimate: number,
-  
+
   // External Costs
   externalCosts: [
     {
@@ -346,23 +346,23 @@ const loadStats = async (userId: string) => {
     }
   ],
   externalCostsTotal: number,
-  
+
   // Total Cost
   totalTripCost: number,
   currency: string,
-  
+
   // Breakdown
   breakdown: {
     baseCostPercentage: number,
     externalCostsPercentage: number
   },
-  
+
   // Trip Status
   status: 'planned' | 'ongoing' | 'completed' | 'cancelled',
   notes?: string,
   startDate?: Date,
   endDate?: Date,
-  
+
   // Timestamps
   createdAt: Date,
   updatedAt: Date
@@ -453,7 +453,7 @@ curl http://localhost:3000/trips/user/your_user_id/stats
 ✅ Trip status management (planned → ongoing → completed)  
 ✅ Fishing zone tracking  
 ✅ Cost breakdown percentages  
-✅ Notes and additional trip details  
+✅ Notes and additional trip details
 
 ---
 
