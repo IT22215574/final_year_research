@@ -1,8 +1,5 @@
-/* eslint-disable prettier/prettier */
 import { GoogleInputProps } from "@/types/type";
 import { Text, View } from "react-native";
-
-/* eslint-disable prettier/prettier */
 const GoogleTextInput = ({
   icon,
   containerStyle,

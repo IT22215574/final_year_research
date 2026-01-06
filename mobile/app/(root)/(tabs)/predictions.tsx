@@ -1,8 +1,7 @@
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useEffect, useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import axios from 'axios';
-import API_CONFIG from '@/src/config/api';
+import API_CONFIG, { getPredictionApiBaseUrls } from '@/src/config/api';
 
 interface FishOption {
   fish_id: number;
@@ -23,6 +22,50 @@ interface PriceHistory {
   price: number;
 }
 
+const fetchJsonWithTimeout = async (url: string, init: RequestInit, timeoutMs: number) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...init, signal: controller.signal });
+    const text = await res.text();
+    const json = text ? JSON.parse(text) : null;
+    if (!res.ok) {
+      const message = (json && typeof json === 'object' && 'message' in json)
+        ? String((json as any).message)
+        : `HTTP ${res.status}`;
+      throw new Error(message);
+    }
+    return json;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const predictionRequest = async <T,>(path: string, init: RequestInit = {}, timeoutMs = 8000): Promise<T> => {
+  const baseUrls = getPredictionApiBaseUrls();
+  let lastError: unknown;
+
+  for (const baseUrl of baseUrls) {
+    const url = `${String(baseUrl).replace(/\/+$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
+    try {
+      return (await fetchJsonWithTimeout(url, init, timeoutMs)) as T;
+    } catch (err: any) {
+      lastError = err;
+      const message = String(err?.message || err || '');
+      const isNetwork =
+        err?.name === 'AbortError' ||
+        err instanceof TypeError ||
+        /Network request failed|Failed to fetch|network/i.test(message);
+
+      if (!isNetwork) throw err;
+    }
+  }
+
+  const tried = getPredictionApiBaseUrls().join(', ');
+  const message = String((lastError as any)?.message || lastError || 'Network request failed');
+  throw new Error(`${message}. Tried: ${tried}`);
+};
+
 export default function PredictionsScreen() {
   const [fishList, setFishList] = useState<FishOption[]>([]);
   const [selectedFishId, setSelectedFishId] = useState<number | null>(null);
@@ -38,10 +81,9 @@ export default function PredictionsScreen() {
     const loadFish = async () => {
       try {
         setLoadingFish(true);
-        const url = `${API_CONFIG.PREDICTION_API}/fish`;
-        const res = await axios.get(url, { timeout: 8000 });
+        console.log('Prediction API base URL candidates:', getPredictionApiBaseUrls());
 
-        const data = res.data as unknown;
+        const data = await predictionRequest<unknown>('/fish', { method: 'GET' }, 8000);
         const list = Array.isArray(data) && data.length > 0 ? (data as FishOption[]) : sampleFish;
 
         setFishList(list);
@@ -79,16 +121,20 @@ export default function PredictionsScreen() {
     setLoadingPredict(true);
     try {
       const dateStr = selectedDate.toISOString().split('T')[0];
-      const res = await axios.post(`${API_CONFIG.PREDICTION_API}/predict`, {
-        fish_id: selectedFishId,
-        date: dateStr,
-      });
-      const data = res.data;
+      const data = await predictionRequest<any>(
+        '/predict',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fish_id: selectedFishId, date: dateStr }),
+        },
+        12000,
+      );
       setPredictedFishId(selectedFishId);
       setPredictedPrice(data.predicted);
       setPriceHistory(data.series as PriceHistory[]);
     } catch (err) {
-      Alert.alert('Prediction failed', 'Please check backend API and try again.');
+      Alert.alert('Prediction failed', err instanceof Error ? err.message : 'Please check backend API and try again.');
     } finally {
       setLoadingPredict(false);
     }
@@ -305,7 +351,9 @@ export default function PredictionsScreen() {
         <View style={styles.card}>
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>📈</Text>
-            <Text style={styles.emptyText}>Select a fish and date, then click "Predict Price" to see the market forecast</Text>
+            <Text style={styles.emptyText}>
+              Select a fish and date, then click {"\"Predict Price\""} to see the market forecast
+            </Text>
           </View>
         </View>
       )}

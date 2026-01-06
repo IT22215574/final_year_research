@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
+import { apiFetch } from "@/utils/api";
 
 interface User {
   id: string;
@@ -68,8 +69,7 @@ const useAuthStore = create<AuthState>((set) => ({
     try {
       // ✅ Call backend signout endpoint (clears cookie sessions for web)
       // ✅ Mobile also clears local tokens below
-      const API = process.env.EXPO_PUBLIC_API_KEY;
-      await fetch(`${API}/api/v1/auth/signout`, {
+      await apiFetch(`/api/v1/auth/signout`, {
         method: "POST",
         credentials: 'include', // Important for cookies
       });
@@ -98,9 +98,8 @@ const useAuthStore = create<AuthState>((set) => ({
 
       if (user) {
         // ✅ Verify with backend that the session is still valid
-        const API = process.env.EXPO_PUBLIC_API_KEY;
         const accessToken = await SecureStore.getItemAsync("access_token");
-        const response = await fetch(`${API}/api/v1/users/profile`, {
+        const response = await apiFetch(`/api/v1/users/profile`, {
           method: "GET",
           credentials: 'include',
           headers: {

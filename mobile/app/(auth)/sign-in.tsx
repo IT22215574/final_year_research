@@ -23,7 +23,8 @@ import { icons } from "@/constants";
 import useAuthStore from "@/stores/authStore";
 import * as SecureStore from "expo-secure-store"; // Import SecureStore
 
-const API = process.env.EXPO_PUBLIC_API_KEY;
+import { apiFetch } from "@/utils/api";
+import { getAuthApiBaseUrls } from "@/src/config/api";
 
 type FormValues = {
   email: string;
@@ -226,10 +227,10 @@ const SignIn = () => {
     
     try {
       console.log("📧 Form data:", data);
-      console.log("🌐 API Base URL:", API);
+      console.log("🌐 API Base URL candidates:", getAuthApiBaseUrls());
       
       // Use direct fetch for sign-in since we don't have token yet
-      const response = await fetch(`${API}/api/v1/auth/signin`, {
+      const response = await apiFetch(`/api/v1/auth/signin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -301,8 +302,11 @@ const SignIn = () => {
           email: "Invalid email or password",
           password: "Invalid email or password",
         });
-      } else if (error.message.includes("network")) {
-        Alert.alert("Network Error", "Please check your internet connection and try again.");
+      } else if (/network request failed|failed to fetch|network/i.test(String(error?.message || ""))) {
+        Alert.alert(
+          "Network Error",
+          `Cannot reach the backend. Tried: ${getAuthApiBaseUrls().join(", ")}`
+        );
       } else {
         Alert.alert("Error", error.message || "Sign in failed. Please try again.");
       }

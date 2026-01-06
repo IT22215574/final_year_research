@@ -17,13 +17,14 @@ import {
   Alert,
   ActivityIndicator
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { AntDesign, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { icons } from "@/constants";
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { apiFetch } from "@/utils/api";
+import { getAuthApiBaseUrls } from "@/src/config/api";
 
 // Data arrays
 const districtZoneData = {
@@ -56,8 +57,7 @@ const districtZoneData = {
 
 const districts = Object.keys(districtZoneData);
 const mediums = ["Sinhala", "Tamil", "English"];
-
-const API = process.env.EXPO_PUBLIC_API_KEY;
+const roles = ["customer", "Fisher man", "Boat owner"];
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -65,6 +65,7 @@ const SignUp = () => {
     phone: "",
     firstName: "",
     lastName: "",
+    role: "customer",
     district: "",
     zone: "",
     medium: "",
@@ -77,6 +78,7 @@ const SignUp = () => {
   const [showZoneDropdown, setShowZoneDropdown] = useState(false);
   const [showGradeDropdown, setShowGradeDropdown] = useState(false);
   const [showMediumDropdown, setShowMediumDropdown] = useState(false);
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [availableZones, setAvailableZones] = useState<string[]>([]);
   const [tempDate, setTempDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
@@ -162,6 +164,11 @@ const SignUp = () => {
     setShowMediumDropdown(false);
   };
 
+  const handleRoleSelect = (role: string) => {
+    handleChange("role", role);
+    setShowRoleDropdown(false);
+  };
+
   // Dropdown selection handlers
   const handleDistrictSelect = (district: string) => {
     handleChange("district", district);
@@ -198,6 +205,11 @@ const handleSignUp = async () => {
     return;
   }
 
+  if (!formData.role) {
+    Alert.alert("Error", "Please select a role");
+    return;
+  }
+
   if (formData.password !== formData.confirmPassword) {
     Alert.alert("Error", "Passwords do not match");
     return;
@@ -230,7 +242,7 @@ const handleSignUp = async () => {
       password: formData.password,
       firstName: firstName,
       lastName: lastName,
-      role: "customer",
+      role: formData.role,
       // Optional fields
       ...(formData.district && { district: formData.district }),
       ...(formData.zone && { zone: formData.zone }),
@@ -238,10 +250,10 @@ const handleSignUp = async () => {
 
     };
 
-    console.log("📤 Sending signup request to:", `${API}/api/v1/auth/complete-signup`);
+    console.log("📤 Sending signup request. API candidates:", getAuthApiBaseUrls());
     console.log("📦 Request body:", JSON.stringify(requestBody, null, 2));
 
-    const response = await fetch(`${API}/api/v1/auth/complete-signup`, {
+    const response = await apiFetch(`/api/v1/auth/complete-signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -300,6 +312,7 @@ const handleSignUp = async () => {
               phone: "",
               firstName: "",
               lastName: "",
+              role: "customer",
               district: "",
               zone: "",
               medium: "",
@@ -574,6 +587,46 @@ const handleSignUp = async () => {
                   autoCorrect={false}
                 />
               </View>
+            </View>
+
+            {/* Role */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>
+                Role <Text style={styles.required}>*</Text>
+              </Text>
+              <TouchableOpacity
+                style={styles.inputWrapper}
+                onPress={() => setShowRoleDropdown(true)}
+              >
+                <MaterialIcons name="person-outline" size={18} color="#999" style={styles.icon} />
+                <Text style={[styles.textInput, !formData.role && { color: '#9ca3af' }]}>
+                  {formData.role || "Select Role"}
+                </Text>
+                <AntDesign name="down" size={16} color="#999" />
+              </TouchableOpacity>
+
+              <Modal
+                visible={showRoleDropdown}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowRoleDropdown(false)}
+              >
+                <TouchableWithoutFeedback onPress={() => setShowRoleDropdown(false)}>
+                  <View style={styles.modalOverlay}>
+                    <View style={styles.dropdownContainer}>
+                      <FlatList
+                        data={roles}
+                        keyExtractor={(item) => item}
+                        renderItem={({ item }) => renderDropdownItem({
+                          item,
+                          onSelect: handleRoleSelect
+                        })}
+                        showsVerticalScrollIndicator={false}
+                      />
+                    </View>
+                  </View>
+                </TouchableWithoutFeedback>
+              </Modal>
             </View>
 
             {/* Other Info Section */}

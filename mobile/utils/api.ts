@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import API_CONFIG from '@/src/config/api';
+import API_CONFIG, { getAuthApiBaseUrls } from '@/src/config/api';
 
 const normalizeUrl = (baseUrl: string, endpoint: string) => {
   const base = String(baseUrl).replace(/\/$/, '');
@@ -8,13 +8,7 @@ const normalizeUrl = (baseUrl: string, endpoint: string) => {
 };
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
-  const apiBaseUrl =
-    API_CONFIG.AUTH_API ||
-    process.env.EXPO_PUBLIC_AUTH_URL ||
-    process.env.EXPO_PUBLIC_API_KEY ||
-    'http://localhost:5000';
-
-  const url = normalizeUrl(apiBaseUrl, endpoint);
+  const baseUrls = getAuthApiBaseUrls();
 
   const accessToken = await SecureStore.getItemAsync('access_token');
   const extraHeaders = (options.headers || {}) as Record<string, string>;
@@ -26,9 +20,27 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     ...extraHeaders,
   };
 
-  return fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
+  let lastError: unknown;
+  for (const baseUrl of baseUrls) {
+    const url = normalizeUrl(baseUrl, endpoint);
+    try {
+      return await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include',
+      });
+    } catch (err: any) {
+      lastError = err;
+      const message = String(err?.message || err || '');
+      const isNetwork =
+        err instanceof TypeError ||
+        /Network request failed|Failed to fetch|network/i.test(message);
+
+      if (!isNetwork) throw err;
+    }
+  }
+
+  const tried = baseUrls.join(', ');
+  const message = String((lastError as any)?.message || lastError || 'Network request failed');
+  throw new Error(`${message}. Tried: ${tried}`);
 };
