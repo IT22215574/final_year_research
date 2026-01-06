@@ -43,6 +43,12 @@ function CustomDrawerContent(props: any) {
       activeIcon: "calculator",
     },
     {
+      name: "External Costs",
+      route: "/(root)/(fisherman)/external-costs",
+      icon: "wallet-outline",
+      activeIcon: "wallet",
+    },
+    {
       name: "My Trips",
       route: "/(root)/(fisherman)/my-trips",
       icon: "boat",
@@ -162,6 +168,14 @@ export default function FishermanLayout() {
         options={{
           drawerLabel: "Trip Cost Predictor",
           title: "Trip Cost Prediction",
+          headerShown: true,
+        }}
+      />
+      <Drawer.Screen
+        name="external-costs"
+        options={{
+          drawerLabel: "External Costs",
+          title: "External Costs Manager",
           headerShown: true,
         }}
       />

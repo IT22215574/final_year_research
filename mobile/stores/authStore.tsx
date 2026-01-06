@@ -2,6 +2,7 @@ import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface User {
+  _id?: string;
   id: string;
   phone: string;
   email: string;
@@ -33,19 +34,19 @@ const useAuthStore = create<AuthState>((set) => ({
       if (!user) {
         throw new Error("Invalid user data");
       }
-      
+
       // ✅ Updated validation for new structure
       if (!user.id || !user.email) {
         throw new Error("Invalid user data structure");
       }
-      
+
       // ✅ For cookie-based auth, we only store user data
       // Tokens are handled automatically via HTTP-only cookies
       set({ isSignedIn: true, currentUser: user });
-      
+
       // ✅ Only store user data, not tokens
       await AsyncStorage.setItem("user", JSON.stringify(user));
-      
+
       console.log("✅ User signed in successfully:", user.email);
     } catch (error) {
       console.error("Sign-in error:", error);
@@ -59,12 +60,12 @@ const useAuthStore = create<AuthState>((set) => ({
       const API = process.env.EXPO_PUBLIC_API_KEY;
       await fetch(`${API}/api/v1/auth/logout`, {
         method: "POST",
-        credentials: 'include', // Important for cookies
+        credentials: "include", // Important for cookies
       });
-      
+
       set({ isSignedIn: false, currentUser: null });
       await AsyncStorage.removeItem("user");
-      
+
       console.log("✅ User signed out successfully");
     } catch (error) {
       console.error("Sign-out error:", error);
@@ -83,9 +84,9 @@ const useAuthStore = create<AuthState>((set) => ({
         // ✅ Verify with backend that the session is still valid
         const API = process.env.EXPO_PUBLIC_API_KEY;
         const response = await fetch(`${API}/api/v1/auth/profile`, {
-          credentials: 'include', // Important for cookies
+          credentials: "include", // Important for cookies
         });
-        
+
         if (response.ok) {
           set({ isSignedIn: true, currentUser: user });
         } else {
@@ -107,7 +108,7 @@ const useAuthStore = create<AuthState>((set) => ({
       set((state) => ({
         currentUser: state.currentUser
           ? { ...state.currentUser, ...updates }
-          : { ...updates } as User,
+          : ({ ...updates } as User),
       }));
 
       const currentUser = useAuthStore.getState().currentUser;

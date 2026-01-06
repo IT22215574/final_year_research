@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Picker } from "@react-native-picker/picker";
+import { router, useFocusEffect } from "expo-router";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import useAuthStore from "@/stores/authStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -27,8 +28,12 @@ import axios from "axios";
 const API = process.env.EXPO_PUBLIC_API_KEY;
 
 interface ExternalCost {
-  type: string;
+  _id?: string;
+  costType: string;
+  unit: string;
+  unitPrice: number;
   amount: number;
+  totalPrice: number;
   description?: string;
 }
 
@@ -85,32 +90,137 @@ interface FishingZone {
 
 const fishingZones: FishingZone[] = [
   // West Coast Zones
-  { id: "WC1", name: "Colombo Deep Sea Zone", lat: 6.5, lon: 79.5, depth_m: 800, fish_types: ["Tuna", "Swordfish", "Marlin"], region: "West" },
-  { id: "WC2", name: "Negombo Lagoon Zone", lat: 7.35, lon: 79.7, depth_m: 450, fish_types: ["Skipjack", "Yellowfin"], region: "West" },
-  { id: "WC3", name: "Chilaw Offshore Zone", lat: 7.8, lon: 79.6, depth_m: 600, fish_types: ["Barracuda", "Mackerel"], region: "West" },
-  { id: "WC4", name: "Kalpitiya Deep Waters", lat: 8.5, lon: 79.5, depth_m: 950, fish_types: ["Tuna", "Sailfish"], region: "West" },
-  
+  {
+    id: "WC1",
+    name: "Colombo Deep Sea Zone",
+    lat: 6.5,
+    lon: 79.5,
+    depth_m: 800,
+    fish_types: ["Tuna", "Swordfish", "Marlin"],
+    region: "West",
+  },
+  {
+    id: "WC2",
+    name: "Negombo Lagoon Zone",
+    lat: 7.35,
+    lon: 79.7,
+    depth_m: 450,
+    fish_types: ["Skipjack", "Yellowfin"],
+    region: "West",
+  },
+  {
+    id: "WC3",
+    name: "Chilaw Offshore Zone",
+    lat: 7.8,
+    lon: 79.6,
+    depth_m: 600,
+    fish_types: ["Barracuda", "Mackerel"],
+    region: "West",
+  },
+  {
+    id: "WC4",
+    name: "Kalpitiya Deep Waters",
+    lat: 8.5,
+    lon: 79.5,
+    depth_m: 950,
+    fish_types: ["Tuna", "Sailfish"],
+    region: "West",
+  },
+
   // South Coast Zones
-  { id: "SC1", name: "Galle Continental Shelf", lat: 5.8, lon: 80.0, depth_m: 700, fish_types: ["Snapper", "Grouper"], region: "South" },
-  { id: "SC2", name: "Matara Deep Zone", lat: 5.7, lon: 80.5, depth_m: 850, fish_types: ["Tuna", "Swordfish"], region: "South" },
-  { id: "SC3", name: "Tangalle Fishing Grounds", lat: 6.0, lon: 80.8, depth_m: 600, fish_types: ["Kingfish", "Barracuda"], region: "South" },
-  
+  {
+    id: "SC1",
+    name: "Galle Continental Shelf",
+    lat: 5.8,
+    lon: 80.0,
+    depth_m: 700,
+    fish_types: ["Snapper", "Grouper"],
+    region: "South",
+  },
+  {
+    id: "SC2",
+    name: "Matara Deep Zone",
+    lat: 5.7,
+    lon: 80.5,
+    depth_m: 850,
+    fish_types: ["Tuna", "Swordfish"],
+    region: "South",
+  },
+  {
+    id: "SC3",
+    name: "Tangalle Fishing Grounds",
+    lat: 6.0,
+    lon: 80.8,
+    depth_m: 600,
+    fish_types: ["Kingfish", "Barracuda"],
+    region: "South",
+  },
+
   // East Coast Zones
-  { id: "EC1", name: "Trincomalee Bay Zone", lat: 8.8, lon: 81.5, depth_m: 500, fish_types: ["Trevally", "Grouper"], region: "East" },
-  { id: "EC2", name: "Batticaloa Offshore", lat: 7.5, lon: 82.0, depth_m: 650, fish_types: ["Tuna", "Mackerel"], region: "East" },
-  { id: "EC3", name: "Kalmunai Deep Waters", lat: 7.2, lon: 81.9, depth_m: 750, fish_types: ["Sailfish", "Marlin"], region: "East" },
-  
+  {
+    id: "EC1",
+    name: "Trincomalee Bay Zone",
+    lat: 8.8,
+    lon: 81.5,
+    depth_m: 500,
+    fish_types: ["Trevally", "Grouper"],
+    region: "East",
+  },
+  {
+    id: "EC2",
+    name: "Batticaloa Offshore",
+    lat: 7.5,
+    lon: 82.0,
+    depth_m: 650,
+    fish_types: ["Tuna", "Mackerel"],
+    region: "East",
+  },
+  {
+    id: "EC3",
+    name: "Kalmunai Deep Waters",
+    lat: 7.2,
+    lon: 81.9,
+    depth_m: 750,
+    fish_types: ["Sailfish", "Marlin"],
+    region: "East",
+  },
+
   // North Coast Zones
-  { id: "NC1", name: "Jaffna Peninsula Zone", lat: 10.0, lon: 80.2, depth_m: 400, fish_types: ["Snapper", "Trevally"], region: "North" },
-  { id: "NC2", name: "Mannar Gulf Zone", lat: 9.2, lon: 79.6, depth_m: 550, fish_types: ["Barracuda", "Kingfish"], region: "North" },
-  { id: "NC3", name: "Point Pedro Deep Sea", lat: 9.9, lon: 80.5, depth_m: 800, fish_types: ["Tuna", "Swordfish"], region: "North" },
+  {
+    id: "NC1",
+    name: "Jaffna Peninsula Zone",
+    lat: 10.0,
+    lon: 80.2,
+    depth_m: 400,
+    fish_types: ["Snapper", "Trevally"],
+    region: "North",
+  },
+  {
+    id: "NC2",
+    name: "Mannar Gulf Zone",
+    lat: 9.2,
+    lon: 79.6,
+    depth_m: 550,
+    fish_types: ["Barracuda", "Kingfish"],
+    region: "North",
+  },
+  {
+    id: "NC3",
+    name: "Point Pedro Deep Sea",
+    lat: 9.9,
+    lon: 80.5,
+    depth_m: 800,
+    fish_types: ["Tuna", "Swordfish"],
+    region: "North",
+  },
 ];
 
 export default function TripCostPrediction() {
   const { currentUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [fetchingWeather, setFetchingWeather] = useState(false);
-  const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
+  const [predictionResult, setPredictionResult] =
+    useState<PredictionResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [tripData, setTripData] = useState<TripData>({
     boat_type: "OFRP",
@@ -127,12 +237,51 @@ export default function TripCostPrediction() {
   });
 
   const [externalCosts, setExternalCosts] = useState<ExternalCost[]>([]);
-  const [newCostType, setNewCostType] = useState("");
+  const [loadingExternalCosts, setLoadingExternalCosts] = useState(false);
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [selectedZone, setSelectedZone] = useState<FishingZone | null>(null);
   const [hoveredZone, setHoveredZone] = useState<FishingZone | null>(null);
-  const [newCostAmount, setNewCostAmount] = useState("");
-  const [newCostDescription, setNewCostDescription] = useState("");
+
+  // Load external costs from backend
+  useEffect(() => {
+    loadExternalCosts();
+  }, []);
+
+  // Reload costs when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadExternalCosts();
+    }, [])
+  );
+
+  const loadExternalCosts = async () => {
+    try {
+      setLoadingExternalCosts(true);
+      const token = await AsyncStorage.getItem("authToken");
+      const userId = currentUser?._id || currentUser?.id;
+      console.log("Loading external costs for user:", userId);
+
+      if (!userId) {
+        console.error("No user ID found");
+        setLoadingExternalCosts(false);
+        return;
+      }
+
+      const response = await axios.get(
+        `${API}/api/v1/external-costs?userId=${userId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      console.log("Loaded external costs:", response.data);
+      setExternalCosts(response.data);
+    } catch (error) {
+      console.error("Error loading external costs:", error);
+      // Don't show alert, just continue with empty costs
+    } finally {
+      setLoadingExternalCosts(false);
+    }
+  };
 
   const boatTypes = [
     { label: "OFRP - Outboard Fiber Reinforced Boat", value: "OFRP" },
@@ -285,7 +434,12 @@ export default function TripCostPrediction() {
         diesel_price_LKR: parseFloat(tripData.diesel_price_LKR),
         petrol_price_LKR: parseFloat(tripData.petrol_price_LKR),
         kerosene_price_LKR: parseFloat(tripData.kerosene_price_LKR),
-        external_costs: externalCosts,
+        // Transform external costs to match backend DTO format
+        external_costs: externalCosts.map((cost) => ({
+          type: cost.costType,
+          amount: cost.totalPrice,
+          description: cost.description || undefined,
+        })),
       };
 
       console.log("Sending prediction request:", requestData);
@@ -300,9 +454,9 @@ export default function TripCostPrediction() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.message 
-          ? Array.isArray(errorData.message) 
-            ? errorData.message.join(", ") 
+        const errorMessage = errorData.message
+          ? Array.isArray(errorData.message)
+            ? errorData.message.join(", ")
             : errorData.message
           : "Failed to get prediction";
         throw new Error(errorMessage);
@@ -313,14 +467,17 @@ export default function TripCostPrediction() {
 
       // Handle both old and new response formats
       let result: PredictionResult;
-      
+
       if (data.base_cost !== undefined) {
         // New format with base_cost breakdown
         result = data;
       } else if (data.predicted_cost !== undefined) {
         // Old format (backward compatibility) - treat predicted_cost as base_cost
         const baseCost = data.predicted_cost;
-        const externalTotal = externalCosts.reduce((sum, c) => sum + c.amount, 0);
+        const externalTotal = externalCosts.reduce(
+          (sum, c) => sum + c.amount,
+          0
+        );
         result = {
           base_cost: baseCost,
           fuel_cost_estimate: baseCost * 0.962,
@@ -328,13 +485,16 @@ export default function TripCostPrediction() {
           external_costs: externalCosts,
           external_costs_total: externalTotal,
           total_trip_cost: baseCost + externalTotal,
-          currency: 'LKR',
+          currency: "LKR",
           breakdown: {
-            base_cost_percentage: baseCost / (baseCost + externalTotal) * 100,
-            external_costs_percentage: externalTotal / (baseCost + externalTotal) * 100,
+            base_cost_percentage: (baseCost / (baseCost + externalTotal)) * 100,
+            external_costs_percentage:
+              (externalTotal / (baseCost + externalTotal)) * 100,
           },
         };
-        console.log("⚠️ Using OLD model format. Please retrain model for accurate base cost prediction.");
+        console.log(
+          "⚠️ Using OLD model format. Please retrain model for accurate base cost prediction."
+        );
       } else {
         throw new Error("Invalid response format from server");
       }
@@ -342,7 +502,13 @@ export default function TripCostPrediction() {
       setPredictionResult(result);
       Alert.alert(
         "Cost Prediction Complete",
-        `Base Cost: LKR ${Math.round(result.base_cost).toLocaleString()}\nExternal Costs: LKR ${Math.round(result.external_costs_total).toLocaleString()}\nTotal: LKR ${Math.round(result.total_trip_cost).toLocaleString()}`,
+        `Base Cost: LKR ${Math.round(
+          result.base_cost
+        ).toLocaleString()}\nExternal Costs: LKR ${Math.round(
+          result.external_costs_total
+        ).toLocaleString()}\nTotal: LKR ${Math.round(
+          result.total_trip_cost
+        ).toLocaleString()}`,
         [{ text: "OK" }]
       );
     } catch (error: any) {
@@ -372,9 +538,6 @@ export default function TripCostPrediction() {
     });
     setPredictionResult(null);
     setExternalCosts([]);
-    setNewCostType("");
-    setNewCostAmount("");
-    setNewCostDescription("");
     setSelectedZone(null);
   };
 
@@ -389,7 +552,7 @@ export default function TripCostPrediction() {
       const userJson = await AsyncStorage.getItem("user");
       const user = userJson ? JSON.parse(userJson) : null;
       const userId = user?.id;
-      
+
       if (!userId) {
         Alert.alert("Error", "User not logged in. Please sign in first.");
         return;
@@ -427,44 +590,19 @@ export default function TripCostPrediction() {
         Alert.alert(
           "Trip Saved!",
           "Your trip has been saved successfully. You can view it in My Trips.",
-          [
-            { text: "OK", onPress: () => handleReset() }
-          ]
+          [{ text: "OK", onPress: () => handleReset() }]
         );
       }
     } catch (error: any) {
       console.error("Save trip error:", error);
       Alert.alert(
         "Error",
-        error.response?.data?.message || "Failed to save trip. Please try again."
+        error.response?.data?.message ||
+          "Failed to save trip. Please try again."
       );
     } finally {
       setSaving(false);
     }
-  };
-
-  const addExternalCost = () => {
-    if (!newCostType || !newCostAmount) {
-      Alert.alert("Error", "Please enter cost type and amount");
-      return;
-    }
-    const amount = parseFloat(newCostAmount);
-    if (isNaN(amount) || amount <= 0) {
-      Alert.alert("Error", "Please enter a valid amount");
-      return;
-    }
-    setExternalCosts([...externalCosts, {
-      type: newCostType,
-      amount: amount,
-      description: newCostDescription || undefined,
-    }]);
-    setNewCostType("");
-    setNewCostAmount("");
-    setNewCostDescription("");
-  };
-
-  const removeExternalCost = (index: number) => {
-    setExternalCosts(externalCosts.filter((_, i) => i !== index));
   };
 
   const updateField = (field: keyof TripData, value: string) => {
@@ -475,20 +613,27 @@ export default function TripCostPrediction() {
   const handleNumericInput = (field: keyof TripData, value: string) => {
     // Allow empty string, numbers, and decimal points during typing
     // Only allow digits, one decimal point, and leading/trailing decimals
-    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+    if (value === "" || /^\d*\.?\d*$/.test(value)) {
       updateField(field, value);
     }
   };
 
   // Calculate distance between two coordinates (Haversine formula)
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number => {
     const R = 6371; // Earth's radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
@@ -496,7 +641,7 @@ export default function TripCostPrediction() {
   // Handle fishing zone selection (set as destination)
   const handleZoneSelect = (zone: FishingZone) => {
     setSelectedZone(zone);
-    
+
     // Get current port coordinates
     const portCoords = portCoordinates[tripData.port_name];
     if (portCoords) {
@@ -507,17 +652,23 @@ export default function TripCostPrediction() {
         zone.lat,
         zone.lon
       );
-      
+
       // Update distance field (round to 1 decimal place)
       updateField("distance_km", distance.toFixed(1));
-      
+
       Alert.alert(
         "✅ Destination Set",
-        `${zone.name}\n\n📍 Distance from ${tripData.port_name}: ${distance.toFixed(1)} km\n📊 Depth: ${zone.depth_m}m\n🐟 Target Fish: ${zone.fish_types.join(", ")}\n\nThe distance has been automatically set for cost prediction.`,
+        `${zone.name}\n\n📍 Distance from ${
+          tripData.port_name
+        }: ${distance.toFixed(1)} km\n📊 Depth: ${
+          zone.depth_m
+        }m\n🐟 Target Fish: ${zone.fish_types.join(
+          ", "
+        )}\n\nThe distance has been automatically set for cost prediction.`,
         [{ text: "OK" }]
       );
     }
-    
+
     setHoveredZone(null);
     setShowZoneModal(false);
   };
@@ -585,9 +736,13 @@ export default function TripCostPrediction() {
                   placeholder="e.g., 150"
                   keyboardType="decimal-pad"
                   value={tripData.engine_hp}
-                  onChangeText={(value) => handleNumericInput("engine_hp", value)}
+                  onChangeText={(value) =>
+                    handleNumericInput("engine_hp", value)
+                  }
                 />
-                <Text style={styles.hint}>Range: 0-350 HP (0 for non-motorized)</Text>
+                <Text style={styles.hint}>
+                  Range: 0-350 HP (0 for non-motorized)
+                </Text>
               </View>
             </View>
 
@@ -605,7 +760,9 @@ export default function TripCostPrediction() {
                     placeholder="e.g., 3"
                     keyboardType="number-pad"
                     value={tripData.trip_days}
-                    onChangeText={(value) => handleNumericInput("trip_days", value)}
+                    onChangeText={(value) =>
+                      handleNumericInput("trip_days", value)
+                    }
                   />
                   <Text style={styles.hint}>1-30 days (IMUL: 7-30)</Text>
                 </View>
@@ -617,7 +774,9 @@ export default function TripCostPrediction() {
                     placeholder="e.g., 250"
                     keyboardType="decimal-pad"
                     value={tripData.distance_km}
-                    onChangeText={(value) => handleNumericInput("distance_km", value)}
+                    onChangeText={(value) =>
+                      handleNumericInput("distance_km", value)
+                    }
                   />
                   <Text style={styles.hint}>1-800 km</Text>
                 </View>
@@ -639,7 +798,8 @@ export default function TripCostPrediction() {
                 {selectedZone && (
                   <View style={styles.zoneInfo}>
                     <Text style={styles.zoneInfoText}>
-                      📍 Distance: {tripData.distance_km} km • Depth: {selectedZone.depth_m}m
+                      📍 Distance: {tripData.distance_km} km • Depth:{" "}
+                      {selectedZone.depth_m}m
                     </Text>
                     <Text style={styles.zoneInfoText}>
                       🐟 {selectedZone.fish_types.join(", ")}
@@ -728,23 +888,27 @@ export default function TripCostPrediction() {
                     placeholder="Auto-filled"
                     keyboardType="decimal-pad"
                     value={tripData.wind_kph}
-                    onChangeText={(value) => handleNumericInput("wind_kph", value)}
+                    onChangeText={(value) =>
+                      handleNumericInput("wind_kph", value)
+                    }
                     editable={!fetchingWeather}
                   />
-                <Text style={styles.hint}>3-40 km/h • Live data</Text>
-              </View>
+                  <Text style={styles.hint}>3-40 km/h • Live data</Text>
+                </View>
 
-              <View style={styles.inputGroupHalf}>
-                <Text style={styles.label}>Wave Height (m) *</Text>
-                <TextInput
-                  style={[styles.input, styles.autoFilledInput]}
-                  placeholder="Auto-filled"
-                  keyboardType="decimal-pad"
-                  value={tripData.wave_m}
-                  onChangeText={(value) => handleNumericInput("wave_m", value)}
-                  editable={!fetchingWeather}
-                />
-                <Text style={styles.hint}>0.2-4.0 m • Live data</Text>
+                <View style={styles.inputGroupHalf}>
+                  <Text style={styles.label}>Wave Height (m) *</Text>
+                  <TextInput
+                    style={[styles.input, styles.autoFilledInput]}
+                    placeholder="Auto-filled"
+                    keyboardType="decimal-pad"
+                    value={tripData.wave_m}
+                    onChangeText={(value) =>
+                      handleNumericInput("wave_m", value)
+                    }
+                    editable={!fetchingWeather}
+                  />
+                  <Text style={styles.hint}>0.2-4.0 m • Live data</Text>
                 </View>
               </View>
 
@@ -762,124 +926,85 @@ export default function TripCostPrediction() {
 
             {/* External Costs Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>
-                <Ionicons name="wallet" size={18} /> External Costs (Optional)
-              </Text>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>
+                  <Ionicons name="wallet" size={18} /> External Costs
+                </Text>
+                <TouchableOpacity
+                  style={styles.manageButton}
+                  onPress={() => {
+                    console.log(
+                      "Manage button pressed - navigating to external-costs"
+                    );
+                    router.push("/(root)/(fisherman)/external-costs");
+                  }}
+                >
+                  <Ionicons name="settings-outline" size={18} color="#3b82f6" />
+                  <Text style={styles.manageButtonText}>Manage</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.infoBox}>
                 <Ionicons name="information-circle" size={16} color="#3b82f6" />
                 <Text style={styles.infoBoxText}>
-                  Add crew wages, gear costs, food, and other expenses. Base cost (fuel + ice) is predicted by AI. You can add multiple cost items below.
+                  External costs are loaded from your saved costs. Tap "Manage"
+                  to add/edit/delete costs in the External Costs Manager.
                 </Text>
               </View>
 
-              {/* Quick Add Buttons */}
-              <View style={styles.quickAddContainer}>
-                <Text style={styles.quickAddLabel}>Quick Add:</Text>
-                <View style={styles.quickAddButtons}>
-                  <TouchableOpacity 
-                    style={styles.quickAddBtn} 
-                    onPress={() => {
-                      setNewCostType('Crew Wages');
-                      setNewCostDescription('');
-                    }}
-                  >
-                    <Text style={styles.quickAddBtnText}>👥 Crew</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.quickAddBtn}
-                    onPress={() => {
-                      setNewCostType('Gear/Equipment');
-                      setNewCostDescription('');
-                    }}
-                  >
-                    <Text style={styles.quickAddBtnText}>🎣 Gear</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.quickAddBtn}
-                    onPress={() => {
-                      setNewCostType('Food & Water');
-                      setNewCostDescription('');
-                    }}
-                  >
-                    <Text style={styles.quickAddBtnText}>🍱 Food</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.quickAddBtn}
-                    onPress={() => {
-                      setNewCostType('Maintenance');
-                      setNewCostDescription('');
-                    }}
-                  >
-                    <Text style={styles.quickAddBtnText}>🔧 Repair</Text>
-                  </TouchableOpacity>
+              {/* Loaded external costs from backend */}
+              {loadingExternalCosts ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color="#3b82f6" />
+                  <Text style={styles.loadingText}>
+                    Loading external costs...
+                  </Text>
                 </View>
-              </View>
-
-              {/* Existing external costs list */}
-              {externalCosts.length > 0 && (
+              ) : externalCosts.length > 0 ? (
                 <View style={styles.costsList}>
-                  {externalCosts.map((cost, index) => (
-                    <View key={index} style={styles.costItem}>
+                  {externalCosts.map((cost) => (
+                    <View key={cost._id} style={styles.costItem}>
                       <View style={styles.costInfo}>
-                        <Text style={styles.costType}>{cost.type}</Text>
+                        <Text style={styles.costType}>{cost.costType}</Text>
+                        <Text style={styles.costDescription}>
+                          {cost.amount} {cost.unit} × LKR{" "}
+                          {cost.unitPrice.toLocaleString()}
+                        </Text>
                         {cost.description && (
-                          <Text style={styles.costDescription}>{cost.description}</Text>
+                          <Text style={styles.costDescription}>
+                            {cost.description}
+                          </Text>
                         )}
                       </View>
                       <View style={styles.costActions}>
-                        <Text style={styles.costAmount}>LKR {cost.amount.toLocaleString()}</Text>
-                        <TouchableOpacity onPress={() => removeExternalCost(index)}>
-                          <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                        </TouchableOpacity>
+                        <Text style={styles.costAmount}>
+                          LKR {cost.totalPrice.toLocaleString()}
+                        </Text>
                       </View>
                     </View>
                   ))}
                   <View style={styles.costsTotalRow}>
-                    <Text style={styles.costsTotalLabel}>External Costs Total:</Text>
+                    <Text style={styles.costsTotalLabel}>
+                      External Costs Total:
+                    </Text>
                     <Text style={styles.costsTotalAmount}>
-                      LKR {externalCosts.reduce((sum, c) => sum + c.amount, 0).toLocaleString()}
+                      LKR{" "}
+                      {externalCosts
+                        .reduce((sum, c) => sum + c.totalPrice, 0)
+                        .toLocaleString()}
                     </Text>
                   </View>
                 </View>
+              ) : (
+                <View style={styles.emptyStateSmall}>
+                  <Ionicons name="wallet-outline" size={32} color="#9ca3af" />
+                  <Text style={styles.emptyStateText}>
+                    No external costs added
+                  </Text>
+                  <Text style={styles.emptyStateSubtext}>
+                    Tap "Manage" to add costs
+                  </Text>
+                </View>
               )}
-
-              {/* Add new external cost */}
-              <View style={styles.addCostForm}>
-                <View style={styles.inputRow}>
-                  <View style={styles.inputGroupHalf}>
-                    <Text style={styles.label}>Cost Type</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g., Crew, Gear, Food"
-                      value={newCostType}
-                      onChangeText={setNewCostType}
-                    />
-                  </View>
-                  <View style={styles.inputGroupHalf}>
-                    <Text style={styles.label}>Amount (LKR)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g., 50000"
-                      keyboardType="numeric"
-                      value={newCostAmount}
-                      onChangeText={setNewCostAmount}
-                    />
-                  </View>
-                </View>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Description (Optional)</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g., 4 crew members for 3 days"
-                    value={newCostDescription}
-                    onChangeText={setNewCostDescription}
-                  />
-                </View>
-                <TouchableOpacity style={styles.addButton} onPress={addExternalCost}>
-                  <Ionicons name="add-circle" size={20} color="#ffffff" />
-                  <Text style={styles.addButtonText}>Add External Cost</Text>
-                </TouchableOpacity>
-              </View>
             </View>
 
             {/* Fuel Prices Section */}
@@ -941,48 +1066,66 @@ export default function TripCostPrediction() {
                 >
                   <Ionicons name="checkmark-circle" size={40} color="#ffffff" />
                   <Text style={styles.resultLabel}>Trip Cost Breakdown</Text>
-                  
+
                   {/* Base Cost Section */}
                   <View style={styles.costBreakdownSection}>
                     <View style={styles.costMainRow}>
-                      <Text style={styles.costMainLabel}>🔋 Base Cost (Predicted)</Text>
+                      <Text style={styles.costMainLabel}>
+                        🔋 Base Cost (Predicted)
+                      </Text>
                       <Text style={styles.costMainValue}>
-                        LKR {Math.round(predictionResult.base_cost).toLocaleString()}
+                        LKR{" "}
+                        {Math.round(
+                          predictionResult.base_cost
+                        ).toLocaleString()}
                       </Text>
                     </View>
                     <View style={styles.costSubRow}>
                       <Text style={styles.costSubLabel}>├─ Fuel Cost</Text>
                       <Text style={styles.costSubValue}>
-                        LKR {Math.round(predictionResult.fuel_cost_estimate).toLocaleString()}
+                        LKR{" "}
+                        {Math.round(
+                          predictionResult.fuel_cost_estimate
+                        ).toLocaleString()}
                       </Text>
                     </View>
                     <View style={styles.costSubRow}>
                       <Text style={styles.costSubLabel}>└─ Ice Cost</Text>
                       <Text style={styles.costSubValue}>
-                        LKR {Math.round(predictionResult.ice_cost_estimate).toLocaleString()}
+                        LKR{" "}
+                        {Math.round(
+                          predictionResult.ice_cost_estimate
+                        ).toLocaleString()}
                       </Text>
                     </View>
                   </View>
 
                   {/* External Costs Section */}
-                  {predictionResult.external_costs && predictionResult.external_costs.length > 0 ? (
+                  {predictionResult.external_costs &&
+                  predictionResult.external_costs.length > 0 ? (
                     <View style={styles.costBreakdownSection}>
                       <View style={styles.costMainRow}>
-                        <Text style={styles.costMainLabel}>💼 External Costs (Added)</Text>
+                        <Text style={styles.costMainLabel}>
+                          💼 External Costs (Added)
+                        </Text>
                         <Text style={styles.costMainValue}>
-                          LKR {Math.round(predictionResult.external_costs_total).toLocaleString()}
+                          LKR{" "}
+                          {Math.round(
+                            predictionResult.external_costs_total
+                          ).toLocaleString()}
                         </Text>
                       </View>
                       {predictionResult.external_costs.map((cost, idx) => {
-                        const isLast = idx === predictionResult.external_costs.length - 1;
+                        const isLast =
+                          idx === predictionResult.external_costs.length - 1;
                         return (
                           <View key={idx} style={styles.costSubRow}>
                             <Text style={styles.costSubLabel}>
-                              {isLast ? '└─' : '├─'} {cost.type}
-                              {cost.description ? ` (${cost.description})` : ''}
+                              {isLast ? "└─" : "├─"} {cost.costType}
+                              {cost.description ? ` (${cost.description})` : ""}
                             </Text>
                             <Text style={styles.costSubValue}>
-                              LKR {Math.round(cost.amount).toLocaleString()}
+                              LKR {Math.round(cost.totalPrice).toLocaleString()}
                             </Text>
                           </View>
                         );
@@ -990,9 +1133,14 @@ export default function TripCostPrediction() {
                     </View>
                   ) : (
                     <View style={styles.noExternalCosts}>
-                      <Ionicons name="information-circle-outline" size={16} color="#d1fae5" />
+                      <Ionicons
+                        name="information-circle-outline"
+                        size={16}
+                        color="#d1fae5"
+                      />
                       <Text style={styles.noExternalCostsText}>
-                        No external costs added. Add crew, gear, or other costs above.
+                        No external costs added. Add crew, gear, or other costs
+                        above.
                       </Text>
                     </View>
                   )}
@@ -1002,13 +1150,25 @@ export default function TripCostPrediction() {
                     <View style={styles.totalRow}>
                       <Text style={styles.totalLabel}>💰 TOTAL TRIP COST</Text>
                       <Text style={styles.totalValue}>
-                        LKR {Math.round(predictionResult.total_trip_cost).toLocaleString()}
+                        LKR{" "}
+                        {Math.round(
+                          predictionResult.total_trip_cost
+                        ).toLocaleString()}
                       </Text>
                     </View>
                     <View style={styles.percentageRow}>
                       <Text style={styles.percentageText}>
-                        Base: {(predictionResult.breakdown?.base_cost_percentage || 100).toFixed(1)}% | 
-                        External: {(predictionResult.breakdown?.external_costs_percentage || 0).toFixed(1)}%
+                        Base:{" "}
+                        {(
+                          predictionResult.breakdown?.base_cost_percentage ||
+                          100
+                        ).toFixed(1)}
+                        % | External:{" "}
+                        {(
+                          predictionResult.breakdown
+                            ?.external_costs_percentage || 0
+                        ).toFixed(1)}
+                        %
                       </Text>
                     </View>
                   </View>
@@ -1037,8 +1197,6 @@ export default function TripCostPrediction() {
                       <Text style={styles.actionButtonText}>New Trip</Text>
                     </TouchableOpacity>
                   </View>
-
-                  
                 </LinearGradient>
               </View>
             )}
@@ -1073,13 +1231,14 @@ export default function TripCostPrediction() {
             {/* Info Section */}
             <View style={styles.infoCard}>
               <Ionicons name="information-circle" size={24} color="#3b82f6" />
-              <View style={{flex: 1}}>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.infoText}>
-                  <Text style={{fontWeight: 'bold'}}>How it works:</Text>{'\n'}
-                  • ML model predicts BASE COST (fuel + ice only){'\n'}
-                  • Add your EXTERNAL COSTS (crew, gear, food, etc.){'\n'}
-                  • Get complete breakdown with total trip cost{'\n\n'}
-                  Model trained on 1,600+ fishing trips with 99.46% accuracy. Weather data fetched live from Open-Meteo API.
+                  <Text style={{ fontWeight: "bold" }}>How it works:</Text>
+                  {"\n"}• ML model predicts BASE COST (fuel + ice only){"\n"}•
+                  Add your EXTERNAL COSTS (crew, gear, food, etc.){"\n"}• Get
+                  complete breakdown with total trip cost{"\n\n"}
+                  Model trained on 1,600+ fishing trips with 99.46% accuracy.
+                  Weather data fetched live from Open-Meteo API.
                 </Text>
               </View>
             </View>
@@ -1102,7 +1261,9 @@ export default function TripCostPrediction() {
           <View style={styles.mapHeader}>
             <View>
               <Text style={styles.mapTitle}>Select Fishing Zone</Text>
-              <Text style={styles.mapSubtitle}>Tap a fish marker to see details</Text>
+              <Text style={styles.mapSubtitle}>
+                Tap a fish marker to see details
+              </Text>
             </View>
             <TouchableOpacity
               onPress={() => {
@@ -1156,34 +1317,37 @@ export default function TripCostPrediction() {
                 }}
                 onPress={() => handleZoneMarkerPress(zone)}
               >
-                <View style={[
-                  styles.fishMarker,
-                  selectedZone?.id === zone.id && styles.fishMarkerSelected,
-                  hoveredZone?.id === zone.id && styles.fishMarkerHovered,
-                ]}>
+                <View
+                  style={[
+                    styles.fishMarker,
+                    selectedZone?.id === zone.id && styles.fishMarkerSelected,
+                    hoveredZone?.id === zone.id && styles.fishMarkerHovered,
+                  ]}
+                >
                   <Text style={styles.fishMarkerText}>🐟</Text>
                 </View>
               </Marker>
             ))}
 
             {/* Route Line from Port to Selected/Hovered Zone */}
-            {(hoveredZone || selectedZone) && portCoordinates[tripData.port_name] && (
-              <Polyline
-                coordinates={[
-                  {
-                    latitude: portCoordinates[tripData.port_name].lat,
-                    longitude: portCoordinates[tripData.port_name].lon,
-                  },
-                  {
-                    latitude: (hoveredZone || selectedZone)!.lat,
-                    longitude: (hoveredZone || selectedZone)!.lon,
-                  },
-                ]}
-                strokeColor={hoveredZone ? "#f59e0b" : "#3b82f6"}
-                strokeWidth={3}
-                lineDashPattern={[10, 5]}
-              />
-            )}
+            {(hoveredZone || selectedZone) &&
+              portCoordinates[tripData.port_name] && (
+                <Polyline
+                  coordinates={[
+                    {
+                      latitude: portCoordinates[tripData.port_name].lat,
+                      longitude: portCoordinates[tripData.port_name].lon,
+                    },
+                    {
+                      latitude: (hoveredZone || selectedZone)!.lat,
+                      longitude: (hoveredZone || selectedZone)!.lon,
+                    },
+                  ]}
+                  strokeColor={hoveredZone ? "#f59e0b" : "#3b82f6"}
+                  strokeWidth={3}
+                  lineDashPattern={[10, 5]}
+                />
+              )}
           </MapView>
 
           {/* Zone Info Card (when zone is tapped) */}
@@ -1192,7 +1356,9 @@ export default function TripCostPrediction() {
               <View style={styles.zoneInfoHeader}>
                 <View>
                   <View style={styles.zoneInfoBadge}>
-                    <Text style={styles.zoneInfoBadgeText}>{hoveredZone.region}</Text>
+                    <Text style={styles.zoneInfoBadgeText}>
+                      {hoveredZone.region}
+                    </Text>
                   </View>
                   <Text style={styles.zoneInfoTitle}>{hoveredZone.name}</Text>
                 </View>
@@ -1207,21 +1373,26 @@ export default function TripCostPrediction() {
               <View style={styles.zoneInfoDetails}>
                 <View style={styles.zoneInfoRow}>
                   <Ionicons name="navigate" size={16} color="#3b82f6" />
-                  <Text style={styles.zoneInfoLabel}>Distance from {tripData.port_name}:</Text>
+                  <Text style={styles.zoneInfoLabel}>
+                    Distance from {tripData.port_name}:
+                  </Text>
                   <Text style={styles.zoneInfoValue}>
                     {calculateDistance(
                       portCoordinates[tripData.port_name]?.lat || 0,
                       portCoordinates[tripData.port_name]?.lon || 0,
                       hoveredZone.lat,
                       hoveredZone.lon
-                    ).toFixed(1)} km
+                    ).toFixed(1)}{" "}
+                    km
                   </Text>
                 </View>
 
                 <View style={styles.zoneInfoRow}>
                   <Ionicons name="water" size={16} color="#06b6d4" />
                   <Text style={styles.zoneInfoLabel}>Depth:</Text>
-                  <Text style={styles.zoneInfoValue}>{hoveredZone.depth_m}m</Text>
+                  <Text style={styles.zoneInfoValue}>
+                    {hoveredZone.depth_m}m
+                  </Text>
                 </View>
 
                 <View style={styles.zoneInfoRow}>
@@ -1238,7 +1409,9 @@ export default function TripCostPrediction() {
                 onPress={() => handleZoneSelect(hoveredZone)}
               >
                 <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
-                <Text style={styles.setDestinationText}>Set as Destination</Text>
+                <Text style={styles.setDestinationText}>
+                  Set as Destination
+                </Text>
               </TouchableOpacity>
             </View>
           )}
@@ -1377,115 +1550,115 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   costBreakdownSection: {
-    width: '100%',
+    width: "100%",
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
+    borderTopColor: "rgba(255,255,255,0.2)",
   },
   costMainRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 12,
   },
   costMainLabel: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   costMainValue: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   costSubRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingLeft: 8,
     marginBottom: 6,
   },
   costSubLabel: {
-    color: '#d1fae5',
+    color: "#d1fae5",
     fontSize: 14,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
   },
   costSubValue: {
-    color: '#d1fae5',
+    color: "#d1fae5",
     fontSize: 14,
   },
   noExternalCosts: {
-    width: '100%',
+    width: "100%",
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderTopColor: "rgba(255,255,255,0.2)",
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   noExternalCostsText: {
     flex: 1,
-    color: '#d1fae5',
+    color: "#d1fae5",
     fontSize: 13,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   totalSection: {
-    width: '100%',
+    width: "100%",
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 2,
-    borderTopColor: 'rgba(255,255,255,0.4)',
+    borderTopColor: "rgba(255,255,255,0.4)",
   },
   totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   totalLabel: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   totalValue: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   percentageRow: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   percentageText: {
-    color: '#d1fae5',
+    color: "#d1fae5",
     fontSize: 12,
   },
   actionButtonsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginTop: 20,
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 12,
     gap: 8,
   },
   saveButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: "#10b981",
   },
   resetButton: {
-    backgroundColor: '#6b7280',
+    backgroundColor: "#6b7280",
   },
   actionButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   resultValue: {
     fontSize: 32,
@@ -2027,6 +2200,49 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     marginTop: 8,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  manageButton: {
+    backgroundColor: "#3b82f6",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  manageButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  loadingContainer: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  emptyStateSmall: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: "#6b7280",
+    fontWeight: "500",
+  },
+  emptyStateSubtext: {
+    fontSize: 12,
+    color: "#9ca3af",
+    marginTop: 4,
   },
   modalCancelText: {
     fontSize: 15,

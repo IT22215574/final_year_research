@@ -189,9 +189,7 @@ export default function TripLogger() {
                   placeholder="Liters"
                   keyboardType="numeric"
                   value={formData.fuelUsed}
-                  onChangeText={(value) =>
-                    handleInputChange("fuelUsed", value)
-                  }
+                  onChangeText={(value) => handleInputChange("fuelUsed", value)}
                 />
               </View>
 
@@ -202,9 +200,7 @@ export default function TripLogger() {
                   placeholder="Amount"
                   keyboardType="numeric"
                   value={formData.fuelCost}
-                  onChangeText={(value) =>
-                    handleInputChange("fuelCost", value)
-                  }
+                  onChangeText={(value) => handleInputChange("fuelCost", value)}
                 />
               </View>
             </View>
@@ -268,12 +264,17 @@ export default function TripLogger() {
 
             {/* Submit Button */}
             <TouchableOpacity
-              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+              style={[
+                styles.submitButton,
+                loading && styles.submitButtonDisabled,
+              ]}
               onPress={handleSubmit}
               disabled={loading}
             >
               <LinearGradient
-                colors={loading ? ["#9ca3af", "#6b7280"] : ["#3b82f6", "#2563eb"]}
+                colors={
+                  loading ? ["#9ca3af", "#6b7280"] : ["#3b82f6", "#2563eb"]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.submitButtonGradient}

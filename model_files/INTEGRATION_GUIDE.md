@@ -1,11 +1,15 @@
 # ==========================================================
+
 # SMART FISHER LANKA - ML MODEL USAGE GUIDE
+
 # Complete Guide for Model Integration
+
 # ==========================================================
 
 ## 🎯 Overview
 
 This ML model predicts **base costs** for fishing trips, including:
+
 - **Fuel Cost** - Based on boat type, engine, distance, and trip duration
 - **Ice Cost** - For catch preservation
 - **Water Cost** - For crew consumption
@@ -106,7 +110,7 @@ print(result)
 ```typescript
 // See nestjs_integration.ts for full implementation
 
-import { TripCostMLService } from './trip-cost-ml.service';
+import { TripCostMLService } from "./trip-cost-ml.service";
 
 @Injectable()
 export class FishingService {
@@ -122,7 +126,7 @@ export class FishingService {
       engine_hp: tripData.engine_hp,
       crew_size: tripData.crew_size,
     });
-    
+
     return prediction;
   }
 }
@@ -198,14 +202,14 @@ curl -X POST http://localhost:3000/api/trips/predict-base-cost \
 
 export const predictTripCost = async (tripData: TripData) => {
   const response = await fetch(`${API_URL}/trips/predict-base-cost`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(tripData)
+    body: JSON.stringify(tripData),
   });
-  
+
   return response.json();
 };
 ```
@@ -217,7 +221,7 @@ export const predictTripCost = async (tripData: TripData) => {
 
 const handleCalculateCost = async () => {
   setLoading(true);
-  
+
   try {
     const prediction = await predictTripCost({
       boat_type: selectedBoat,
@@ -228,9 +232,9 @@ const handleCalculateCost = async () => {
       engine_hp: boatSpecs.engine_hp,
       crew_size: crewSize,
       ice_capacity_kg: boatSpecs.ice_capacity_kg,
-      water_capacity_L: boatSpecs.water_capacity_L
+      water_capacity_L: boatSpecs.water_capacity_L,
     });
-    
+
     if (prediction.success) {
       setBaseCost(prediction.predictions.total_base_cost_lkr);
       setFuelCost(prediction.predictions.fuel_cost_lkr);
@@ -240,7 +244,7 @@ const handleCalculateCost = async () => {
       setDistance(prediction.distance_km);
     }
   } catch (error) {
-    console.error('Cost prediction failed:', error);
+    console.error("Cost prediction failed:", error);
   } finally {
     setLoading(false);
   }
@@ -255,23 +259,23 @@ const handleCalculateCost = async () => {
   <Text>Fuel: LKR {fuelCost.toLocaleString()}</Text>
   <Text>Ice: LKR {iceCost.toLocaleString()}</Text>
   <Text>Water: LKR {waterCost.toLocaleString()}</Text>
-  <Text style={{fontWeight: 'bold'}}>
+  <Text style={{ fontWeight: "bold" }}>
     Total Base: LKR {baseCost.toLocaleString()}
   </Text>
-  
+
   <Text>Confidence Range (±15%):</Text>
   <Text>
-    LKR {confidenceRange.lower_bound.toLocaleString()} - 
-    LKR {confidenceRange.upper_bound.toLocaleString()}
+    LKR {confidenceRange.lower_bound.toLocaleString()} - LKR{" "}
+    {confidenceRange.upper_bound.toLocaleString()}
   </Text>
-  
+
   <Text>Distance: {distance} km</Text>
-  
+
   {/* Add crew and gear costs */}
   <Text>+ Crew Cost: LKR {crewCost.toLocaleString()}</Text>
   <Text>+ Gear Cost: LKR {gearCost.toLocaleString()}</Text>
-  
-  <Text style={{fontSize: 18, fontWeight: 'bold'}}>
+
+  <Text style={{ fontSize: 18, fontWeight: "bold" }}>
     Total Trip Cost: LKR {totalCost.toLocaleString()}
   </Text>
 </View>
@@ -280,11 +284,13 @@ const handleCalculateCost = async () => {
 ## 📊 Model Performance
 
 Current model performance (from training):
+
 - **Average R² Score**: ~0.90 (90% variance explained)
 - **Average RMSE**: ~LKR 2,000-5,000
 - **Average MAPE**: ~5-10%
 
 Individual target performance:
+
 - **Fuel Cost**: R² = 0.92, RMSE = LKR 3,000
 - **Ice Cost**: R² = 0.88, RMSE = LKR 1,500
 - **Water Cost**: R² = 0.85, RMSE = LKR 500
@@ -321,6 +327,7 @@ Individual target performance:
 ### Common Issues
 
 **Issue**: "Model file not found"
+
 ```python
 # Solution: Check model path
 import os
@@ -330,6 +337,7 @@ print(f"Exists: {os.path.exists(model_path)}")
 ```
 
 **Issue**: "Feature mismatch"
+
 ```python
 # Solution: Check feature names in metadata
 import json
@@ -339,6 +347,7 @@ with open('production_model/model_metadata.json') as f:
 ```
 
 **Issue**: "Python process failed"
+
 ```bash
 # Solution: Test Python script directly
 python nestjs_integration.py
@@ -360,12 +369,12 @@ Complete API request template:
   "fuel_type": "petrol",
   "trip_days": 2,
   "current_location": {
-    "lat": 7.2090,
-    "lon": 79.8350
+    "lat": 7.209,
+    "lon": 79.835
   },
   "target_location": {
-    "lat": 7.5090,
-    "lon": 80.1350
+    "lat": 7.509,
+    "lon": 80.135
   },
   "weather_conditions": {
     "wind_kph": 15,
@@ -449,6 +458,7 @@ Response format:
 ## 🎉 You're Ready!
 
 Your ML model is now ready for production use. The model will help fishermen:
+
 - Plan trips with accurate cost estimates
 - Make informed decisions about fuel and supplies
 - Optimize trip profitability

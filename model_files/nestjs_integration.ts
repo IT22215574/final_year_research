@@ -3,9 +3,9 @@
 // TypeScript Service for ML Model Integration
 // ==========================================================
 
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { spawn } from 'child_process';
-import * as path from 'path';
+import { Injectable, BadRequestException } from "@nestjs/common";
+import { spawn } from "child_process";
+import * as path from "path";
 
 // DTO for prediction request
 export class PredictBaseCostDto {
@@ -58,8 +58,14 @@ export class TripCostMLService {
 
   constructor() {
     // Configure paths - adjust these based on your deployment
-    this.pythonScriptPath = path.join(__dirname, '..', '..', 'ml', 'nestjs_integration.py');
-    this.modelPath = path.join(__dirname, '..', '..', 'ml', 'production_model');
+    this.pythonScriptPath = path.join(
+      __dirname,
+      "..",
+      "..",
+      "ml",
+      "nestjs_integration.py"
+    );
+    this.modelPath = path.join(__dirname, "..", "..", "ml", "production_model");
   }
 
   /**
@@ -69,30 +75,32 @@ export class TripCostMLService {
     return new Promise((resolve, reject) => {
       // Prepare input data
       const inputData = JSON.stringify({
-        action: 'predict',
-        data: dto
+        action: "predict",
+        data: dto,
       });
 
       // Spawn Python process
-      const pythonProcess = spawn('python', [this.pythonScriptPath]);
+      const pythonProcess = spawn("python", [this.pythonScriptPath]);
 
-      let outputData = '';
-      let errorData = '';
+      let outputData = "";
+      let errorData = "";
 
       // Collect output
-      pythonProcess.stdout.on('data', (data) => {
+      pythonProcess.stdout.on("data", (data) => {
         outputData += data.toString();
       });
 
       // Collect errors
-      pythonProcess.stderr.on('data', (data) => {
+      pythonProcess.stderr.on("data", (data) => {
         errorData += data.toString();
       });
 
       // Handle completion
-      pythonProcess.on('close', (code) => {
+      pythonProcess.on("close", (code) => {
         if (code !== 0) {
-          reject(new BadRequestException(`Python process failed: ${errorData}`));
+          reject(
+            new BadRequestException(`Python process failed: ${errorData}`)
+          );
           return;
         }
 
@@ -100,7 +108,11 @@ export class TripCostMLService {
           const result = JSON.parse(outputData);
           resolve(result);
         } catch (error) {
-          reject(new BadRequestException(`Failed to parse ML output: ${error.message}`));
+          reject(
+            new BadRequestException(
+              `Failed to parse ML output: ${error.message}`
+            )
+          );
         }
       });
 
@@ -109,8 +121,12 @@ export class TripCostMLService {
       pythonProcess.stdin.end();
 
       // Handle errors
-      pythonProcess.on('error', (error) => {
-        reject(new BadRequestException(`Failed to start Python process: ${error.message}`));
+      pythonProcess.on("error", (error) => {
+        reject(
+          new BadRequestException(
+            `Failed to start Python process: ${error.message}`
+          )
+        );
       });
     });
   }
@@ -121,25 +137,27 @@ export class TripCostMLService {
   async getModelInfo(): Promise<any> {
     return new Promise((resolve, reject) => {
       const inputData = JSON.stringify({
-        action: 'info'
+        action: "info",
       });
 
-      const pythonProcess = spawn('python', [this.pythonScriptPath]);
+      const pythonProcess = spawn("python", [this.pythonScriptPath]);
 
-      let outputData = '';
-      let errorData = '';
+      let outputData = "";
+      let errorData = "";
 
-      pythonProcess.stdout.on('data', (data) => {
+      pythonProcess.stdout.on("data", (data) => {
         outputData += data.toString();
       });
 
-      pythonProcess.stderr.on('data', (data) => {
+      pythonProcess.stderr.on("data", (data) => {
         errorData += data.toString();
       });
 
-      pythonProcess.on('close', (code) => {
+      pythonProcess.on("close", (code) => {
         if (code !== 0) {
-          reject(new BadRequestException(`Python process failed: ${errorData}`));
+          reject(
+            new BadRequestException(`Python process failed: ${errorData}`)
+          );
           return;
         }
 
@@ -147,15 +165,23 @@ export class TripCostMLService {
           const result = JSON.parse(outputData);
           resolve(result);
         } catch (error) {
-          reject(new BadRequestException(`Failed to parse ML output: ${error.message}`));
+          reject(
+            new BadRequestException(
+              `Failed to parse ML output: ${error.message}`
+            )
+          );
         }
       });
 
       pythonProcess.stdin.write(inputData);
       pythonProcess.stdin.end();
 
-      pythonProcess.on('error', (error) => {
-        reject(new BadRequestException(`Failed to start Python process: ${error.message}`));
+      pythonProcess.on("error", (error) => {
+        reject(
+          new BadRequestException(
+            `Failed to start Python process: ${error.message}`
+          )
+        );
       });
     });
   }
@@ -166,26 +192,28 @@ export class TripCostMLService {
   async updatePrices(newPrices: any): Promise<any> {
     return new Promise((resolve, reject) => {
       const inputData = JSON.stringify({
-        action: 'update_prices',
-        data: newPrices
+        action: "update_prices",
+        data: newPrices,
       });
 
-      const pythonProcess = spawn('python', [this.pythonScriptPath]);
+      const pythonProcess = spawn("python", [this.pythonScriptPath]);
 
-      let outputData = '';
-      let errorData = '';
+      let outputData = "";
+      let errorData = "";
 
-      pythonProcess.stdout.on('data', (data) => {
+      pythonProcess.stdout.on("data", (data) => {
         outputData += data.toString();
       });
 
-      pythonProcess.stderr.on('data', (data) => {
+      pythonProcess.stderr.on("data", (data) => {
         errorData += data.toString();
       });
 
-      pythonProcess.on('close', (code) => {
+      pythonProcess.on("close", (code) => {
         if (code !== 0) {
-          reject(new BadRequestException(`Python process failed: ${errorData}`));
+          reject(
+            new BadRequestException(`Python process failed: ${errorData}`)
+          );
           return;
         }
 
@@ -193,15 +221,23 @@ export class TripCostMLService {
           const result = JSON.parse(outputData);
           resolve(result);
         } catch (error) {
-          reject(new BadRequestException(`Failed to parse ML output: ${error.message}`));
+          reject(
+            new BadRequestException(
+              `Failed to parse ML output: ${error.message}`
+            )
+          );
         }
       });
 
       pythonProcess.stdin.write(inputData);
       pythonProcess.stdin.end();
 
-      pythonProcess.on('error', (error) => {
-        reject(new BadRequestException(`Failed to start Python process: ${error.message}`));
+      pythonProcess.on("error", (error) => {
+        reject(
+          new BadRequestException(
+            `Failed to start Python process: ${error.message}`
+          )
+        );
       });
     });
   }
@@ -211,30 +247,32 @@ export class TripCostMLService {
 // CONTROLLER EXAMPLE
 // ==========================================================
 
-import { Controller, Post, Get, Body, Patch } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Get, Body, Patch } from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 
-@ApiTags('Trip Cost Prediction')
-@Controller('trips')
+@ApiTags("Trip Cost Prediction")
+@Controller("trips")
 export class TripCostController {
   constructor(private readonly mlService: TripCostMLService) {}
 
-  @Post('predict-base-cost')
-  @ApiOperation({ summary: 'Predict base cost for a fishing trip' })
-  @ApiResponse({ status: 200, description: 'Prediction successful' })
-  @ApiResponse({ status: 400, description: 'Invalid input' })
-  async predictBaseCost(@Body() dto: PredictBaseCostDto): Promise<PredictionResponse> {
+  @Post("predict-base-cost")
+  @ApiOperation({ summary: "Predict base cost for a fishing trip" })
+  @ApiResponse({ status: 200, description: "Prediction successful" })
+  @ApiResponse({ status: 400, description: "Invalid input" })
+  async predictBaseCost(
+    @Body() dto: PredictBaseCostDto
+  ): Promise<PredictionResponse> {
     return this.mlService.predictBaseCost(dto);
   }
 
-  @Get('model-info')
-  @ApiOperation({ summary: 'Get ML model information' })
+  @Get("model-info")
+  @ApiOperation({ summary: "Get ML model information" })
   async getModelInfo() {
     return this.mlService.getModelInfo();
   }
 
-  @Patch('prices')
-  @ApiOperation({ summary: 'Update price configuration' })
+  @Patch("prices")
+  @ApiOperation({ summary: "Update price configuration" })
   async updatePrices(@Body() newPrices: any) {
     return this.mlService.updatePrices(newPrices);
   }
@@ -244,7 +282,7 @@ export class TripCostController {
 // MODULE EXAMPLE
 // ==========================================================
 
-import { Module } from '@nestjs/common';
+import { Module } from "@nestjs/common";
 
 @Module({
   controllers: [TripCostController],

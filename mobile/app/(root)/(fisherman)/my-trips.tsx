@@ -88,9 +88,12 @@ export default function MyTrips() {
   const loadTrips = async (uid: string) => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API}/api/v1/trips/user/${uid}/recent`, {
-        params: { limit: 20 },
-      });
+      const response = await axios.get(
+        `${API}/api/v1/trips/user/${uid}/recent`,
+        {
+          params: { limit: 20 },
+        }
+      );
       if (response.data.status === "success") {
         setTrips(response.data.data);
       }
@@ -337,7 +340,11 @@ export default function MyTrips() {
                     <Text style={styles.tripCost}>
                       {formatCurrency(trip.totalTripCost)}
                     </Text>
-                    <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color="#9ca3af"
+                    />
                   </View>
                 </View>
 
@@ -355,7 +362,9 @@ export default function MyTrips() {
         {/* Navigate to Prediction */}
         <TouchableOpacity
           style={styles.addButton}
-          onPress={() => router.push("/(root)/(fisherman)/trip-cost-prediction")}
+          onPress={() =>
+            router.push("/(root)/(fisherman)/trip-cost-prediction")
+          }
         >
           <LinearGradient
             colors={["#3b82f6", "#2563eb"]}

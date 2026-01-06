@@ -25,7 +25,12 @@ export class TripService {
   async findAll(
     page: number = 1,
     limit: number = 10,
-  ): Promise<{ trips: Trip[]; total: number; page: number; totalPages: number }> {
+  ): Promise<{
+    trips: Trip[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
     const skip = (page - 1) * limit;
     const [trips, total] = await Promise.all([
       this.tripModel
@@ -53,7 +58,12 @@ export class TripService {
     userId: string,
     page: number = 1,
     limit: number = 10,
-  ): Promise<{ trips: Trip[]; total: number; page: number; totalPages: number }> {
+  ): Promise<{
+    trips: Trip[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
     const skip = (page - 1) * limit;
     const userObjectId = new Types.ObjectId(userId);
 

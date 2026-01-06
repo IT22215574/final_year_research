@@ -8,6 +8,7 @@ import { UserModule } from './user/user.module';
 import { FishingModule } from './fishing/fishing.module';
 import { MlPredictionModule } from './ml-prediction/ml-prediction.module';
 import { TripModule } from './trip/trip.module';
+import { ExternalCostModule } from './external-cost/external-cost.module';
 import * as path from 'path';
 
 @Module({
@@ -38,6 +39,7 @@ import * as path from 'path';
     FishingModule,
     MlPredictionModule,
     TripModule,
+    ExternalCostModule,
   ],
 })
 export class AppModule {}
