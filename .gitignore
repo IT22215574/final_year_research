@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Expo (generated)
+.expo/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
