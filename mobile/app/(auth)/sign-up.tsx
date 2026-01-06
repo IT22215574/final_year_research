@@ -56,6 +56,7 @@ const districtZoneData = {
 
 const districts = Object.keys(districtZoneData);
 const mediums = ["Sinhala", "Tamil", "English"];
+const roles = ["customer", "Fisher man", "Boat owner"];
 
 const API = process.env.EXPO_PUBLIC_API_KEY;
 
@@ -65,6 +66,7 @@ const SignUp = () => {
     phone: "",
     firstName: "",
     lastName: "",
+    role: "customer",
     district: "",
     zone: "",
     medium: "",
@@ -77,6 +79,7 @@ const SignUp = () => {
   const [showZoneDropdown, setShowZoneDropdown] = useState(false);
   const [showGradeDropdown, setShowGradeDropdown] = useState(false);
   const [showMediumDropdown, setShowMediumDropdown] = useState(false);
+  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [availableZones, setAvailableZones] = useState([]);
   const [tempDate, setTempDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
@@ -162,6 +165,11 @@ const SignUp = () => {
     setShowMediumDropdown(false);
   };
 
+  const handleRoleSelect = (role) => {
+    handleChange("role", role);
+    setShowRoleDropdown(false);
+  };
+
   // Dropdown selection handlers
   const handleDistrictSelect = (district) => {
     handleChange("district", district);
@@ -189,6 +197,11 @@ const handleSignUp = async () => {
   if (!formData.email || !formData.phone || !formData.firstName || !formData.lastName || 
       !formData.password || !formData.confirmPassword) {
     Alert.alert("Error", "Please fill all required fields");
+    return;
+  }
+
+  if (!formData.role) {
+    Alert.alert("Error", "Please select a role");
     return;
   }
 
@@ -224,7 +237,7 @@ const handleSignUp = async () => {
       password: formData.password,
       firstName: firstName,
       lastName: lastName,
-      role: "customer",
+      role: formData.role,
       // Optional fields
       ...(formData.district && { district: formData.district }),
       ...(formData.zone && { zone: formData.zone }),
@@ -294,6 +307,7 @@ const handleSignUp = async () => {
               phone: "",
               firstName: "",
               lastName: "",
+              role: "customer",
               district: "",
               zone: "",
               medium: "",
@@ -569,6 +583,46 @@ const handleSignUp = async () => {
                   autoCorrect={false}
                 />
               </View>
+            </View>
+
+            {/* Role */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>
+                Role <Text style={styles.required}>*</Text>
+              </Text>
+              <TouchableOpacity
+                style={styles.inputWrapper}
+                onPress={() => setShowRoleDropdown(true)}
+              >
+                <MaterialIcons name="person-outline" size={18} color="#999" style={styles.icon} />
+                <Text style={[styles.textInput, !formData.role && { color: '#9ca3af' }]}>
+                  {formData.role || "Select Role"}
+                </Text>
+                <AntDesign name="down" size={16} color="#999" />
+              </TouchableOpacity>
+
+              <Modal
+                visible={showRoleDropdown}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowRoleDropdown(false)}
+              >
+                <TouchableWithoutFeedback onPress={() => setShowRoleDropdown(false)}>
+                  <View style={styles.modalOverlay}>
+                    <View style={styles.dropdownContainer}>
+                      <FlatList
+                        data={roles}
+                        keyExtractor={(item) => item}
+                        renderItem={({ item }) => renderDropdownItem({
+                          item,
+                          onSelect: handleRoleSelect
+                        })}
+                        showsVerticalScrollIndicator={false}
+                      />
+                    </View>
+                  </View>
+                </TouchableWithoutFeedback>
+              </Modal>
             </View>
 
             {/* Other Info Section */}
