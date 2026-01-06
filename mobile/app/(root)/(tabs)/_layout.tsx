@@ -16,6 +16,7 @@ import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import Overlay from "@/components/Overlay";
 import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 
 const TabsLayout = () => {
 
@@ -80,6 +81,19 @@ const TabsLayout = () => {
         initialRouteName="home"
         screenOptions={{
           headerShown: true,
+          headerBackground: () => (
+            <LinearGradient
+            
+              colors={['#0066CC', '#00A3FF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ flex: 1 }}
+            />
+          ),
+          headerStyle: {
+            backgroundColor: 'transparent',
+            elevation: 0,
+          },
           headerShadowVisible: false,
           headerTintColor: "black",
           headerTitleStyle: {
@@ -144,16 +158,7 @@ const TabsLayout = () => {
             },
           }}
         />
-        <Tabs.Screen
-          name="TeacherHome"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
+
         <Tabs.Screen
           name="Market"
           options={{
