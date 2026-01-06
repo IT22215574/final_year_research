@@ -265,9 +265,7 @@ const TabsLayout = () => {
       <View style={styles.customTabBar} className="rounded-t-3xl shadow-lg">
         {/* Navigation Items - This remains exactly the same */}
         <View style={styles.navItemsContainer}>
-          {/* ... all your existing navigation items remain the same ... */}
-          
-            <TouchableOpacity
+          <TouchableOpacity
               style={styles.navItem}
               onPress={() => handleTabPress("home", "/(tabs)/home")}
             >
@@ -294,7 +292,7 @@ const TabsLayout = () => {
               >
                 Home
               </Text>
-            </TouchableOpacity>
+          </TouchableOpacity>
           
           {(currentUser?.role === "Teacher" ||
             currentUser?.role === "INTERNAL_TEACHER" ||

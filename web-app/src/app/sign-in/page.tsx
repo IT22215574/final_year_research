@@ -36,8 +36,8 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 px-4 py-8 flex items-center justify-center">
+      <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
@@ -51,70 +51,7 @@ export default function SignInPage() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8 items-center">
-          {/* Left Column - Welcome & Features */}
-          <div className="space-y-8">
-            <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Welcome Back!</h2>
-              <p className="text-gray-600 mb-6">
-                Sign in to access your dashboard, track fishing activities, and connect with the community.
-              </p>
-              
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Waves className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800">Real-time Updates</h3>
-                    <p className="text-sm text-gray-600">Get live weather and market data</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800">Secure Access</h3>
-                    <p className="text-sm text-gray-600">Your data is protected with enterprise-grade security</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
-                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800">Growth Insights</h3>
-                    <p className="text-sm text-gray-600">Access analytics and performance reports</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Testimonials */}
-            <div className="bg-gradient-to-r from-blue-600 to-emerald-600 rounded-2xl shadow-xl p-6 md:p-8 text-white">
-              <h3 className="text-xl font-bold mb-4">Community Voices</h3>
-              <div className="space-y-4">
-                <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
-                  <p className="italic">"Smart Fisher Lanka helped me increase my catch efficiency by 40%"</p>
-                  <p className="text-sm opacity-90 mt-2">- Ravi Perera, Fisherman from Galle</p>
-                </div>
-                <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
-                  <p className="italic">"The real-time market prices have transformed our business model"</p>
-                  <p className="text-sm opacity-90 mt-2">- Shanti Kumar, Seafood Exporter</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Sign In Form */}
-          <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign In to Your Account</h2>
               <p className="text-gray-600">Enter your credentials to continue</p>
@@ -289,7 +226,6 @@ export default function SignInPage() {
                 </div>
               </div>
             </div>
-          </div>
         </div>
 
         {/* Footer */}

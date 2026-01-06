@@ -7,6 +7,81 @@ import { Eye, EyeOff, User, Mail, Phone, MapPin, Lock, Fish, AlertCircle, CheckC
 import { completeSignup } from "@/lib/authApi";
 import type { ApiError } from "@/lib/api";
 
+type TextInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  icon: React.ReactNode;
+  error?: string;
+};
+
+function TextInput({ label, icon, error, className, ...props }: TextInputProps) {
+  return (
+    <div className="space-y-1">
+      <label className="text-sm font-medium text-gray-700">{label}</label>
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          {icon}
+        </span>
+        <input
+          {...props}
+          className={`w-full px-4 py-3 pl-10 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:border-transparent ${
+            error
+              ? "border-red-500 focus:ring-red-200"
+              : "border-gray-300 focus:ring-blue-200 focus:border-blue-500"
+          } ${className ?? ""}`}
+        />
+        {error && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500">
+            <AlertCircle size={18} />
+          </div>
+        )}
+      </div>
+      {error ? (
+        <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+          <AlertCircle size={12} /> {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+type PasswordInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  show: boolean;
+  toggle: () => void;
+  error?: string;
+};
+
+function PasswordInputField({ label, show, toggle, error, className, ...props }: PasswordInputProps) {
+  return (
+    <div className="space-y-1">
+      <label className="text-sm font-medium text-gray-700">{label}</label>
+      <div className="relative">
+        <input
+          {...props}
+          type={show ? "text" : "password"}
+          className={`w-full px-4 py-3 pr-10 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:border-transparent ${
+            error
+              ? "border-red-500 focus:ring-red-200"
+              : "border-gray-300 focus:ring-blue-200 focus:border-blue-500"
+          } ${className ?? ""}`}
+        />
+        <button
+          type="button"
+          onClick={toggle}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+        >
+          {show ? <EyeOff size={20} /> : <Eye size={20} />}
+        </button>
+      </div>
+      {error ? (
+        <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+          <AlertCircle size={12} /> {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export default function SignUpPage() {
   const router = useRouter();
 
@@ -81,7 +156,7 @@ export default function SignUpPage() {
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(/\D/g, '');
+    let value = e.target.value.replace(/\D/g, "");
     if (value.length > 10) value = value.slice(0, 10);
     
     // Format as 077 123 4567
@@ -91,8 +166,14 @@ export default function SignUpPage() {
     if (value.length > 7) {
       value = `${value.slice(0, 7)} ${value.slice(7)}`;
     }
-    
-    handleChange({ ...e, target: { ...e.target, value } });
+
+    setFormData((prev) => ({ ...prev, phone: value }));
+    setErrors((prev) => {
+      if (!prev.phone) return prev;
+      const next = { ...prev };
+      delete next.phone;
+      return next;
+    });
   };
 
   async function onSubmit(e: React.FormEvent) {
@@ -130,59 +211,9 @@ export default function SignUpPage() {
     }
   }
 
-  const Input = ({ label, icon, error, ...props }: any) => (
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-          {icon}
-        </span>
-        <input
-          {...props}
-          className={`w-full px-4 py-3 pl-10 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:border-transparent ${
-            error 
-              ? 'border-red-500 focus:ring-red-200' 
-              : 'border-gray-300 focus:ring-blue-200 focus:border-blue-500'
-          }`}
-        />
-        {error && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500">
-            <AlertCircle size={18} />
-          </div>
-        )}
-      </div>
-      {error && <p className="text-xs text-red-600 mt-1 flex items-center gap-1"><AlertCircle size={12} /> {error}</p>}
-    </div>
-  );
-
-  const PasswordInput = ({ label, show, toggle, error, ...props }: any) => (
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
-      <div className="relative">
-        <input
-          {...props}
-          type={show ? "text" : "password"}
-          className={`w-full px-4 py-3 pr-10 border rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:border-transparent ${
-            error 
-              ? 'border-red-500 focus:ring-red-200' 
-              : 'border-gray-300 focus:ring-blue-200 focus:border-blue-500'
-          }`}
-        />
-        <button
-          type="button"
-          onClick={toggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-        >
-          {show ? <EyeOff size={20} /> : <Eye size={20} />}
-        </button>
-      </div>
-      {error && <p className="text-xs text-red-600 mt-1 flex items-center gap-1"><AlertCircle size={12} /> {error}</p>}
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-emerald-50 to-cyan-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:shadow-3xl">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:shadow-3xl">
         {/* LEFT - FORM */}
         <div className="p-8 md:p-10">
           <div className="flex items-center gap-3 mb-8">
@@ -207,7 +238,7 @@ export default function SignUpPage() {
           ) : (
             <form onSubmit={onSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
+                <TextInput
                   label="First Name"
                   name="firstName"
                   icon={<User size={18} />}
@@ -216,7 +247,7 @@ export default function SignUpPage() {
                   error={errors.firstName}
                   required
                 />
-                <Input
+                <TextInput
                   label="Last Name"
                   name="lastName"
                   icon={<User size={18} />}
@@ -228,7 +259,7 @@ export default function SignUpPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
+                <TextInput
                   label="Email"
                   name="email"
                   type="email"
@@ -238,9 +269,12 @@ export default function SignUpPage() {
                   error={errors.email}
                   required
                 />
-                <Input
+                <TextInput
                   label="Phone"
                   name="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
                   icon={<Phone size={18} />}
                   value={formData.phone}
                   onChange={handlePhoneChange}
@@ -279,7 +313,7 @@ export default function SignUpPage() {
                     </p>
                   )}
                 </div>
-                <Input
+                <TextInput
                   label="Zone"
                   name="zone"
                   icon={<MapPin size={18} />}
@@ -291,25 +325,25 @@ export default function SignUpPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <PasswordInput
+                <PasswordInputField
                   label="Password"
+                  name="password"
+                  autoComplete="new-password"
                   value={formData.password}
                   show={showPassword}
                   toggle={() => setShowPassword(!showPassword)}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                    setFormData(p => ({ ...p, password: e.target.value }))
-                  }
+                  onChange={handleChange}
                   error={errors.password}
                   required
                 />
-                <PasswordInput
+                <PasswordInputField
                   label="Confirm Password"
+                  name="confirmPassword"
+                  autoComplete="new-password"
                   value={formData.confirmPassword}
                   show={showConfirmPassword}
                   toggle={() => setShowConfirmPassword(!showConfirmPassword)}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                    setFormData(p => ({ ...p, confirmPassword: e.target.value }))
-                  }
+                  onChange={handleChange}
                   error={errors.confirmPassword}
                   required
                 />
@@ -348,48 +382,6 @@ export default function SignUpPage() {
               </p>
             </form>
           )}
-        </div>
-
-        {/* RIGHT - INFO */}
-        <div className="hidden lg:flex flex-col justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-emerald-600 text-white p-10 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
-          <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full -translate-x-20 translate-y-20"></div>
-          
-          <div className="relative z-10">
-            <h2 className="text-3xl font-bold mb-6 leading-snug">
-              Empowering Sri Lankan Fisheries
-            </h2>
-            <p className="text-lg opacity-90 mb-8 leading-relaxed">
-              Join thousands of fishers making smarter decisions with real-time data
-              and sustainable practices.
-            </p>
-            <ul className="space-y-4">
-              {[
-                "🌤️ Real-time weather & fishing zone alerts",
-                "📈 Live market price insights & trends",
-                "🤝 Community network & expert support",
-                "📱 Mobile-first, easy-to-use platform",
-                "🌊 Sustainable fishing practices guidance",
-              ].map((item, index) => (
-                <li key={index} className="flex items-center gap-3 text-base">
-                  <div className="w-2 h-2 bg-emerald-300 rounded-full"></div>
-                  {item}
-                </li>
-              ))}
-            </ul>
-            
-            <div className="mt-10 pt-8 border-t border-white/20">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <Fish size={24} />
-                </div>
-                <div>
-                  <p className="font-semibold">Trusted by 5,000+ fishers</p>
-                  <p className="text-sm opacity-80">Across 12 districts in Sri Lanka</p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
