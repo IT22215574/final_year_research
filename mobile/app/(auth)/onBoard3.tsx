@@ -27,6 +27,7 @@ interface Position {
 
 const OnBoard3: React.FC = () => {
   const router = useRouter();
+  const h = React.createElement;
 
   // Animation values for decorative elements
   const triangleAnim = useRef<Animated.Value>(new Animated.Value(0)).current;
@@ -425,7 +426,7 @@ const OnBoard3: React.FC = () => {
     return positions;
   };
 
-  const renderDistributedIcons = (): JSX.Element[] => {
+  const renderDistributedIcons = (): React.ReactElement[] => {
     const predefinedPositions = getPredefinedPositions();
 
     return selectedIcons.map((icon: ImageSourcePropType, index: number) => {
@@ -441,11 +442,9 @@ const OnBoard3: React.FC = () => {
       }
 
       const randomOpacity: number = 0.8 + Math.random() * 0.2;
-      // CHANGED: Made icon sizes smaller to match OnBoard1 and OnBoard2 - reduced from 32-48 to 20-32
-      const randomSize: number = 20 + Math.random() * 12; // Now ranges from 20 to 32
+      const randomSize: number = 20 + Math.random() * 12;
       const randomRotation: number = Math.random() * 20 - 10;
 
-      // Animation transforms
       const translateY = animatedValues[index].interpolate({
         inputRange: [0, 1],
         outputRange: [0, -8],
@@ -466,197 +465,189 @@ const OnBoard3: React.FC = () => {
         outputRange: [randomOpacity, randomOpacity * 1.3, randomOpacity],
       });
 
-      return (
-        <Animated.Image
-          key={index}
-          source={icon}
-          style={{
-            position: "absolute",
-            top: position.top,
-            left: `${position.left}%`,
-            width: randomSize,
-            height: randomSize,
-            opacity: opacity,
-            tintColor: "#FFFFFF",
-            zIndex: 2,
-            transform: [
-              { translateY: translateY },
-              { scale: scale },
-              { rotate: rotate },
-            ],
-            shadowColor: "#FFFFFF",
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.8,
-            shadowRadius: 4,
-          }}
-          resizeMode="contain"
-        />
-      );
+      return h(Animated.Image, {
+        key: index,
+        source: icon,
+        style: {
+          position: "absolute",
+          top: position.top,
+          left: `${position.left}%`,
+          width: randomSize,
+          height: randomSize,
+          opacity,
+          tintColor: "#FFFFFF",
+          zIndex: 2,
+          transform: [{ translateY }, { scale }, { rotate }],
+          shadowColor: "#FFFFFF",
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8,
+          shadowRadius: 4,
+        },
+        resizeMode: "contain",
+      });
     });
   };
 
-  return (
-    <View style={styles.container}>
-      {/* Main content with PanResponder */}
-      <View style={styles.mainContent} {...panResponder.panHandlers}>
-        {/* Gradient Top Section */}
-        <LinearGradient
-          colors={["#4B3AFF", "#5C6CFF"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.topSection}
-        >
-          {/* Icons Layer */}
-          <View style={styles.iconsLayer}>{renderDistributedIcons()}</View>
+  return h(
+    View,
+    { style: styles.container },
+    // Main content with PanResponder
+    h(
+      View,
+      { style: styles.mainContent, ...panResponder.panHandlers },
+      // Gradient Top Section
+      h(
+        LinearGradient,
+        {
+          colors: ["#4B3AFF", "#5C6CFF"],
+          start: { x: 0, y: 0 },
+          end: { x: 1, y: 1 },
+          style: styles.topSection,
+        },
+        // Icons Layer
+        h(View, { style: styles.iconsLayer }, ...renderDistributedIcons()),
 
-          {/* Title */}
-          <Text style={styles.header}>
-            <Text className="text-blue-400">S</Text><Text>MART{" "}</Text>
-            <Text className="text-blue-400">F</Text><Text>ISHER{" "}</Text>
-          </Text>
-          <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">
-            LANKA{" "}
-          </Text>
+        // Title
+        h(
+          Text,
+          { style: styles.header },
+          h(Text, { className: "text-blue-400" }, "S"),
+          h(Text, null, "MART "),
+          h(Text, { className: "text-blue-400" }, "F"),
+          h(Text, null, "ISHER ")
+        ),
+        h(Text, { className: "text-3xl font-PoppinsBold text-blue-300 mt-0" }, "LANKA "),
 
-          {/* Light Blue Wave - BELOW the white wave */}
-          <View style={styles.lightBlueWaveContainer}>
-            <Svg
-              height="92"
-              width="90%"
-              viewBox="0 0 1440 320"
-              style={styles.lightBlueWaveSvg}
-            >
-              <Path
-                fill="#4B9BFF"
-                d="M0,180L48,170C96,160,192,140,288,130C384,120,480,120,576,135C672,150,768,180,864,190C960,200,1056,190,1152,175C1248,160,1344,130,1392,115L1440,100L1440,320L0,320Z"
-              />
-            </Svg>
-          </View>
+        // Light Blue Wave - BELOW the white wave
+        h(
+          View,
+          { style: styles.lightBlueWaveContainer },
+          h(
+            Svg,
+            { height: "92", width: "90%", viewBox: "0 0 1440 320", style: styles.lightBlueWaveSvg },
+            h(Path, {
+              fill: "#4B9BFF",
+              d: "M0,180L48,170C96,160,192,140,288,130C384,120,480,120,576,135C672,150,768,180,864,190C960,200,1056,190,1152,175C1248,160,1344,130,1392,115L1440,100L1440,320L0,320Z",
+            })
+          )
+        ),
 
-          {/* White Wave - ABOVE the blue wave */}
-          <Svg
-            height="92"
-            width="100%"
-            viewBox="0 0 1440 320"
-            style={styles.whiteWaveWrapper}
-          >
-            <Path
-              fill="#ffffff"
-              d="M0,224L48,202.7C96,181,192,139,288,128C384,117,480,139,576,165.3C672,192,768,224,864,234.7C960,245,1056,235,1152,213.3C1248,192,1344,160,1392,144L1440,128L1440,320L0,320Z"
-            />
-          </Svg>
-        </LinearGradient>
+        // White Wave - ABOVE the blue wave
+        h(
+          Svg,
+          { height: "92", width: "100%", viewBox: "0 0 1440 320", style: styles.whiteWaveWrapper },
+          h(Path, {
+            fill: "#ffffff",
+            d: "M0,224L48,202.7C96,181,192,139,288,128C384,117,480,139,576,165.3C672,192,768,224,864,234.7C960,245,1056,235,1152,213.3C1248,192,1344,160,1392,144L1440,128L1440,320L0,320Z",
+          })
+        )
+      ),
 
-        {/* Bottom Content Section with Image */}
-        <View style={styles.bottomSection}>
-          {/* Animated Triangle - rotates on swipe right */}
-          <Animated.View style={[styles.triangleContainer, triangleTransform]}>
-            <Image
-              source={images.Traingle2}
-              style={styles.triangle}
-              resizeMode="contain"
-            />
-          </Animated.View>
+      // Bottom Content Section with Image
+      h(
+        View,
+        { style: styles.bottomSection },
+        // Animated Triangle
+        h(
+          Animated.View,
+          { style: [styles.triangleContainer, triangleTransform] as any },
+          h(Image, { source: images.Traingle2, style: styles.triangle, resizeMode: "contain" })
+        ),
 
-          {/* Animated Vector - moves toward screen on swipe right (NO rotation) */}
-          <Animated.View style={[styles.vectorContainer, vectorTransform]}>
-            <Image
-              source={images.Eclips2} // Using Eclips2 image as per your setup
-              style={styles.vector}
-              resizeMode="contain"
-            />
-          </Animated.View>
+        // Animated Vector
+        h(
+          Animated.View,
+          { style: [styles.vectorContainer, vectorTransform] as any },
+          h(Image, { source: images.Eclips2, style: styles.vector, resizeMode: "contain" })
+        ),
 
-          {/* Animated Eclipse - moves toward screen on swipe right (NO rotation) */}
-          <Animated.View style={[styles.eclipseContainer, eclipseTransform]}>
-            <Image
-              source={images.Vector2} // Using Vector2 image as per your setup
-              style={styles.eclipse}
-              resizeMode="contain"
-            />
-          </Animated.View>
+        // Animated Eclipse
+        h(
+          Animated.View,
+          { style: [styles.eclipseContainer, eclipseTransform] as any },
+          h(Image, { source: images.Vector2, style: styles.eclipse, resizeMode: "contain" })
+        ),
 
-          {/* Light blue-gray colored filled circle around the onboard image */}
-          <View style={styles.circleContainer}>
-            <Svg width={240} height={240} style={styles.ashCircle}>
-              <Circle cx="120" cy="120" r="100" fill="#ECEBF1" opacity="0.3" />
-            </Svg>
-          </View>
+        // Circle behind image
+        h(
+          View,
+          { style: styles.circleContainer },
+          h(
+            Svg,
+            { width: 240, height: 240, style: styles.ashCircle },
+            h(Circle, { cx: "120", cy: "120", r: "100", fill: "#ECEBF1", opacity: 0.3 })
+          )
+        ),
 
-          {/* Animated Content */}
-          <Animated.View style={[styles.contentWrapper, contentTransform]}>
-            {/* Main OnBoard3 image */}
-            <Image
-              source={images.Onboard03}
-              style={styles.bottomImage}
-              resizeMode="contain"
-            />
+        // Animated Content
+        h(
+          Animated.View,
+          { style: [styles.contentWrapper, contentTransform] as any },
+          h(Image, { source: images.Onboard03, style: styles.bottomImage, resizeMode: "contain" }),
 
-            {/* Text below the image */}
-            <View style={styles.textContainer}>
-              {/* Gradient Text for "Stay on Track" */}
-              <MaskedView
-                style={styles.maskedView}
-                maskElement={
-                  <View style={styles.maskElement}>
-                    <Text style={styles.gradientTitleMask}>
-                      Market Intelligence
-                    </Text>
-                  </View>
-                }
-              >
-                <LinearGradient
-                  colors={["#3B81FD", "#7930FE"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.gradientFill}
-                />
-              </MaskedView>
-              <Text style={styles.description}>
-                Sell at the Right Time{"\n"}
-                Smart market analysis tells you when and where to sell for
-                maximum profit margins
-              </Text>
-              {/* Dots Indicator */}
-              <View style={styles.dotsContainer}>
-                <View style={[styles.dot, styles.inactiveDot]} />
-                <View style={[styles.dot, styles.inactiveDot]} />
-                <View style={[styles.dot, styles.activeDot]} />
-              </View>
-            </View>
-          </Animated.View>
-        </View>
-      </View>
+          h(
+            View,
+            { style: styles.textContainer },
+            h(
+              MaskedView,
+              {
+                style: styles.maskedView,
+                maskElement: h(
+                  View,
+                  { style: styles.maskElement },
+                  h(Text, { style: styles.gradientTitleMask }, "Market Intelligence")
+                ),
+              },
+              h(LinearGradient, {
+                colors: ["#3B81FD", "#7930FE"],
+                start: { x: 0, y: 0 },
+                end: { x: 1, y: 0 },
+                style: styles.gradientFill,
+              })
+            ),
 
-      {/* Back Button OUTSIDE the PanResponder */}
-      <TouchableOpacity
-        style={styles.backButtonContainer}
-        onPress={handleBackPress}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.backText}>Back</Text>
-      </TouchableOpacity>
+            h(
+              Text,
+              { style: styles.description },
+              "Sell at the Right Time\n",
+              "Smart market analysis tells you when and where to sell for maximum profit margins"
+            ),
 
-      {/* Get Started Button OUTSIDE the PanResponder */}
-      <TouchableOpacity
-        style={styles.nextButtonContainer}
-        onPress={handleNextPress}
-        activeOpacity={0.7}
-      >
-        {/* Quarter Circle Background - Flat side on right */}
-        <Svg width={100} height={100} style={styles.quarterCircleSvg}>
-          {/* Quarter circle - bottom-right quadrant with flat side on right */}
-          <Path
-            d="M0,100 A100,100 0 0,1 100,0 L100,100 Z"
-            fill="#9BA3AB"
-            opacity="0.3"
-          />
-        </Svg>
+            // Dots Indicator
+            h(
+              View,
+              { style: styles.dotsContainer },
+              h(View, { style: [styles.dot, styles.inactiveDot] }),
+              h(View, { style: [styles.dot, styles.inactiveDot] }),
+              h(View, { style: [styles.dot, styles.activeDot] })
+            )
+          )
+        )
+      )
+    ),
 
-        {/* Get Started Text */}
-        <Text style={styles.nextText}>Get Start</Text>
-      </TouchableOpacity>
-    </View>
+    // Back Button OUTSIDE the PanResponder
+    h(
+      TouchableOpacity,
+      { style: styles.backButtonContainer, onPress: handleBackPress, activeOpacity: 0.7 },
+      h(Text, { style: styles.backText }, "Back")
+    ),
+
+    // Get Started Button OUTSIDE the PanResponder
+    h(
+      TouchableOpacity,
+      { style: styles.nextButtonContainer, onPress: handleNextPress, activeOpacity: 0.7 },
+      h(
+        Svg,
+        { width: 100, height: 100, style: styles.quarterCircleSvg },
+        h(Path, {
+          d: "M0,100 A100,100 0 0,1 100,0 L100,100 Z",
+          fill: "#9BA3AB",
+          opacity: "0.3" as any,
+        })
+      ),
+      h(Text, { style: styles.nextText }, "Get Start")
+    )
   );
 };
 

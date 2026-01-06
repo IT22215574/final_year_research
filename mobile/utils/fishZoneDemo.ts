@@ -78,7 +78,9 @@ const pointInPolygon = (
     const xj = polygon[j].longitude;
     const yj = polygon[j].latitude;
 
-    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    const intersect =
+      (yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+
     if (intersect) inside = !inside;
   }
   return inside;
@@ -170,9 +172,7 @@ export const generateSriLankaDemoZones = (
 
       const level = levelFromScore(cellScore);
 
-      const lat0 = latMin + r * dLat;
-      const lon0 = lonMin + c * dLon;
-
+      // Use the loop coordinates; do not redeclare lat0/lon0 here (TS compile error).
       const polygon = [
         { latitude: lat0, longitude: lon0 },
         { latitude: lat0 + dLat, longitude: lon0 },
