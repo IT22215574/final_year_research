@@ -8,12 +8,15 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   
   // Get token from SecureStore
   const accessToken = await SecureStore.getItemAsync("access_token");
+
+  const isFormDataBody =
+    typeof FormData !== 'undefined' && options.body instanceof FormData;
   
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormDataBody ? {} : { 'Content-Type': 'application/json' }),
     'x-client-type': 'mobile',
     ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }), // CRITICAL: Add token
-    ...options.headers as Record<string, string>,
+    ...(options.headers as Record<string, string>),
   };
 
   console.log(`🌐 API Call: ${options.method || 'GET'} ${url}`);

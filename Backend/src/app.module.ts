@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { AuthModule } from './auth/auth.module';
+import { GradingModule } from './grading/grading.module';
 import { UserModule } from './user/user.module';
 import * as path from 'path';
 
@@ -30,6 +31,7 @@ import * as path from 'path';
       }),
     }),
     AuthModule,
+    GradingModule,
     UserModule,
   ],
 })
