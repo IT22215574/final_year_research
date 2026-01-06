@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
+  Platform,
   ActivityIndicator,
   Animated
 } from 'react-native';
@@ -17,13 +18,14 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 
 const { width } = Dimensions.get('window');
+const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
 
 const Quality = () => {
   const [permission, requestPermission] = useCameraPermissions();
   const [showCamera, setShowCamera] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<'back' | 'front'>('back');
   const [fishType, setFishType] = useState('');
   const [capturedImages, setCapturedImages] = useState({
     side1: null,
@@ -45,10 +47,19 @@ const Quality = () => {
   };
 
   const handleCameraPermission = async () => {
-    if (!permission) {
-      await requestPermission();
+    try {
+      if (!permission?.granted) {
+        const result = await requestPermission();
+        if (!result?.granted) {
+          Alert.alert('Permission Required', 'Please allow camera access to capture images.');
+          return;
+        }
+      }
+
+      setShowCamera(true);
+    } catch {
+      Alert.alert('Permission Error', 'Unable to request camera permission.');
     }
-    setShowCamera(true);
   };
 
   const takePicture = async (side) => {
@@ -162,7 +173,7 @@ const Quality = () => {
         <CameraView
           ref={cameraRef}
           style={styles.camera}
-          facing="back"
+          facing={cameraFacing}
           mode="picture"
         >
           <LinearGradient
@@ -243,7 +254,7 @@ const Quality = () => {
               >
                 <LinearGradient
                   colors={['#0066CC', '#00A3FF']}
-                  style={styles.captureButtonInner}
+                  style={styles.cameraCaptureButtonInner}
                 >
                   <View style={styles.captureButtonOuter}>
                     <MaterialIcons name="camera-alt" size={24} color="#0066CC" />
@@ -253,7 +264,7 @@ const Quality = () => {
               
               <TouchableOpacity
                 style={styles.secondaryButton}
-                onPress={() => cameraRef.current?.toggleFacing()}
+                onPress={() => setCameraFacing(prev => (prev === 'back' ? 'front' : 'back'))}
               >
                 <MaterialIcons name="flip-camera-ios" size={24} color="white" />
               </TouchableOpacity>
@@ -285,15 +296,7 @@ const Quality = () => {
           colors={['#0066CC', '#0088FF']}
           style={styles.headerGradient}
         >
-          <View style={styles.headerContent}>
-            <View style={styles.headerIconContainer}>
-              <MaterialIcons name="auto-awesome" size={24} color="white" />
-            </View>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>Fish Quality Scanner</Text>
-              <Text style={styles.headerSubtitle}>AI-powered quality assessment</Text>
-            </View>
-          </View>
+       
 
           <View style={styles.stepIndicator}>
             <View style={styles.stepItem}>
@@ -329,6 +332,7 @@ const Quality = () => {
 
       <ScrollView 
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -399,7 +403,7 @@ const Quality = () => {
                         >
                           <LinearGradient
                             colors={['#F0F9FF', '#E0F2FE']}
-                            style={styles.captureButtonInner}
+                            style={styles.captureCardButtonInner}
                           >
                             <View style={styles.captureIconContainer}>
                               <MaterialIcons name="add-a-photo" size={36} color="#0066CC" />
@@ -474,7 +478,7 @@ const Quality = () => {
                   ) : (
                     <>
                       <MaterialIcons name="auto-awesome" size={22} color="#fff" />
-                      <Text style={styles.primaryButtonText}>Analyze with AI</Text>
+                      <Text style={styles.primaryButtonText}>Predict Grade</Text>
                     </>
                   )}
                 </LinearGradient>
@@ -629,7 +633,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F0F9FF',
-    marginBottom:40,
   },
   header: {
     position: 'absolute',
@@ -644,7 +647,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   headerGradient: {
-    paddingTop: StatusBar.currentHeight + 16,
+    paddingTop: STATUS_BAR_HEIGHT + 16,
     paddingHorizontal: 24,
     paddingBottom: 24,
     borderBottomLeftRadius: 30,
@@ -721,7 +724,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    marginTop: 160,
+    marginTop: 85,
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
   content: {
     padding: 20,
@@ -830,7 +836,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 16,
   },
-  captureButtonInner: {
+  captureCardButtonInner: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1181,7 +1187,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: StatusBar.currentHeight + 20,
+    paddingTop: STATUS_BAR_HEIGHT + 20,
     paddingHorizontal: 20,
     paddingBottom: 30,
   },
@@ -1308,7 +1314,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  captureButtonInner: {
+  cameraCaptureButtonInner: {
     width: 76,
     height: 76,
     borderRadius: 38,

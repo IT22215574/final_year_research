@@ -117,7 +117,7 @@ export default function Profile() {
           await SecureStore.deleteItemAsync("access_token");
           await SecureStore.deleteItemAsync("refresh_token");
           await signOut();
-          router.replace("/(auth)/selectSignIn");
+          router.replace("/(auth)/sign-in");
         },
       },
     ]);
