@@ -26,7 +26,7 @@ export class User {
 
   @Prop({
     type: String,
-    enum: ['customer', 'Fisher man', 'Admin', 'SuperAdmin'],
+    enum: ['customer', 'Fisher man', 'Boat owner'],
   })
   role: string;
 

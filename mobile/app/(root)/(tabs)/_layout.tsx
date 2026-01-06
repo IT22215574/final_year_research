@@ -165,9 +165,9 @@ const TabsLayout = () => {
           }}
         />
         <Tabs.Screen
-          name="Qualitys"
+          name="Quality"
           options={{
-            title: "Qualitys",
+            title: "",
             headerShown: true,
             headerStyle: {
               backgroundColor: "#0057FF",
@@ -327,7 +327,7 @@ const TabsLayout = () => {
           
             <TouchableOpacity
               style={styles.navItem}
-              onPress={() => handleTabPress("Market", "/(tabs)/exams")}
+              onPress={() => handleTabPress("Market", "/(tabs)/Market")}
             >
               <View
                 style={[
@@ -393,14 +393,11 @@ const TabsLayout = () => {
             </TouchableOpacity>
           )}
 
-          {(currentUser?.role === "Internal" ||
-            currentUser?.role === "External" ||
-            currentUser?.role === "INTERNAL_STUDENT" ||
-            currentUser?.role == "EXTERNAL_STUDENT") && (
+
             <TouchableOpacity
               style={styles.navItem}
               onPress={() =>
-                handleTabPress("Quality", "/(tabs)/Qualitys")
+                handleTabPress("Quality", "/(tabs)/Quality")
               }
             >
               <View
@@ -410,7 +407,7 @@ const TabsLayout = () => {
                 ]}
               >
                 <Image
-                  source={icons.home_Quality}
+                  source={icons.Digital}
                   style={[
                     styles.navIcon,
                     activeTab === "Quality" && styles.navIconActive,
@@ -427,7 +424,7 @@ const TabsLayout = () => {
                 Quality
               </Text>
             </TouchableOpacity>
-          )}
+          a
 
           <TouchableOpacity
             style={styles.navItem}
