@@ -4,6 +4,17 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 
 ## Get started
 
+### Node version (Windows)
+
+Expo SDK 54 is not compatible with Node 22.x on Windows in this repo. If you see:
+`ERR_UNSUPPORTED_ESM_URL_SCHEME` while loading `metro.config.js`, switch to Node 20 LTS.
+
+Recommended (nvm-windows):
+1) Install nvm-windows
+2) `nvm install 20`
+3) `nvm use 20`
+4) Re-open the terminal, then run `pnpm start`
+
 1. Install dependencies
 
    ```bash

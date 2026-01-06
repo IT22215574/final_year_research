@@ -64,7 +64,7 @@ const TabsLayout = () => {
 
   const handleTabPress = (tabName: string, route: string) => {
     setActiveTab(tabName);
-    router.push(route);
+    router.push(route as any);
   };
 
   const toggleSidebar = () => {
@@ -327,7 +327,7 @@ const TabsLayout = () => {
           
             <TouchableOpacity
               style={styles.navItem}
-              onPress={() => handleTabPress("Market", "/(tabs)/exams")}
+              onPress={() => handleTabPress("Market", "/(tabs)/Market")}
             >
               <View
                 style={[

@@ -155,7 +155,10 @@ const Profile = () => {
       role: currentUser.role || "Not set",
       dateOfBirth: currentUser.dateOfBirth || null,
       joinDate: currentUser.createdAt || currentUser.joinDate || new Date(),
-      district: currentUser.district?.name || "Not set",
+      district:
+        (typeof currentUser.district === "string"
+          ? currentUser.district
+          : currentUser.district?.name) || "Not set",
       zone: currentUser.zone ? currentUser.zone : "Not set",
       // Additional fish industry specific fields
       specialization: currentUser.specialization || "Fishery Professional",
@@ -361,7 +364,7 @@ const Profile = () => {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push("/documents")}
+            onPress={() => router.push("/documents" as any)}
           >
             <LinearGradient
               colors={["#3B82F6", "#60A5FA"]}
@@ -374,7 +377,7 @@ const Profile = () => {
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push("/certifications")}
+            onPress={() => router.push("/certifications" as any)}
           >
             <LinearGradient
               colors={["#F59E0B", "#FBBF24"]}
@@ -487,7 +490,7 @@ const Profile = () => {
                 <Ionicons name="people" size={16} color="#64748B" />
                 <Text style={styles.detailLabel}>Member Since</Text>
                 <Text style={styles.detailValue}>
-                  {formatDate(userData?.joinDate)}
+                  {formatDate(userData?.joinDate ?? new Date())}
                 </Text>
               </View>
             </LinearGradient>
@@ -498,7 +501,7 @@ const Profile = () => {
         <View style={styles.actionButtonsContainer}>
           <TouchableOpacity
             style={[styles.actionButton, styles.primaryButton]}
-            onPress={() => router.push("/change-password")}
+            onPress={() => router.push("/change-password" as any)}
           >
             <LinearGradient
               colors={["#0B3D91", "#1E90FF"]}
@@ -510,7 +513,7 @@ const Profile = () => {
 
           <TouchableOpacity
             style={[styles.actionButton, styles.supportButton]}
-            onPress={() => router.push("/support")}
+            onPress={() => router.push("/support" as any)}
           >
             <Ionicons name="help-circle" size={20} color="#0B3D91" />
             <Text style={styles.supportButtonText}>Support Center</Text>

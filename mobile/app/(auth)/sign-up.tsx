@@ -77,7 +77,7 @@ const SignUp = () => {
   const [showZoneDropdown, setShowZoneDropdown] = useState(false);
   const [showGradeDropdown, setShowGradeDropdown] = useState(false);
   const [showMediumDropdown, setShowMediumDropdown] = useState(false);
-  const [availableZones, setAvailableZones] = useState([]);
+  const [availableZones, setAvailableZones] = useState<string[]>([]);
   const [tempDate, setTempDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
 
@@ -151,31 +151,37 @@ const SignUp = () => {
     }));
 
     if (name === "district") {
-      setAvailableZones(districtZoneData[value] || []);
+      setAvailableZones(districtZoneData[value as keyof typeof districtZoneData] || []);
       setFormData(prev => ({ ...prev, zone: "" }));
     }
   };
 
 
-  const handleMediumSelect = (medium) => {
+  const handleMediumSelect = (medium: string) => {
     handleChange("medium", medium);
     setShowMediumDropdown(false);
   };
 
   // Dropdown selection handlers
-  const handleDistrictSelect = (district) => {
+  const handleDistrictSelect = (district: string) => {
     handleChange("district", district);
     setShowDistrictDropdown(false);
   };
 
-  const handleZoneSelect = (zone) => {
+  const handleZoneSelect = (zone: string) => {
     handleChange("zone", zone);
     setShowZoneDropdown(false);
   };
 
 
   // Render dropdown items
-  const renderDropdownItem = ({ item, onSelect }) => (
+  const renderDropdownItem = ({
+    item,
+    onSelect,
+  }: {
+    item: string;
+    onSelect: (value: string) => void;
+  }) => (
     <TouchableOpacity
       style={styles.dropdownItem}
       onPress={() => onSelect(item)}
@@ -306,23 +312,23 @@ const handleSignUp = async () => {
       ]
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Signup error details:", {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
+      name: error?.name,
+      message: error?.message,
+      stack: error?.stack
     });
     
-    let errorMessage = error.message || "Failed to sign up. Please try again.";
+    let errorMessage = error?.message || "Failed to sign up. Please try again.";
     
     // Make error messages more user-friendly
-    if (error.message.includes("User with this phone number already exists")) {
+    if (error?.message?.includes("User with this phone number already exists")) {
       errorMessage = "This phone number is already registered.";
-    } else if (error.message.includes("Email already registered")) {
+    } else if (error?.message?.includes("Email already registered")) {
       errorMessage = "This email address is already registered.";
-    } else if (error.message.includes("network") || error.message.includes("fetch")) {
+    } else if (error?.message?.includes("network") || error?.message?.includes("fetch")) {
       errorMessage = "Network error. Please check your internet connection.";
-    } else if (error.message.includes("Internal teacher accounts")) {
+    } else if (error?.message?.includes("Internal teacher accounts")) {
       errorMessage = "This account type cannot be created through self-registration.";
     }
     
@@ -419,7 +425,6 @@ const handleSignUp = async () => {
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.8,
             shadowRadius: 4,
-            elevation: 4,
           }}
           resizeMode="contain"
         />

@@ -14,27 +14,38 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Controller, useForm } from "react-hook-form";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import CheckBox from "expo-checkbox";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { icons } from "@/constants";
 import useAuthStore from "@/stores/authStore";
-import { apiFetch } from "@/utils/api"; // Import apiFetch
 import * as SecureStore from "expo-secure-store"; // Import SecureStore
 
 const API = process.env.EXPO_PUBLIC_API_KEY;
 
+type FormValues = {
+  email: string;
+  password: string;
+};
+
 const SignIn = () => {
-  const { control, handleSubmit, formState: { errors }, setError, clearErrors } = useForm();
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    clearErrors,
+  } = useForm<FormValues>({
+    defaultValues: { email: "", password: "" },
+  });
   const [secureText, setSecureText] = useState(true);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [apiErrors, setApiErrors] = useState({
+  const [apiErrors, setApiErrors] = useState<Record<keyof FormValues, string>>({
     email: "",
-    password: ""
+    password: "",
   });
   
   const router = useRouter();
@@ -109,7 +120,7 @@ const SignIn = () => {
   }, []);
 
   // Clear API errors when user starts typing
-  const clearApiErrors = (field: string) => {
+  const clearApiErrors = (field: keyof FormValues) => {
     setApiErrors(prev => ({
       ...prev,
       [field]: ""
@@ -201,7 +212,6 @@ const SignIn = () => {
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.8,
             shadowRadius: 4,
-            elevation: 4,
           }}
           resizeMode="contain"
         />
@@ -210,7 +220,7 @@ const SignIn = () => {
   };
 
   // FIXED: Updated onSubmit function with proper token handling
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: FormValues) => {
     setLoading(true);
     setApiErrors({ email: "", password: "" });
     
@@ -289,7 +299,7 @@ const SignIn = () => {
       if (error.message.includes("User not found") || error.message.includes("Invalid credentials")) {
         setApiErrors({
           email: "Invalid email or password",
-          password: "Invalid email or password"
+          password: "Invalid email or password",
         });
       } else if (error.message.includes("network")) {
         Alert.alert("Network Error", "Please check your internet connection and try again.");
@@ -302,7 +312,7 @@ const SignIn = () => {
   };
 
   // Helper function to determine input border color
-  const getInputBorderColor = (fieldName: string) => {
+  const getInputBorderColor = (fieldName: keyof FormValues) => {
     if (errors[fieldName] || apiErrors[fieldName]) {
       return "#ef4444";
     }

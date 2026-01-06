@@ -13,7 +13,17 @@ interface User {
   isAdmin?: boolean;
   verifytoken?: string;
   profilePicture?: string;
+  profileAvatar?: string;
+  avatar?: string;
   joinDate?: Date;
+  createdAt?: string | Date;
+  dateOfBirth?: string | Date | null;
+  district?: { name?: string } | string;
+  zone?: string;
+  specialization?: string;
+  experience?: string;
+  licenseNumber?: string;
+  vesselName?: string;
 }
 
 interface AuthState {

@@ -12,12 +12,12 @@ const ScreenLayout = () => {
       >
         <Stack.Screen
           name="chat_window"
-          options={({ route }) => ({
+          options={{
             headerShown: true,
             headerStyle: { backgroundColor: "#fff" },
             headerTintColor: "#623B1C",
-            headerTitle: () => <ChatHeader receiverId={route.params?.id} />,
-          })}
+            title: "Chat",
+          }}
         />
 
         

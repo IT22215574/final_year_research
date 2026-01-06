@@ -17,7 +17,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
 
   const handleNavigation = (path: string) => {
     onClose();
-    router.push(path);
+    router.push(path as any);
   };
 
   const menuItems = [

@@ -38,14 +38,21 @@ export default function PredictionsScreen() {
     const loadFish = async () => {
       try {
         setLoadingFish(true);
-        const res = await axios.get(`${API_CONFIG.PREDICTION_API}/fish`);
-        const data = res.data as FishOption[];
-        const list = data.length > 0 ? data : sampleFish;
+        const url = `${API_CONFIG.PREDICTION_API}/fish`;
+        const res = await axios.get(url, { timeout: 8000 });
+
+        const data = res.data as unknown;
+        const list = Array.isArray(data) && data.length > 0 ? (data as FishOption[]) : sampleFish;
+
         setFishList(list);
         if (list.length > 0) {
           setSelectedFishId(list[0].fish_id);
         }
       } catch (err) {
+        console.log('❌ Fish list fetch failed:', {
+          predictionApi: API_CONFIG.PREDICTION_API,
+          message: err instanceof Error ? err.message : String(err),
+        });
         const list = sampleFish;
         setFishList(list);
         if (list.length > 0) setSelectedFishId(list[0].fish_id);
@@ -92,7 +99,11 @@ export default function PredictionsScreen() {
   const minPrice = priceHistory.length > 0 ? Math.min(...priceHistory.map(p => p.price)) : 0;
   const maxPrice = priceHistory.length > 0 ? Math.max(...priceHistory.map(p => p.price)) : 0;
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.contentContainer}
+    >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🐟 Fish Price Predictor</Text>
@@ -306,6 +317,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+  },
+  contentContainer: {
+    paddingBottom: 120,
   },
   header: {
     paddingHorizontal: 16,

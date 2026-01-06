@@ -14,9 +14,20 @@ import * as path from 'path';
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO'),
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const mongoUri =
+          configService.get<string>('MONGO') ??
+          configService.get<string>('MONGODB_URI') ??
+          configService.get<string>('MONGO_URI');
+
+        if (!mongoUri) {
+          throw new Error(
+            'Missing MongoDB connection string. Set MONGO (or MONGODB_URI) in Backend/.env',
+          );
+        }
+
+        return { uri: mongoUri };
+      },
       inject: [ConfigService],
     }),
     MulterModule.register({

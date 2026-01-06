@@ -34,3 +34,52 @@ export const CURRENCY = 'Rs.';
 
 export const API_TIMEOUT = 10000; // 10 seconds
 export const CACHE_DURATION = 3600000; // 1 hour
+
+export const icons = {
+  burgermenu: require('../assets/icons/menu.png'),
+  notification: require('../assets/icons/notification.png'),
+  nav_home: require('../assets/icons/nav_home.png'),
+  nav_user: require('../assets/icons/nav_user.png'),
+  nav_exam: require('../assets/icons/nav_exam.png'),
+  search: require('../assets/icons/search.png'),
+  HouseSale: require('../assets/icons/housesale.png'),
+  requests: require('../assets/icons/pkg.png'),
+  home_Quality: require('../assets/icons/home.png'),
+  home_book: require('../assets/icons/home_book.png'),
+  home_publication: require('../assets/icons/home_publication.png'),
+  FisherIcon: require('../assets/icons/fisher.png'),
+  BuyerIcon: require('../assets/icons/buyer.png'),
+  sidebar_classlink: require('../assets/icons/catside.png'),
+  sidebar_admin: require('../assets/icons/chat.png'),
+  Icon1: require('../assets/icons/icon1.png'),
+  Icon2: require('../assets/icons/icon2.png'),
+  Icon3: require('../assets/icons/icon3.png'),
+  Icon4: require('../assets/icons/icon4.png'),
+  Icon5: require('../assets/icons/icon5.png'),
+  Icon6: require('../assets/icons/icon6.png'),
+};
+
+export const images = {
+  Onboard01: require('../assets/images/OnBoard1.png'),
+  Onboard02: require('../assets/images/OnBoard2.png'),
+  Onboard03: require('../assets/images/OnBoard3.png'),
+  SFLLogo: require('../assets/images/SFLLogo.png'),
+  LearnUpLogo: require('../assets/images/LearnUpLogo.png'),
+  Forgot1: require('../assets/images/forgot1.png'),
+  Forgot2: require('../assets/images/forgot2.png'),
+  Forgot3: require('../assets/images/forgot3.png'),
+  PassSucess: require('../assets/images/passsucess.png'),
+  ReqOtp: require('../assets/images/reqotp.png'),
+  VerifyOtp: require('../assets/images/verifyotp.png'),
+  SigninBg: require('../assets/images/signinbg.png'),
+  Sucess: require('../assets/images/sucess.png'),
+  Traingle: require('../assets/images/traingle.png'),
+  Traingle1: require('../assets/images/traingle1.png'),
+  Traingle2: require('../assets/images/traingle2.png'),
+  Vector: require('../assets/images/vector.png'),
+  Vector1: require('../assets/images/vector1.png'),
+  Vector2: require('../assets/images/vector2.png'),
+  Eclips: require('../assets/images/eclips.png'),
+  Eclips1: require('../assets/images/eclips1.png'),
+  Eclips2: require('../assets/images/eclips2.png'),
+};
