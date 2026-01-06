@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -8,11 +8,9 @@ import {
   ActivityIndicator,
   StyleSheet,
   Animated,
-  Image,
   ImageSourcePropType,
   Alert
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Controller, useForm } from "react-hook-form";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import CheckBox from "expo-checkbox";
@@ -43,7 +41,6 @@ const SignIn = () => {
   const [secureText, setSecureText] = useState(true);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [apiErrors, setApiErrors] = useState<Record<keyof FormValues, string>>({
     email: "",
     password: "",
@@ -51,22 +48,21 @@ const SignIn = () => {
   
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { signIn, isSignedIn } = useAuthStore();
+  const { signIn } = useAuthStore();
 
   // Animation values for icons - FIXED: Create refs for animated values
   const animatedValues = useRef(Array(15).fill(0).map(() => new Animated.Value(0))).current;
   const animationRefs = useRef<Animated.CompositeAnimation[]>([]);
 
-  // Get role from navigation params
+  // Log role if present (optional)
   useEffect(() => {
     if (params.role) {
-      setUserRole(params.role as string);
       console.log("User role:", params.role);
     }
   }, [params.role]);
 
   // Animation functions
-  const startAnimations = () => {
+  const startAnimations = useCallback(() => {
     // Clear any existing animations
     animationRefs.current.forEach(animation => animation.stop());
     animationRefs.current = [];
@@ -104,12 +100,12 @@ const SignIn = () => {
 
     // Start all animations
     iconAnimations.forEach(animation => animation.start());
-  };
+  }, [animatedValues]);
 
-  const stopAnimations = () => {
+  const stopAnimations = useCallback(() => {
     animationRefs.current.forEach(animation => animation.stop());
     animationRefs.current = [];
-  };
+  }, []);
 
   // Start animations when component mounts
   useEffect(() => {
@@ -118,7 +114,7 @@ const SignIn = () => {
     return () => {
       stopAnimations();
     };
-  }, []);
+  }, [startAnimations, stopAnimations]);
 
   // Clear API errors when user starts typing
   const clearApiErrors = (field: keyof FormValues) => {

@@ -1,4 +1,4 @@
-import  { useState, useRef, useEffect } from "react";
+import  { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Image,
   ImageSourcePropType,
   Modal,
   FlatList,
@@ -22,7 +21,6 @@ import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { icons } from "@/constants";
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { apiFetch } from "@/utils/api";
 import { getAuthApiBaseUrls } from "@/src/config/api";
 
@@ -73,14 +71,11 @@ const SignUp = () => {
     confirmPassword: "",
   });
 
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showDistrictDropdown, setShowDistrictDropdown] = useState(false);
   const [showZoneDropdown, setShowZoneDropdown] = useState(false);
-  const [showGradeDropdown, setShowGradeDropdown] = useState(false);
   const [showMediumDropdown, setShowMediumDropdown] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [availableZones, setAvailableZones] = useState<string[]>([]);
-  const [tempDate, setTempDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
@@ -92,7 +87,7 @@ const SignUp = () => {
   const animationRefs = useRef<Animated.CompositeAnimation[]>([]);
 
   // Animation functions
-  const startAnimations = () => {
+  const startAnimations = useCallback(() => {
     // Clear any existing animations
     animationRefs.current.forEach(animation => animation.stop());
     animationRefs.current = [];
@@ -130,12 +125,12 @@ const SignUp = () => {
 
     // Start all animations
     iconAnimations.forEach(animation => animation.start());
-  };
+  }, [animatedValues]);
 
-  const stopAnimations = () => {
+  const stopAnimations = useCallback(() => {
     animationRefs.current.forEach(animation => animation.stop());
     animationRefs.current = [];
-  };
+  }, []);
 
   // Start animations when component mounts
   useEffect(() => {
@@ -144,7 +139,7 @@ const SignUp = () => {
     return () => {
       stopAnimations();
     };
-  }, []);
+  }, [startAnimations, stopAnimations]);
 
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({
