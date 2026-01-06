@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -15,10 +15,23 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import useAuthStore from "@/stores/authStore";
 import { icons } from "@/constants";
+import MapView, { Polygon, PROVIDER_GOOGLE } from "react-native-maps";
+import { generateSriLankaDemoZones, type FishZoneInputs } from "@/utils/fishZoneDemo";
 
 const Home = () => {
   const { currentUser, signOut } = useAuthStore();
   const router = useRouter();
+
+  const [inputs, setInputs] = useState<FishZoneInputs>({
+    sstC: 28.2,
+    chlorophyllMgM3: 0.65,
+    currentSpeedMS: 0.9,
+    currentDirectionDeg: 210,
+  });
+
+  const [selectedCoord, setSelectedCoord] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  const zones = useMemo(() => generateSriLankaDemoZones(inputs, { cellSizeKm: 4 }), [inputs]);
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -111,6 +124,138 @@ const Home = () => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Fish Zone Demo */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Fish Zone Demo (Dummy)</Text>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Inputs</Text>
+
+            <View style={styles.inputRow}>
+              <Text style={styles.inputLabel}>SST (°C)</Text>
+              <TextInput
+                style={styles.inputBox}
+                keyboardType="numeric"
+                value={String(inputs.sstC)}
+                onChangeText={(t) =>
+                  setInputs((prev) => ({
+                    ...prev,
+                    sstC: Number(t.replace(/[^0-9.\-]/g, "")) || 0,
+                  }))
+                }
+              />
+            </View>
+
+            <View style={styles.inputRow}>
+              <Text style={styles.inputLabel}>Chlorophyll (mg/m³)</Text>
+              <TextInput
+                style={styles.inputBox}
+                keyboardType="numeric"
+                value={String(inputs.chlorophyllMgM3)}
+                onChangeText={(t) =>
+                  setInputs((prev) => ({
+                    ...prev,
+                    chlorophyllMgM3: Number(t.replace(/[^0-9.\-]/g, "")) || 0,
+                  }))
+                }
+              />
+            </View>
+
+            <View style={styles.inputRow}>
+              <Text style={styles.inputLabel}>Current Speed (m/s)</Text>
+              <TextInput
+                style={styles.inputBox}
+                keyboardType="numeric"
+                value={String(inputs.currentSpeedMS)}
+                onChangeText={(t) =>
+                  setInputs((prev) => ({
+                    ...prev,
+                    currentSpeedMS: Number(t.replace(/[^0-9.\-]/g, "")) || 0,
+                  }))
+                }
+              />
+            </View>
+
+            <View style={styles.inputRow}>
+              <Text style={styles.inputLabel}>Current Direction (°)</Text>
+              <TextInput
+                style={styles.inputBox}
+                keyboardType="numeric"
+                value={String(inputs.currentDirectionDeg)}
+                onChangeText={(t) =>
+                  setInputs((prev) => ({
+                    ...prev,
+                    currentDirectionDeg: Number(t.replace(/[^0-9.\-]/g, "")) || 0,
+                  }))
+                }
+              />
+            </View>
+          </View>
+
+          <View style={[styles.card, { marginTop: 14 }]}>
+            <Text style={styles.cardTitle}>Predicted Zones</Text>
+            <View style={styles.legendRow}>
+              <View style={[styles.legendDot, { backgroundColor: "rgba(34,197,94,0.35)" }]} />
+              <Text style={styles.legendText}>High</Text>
+              <View style={[styles.legendDot, { backgroundColor: "rgba(250,204,21,0.35)" }]} />
+              <Text style={styles.legendText}>Medium</Text>
+              <View style={[styles.legendDot, { backgroundColor: "rgba(239,68,68,0.35)" }]} />
+              <Text style={styles.legendText}>Low</Text>
+            </View>
+
+            <View style={styles.mapContainer}>
+              <MapView
+                style={styles.map}
+                provider={PROVIDER_GOOGLE}
+                initialRegion={{
+                  latitude: 7.8731,
+                  longitude: 80.7718,
+                  latitudeDelta: 6.2,
+                  longitudeDelta: 4.2,
+                }}
+                onPress={(e) => {
+                  const c = e.nativeEvent.coordinate;
+                  setSelectedCoord({ latitude: c.latitude, longitude: c.longitude });
+                }}
+              >
+                {zones.map((z) => {
+                  const fillColor =
+                    z.level === "HIGH"
+                      ? "rgba(34,197,94,0.35)"
+                      : z.level === "MEDIUM"
+                        ? "rgba(250,204,21,0.35)"
+                        : "rgba(239,68,68,0.35)";
+
+                  const strokeColor =
+                    z.level === "HIGH"
+                      ? "rgba(34,197,94,0.8)"
+                      : z.level === "MEDIUM"
+                        ? "rgba(250,204,21,0.8)"
+                        : "rgba(239,68,68,0.8)";
+
+                  return (
+                    <Polygon
+                      key={z.id}
+                      coordinates={z.polygon}
+                      fillColor={fillColor}
+                      strokeColor={strokeColor}
+                      strokeWidth={1}
+                    />
+                  );
+                })}
+              </MapView>
+            </View>
+
+            <View style={styles.coordRow}>
+              <Text style={styles.coordText}>
+                {selectedCoord
+                  ? `Selected: ${selectedCoord.latitude.toFixed(5)}, ${selectedCoord.longitude.toFixed(5)}`
+                  : "Tap on the map to see latitude & longitude"}
+              </Text>
+            </View>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -120,6 +265,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f8fafc", // Light background for entire screen
+  },
+  coordRow: {
+    marginTop: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: "#f1f5f9",
+  },
+  coordText: {
+    fontSize: 13,
+    color: "#0f172a",
   },
   systemStatusBar: {
     height: StatusBar.currentHeight,
@@ -249,6 +405,79 @@ const styles = StyleSheet.create({
     color: "#1e293b",
     fontWeight: "600",
     textAlign: "center",
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 10,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+    gap: 12,
+  },
+  inputLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: "#334155",
+    fontWeight: "600",
+  },
+  inputBox: {
+    width: 120,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#f8fafc",
+    color: "#0f172a",
+    fontSize: 14,
+  },
+  mapContainer: {
+    height: 260,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  map: {
+    flex: 1,
+  },
+  legendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+    flexWrap: "wrap",
+  },
+  legendDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 13,
+    color: "#334155",
+    fontWeight: "600",
+    marginRight: 10,
   },
   scheduleCard: {
     backgroundColor: "#fff",

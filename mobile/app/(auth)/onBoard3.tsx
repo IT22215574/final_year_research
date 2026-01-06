@@ -594,7 +594,7 @@ const OnBoard3: React.FC = () => {
 
             {/* Text below the image */}
             <View style={styles.textContainer}>
-              {/* Gradient Text for "Stay on Track" */}{" "}
+              {/* Gradient Text for "Stay on Track" */}
               <MaskedView
                 style={styles.maskedView}
                 maskElement={
