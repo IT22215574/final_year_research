@@ -15,12 +15,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import useAuthStore from "@/stores/authStore";
 import { icons } from "@/constants";
-import MapView, { Polygon, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Polygon, PROVIDER_GOOGLE, type Region } from "react-native-maps";
 import { generateSriLankaDemoZones, type FishZoneInputs } from "@/utils/fishZoneDemo";
 
 const Home = () => {
   const { currentUser, signOut } = useAuthStore();
   const router = useRouter();
+
+  const mapRef = React.useRef<MapView | null>(null);
 
   const [inputs, setInputs] = useState<FishZoneInputs>({
     sstC: 28.2,
@@ -29,12 +31,36 @@ const Home = () => {
     currentDirectionDeg: 210,
   });
 
+  const [mapRegion, setMapRegion] = useState<Region>({
+    latitude: 7.8731,
+    longitude: 80.7718,
+    latitudeDelta: 6.2,
+    longitudeDelta: 4.2,
+  });
+
   const [selectedCoord, setSelectedCoord] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const zones = useMemo(
     () => generateSriLankaDemoZones(inputs, { cellSizeKm: 4, maxCells: 12000 }),
     [inputs],
   );
+
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+  const zoomBy = (factor: number) => {
+    setMapRegion((prev) => {
+      const next: Region = {
+        ...prev,
+        latitudeDelta: clamp(prev.latitudeDelta * factor, 0.01, 80),
+        longitudeDelta: clamp(prev.longitudeDelta * factor, 0.01, 80),
+      };
+      mapRef.current?.animateToRegion(next, 180);
+      return next;
+    });
+  };
+
+  const zoomIn = () => zoomBy(0.75);
+  const zoomOut = () => zoomBy(1.25);
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -211,12 +237,11 @@ const Home = () => {
               <MapView
                 style={styles.map}
                 provider={PROVIDER_GOOGLE}
-                initialRegion={{
-                  latitude: 7.8731,
-                  longitude: 80.7718,
-                  latitudeDelta: 6.2,
-                  longitudeDelta: 4.2,
+                ref={(r) => {
+                  mapRef.current = r;
                 }}
+                region={mapRegion}
+                onRegionChangeComplete={setMapRegion}
                 onPress={(e) => {
                   const c = e.nativeEvent.coordinate;
                   setSelectedCoord({ latitude: c.latitude, longitude: c.longitude });
@@ -248,6 +273,28 @@ const Home = () => {
                   );
                 })}
               </MapView>
+
+              <View style={styles.zoomControls} pointerEvents="box-none">
+                <TouchableOpacity
+                  style={[styles.zoomButton, styles.zoomButtonTop]}
+                  onPress={zoomIn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Zoom in"
+                >
+                  <Ionicons name="add" size={18} color="#0f172a" />
+                </TouchableOpacity>
+
+                <View style={styles.zoomDivider} />
+
+                <TouchableOpacity
+                  style={[styles.zoomButton, styles.zoomButtonBottom]}
+                  onPress={zoomOut}
+                  accessibilityRole="button"
+                  accessibilityLabel="Zoom out"
+                >
+                  <Ionicons name="remove" size={18} color="#0f172a" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.coordRow}>
@@ -460,9 +507,34 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#e2e8f0",
+    position: "relative",
   },
   map: {
     flex: 1,
+  },
+  zoomControls: {
+    position: "absolute",
+    right: 12,
+    top: 12,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    overflow: "hidden",
+    zIndex: 20,
+    elevation: 20,
+  },
+  zoomButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  zoomButtonTop: {},
+  zoomButtonBottom: {},
+  zoomDivider: {
+    height: 1,
+    backgroundColor: "#e2e8f0",
   },
   legendRow: {
     flexDirection: "row",
