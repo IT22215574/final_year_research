@@ -247,7 +247,7 @@ const Home = () => {
                   setSelectedCoord({ latitude: c.latitude, longitude: c.longitude });
                 }}
               >
-                {zones.map((z) => {
+                {zones.map((z, idx) => {
                   const fillColor =
                     z.level === "HIGH"
                       ? "rgba(34,197,94,0.35)"
@@ -264,7 +264,7 @@ const Home = () => {
 
                   return (
                     <Polygon
-                      key={z.id}
+                      key={`${z.id}-${idx}`}
                       coordinates={z.polygon}
                       fillColor={fillColor}
                       strokeColor={strokeColor}
