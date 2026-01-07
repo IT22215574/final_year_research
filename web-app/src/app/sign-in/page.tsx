@@ -26,7 +26,7 @@ export default function SignInPage() {
     try {
       const user = await signIn({ email, password });
       setUser(user);
-      router.push("/");
+      router.push("/admin");
     } catch (e) {
       const err = e as ApiError;
       setError(err.message ?? "Failed to sign in. Please check your credentials.");
