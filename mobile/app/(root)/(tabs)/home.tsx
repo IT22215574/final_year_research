@@ -18,6 +18,13 @@ import { icons } from "@/constants";
 import MapView, { Polygon, PROVIDER_GOOGLE, type Region } from "react-native-maps";
 import { generateSriLankaDemoZones, type FishZoneInputs } from "@/utils/fishZoneDemo";
 
+const DEFAULT_REGION: Region = {
+  latitude: 7.8731,
+  longitude: 80.7718,
+  latitudeDelta: 6.2,
+  longitudeDelta: 4.2,
+};
+
 const Home = () => {
   const { currentUser, signOut } = useAuthStore();
   const router = useRouter();
@@ -31,12 +38,8 @@ const Home = () => {
     currentDirectionDeg: 210,
   });
 
-  const [mapRegion, setMapRegion] = useState<Region>({
-    latitude: 7.8731,
-    longitude: 80.7718,
-    latitudeDelta: 6.2,
-    longitudeDelta: 4.2,
-  });
+  const [mapRegion, setMapRegion] = useState<Region>(DEFAULT_REGION);
+  const [isZoomedIn, setIsZoomedIn] = useState(false);
 
   const [selectedCoord, setSelectedCoord] = useState<{ latitude: number; longitude: number } | null>(null);
 
@@ -45,22 +48,18 @@ const Home = () => {
     [inputs],
   );
 
-  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-
-  const zoomBy = (factor: number) => {
-    setMapRegion((prev) => {
-      const next: Region = {
-        ...prev,
-        latitudeDelta: clamp(prev.latitudeDelta * factor, 0.01, 80),
-        longitudeDelta: clamp(prev.longitudeDelta * factor, 0.01, 80),
-      };
-      mapRef.current?.animateToRegion(next, 180);
-      return next;
-    });
+  const resetToDefaultView = () => {
+    mapRef.current?.animateToRegion(DEFAULT_REGION, 300);
+    setMapRegion(DEFAULT_REGION);
+    setIsZoomedIn(false);
   };
 
-  const zoomIn = () => zoomBy(0.75);
-  const zoomOut = () => zoomBy(1.25);
+  const handleRegionChange = (region: Region) => {
+    setMapRegion(region);
+    // Check if zoomed in (smaller delta = more zoomed in)
+    const isZoomed = region.latitudeDelta < DEFAULT_REGION.latitudeDelta * 0.9;
+    setIsZoomedIn(isZoomed);
+  };
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -156,7 +155,7 @@ const Home = () => {
 
         {/* Fish Zone Demo */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fish Zone Demo (Dummy)</Text>
+          <Text style={styles.sectionTitle}>Fish Zone Demo </Text>
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Inputs</Text>
@@ -240,8 +239,8 @@ const Home = () => {
                 ref={(r) => {
                   mapRef.current = r;
                 }}
-                region={mapRegion}
-                onRegionChangeComplete={setMapRegion}
+                initialRegion={DEFAULT_REGION}
+                onRegionChangeComplete={handleRegionChange}
                 onPress={(e) => {
                   const c = e.nativeEvent.coordinate;
                   setSelectedCoord({ latitude: c.latitude, longitude: c.longitude });
@@ -274,27 +273,16 @@ const Home = () => {
                 })}
               </MapView>
 
-              <View style={styles.zoomControls} pointerEvents="box-none">
+              {isZoomedIn && (
                 <TouchableOpacity
-                  style={[styles.zoomButton, styles.zoomButtonTop]}
-                  onPress={zoomIn}
+                  style={styles.zoomOutButton}
+                  onPress={resetToDefaultView}
                   accessibilityRole="button"
-                  accessibilityLabel="Zoom in"
+                  accessibilityLabel="Reset to default view"
                 >
-                  <Ionicons name="add" size={18} color="#0f172a" />
+                  <Ionicons name="contract-outline" size={20} color="#fff" />
                 </TouchableOpacity>
-
-                <View style={styles.zoomDivider} />
-
-                <TouchableOpacity
-                  style={[styles.zoomButton, styles.zoomButtonBottom]}
-                  onPress={zoomOut}
-                  accessibilityRole="button"
-                  accessibilityLabel="Zoom out"
-                >
-                  <Ionicons name="remove" size={18} color="#0f172a" />
-                </TouchableOpacity>
-              </View>
+              )}
             </View>
 
             <View style={styles.coordRow}>
@@ -512,29 +500,21 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  zoomControls: {
+  zoomOutButton: {
     position: "absolute",
-    right: 12,
-    top: 12,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    overflow: "hidden",
-    zIndex: 20,
-    elevation: 20,
-  },
-  zoomButton: {
-    width: 44,
-    height: 44,
+    right: 16,
+    top: 16,
+    width: 48,
+    height: 48,
+    backgroundColor: "rgba(15, 23, 42, 0.9)",
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-  },
-  zoomButtonTop: {},
-  zoomButtonBottom: {},
-  zoomDivider: {
-    height: 1,
-    backgroundColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   legendRow: {
     flexDirection: "row",

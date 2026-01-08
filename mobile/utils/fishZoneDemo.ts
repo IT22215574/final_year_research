@@ -21,46 +21,88 @@ export type DemoZoneOptions = {
 };
 
 // Lightweight land mask for the demo grid (avoids drawing zones over Sri Lanka land).
-// This is a conservative, hand-traced outline (still approximate, not a coastline).
-// Intention: better to hide a few nearshore sea cells than to show zones on land.
+// More detailed polygon to prevent zones from appearing on land areas.
 const SRI_LANKA_LAND_POLYGON: Array<{ latitude: number; longitude: number }> = [
   // Jaffna peninsula / north
-  { latitude: 9.86, longitude: 80.00 },
-  { latitude: 9.83, longitude: 80.35 },
-  { latitude: 9.72, longitude: 80.62 },
-  { latitude: 9.55, longitude: 80.86 },
-  { latitude: 9.30, longitude: 81.05 },
+  { latitude: 9.86, longitude: 79.95 },
+  { latitude: 9.83, longitude: 80.10 },
+  { latitude: 9.80, longitude: 80.25 },
+  { latitude: 9.75, longitude: 80.40 },
+  { latitude: 9.68, longitude: 80.55 },
+  { latitude: 9.58, longitude: 80.70 },
+  { latitude: 9.45, longitude: 80.82 },
+  { latitude: 9.32, longitude: 80.92 },
+  { latitude: 9.20, longitude: 81.00 },
 
-  // North-east down to Trinco/Batticaloa
-  { latitude: 9.05, longitude: 81.22 },
-  { latitude: 8.75, longitude: 81.40 },
-  { latitude: 8.35, longitude: 81.55 },
-  { latitude: 7.95, longitude: 81.63 },
-  { latitude: 7.55, longitude: 81.72 },
-  { latitude: 7.05, longitude: 81.78 },
-  { latitude: 6.55, longitude: 81.76 },
-  { latitude: 6.10, longitude: 81.60 },
-  { latitude: 5.72, longitude: 81.34 },
-  { latitude: 5.45, longitude: 81.10 },
+  // North-east coast - highly detailed to prevent land overlap
+  { latitude: 9.10, longitude: 81.08 },
+  { latitude: 9.00, longitude: 81.15 },
+  { latitude: 8.88, longitude: 81.22 },
+  { latitude: 8.75, longitude: 81.28 },
+  { latitude: 8.62, longitude: 81.33 },
+  { latitude: 8.48, longitude: 81.37 },
+  { latitude: 8.35, longitude: 81.40 },
+  { latitude: 8.22, longitude: 81.43 },
+  { latitude: 8.08, longitude: 81.45 },
+  { latitude: 7.95, longitude: 81.47 },
+  { latitude: 7.82, longitude: 81.48 },
+  { latitude: 7.68, longitude: 81.50 },
+  { latitude: 7.55, longitude: 81.51 },
+  { latitude: 7.42, longitude: 81.52 },
+  { latitude: 7.28, longitude: 81.53 },
+  { latitude: 7.15, longitude: 81.53 },
+  { latitude: 7.02, longitude: 81.53 },
+  { latitude: 6.88, longitude: 81.52 },
+  { latitude: 6.75, longitude: 81.50 },
+  { latitude: 6.62, longitude: 81.47 },
+  { latitude: 6.48, longitude: 81.43 },
+  { latitude: 6.35, longitude: 81.38 },
+  { latitude: 6.22, longitude: 81.32 },
+  { latitude: 6.08, longitude: 81.25 },
+  { latitude: 5.95, longitude: 81.17 },
+  { latitude: 5.82, longitude: 81.08 },
+  { latitude: 5.70, longitude: 80.98 },
+  { latitude: 5.58, longitude: 80.88 },
+  { latitude: 5.48, longitude: 80.77 },
 
-  // South coast
-  { latitude: 5.30, longitude: 80.85 },
-  { latitude: 5.22, longitude: 80.55 },
-  { latitude: 5.16, longitude: 80.25 },
-  { latitude: 5.18, longitude: 79.95 },
+  // South coast - detailed
+  { latitude: 5.40, longitude: 80.65 },
+  { latitude: 5.33, longitude: 80.52 },
+  { latitude: 5.28, longitude: 80.38 },
+  { latitude: 5.24, longitude: 80.24 },
+  { latitude: 5.22, longitude: 80.10 },
+  { latitude: 5.21, longitude: 79.95 },
+  { latitude: 5.22, longitude: 79.80 },
 
-  // West coast up to Puttalam/Mannar
-  { latitude: 5.35, longitude: 79.70 },
-  { latitude: 5.55, longitude: 79.55 },
-  { latitude: 5.90, longitude: 79.45 },
-  { latitude: 6.35, longitude: 79.40 },
-  { latitude: 6.85, longitude: 79.45 },
-  { latitude: 7.35, longitude: 79.50 },
-  { latitude: 7.85, longitude: 79.55 },
-  { latitude: 8.35, longitude: 79.65 },
-  { latitude: 8.85, longitude: 79.75 },
-  { latitude: 9.25, longitude: 79.85 },
-  { latitude: 9.55, longitude: 79.92 },
+  // West coast up to Puttalam/Mannar - detailed
+  { latitude: 5.25, longitude: 79.68 },
+  { latitude: 5.32, longitude: 79.58 },
+  { latitude: 5.42, longitude: 79.50 },
+  { latitude: 5.55, longitude: 79.44 },
+  { latitude: 5.70, longitude: 79.40 },
+  { latitude: 5.88, longitude: 79.38 },
+  { latitude: 6.05, longitude: 79.38 },
+  { latitude: 6.22, longitude: 79.39 },
+  { latitude: 6.40, longitude: 79.41 },
+  { latitude: 6.58, longitude: 79.43 },
+  { latitude: 6.75, longitude: 79.46 },
+  { latitude: 6.92, longitude: 79.49 },
+  { latitude: 7.10, longitude: 79.52 },
+  { latitude: 7.28, longitude: 79.55 },
+  { latitude: 7.45, longitude: 79.58 },
+  { latitude: 7.62, longitude: 79.62 },
+  { latitude: 7.80, longitude: 79.66 },
+  { latitude: 7.98, longitude: 79.70 },
+  { latitude: 8.15, longitude: 79.75 },
+  { latitude: 8.32, longitude: 79.80 },
+  { latitude: 8.50, longitude: 79.85 },
+  { latitude: 8.68, longitude: 79.89 },
+  { latitude: 8.85, longitude: 79.92 },
+  { latitude: 9.02, longitude: 79.94 },
+  { latitude: 9.20, longitude: 79.95 },
+  { latitude: 9.38, longitude: 79.95 },
+  { latitude: 9.55, longitude: 79.95 },
+  { latitude: 9.70, longitude: 79.95 },
 ];
 
 const pointInPolygon = (
@@ -87,6 +129,27 @@ const pointInPolygon = (
 };
 
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+
+const cellOverlapsLand = (
+  lat0: number,
+  lon0: number,
+  dLat: number,
+  dLon: number,
+): boolean => {
+  // Sample a small grid of points inside the cell.
+  // This catches cases where coastline cuts through the cell but
+  // centroid/corners are still offshore.
+  const steps = [0, 0.25, 0.5, 0.75, 1];
+
+  for (const a of steps) {
+    for (const b of steps) {
+      const p = { latitude: lat0 + dLat * a, longitude: lon0 + dLon * b };
+      if (pointInPolygon(p, SRI_LANKA_LAND_POLYGON)) return true;
+    }
+  }
+
+  return false;
+};
 
 /**
  * Quick demo scoring (NOT the real trained model):
@@ -181,11 +244,8 @@ export const generateSriLankaDemoZones = (
       ];
 
       // Skip cells that fall on Sri Lankan land.
-      const centroid = {
-        latitude: lat0 + dLat / 2,
-        longitude: lon0 + dLon / 2,
-      };
-      if (pointInPolygon(centroid, SRI_LANKA_LAND_POLYGON)) {
+      // Use multiple sample points inside the cell to avoid partial overlaps.
+      if (cellOverlapsLand(lat0, lon0, dLat, dLon)) {
         continue;
       }
 

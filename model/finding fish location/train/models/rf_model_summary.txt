@@ -1,0 +1,24 @@
+Model: rf_fish_zone_model.pkl
+Type: RandomForestClassifier
+Dataset: final_dataset_no_bathymetry.csv
+Rows used: 37984 (land filtered=True)
+Test size: 0.2 (n_test=7597)
+
+Metrics:
+- Accuracy: 0.9998683690930631
+- Precision: 1.0
+- Recall: 0.9992764109985528
+- F1: 0.9996380745566413
+- ROC AUC: 0.9999998835737729
+- Average Precision (PR AUC): 0.9999994767975405
+- Log loss: 0.0015490535896497298
+- Brier score: 0.00015973410556798737
+
+Saved files:
+- rf_model_metrics.json
+- rf_classification_report.txt
+- rf_confusion_matrix.png
+- rf_feature_importances.png (if supported)
+- rf_roc_curve.png / rf_pr_curve.png / rf_calibration_curve.png / rf_probability_hist.png
+- rf_metrics_vs_threshold.png
+- rf_logloss_distribution.png
