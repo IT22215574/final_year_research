@@ -1,6 +1,6 @@
-# LearnUp Admin Panel - NestJS Backend
+# SmartFisher Admin Panel - NestJS Backend
 
-A complete NestJS backend for the LearnUp Admin Panel, migrated from Express.js with MongoDB integration.
+A complete NestJS backend for the SmartFisher Admin Panel, migrated from Express.js with MongoDB integration.
 
 ## Features
 

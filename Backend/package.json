@@ -1,7 +1,7 @@
 {
-  "name": "learnup-nestjs-backend",
+  "name": "SmartFisher-nestjs-backend",
   "version": "1.0.0",
-  "description": "LearnUp Admin Panel - NestJS Backend",
+  "description": "SmartFisher Admin Panel - NestJS Backend",
   "author": "",
   "private": true,
   "license": "MIT",

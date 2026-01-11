@@ -218,7 +218,7 @@ const Profile = () => {
           style={styles.gradientBg}
         >
           <Image
-            source={require("@/assets/images/LearnUpLogo.png")}
+            source={require("@/assets/images/SmartFisherLogo.png")}
             style={styles.bgPattern}
             resizeMode="repeat"
           />

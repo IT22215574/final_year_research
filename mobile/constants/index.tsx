@@ -15,7 +15,7 @@ import nav_home from "@/assets/icons/nav_home.png";
 
 
 // background images
-import LearnupLogo from "@/assets/images/LearnUpLogo.png";
+import SmartFisherLogo from "@/assets/images/SmartFisherLogo.png";
 import Onboard from "@/assets/images/onboard.png";
 import Onboard01 from "@/assets/images/OnBoard1.png";
 import Onboard02 from "@/assets/images/OnBoard2.png";
@@ -82,7 +82,7 @@ import SFLLogo from "@/assets/images/SFLLogo.png"
 
 export const images = {
   Onboard,
-  LearnupLogo,
+  SmartFisherLogo,
   Onboard01,
   Onboard03,
   Onboard02,
