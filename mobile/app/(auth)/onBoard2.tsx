@@ -553,7 +553,7 @@ const OnBoard2: React.FC = () => {
           {/* Title */}
           <Text style={styles.header}>
             <Text className="text-blue-400">S</Text>
-            <Text>MART </Text>
+            <Text>MART  </Text>
             <Text className="text-blue-400">F</Text>
             <Text>ISHER </Text>
           </Text>

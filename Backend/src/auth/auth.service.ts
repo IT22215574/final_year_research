@@ -296,24 +296,12 @@ export class AuthService {
 
   private async sendEmailOtp(email: string, otp: string) {
     const mailOptions = {
-      from: 'Learn APP <projecttest088@gmail.com>',
+      from: 'Smart Fisher Lanka <projecttest088@gmail.com>',
       to: email,
-      subject: 'Learn APP - Password Reset OTP',
+      subject: 'Smart Fisher Lanka - Password Reset OTP',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #3b82f6; text-align: center;">Learn APP</h2>
-          <div style="background: #f8fafc; padding: 20px; border-radius: 10px; margin: 20px 0;">
-            <h3 style="color: #000; margin-bottom: 10px;">Password Reset Request</h3>
-            <p style="color: #666; margin-bottom: 20px;">
-              Use the following OTP code to reset your password. This code will expire in 10 minutes.
-            </p>
-            <div style="background: #fff; padding: 15px; border-radius: 8px; text-align: center; border: 2px dashed #3b82f6;">
-              <h1 style="color: #3b82f6; margin: 0; font-size: 32px; letter-spacing: 5px;">${otp}</h1>
-            </div>
-            <p style="color: #999; font-size: 12px; margin-top: 20px;">
-              If you didn't request this OTP, please ignore this email.
-            </p>
-          </div>
+          <h2 style="color: #3b82f6; text-align: center;">Smart Fisher Lanka</h2>
         </div>
       `,
     };

@@ -313,7 +313,7 @@ const SignIn = () => {
     <View style={styles.container}>
       {/* Top Gradient with Icons and Waves */}
       <LinearGradient
-        colors={["#0B3D91", "#1E90FF", "#00BFFF"]}
+        colors={["#4B3AFF", "#5C6CFF"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.topSection}
@@ -323,7 +323,6 @@ const SignIn = () => {
 
         {/* Title - Fish Industry Themed */}
         <View style={styles.titleContainer}>
-          <Ionicons name="fish" size={32} color="#FFF" style={styles.fishIcon} />
           <Text style={styles.header}>
             <Text style={styles.highlight}>S</Text>MART{" "}
             <Text style={styles.highlight}>F</Text>ISHER{" "}

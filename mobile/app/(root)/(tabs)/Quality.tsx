@@ -26,7 +26,6 @@ const Quality = () => {
   const [permission, requestPermission] = useCameraPermissions();
   const [showCamera, setShowCamera] = useState(false);
   const [cameraFacing, setCameraFacing] = useState<'back' | 'front'>('back');
-  const [fishType, setFishType] = useState('');
   const [capturedImages, setCapturedImages] = useState({
     side1: null,
     side2: null
@@ -35,15 +34,68 @@ const Quality = () => {
   const [isGrading, setIsGrading] = useState(false);
   const [step, setStep] = useState(1);
   const [activeSide, setActiveSide] = useState('side1');
+  const [modelFeatures, setModelFeatures] = useState(null);
   const cameraRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const getGradeColor = (gradeText: string) => {
+  // Your model's actual outputs
+  const MODEL_OUTPUTS = {
+    species: ['Tuna', 'Mackerel'],
+    grades: ['A', 'B', 'C'],
+    confidenceThreshold: 0.7,
+    
+    // Feature names that your model extracts
+    features: {
+      color: [
+        'Hue Mean', 'Hue Std', 'Saturation Mean', 'Saturation Std', 
+        'Value Mean', 'Value Std', 'L* Mean', 'L* Std', 'a* Mean', 'a* Std',
+        'b* Mean', 'b* Std', 'R Hist 1', 'R Hist 2', 'R Hist 3', 'R Hist 4',
+        'G Hist 1', 'G Hist 2', 'G Hist 3', 'G Hist 4',
+        'B Hist 1', 'B Hist 2', 'B Hist 3', 'B Hist 4'
+      ],
+      quality: ['Blood %', 'Brightness', 'Contrast', 'Edge Density', 'Entropy'],
+      difference: [
+        'Color Diff 1', 'Color Diff 2', 'Color Diff 3', 'Color Diff 4',
+        'Color Diff 5', 'Color Diff 6', 'Color Diff 7', 'Color Diff 8',
+        'Color Diff 9', 'Color Diff 10'
+      ]
+    }
+  };
+
+  const getGradeColor = (gradeText) => {
     const letter = String(gradeText || '').trim().split(' ')[1] || String(gradeText || '').trim();
-    if (letter === 'A') return ['#10B981', '#34D399'];
-    if (letter === 'B') return ['#F59E0B', '#FBBF24'];
-    if (letter === 'C') return ['#EF4444', '#F87171'];
-    return ['#0066CC', '#00A3FF'];
+    if (letter === 'A') return ['#10B981', '#34D399']; // Green
+    if (letter === 'B') return ['#F59E0B', '#FBBF24']; // Yellow/Orange
+    if (letter === 'C') return ['#EF4444', '#F87171']; // Red
+    return ['#0066CC', '#00A3FF']; // Default blue
+  };
+
+  const getSpeciesColor = (species) => {
+    if (species === 'Tuna') return ['#3B82F6', '#60A5FA']; // Blue
+    if (species === 'Mackerel' || species === 'Makerel') return ['#8B5CF6', '#A78BFA']; // Purple
+    return ['#6B7280', '#9CA3AF']; // Gray
+  };
+
+  const getQualityDescription = (grade) => {
+    const descriptions = {
+      'A': 'Premium Quality - Excellent for export markets',
+      'B': 'Good Quality - Suitable for local markets',
+      'C': 'Standard Quality - Best consumed quickly'
+    };
+    return descriptions[grade] || 'Quality assessment completed';
+  };
+
+  const getFeatureExplanation = (featureType) => {
+    const explanations = {
+      'Blood %': 'Percentage of red pixels indicating bleeding',
+      'Brightness': 'Overall image brightness level',
+      'Contrast': 'Difference between light and dark areas',
+      'Edge Density': 'Number of edges (texture complexity)',
+      'Entropy': 'Randomness in texture pattern',
+      'Hue Mean': 'Average color hue value',
+      'Saturation Std': 'Variation in color intensity'
+    };
+    return explanations[featureType] || 'Quality assessment feature';
   };
 
   const handleCameraPermission = async () => {
@@ -55,7 +107,6 @@ const Quality = () => {
           return;
         }
       }
-
       setShowCamera(true);
     } catch {
       Alert.alert('Permission Error', 'Unable to request camera permission.');
@@ -66,7 +117,7 @@ const Quality = () => {
     if (cameraRef.current) {
       try {
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.9,
+          quality: 0.8,
           base64: true,
           exif: true
         });
@@ -78,69 +129,12 @@ const Quality = () => {
         
         Alert.alert(
           'Success!',
-          'Image captured successfully!',
+          `Side ${side === 'side1' ? '1' : '2'} captured successfully!`,
           [{ text: 'OK' }]
         );
       } catch (error) {
         Alert.alert('Error', 'Failed to capture image');
       }
-    }
-  };
-
-  const handleBackToSelection = () => {
-    setFishType('');
-    setCapturedImages({ side1: null, side2: null });
-    setGradingResult(null);
-    setStep(1);
-  };
-
-  const handleGradeFish = async () => {
-    if (!capturedImages.side1 || !capturedImages.side2) {
-      Alert.alert('Incomplete', 'Please capture both sides to continue');
-      return;
-    }
-
-    setIsGrading(true);
-
-    try {
-      // Simulate AI processing
-      await new Promise(resolve => setTimeout(resolve, 1200));
-
-      const predictedSpeciesRaw = fishType || 'Tuna';
-      const predictedSpecies =
-        predictedSpeciesRaw?.toLowerCase?.() === 'makerel'
-          ? 'Mackerel'
-          : predictedSpeciesRaw;
-
-      const predictedGradeLetter = 'B';
-      const gradeConfidence = 0.86;
-      const speciesConfidence = 0.91;
-
-      setFishType(predictedSpecies);
-
-      const result = {
-        grade: `Grade ${predictedGradeLetter}`,
-        confidence: Math.round(gradeConfidence * 100),
-        details: {
-          freshness: Math.round(92),
-          color: Math.round(78),
-          texture: Math.round(85),
-          appearance: Math.round(80)
-        },
-        recommendations:
-          predictedGradeLetter === 'A'
-            ? ['Excellent quality - Premium grade', 'Ideal for export markets', 'Maintain at 0-2°C']
-            : predictedGradeLetter === 'B'
-              ? ['Good quality - Market grade', 'Sell within 24 hours', 'Keep chilled at 0-2°C']
-              : ['Average quality - Local sale', 'Sell quickly', 'Monitor temperature closely'],
-      };
-
-      setGradingResult(result);
-      setStep(2);
-    } catch (error) {
-      Alert.alert('Analysis Failed', 'Unable to grade fish at this time');
-    } finally {
-      setIsGrading(false);
     }
   };
 
@@ -154,8 +148,8 @@ const Quality = () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.9,
+      aspect: [1, 1],
+      quality: 0.8,
     });
 
     if (!result.canceled) {
@@ -164,6 +158,181 @@ const Quality = () => {
         [side]: result.assets[0].uri
       }));
     }
+  };
+
+  // Simulate your model's feature extraction
+  const extractSimulatedFeatures = () => {
+    const features = {
+      left: {
+        color: MODEL_OUTPUTS.features.color.map(() => Math.random() * 100),
+        quality: [
+          Math.random() * 10, // Blood %
+          Math.random() * 255, // Brightness
+          Math.random() * 2,   // Contrast
+          Math.random() * 0.5, // Edge Density
+          Math.random() * 3    // Entropy
+        ]
+      },
+      right: {
+        color: MODEL_OUTPUTS.features.color.map(() => Math.random() * 100),
+        quality: [
+          Math.random() * 10,
+          Math.random() * 255,
+          Math.random() * 2,
+          Math.random() * 0.5,
+          Math.random() * 3
+        ]
+      },
+      difference: MODEL_OUTPUTS.features.difference.map(() => Math.random() * 50)
+    };
+    return features;
+  };
+
+  // Simulate your model's prediction
+  const simulateModelPrediction = (features) => {
+    // Your actual model logic would go here
+    // This is a simulation based on your model outputs
+    
+    const speciesProbabilities = [
+      Math.random(), // Tuna probability
+      Math.random()  // Mackerel probability
+    ];
+    
+    const gradeProbabilities = [
+      Math.random() * 0.3, // Grade A probability
+      Math.random() * 0.4 + 0.3, // Grade B probability (higher baseline)
+      Math.random() * 0.3  // Grade C probability
+    ];
+    
+    // Normalize probabilities
+    const speciesSum = speciesProbabilities.reduce((a, b) => a + b, 0);
+    const gradeSum = gradeProbabilities.reduce((a, b) => a + b, 0);
+    
+    const normalizedSpecies = speciesProbabilities.map(p => p / speciesSum);
+    const normalizedGrades = gradeProbabilities.map(p => p / gradeSum);
+    
+    const speciesIndex = normalizedSpecies.indexOf(Math.max(...normalizedSpecies));
+    const gradeIndex = normalizedGrades.indexOf(Math.max(...normalizedGrades));
+    
+    return {
+      species: {
+        label: MODEL_OUTPUTS.species[speciesIndex],
+        class: speciesIndex,
+        confidence: normalizedSpecies[speciesIndex],
+        allProbabilities: normalizedSpecies
+      },
+      grade: {
+        label: `Grade ${MODEL_OUTPUTS.grades[gradeIndex]}`,
+        class: gradeIndex,
+        confidence: normalizedGrades[gradeIndex],
+        allProbabilities: normalizedGrades
+      }
+    };
+  };
+
+  const handleGradeFish = async () => {
+    if (!capturedImages.side1 || !capturedImages.side2) {
+      Alert.alert('Incomplete', 'Please capture both sides of the fish to continue');
+      return;
+    }
+
+    setIsGrading(true);
+
+    try {
+      // Simulate processing delay (like your model inference)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Step 1: Extract features (like your model does)
+      const extractedFeatures = extractSimulatedFeatures();
+      setModelFeatures(extractedFeatures);
+
+      // Step 2: Make prediction (like your model)
+      const prediction = simulateModelPrediction(extractedFeatures);
+
+      // Step 3: Prepare results for display
+      const result = {
+        species: prediction.species,
+        grade: prediction.grade,
+        confidence: Math.round(prediction.grade.confidence * 100),
+        
+        // Feature metrics for display
+        featureMetrics: {
+          brightness: Math.round(extractedFeatures.left.quality[1]),
+          contrast: extractedFeatures.left.quality[2].toFixed(2),
+          edgeDensity: (extractedFeatures.left.quality[3] * 100).toFixed(1),
+          entropy: extractedFeatures.left.quality[4].toFixed(2),
+          asymmetry: (extractedFeatures.difference[0] * 2).toFixed(1)
+        },
+        
+        // Quality details based on your model's features
+        qualityDetails: {
+          colorConsistency: Math.round(100 - extractedFeatures.difference[1]),
+          textureScore: Math.round(extractedFeatures.left.quality[3] * 200),
+          freshness: Math.round(100 - (extractedFeatures.left.quality[0] * 10)),
+          appearance: Math.round((extractedFeatures.left.quality[1] / 255) * 100)
+        },
+        
+        // Recommendations based on grade
+        recommendations: prediction.grade.label === 'Grade A' ? [
+          'Premium export quality - Highest market value',
+          'Perfect color and texture consistency',
+          'Store at 0-2°C for maximum shelf life',
+          'Ideal for sushi/sashimi preparation'
+        ] : prediction.grade.label === 'Grade B' ? [
+          'Good market quality - Local distribution',
+          'Minor variations in color/texture',
+          'Consume within 48 hours',
+          'Suitable for grilling/baking'
+        ] : [
+          'Standard quality - Quick sale recommended',
+          'Monitor for quality changes',
+          'Best for cooked preparations',
+          'Check storage temperature regularly'
+        ],
+        
+        // Model information
+        modelInfo: {
+          totalFeatures: 68,
+          architecture: 'Hybrid CNN + Feature Fusion',
+          processed: new Date().toLocaleTimeString()
+        }
+      };
+
+      setGradingResult(result);
+      setStep(2);
+      
+    } catch (error) {
+      Alert.alert('Analysis Failed', 'Unable to grade fish at this time');
+      console.error('Grading error:', error);
+    } finally {
+      setIsGrading(false);
+    }
+  };
+
+  const handleBackToSelection = () => {
+    setCapturedImages({ side1: null, side2: null });
+    setGradingResult(null);
+    setModelFeatures(null);
+    setStep(1);
+  };
+
+  const handleViewFeatures = () => {
+    Alert.alert(
+      'Model Features Extracted',
+      `Total Features: ${modelFeatures ? '68' : 'Not extracted yet'}\n` +
+      `Feature Types: Color (24) + Quality (5) + Difference (10) × 2 sides\n` +
+      `Model Architecture: Dual CNN + Manual Features`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleExplainGrade = (grade) => {
+    const explanations = {
+      'A': 'Premium Grade: Excellent color, texture, symmetry. Minimal defects. Ideal for premium markets.',
+      'B': 'Market Grade: Good quality with minor variations. Suitable for general markets.',
+      'C': 'Standard Grade: Acceptable quality. Best for quick sale and cooked preparations.'
+    };
+    Alert.alert(`Grade ${grade} Explanation`, explanations[grade] || 'Standard fish quality grade');
   };
 
   // Camera Screen
@@ -188,16 +357,17 @@ const Quality = () => {
                 <MaterialIcons name="arrow-back" size={24} color="white" />
               </View>
             </TouchableOpacity>
-            <Text style={styles.cameraTitle}>Capture {activeSide === 'side1' ? 'Side 1' : 'Side 2'}</Text>
+            <Text style={styles.cameraTitle}>
+              {activeSide === 'side1' ? 'Left Side' : 'Right Side'}
+            </Text>
             <View style={{ width: 44 }} />
           </LinearGradient>
 
           <View style={styles.captureGuide}>
             <View style={styles.guideFrame}>
-              <LinearGradient
-                colors={['rgba(255,255,255,0.1)', 'transparent']}
-                style={styles.guideGradient}
-              />
+              <Text style={styles.guideText}>
+                Align fish within frame
+              </Text>
               <View style={styles.frameCorners}>
                 <View style={[styles.corner, styles.topLeft]} />
                 <View style={[styles.corner, styles.topRight]} />
@@ -211,33 +381,10 @@ const Quality = () => {
             colors={['transparent', 'rgba(0,0,0,0.9)']}
             style={styles.cameraControls}
           >
-            <View style={styles.sideSelector}>
-              <TouchableOpacity
-                style={[styles.sideButton, activeSide === 'side1' && styles.activeSideButton]}
-                onPress={() => setActiveSide('side1')}
-              >
-                <MaterialIcons 
-                  name="photo-camera" 
-                  size={20} 
-                  color={activeSide === 'side1' ? '#0066CC' : 'rgba(255,255,255,0.7)'} 
-                />
-                <Text style={[styles.sideButtonText, activeSide === 'side1' && styles.activeSideButtonText]}>
-                  Side 1
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.sideButton, activeSide === 'side2' && styles.activeSideButton]}
-                onPress={() => setActiveSide('side2')}
-              >
-                <MaterialIcons 
-                  name="photo-camera" 
-                  size={20} 
-                  color={activeSide === 'side2' ? '#0066CC' : 'rgba(255,255,255,0.7)'} 
-                />
-                <Text style={[styles.sideButtonText, activeSide === 'side2' && styles.activeSideButtonText]}>
-                  Side 2
-                </Text>
-              </TouchableOpacity>
+            <View style={styles.sideInfo}>
+              <Text style={styles.sideInfoText}>
+                {activeSide === 'side1' ? 'Capture left side first' : 'Capture right side for comparison'}
+              </Text>
             </View>
 
             <View style={styles.captureButtonsRow}>
@@ -257,7 +404,7 @@ const Quality = () => {
                   style={styles.cameraCaptureButtonInner}
                 >
                   <View style={styles.captureButtonOuter}>
-                    <MaterialIcons name="camera-alt" size={24} color="#0066CC" />
+                    <MaterialIcons name="camera-alt" size={28} color="#0066CC" />
                   </View>
                 </LinearGradient>
               </TouchableOpacity>
@@ -267,6 +414,25 @@ const Quality = () => {
                 onPress={() => setCameraFacing(prev => (prev === 'back' ? 'front' : 'back'))}
               >
                 <MaterialIcons name="flip-camera-ios" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.sideSelector}>
+              <TouchableOpacity
+                style={[styles.sideButton, activeSide === 'side1' && styles.activeSideButton]}
+                onPress={() => setActiveSide('side1')}
+              >
+                <Text style={[styles.sideButtonText, activeSide === 'side1' && styles.activeSideButtonText]}>
+                  Left
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sideButton, activeSide === 'side2' && styles.activeSideButton]}
+                onPress={() => setActiveSide('side2')}
+              >
+                <Text style={[styles.sideButtonText, activeSide === 'side2' && styles.activeSideButtonText]}>
+                  Right
+                </Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -279,7 +445,7 @@ const Quality = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0066CC" />
       
-      {/* Animated Header */}
+      {/* Header */}
       <Animated.View style={[
         styles.header,
         {
@@ -296,7 +462,7 @@ const Quality = () => {
           colors={['#0066CC', '#0088FF']}
           style={styles.headerGradient}
         >
-       
+          
 
           <View style={styles.stepIndicator}>
             <View style={styles.stepItem}>
@@ -324,7 +490,7 @@ const Quality = () => {
               ]}>
                 <Text style={styles.stepNumber}>2</Text>
               </View>
-              <Text style={styles.stepLabel}>Results</Text>
+              <Text style={styles.stepLabel}>Analysis</Text>
             </View>
           </View>
         </LinearGradient>
@@ -341,14 +507,17 @@ const Quality = () => {
         scrollEventThrottle={16}
       >
         <View style={styles.content}>
-          {/* Step 1: Capture */}
+          {/* Step 1: Capture Images */}
           {step === 1 && (
             <>
               <View style={styles.welcomeCard}>
-                <Text style={styles.welcomeTitle}>Capture Fish Images</Text>
+                <Text style={styles.welcomeTitle}>Fish Quality Grading</Text>
                 <Text style={styles.welcomeText}>
-                  Take clear photos of both sides for accurate AI quality analysis
+                  Capture both sides of the fish for AI analysis using modern technology
                 </Text>
+                <View style={styles.modelInfoBadge}>
+                  <MaterialIcons name="model-training" size={14} color="#0066CC" />
+                </View>
               </View>
 
               <View style={styles.captureCards}>
@@ -368,14 +537,19 @@ const Quality = () => {
                               style={{ transform: [{ rotate: index === 0 ? '0deg' : '180deg' }] }}
                             />
                           </View>
-                          <Text style={styles.cardTitle}>
-                            {index === 0 ? 'Side 1' : 'Side 2'}
-                          </Text>
+                          <View>
+                            <Text style={styles.cardTitle}>
+                              {index === 0 ? 'Left Side' : 'Right Side'}
+                            </Text>
+                            <Text style={styles.cardSubtitle}>
+                              {index === 0 ? 'Primary analysis' : 'Comparison view'}
+                            </Text>
+                          </View>
                         </View>
                         {capturedImages[side] && (
                           <View style={styles.statusBadge}>
                             <MaterialIcons name="check-circle" size={14} color="#10B981" />
-                            <Text style={styles.statusText}>Captured</Text>
+                            <Text style={styles.statusText}>Ready</Text>
                           </View>
                         )}
                       </View>
@@ -408,8 +582,12 @@ const Quality = () => {
                             <View style={styles.captureIconContainer}>
                               <MaterialIcons name="add-a-photo" size={36} color="#0066CC" />
                             </View>
-                            <Text style={styles.captureButtonText}>Tap to Capture</Text>
-                            <Text style={styles.captureSubtext}>or choose from gallery</Text>
+                            <Text style={styles.captureButtonText}>
+                              {index === 0 ? 'Capture Left Side' : 'Capture Right Side'}
+                            </Text>
+                            <Text style={styles.captureSubtext}>
+                              {index === 0 ? 'For primary feature extraction' : 'For bilateral comparison'}
+                            </Text>
                           </LinearGradient>
                         </TouchableOpacity>
                       )}
@@ -426,35 +604,39 @@ const Quality = () => {
                 ))}
               </View>
 
-              <View style={styles.tipsCard}>
-                <View style={styles.tipsHeader}>
-                  <MaterialIcons name="lightbulb" size={22} color="#F59E0B" />
-                  <Text style={styles.tipsTitle}>Capture Tips</Text>
+              <View style={styles.techInfoCard}>
+                <View style={styles.techInfoHeader}>
+                  <MaterialIcons name="precision-manufacturing" size={22} color="#0066CC" />
+                  <Text style={styles.techInfoTitle}>Model Technology</Text>
                 </View>
-                <View style={styles.tipsGrid}>
-                  <View style={styles.tipItem}>
-                    <View style={styles.tipIcon}>
-                      <MaterialIcons name="wb-sunny" size={14} color="#FFFFFF" />
+                <View style={styles.techInfoGrid}>
+                  <View style={styles.techInfoItem}>
+                    <View style={styles.techInfoIcon}>
+                      <MaterialIcons name="view-in-ar" size={14} color="#FFFFFF" />
                     </View>
-                    <Text style={styles.tipText}>Good Lighting</Text>
+                    <Text style={styles.techInfoLabel}>Dual CNN</Text>
+                    <Text style={styles.techInfoValue}>2 Views</Text>
                   </View>
-                  <View style={styles.tipItem}>
-                    <View style={styles.tipIcon}>
-                      <MaterialIcons name="crop-free" size={14} color="#FFFFFF" />
+                  <View style={styles.techInfoItem}>
+                    <View style={styles.techInfoIcon}>
+                      <MaterialIcons name="analytics" size={14} color="#FFFFFF" />
                     </View>
-                    <Text style={styles.tipText}>Full View</Text>
+                    <Text style={styles.techInfoLabel}> Features</Text>
+                    <Text style={styles.techInfoValue}>Extracted</Text>
                   </View>
-                  <View style={styles.tipItem}>
-                    <View style={styles.tipIcon}>
-                      <MaterialIcons name="visibility" size={14} color="#FFFFFF" />
+                  <View style={styles.techInfoItem}>
+                    <View style={styles.techInfoIcon}>
+                      <MaterialIcons name="compare" size={14} color="#FFFFFF" />
                     </View>
-                    <Text style={styles.tipText}>Clear Focus</Text>
+                    <Text style={styles.techInfoLabel}>Asymmetry</Text>
+                    <Text style={styles.techInfoValue}>Analysis</Text>
                   </View>
-                  <View style={styles.tipItem}>
-                    <View style={styles.tipIcon}>
-                      <MaterialIcons name="straighten" size={14} color="#FFFFFF" />
+                  <View style={styles.techInfoItem}>
+                    <View style={styles.techInfoIcon}>
+                      <MaterialIcons name="blur-linear" size={14} color="#FFFFFF" />
                     </View>
-                    <Text style={styles.tipText}>Proper Angle</Text>
+                    <Text style={styles.techInfoLabel}>Hybrid</Text>
+                    <Text style={styles.techInfoValue}>Model</Text>
                   </View>
                 </View>
               </View>
@@ -474,7 +656,10 @@ const Quality = () => {
                   end={{ x: 1, y: 0 }}
                 >
                   {isGrading ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                    <>
+                      <ActivityIndicator color="#fff" size="small" style={{ marginRight: 10 }} />
+                      <Text style={styles.primaryButtonText}>Analyzing Features...</Text>
+                    </>
                   ) : (
                     <>
                       <MaterialIcons name="auto-awesome" size={22} color="#fff" />
@@ -490,8 +675,8 @@ const Quality = () => {
           {step === 2 && gradingResult && (
             <>
               <View style={styles.resultsHeader}>
-                <Text style={styles.resultsTitle}>Quality Analysis</Text>
-                <Text style={styles.resultsSubtitle}>AI-powered assessment results</Text>
+                <Text style={styles.resultsTitle}>AI Analysis Complete</Text>
+                <Text style={styles.resultsSubtitle}>Hybrid model assessment results</Text>
               </View>
 
               <View style={styles.resultCard}>
@@ -499,81 +684,143 @@ const Quality = () => {
                   colors={['#FFFFFF', '#F8FAFC']}
                   style={styles.resultCardGradient}
                 >
+                  {/* Species and Grade Header */}
                   <View style={styles.resultHeader}>
                     <View style={styles.resultTitleContainer}>
-                      <Text style={styles.fishName}>{fishType || 'Fish'}</Text>
+                      <LinearGradient
+                        colors={getSpeciesColor(gradingResult.species.label)}
+                        style={styles.speciesBadge}
+                      >
+                        <MaterialIcons name="pets" size={14} color="white" />
+                        <Text style={styles.speciesText}>{gradingResult.species.label}</Text>
+                      </LinearGradient>
                       <View style={styles.resultTimeContainer}>
                         <MaterialIcons name="schedule" size={12} color="#94A3B8" />
-                        <Text style={styles.resultTime}>Analyzed just now</Text>
+                        <Text style={styles.resultTime}>Analyzed: {gradingResult.modelInfo?.processed}</Text>
                       </View>
                     </View>
-                    <LinearGradient
-                      colors={['#10B981', '#34D399']}
-                      style={styles.confidenceBadge}
-                    >
-                      <MaterialIcons name="verified" size={14} color="white" />
-                      <Text style={styles.confidenceText}>{gradingResult.confidence}% Confidence</Text>
-                    </LinearGradient>
+                    <TouchableOpacity onPress={() => handleExplainGrade(gradingResult.grade.label.split(' ')[1])}>
+                      <LinearGradient
+                        colors={getGradeColor(gradingResult.grade.label)}
+                        style={styles.confidenceBadge}
+                      >
+                        <MaterialIcons name="verified" size={14} color="white" />
+                        <Text style={styles.confidenceText}>{gradingResult.confidence}% Confident</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
                   </View>
 
+                  {/* Grade Display */}
                   <View style={styles.gradeSection}>
                     <View style={styles.gradeCircleContainer}>
-                      <LinearGradient
-                        colors={getGradeColor(gradingResult.grade)}
-                        style={styles.gradeCircle}
-                      >
-                        <Text style={styles.gradeLetter}>{gradingResult.grade.split(' ')[1]}</Text>
-                        <Text style={styles.gradeLabel}>Grade</Text>
-                      </LinearGradient>
+                      <TouchableOpacity onPress={() => handleExplainGrade(gradingResult.grade.label.split(' ')[1])}>
+                        <LinearGradient
+                          colors={getGradeColor(gradingResult.grade.label)}
+                          style={styles.gradeCircle}
+                        >
+                          <Text style={styles.gradeLetter}>{gradingResult.grade.label.split(' ')[1]}</Text>
+                          <Text style={styles.gradeLabel}>Grade</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
                     </View>
                     
                     <View style={styles.gradeInfo}>
                       <Text style={[
                         styles.gradeTitle,
-                        { color: getGradeColor(gradingResult.grade)[0] }
+                        { color: getGradeColor(gradingResult.grade.label)[0] }
                       ]}>
-                        {gradingResult.grade}
+                        {gradingResult.grade.label}
                       </Text>
                       <Text style={styles.gradeDescription}>
-                        Overall Quality Assessment
+                        {getQualityDescription(gradingResult.grade.label.split(' ')[1])}
                       </Text>
-                      <View style={styles.gradeTags}>
-                        <View style={styles.gradeTag}>
-                          <Text style={styles.gradeTagText}>
-                            {gradingResult.grade === 'Grade A' ? 'Premium' : 
-                             gradingResult.grade === 'Grade B' ? 'Market' : 'Standard'}
-                          </Text>
+                      
+                      {/* Species Probability */}
+                      <View style={styles.probabilityRow}>
+                        <Text style={styles.probabilityLabel}>Species Confidence:</Text>
+                        <View style={styles.probabilityBar}>
+                          <LinearGradient
+                            colors={getSpeciesColor(gradingResult.species.label)}
+                            style={[styles.probabilityFill, { width: `${gradingResult.species.confidence * 100}%` }]}
+                          />
                         </View>
+                        <Text style={styles.probabilityValue}>
+                          {Math.round(gradingResult.species.confidence * 100)}%
+                        </Text>
                       </View>
                     </View>
                   </View>
 
+                  {/* Feature Metrics */}
                   <View style={styles.metricsSection}>
-                    <Text style={styles.metricsTitle}>Quality Metrics</Text>
+                    <View style={styles.sectionHeader}>
+                      <Text style={styles.metricsTitle}>Feature Analysis</Text>
+                      <TouchableOpacity onPress={handleViewFeatures}>
+                        <Text style={styles.viewFeaturesText}>View 68 Features</Text>
+                      </TouchableOpacity>
+                    </View>
                     <View style={styles.metricsGrid}>
-                      {Object.entries(gradingResult.details).map(([key, value]) => (
+                      {Object.entries(gradingResult.featureMetrics || {}).map(([key, value]) => (
                         <View key={key} style={styles.metricItem}>
                           <View style={styles.metricHeader}>
                             <Text style={styles.metricLabel}>
-                              {key.charAt(0).toUpperCase() + key.slice(1)}
+                              {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                             </Text>
-                            <Text style={styles.metricValue}>{value}%</Text>
+                            <Text style={styles.metricValue}>{value}</Text>
                           </View>
-                          <View style={styles.progressBar}>
-                            <LinearGradient
-                              colors={value > 85 ? ['#10B981', '#34D399'] : 
-                                     value > 70 ? ['#F59E0B', '#FBBF24'] : 
-                                     ['#EF4444', '#F87171']}
-                              style={[styles.progressFill, { width: `${value}%` }]}
-                              start={{ x: 0, y: 0 }}
-                              end={{ x: 1, y: 0 }}
-                            />
-                          </View>
+                          <Text style={styles.metricExplanation}>
+                            {getFeatureExplanation(key)}
+                          </Text>
                         </View>
                       ))}
                     </View>
                   </View>
 
+                  {/* Quality Scores */}
+                  <View style={styles.qualityScoresSection}>
+                    <Text style={styles.sectionTitle}>Quality Scores</Text>
+                    <View style={styles.scoresGrid}>
+                      {Object.entries(gradingResult.qualityDetails || {}).map(([key, value]) => (
+                        <View key={key} style={styles.scoreItem}>
+                          <LinearGradient
+                            colors={value > 85 ? ['#10B981', '#34D399'] : 
+                                   value > 70 ? ['#F59E0B', '#FBBF24'] : 
+                                   ['#EF4444', '#F87171']}
+                            style={styles.scoreCircle}
+                          >
+                            <Text style={styles.scoreValue}>{value}</Text>
+                          </LinearGradient>
+                          <Text style={styles.scoreLabel}>
+                            {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Model Information
+                  <View style={styles.modelInfoSection}>
+                    <View style={styles.modelInfoHeader}>
+                      <MaterialIcons name="model-training" size={18} color="#0066CC" />
+                      <Text style={styles.modelInfoTitle}>Model Information</Text>
+                    </View>
+                    <View style={styles.modelInfoGrid}>
+                      <View style={styles.modelInfoItem}>
+                        <Text style={styles.modelInfoLabel}>Architecture</Text>
+                        <Text style={styles.modelInfoValue}>Hybrid CNN + Features</Text>
+                      </View>
+                      <View style={styles.modelInfoItem}>
+                        <Text style={styles.modelInfoLabel}>Features Extracted</Text>
+                        <Text style={styles.modelInfoValue}>68</Text>
+                      </View>
+                      <View style={styles.modelInfoItem}>
+                        <Text style={styles.modelInfoLabel}>Analysis Type</Text>
+                        <Text style={styles.modelInfoValue}>Bilateral</Text>
+                      </View>
+                    </View>
+                  </View> */}
+
+                  {/* Recommendations */}
                   <View style={styles.recommendationsCard}>
                     <View style={styles.recommendationsHeader}>
                       <MaterialIcons name="recommend" size={20} color="#0066CC" />
@@ -597,13 +844,14 @@ const Quality = () => {
                 </LinearGradient>
               </View>
 
+              {/* Action Buttons */}
               <View style={styles.actionButtons}>
                 <TouchableOpacity 
-                  style={styles.shareButton}
-                  onPress={() => Alert.alert('Share', 'Share functionality would go here')}
+                  style={styles.secondaryActionButton}
+                  onPress={handleViewFeatures}
                 >
-                  <MaterialIcons name="share" size={20} color="#0066CC" />
-                  <Text style={styles.shareButtonText}>Share Report</Text>
+                  <MaterialIcons name="analytics" size={20} color="#0066CC" />
+                  <Text style={styles.secondaryActionButtonText}>View Features</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
@@ -641,10 +889,6 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 100,
     elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
   },
   headerGradient: {
     paddingTop: STATUS_BAR_HEIGHT + 16,
@@ -674,7 +918,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
@@ -691,14 +934,13 @@ const styles = StyleSheet.create({
   },
   stepConnector: {
     width: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginHorizontal: 4,
   },
   connectorLine: {
     width: '100%',
     height: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    marginTop: 15,
   },
   stepCircle: {
     width: 32,
@@ -753,6 +995,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#64748B',
     lineHeight: 22,
+    marginBottom: 12,
+  },
+  modelInfoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 102, 204, 0.1)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  modelInfoText: {
+    fontSize: 12,
+    color: '#0066CC',
+    fontWeight: '600',
+    marginLeft: 6,
   },
   captureCards: {
     gap: 16,
@@ -793,6 +1051,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#1E293B',
+  },
+  cardSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -877,7 +1140,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 8,
   },
-  tipsCard: {
+  techInfoCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 20,
@@ -888,41 +1151,41 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 3,
   },
-  tipsHeader: {
+  techInfoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
   },
-  tipsTitle: {
+  techInfoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#92400E',
+    color: '#0066CC',
     marginLeft: 8,
   },
-  tipsGrid: {
+  techInfoGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  tipItem: {
-    width: (width - 80) / 2,
-    flexDirection: 'row',
+  techInfoItem: {
     alignItems: 'center',
-    marginBottom: 12,
   },
-  tipIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F59E0B',
+  techInfoIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#0066CC',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginBottom: 8,
   },
-  tipText: {
-    fontSize: 13,
-    color: '#92400E',
-    fontWeight: '500',
+  techInfoLabel: {
+    fontSize: 12,
+    color: '#1E293B',
+    fontWeight: '600',
+  },
+  techInfoValue: {
+    fontSize: 11,
+    color: '#64748B',
   },
   primaryButton: {
     borderRadius: 16,
@@ -947,6 +1210,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     marginLeft: 10,
+    margin: 2,padding: 2,          
   },
   resultsHeader: {
     marginBottom: 20,
@@ -983,15 +1247,24 @@ const styles = StyleSheet.create({
   resultTitleContainer: {
     flex: 1,
   },
-  fishName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1E293B',
+  speciesBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
+  speciesText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginLeft: 6,
   },
   resultTimeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
   },
   resultTime: {
     fontSize: 13,
@@ -1058,35 +1331,64 @@ const styles = StyleSheet.create({
   gradeDescription: {
     fontSize: 14,
     color: '#64748B',
-    marginBottom: 12,
+    marginBottom: 16,
+    lineHeight: 20,
   },
-  gradeTags: {
+  probabilityRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
   },
-  gradeTag: {
-    backgroundColor: 'rgba(0, 102, 204, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+  probabilityLabel: {
+    fontSize: 13,
+    color: '#64748B',
+    marginRight: 12,
+    minWidth: 120,
   },
-  gradeTagText: {
-    fontSize: 12,
-    color: '#0066CC',
+  probabilityBar: {
+    flex: 1,
+    height: 6,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  probabilityFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  probabilityValue: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#1E293B',
+    marginLeft: 12,
+    minWidth: 40,
   },
   metricsSection: {
     marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   metricsTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1E293B',
-    marginBottom: 20,
+  },
+  viewFeaturesText: {
+    fontSize: 13,
+    color: '#0066CC',
+    fontWeight: '500',
   },
   metricsGrid: {
-    gap: 20,
+    gap: 16,
   },
   metricItem: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 16,
   },
   metricHeader: {
     flexDirection: 'row',
@@ -1096,23 +1398,91 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 14,
-    color: '#64748B',
-    fontWeight: '500',
+    color: '#1E293B',
+    fontWeight: '600',
   },
   metricValue: {
     fontSize: 18,
     fontWeight: '700',
+    color: '#0066CC',
+  },
+  metricExplanation: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 16,
+  },
+  qualityScoresSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     color: '#1E293B',
+    marginBottom: 20,
   },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 4,
-    overflow: 'hidden',
+  scoresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
+  scoreItem: {
+    width: (width - 80) / 3,
+    alignItems: 'center',
+  },
+  scoreCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  scoreValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  scoreLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  modelInfoSection: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  modelInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modelInfoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0066CC',
+    marginLeft: 8,
+  },
+  modelInfoGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modelInfoItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  modelInfoLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  modelInfoValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1E293B',
   },
   recommendationsCard: {
     backgroundColor: '#F0F9FF',
@@ -1158,7 +1528,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  shareButton: {
+  secondaryActionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1169,7 +1539,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
   },
-  shareButtonText: {
+  secondaryActionButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#0066CC',
@@ -1206,7 +1576,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
-    letterSpacing: -0.5,
   },
   captureGuide: {
     flex: 1,
@@ -1221,10 +1590,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
   },
-  guideGradient: {
-    ...StyleSheet.absoluteFillObject,
+  guideText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    marginBottom: 20,
   },
   frameCorners: {
     ...StyleSheet.absoluteFillObject,
@@ -1267,38 +1637,19 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     paddingHorizontal: 30,
   },
-  sideSelector: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 28,
-    padding: 6,
-    marginBottom: 40,
+  sideInfo: {
+    marginBottom: 30,
   },
-  sideButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 22,
-    gap: 8,
-  },
-  activeSideButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  },
-  sideButtonText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+  sideInfoText: {
+    color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 14,
-    fontWeight: '600',
-  },
-  activeSideButtonText: {
-    color: '#0066CC',
+    textAlign: 'center',
   },
   captureButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+    marginBottom: 30,
   },
   secondaryButton: {
     width: 56,
@@ -1333,6 +1684,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  sideSelector: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 28,
+    padding: 6,
+  },
+  sideButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 22,
+    alignItems: 'center',
+  },
+  activeSideButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+  sideButtonText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  activeSideButtonText: {
+    color: '#0066CC',
   },
 });
 

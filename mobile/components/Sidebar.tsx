@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import useAuthStore from "@/stores/authStore";
 import { icons } from "@/constants";
 
@@ -21,16 +21,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
   };
 
   const menuItems = [
-  
-    { name: "Exams", path: "/(root)/(tabs)/exams", icon: icons.nav_exam },
-    { name: "Exams", path: "/(root)/(tabs)/exams", icon: icons.nav_exam },
-
+    { name: "Home", path: "/(tabs)/home", icon: icons.nav_home },
+    { name: "Market", path: "/(tabs)/Market", icon: icons.HouseSale },
+    { name: "Quality", path: "/(tabs)/Quality", icon: icons.Digital },
     {
-      name: "Class Links",
-      path: "/class-links",
-      icon: icons.sidebar_classlink,
+      name: "Notifications",
+      path: "/(tabs)/Notifications",
+      icon: icons.notification,
     },
-    { name: "Admin Chat", path: "/admin-chat", icon: icons.sidebar_admin },
+    { name: "Profile", path: "/(tabs)/profile", icon: icons.nav_user },
   ];
 
   // Default avatar if user doesn't have one
@@ -44,8 +43,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
         <View style={styles.avatarContainer}>
           <Image
             source={
-              isSignedIn && currentUser?.profileAvatar
-                ? { uri: currentUser.profileAvatar }
+              isSignedIn && currentUser?.profilePicture
+                ? { uri: currentUser.profilePicture }
                 : defaultAvatar
             }
             style={styles.avatar}
@@ -53,10 +52,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
         </View>
 
         <Text style={styles.userName}>
-          {isSignedIn && currentUser ? currentUser.firstName : "Sophia Rose"}
+          {isSignedIn && currentUser ? currentUser.firstName : "Guest"}
         </Text>
         <Text style={styles.userEmail}>
-          {isSignedIn && currentUser ? currentUser.email : "adswws2@xcs"}
+          {isSignedIn && currentUser ? currentUser.email : ""}
         </Text>
       </View>
 
@@ -83,7 +82,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     width: 280,
-    height: "100%",
+    height: "120%",
     backgroundColor: "white",
     padding: 20,
     zIndex: 1000,

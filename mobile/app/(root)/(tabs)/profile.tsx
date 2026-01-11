@@ -128,12 +128,6 @@ export default function Profile() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B3D91" />
-
-      <ScrollView
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
         {/* HEADER */}
         <LinearGradient
           colors={["#0B3D91", "#1E90FF"]}
@@ -165,6 +159,12 @@ export default function Profile() {
             <Text style={styles.roleText}>{currentUser.role}</Text>
           </View>
         </LinearGradient>
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+
 
         {/* QUICK ACTIONS */}
         <View style={styles.quickActions}>
@@ -267,19 +267,18 @@ const Info = ({ label, value }: any) => (
 /* -------------------- STYLES -------------------- */
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  container: { flex: 1,marginTop:-45, backgroundColor: "#F8FAFC" },
 
   header: {
     alignItems: "center",
     padding: 24,
-    paddingTop: 40,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
 
   avatar: {
-    width: 90,
-    height: 90,
+    width: 60,
+    height: 60,
     borderRadius: 45,
     backgroundColor: "#FFF",
     justifyContent: "center",
@@ -307,7 +306,7 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: -30,
+    marginTop: 10,
     paddingHorizontal: 16,
   },
 

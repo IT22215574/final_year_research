@@ -511,7 +511,7 @@ const OnBoard3: React.FC = () => {
 
           {/* Title */}
           <Text style={styles.header}>
-            <Text className="text-blue-400">S</Text><Text>MART</Text>
+            <Text className="text-blue-400">S</Text><Text>MART  </Text>
             <Text className="text-blue-400">F</Text><Text>ISHER</Text>
           </Text>
           <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">
