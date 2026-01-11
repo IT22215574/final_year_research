@@ -453,7 +453,7 @@ const handleSignUp = async () => {
         {/* Icons Layer with Animation */}
         <View style={styles.iconsLayer}>{renderDistributedIcons()}</View>
 
-        {/* Title - Only Learn APP in top section */}
+        {/* Title - Only Smart fisher lanaka in top section */}
         <Text style={styles.header}><Text  className="text-blue-400">S</Text>MART  <Text  className="text-blue-400">F</Text>ISHER </Text>
         <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">LANKA </Text>
 

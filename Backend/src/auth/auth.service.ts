@@ -296,12 +296,12 @@ export class AuthService {
 
   private async sendEmailOtp(email: string, otp: string) {
     const mailOptions = {
-      from: 'Learn APP <projecttest088@gmail.com>',
+      from: 'Smart fisher lanaka <projecttest088@gmail.com>',
       to: email,
-      subject: 'Learn APP - Password Reset OTP',
+      subject: 'Smart fisher lanaka - Password Reset OTP',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #3b82f6; text-align: center;">Learn APP</h2>
+          <h2 style="color: #3b82f6; text-align: center;">Smart fisher lanaka</h2>
           <div style="background: #f8fafc; padding: 20px; border-radius: 10px; margin: 20px 0;">
             <h3 style="color: #000; margin-bottom: 10px;">Password Reset Request</h3>
             <p style="color: #666; margin-bottom: 20px;">
