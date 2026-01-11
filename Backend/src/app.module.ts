@@ -9,6 +9,7 @@ import { FishingModule } from './fishing/fishing.module';
 import { MlPredictionModule } from './ml-prediction/ml-prediction.module';
 import { TripModule } from './trip/trip.module';
 import { ExternalCostModule } from './external-cost/external-cost.module';
+import { TripLogModule } from './trip-log/trip-log.module';
 import * as path from 'path';
 
 @Module({
@@ -40,6 +41,7 @@ import * as path from 'path';
     MlPredictionModule,
     TripModule,
     ExternalCostModule,
+    TripLogModule,
   ],
 })
 export class AppModule {}
