@@ -190,59 +190,9 @@ const TabsLayout = () => {
           }}
         />
         <Tabs.Screen
-          name="Requests"
-          options={{
-            title: "Requests",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="CreateTransferRequest"
-          options={{
-            title: "Transfer Request",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="SearchMatches"
-          options={{
-            title: "Search & Matches",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="TeacherTransferRequests"
-          options={{
-            title: "Transfer Requests",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
           name="profile"
           options={{
             title: "Profile",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="update_profile"
-          options={{
-            title: "Edit Profile",
             headerShown: true,
             headerStyle: {
               backgroundColor: "#0057FF",
@@ -265,9 +215,11 @@ const TabsLayout = () => {
       <View style={styles.customTabBar} className="rounded-t-3xl shadow-lg">
         {/* Navigation Items - This remains exactly the same */}
         <View style={styles.navItemsContainer}>
-          <TouchableOpacity
+          {/* ... all your existing navigation items remain the same ... */}
+          
+            <TouchableOpacity
               style={styles.navItem}
-              onPress={() => handleTabPress("home", "/(tabs)/home")}
+              onPress={() => handleTabPress("home", "/(root)/(tabs)/home")}
             >
               <View
                 style={[
@@ -292,45 +244,12 @@ const TabsLayout = () => {
               >
                 Home
               </Text>
-          </TouchableOpacity>
-          
-          {(currentUser?.role === "Teacher" ||
-            currentUser?.role === "INTERNAL_TEACHER" ||
-            currentUser?.role === "EXTERNAL_TEACHER") && (
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleTabPress("search", "/(tabs)/SearchMatches")}
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "search" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.search}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "search" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "search" && styles.navTextActive,
-                ]}
-              >
-                Search
-              </Text>
             </TouchableOpacity>
-          )}
-
+          
           
             <TouchableOpacity
               style={styles.navItem}
-              onPress={() => handleTabPress("Market", "/(tabs)/Market")}
+              onPress={() => handleTabPress("Market", "/(root)/(tabs)/Market")}
             >
               <View
                 style={[
@@ -358,49 +277,10 @@ const TabsLayout = () => {
             </TouchableOpacity>
           
 
-          {(currentUser?.role === "Teacher" ||
-            currentUser?.role === "INTERNAL_TEACHER" ||
-            currentUser?.role === "EXTERNAL_TEACHER") && (
             <TouchableOpacity
               style={styles.navItem}
               onPress={() =>
-                handleTabPress(
-                  "TransferRequest",
-                  "/(tabs)/TeacherTransferRequests"
-                )
-              }
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "TransferRequest" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.requests}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "TransferRequest" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "TransferRequest" && styles.navTextActive,
-                ]}
-              >
-                Requests
-              </Text>
-            </TouchableOpacity>
-          )}
-
-
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() =>
-                handleTabPress("Quality", "/(tabs)/Quality")
+                handleTabPress("Quality", "/(root)/(tabs)/Quality")
               }
             >
               <View
@@ -427,7 +307,6 @@ const TabsLayout = () => {
                 Quality
               </Text>
             </TouchableOpacity>
-          a
 
           <TouchableOpacity
             style={styles.navItem}

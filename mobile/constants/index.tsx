@@ -81,6 +81,8 @@ import Icon66 from "@/assets/icons/icon66.png"
 import FisherIcon from "@/assets/icons/fisherman.png"
 import BuyerIcon from "@/assets/icons/buyer.png"
 import SFLLogo from "@/assets/images/SFLLogo.png"
+import ship from "@/assets/images/ship.png"
+import fish_onboard from "@/assets/images/fish_onboard.png"
 
 
 export const images = {
@@ -88,6 +90,8 @@ export const images = {
   Onboard01,
   Onboard03,
   Onboard02,
+  fish_onboard,
+  ship,
   Traingle,
   Eclips,
   Vector,
