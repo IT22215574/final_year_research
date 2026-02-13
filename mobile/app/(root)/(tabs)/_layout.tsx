@@ -19,7 +19,6 @@ import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 
 const TabsLayout = () => {
-
   const [activeTab, setActiveTab] = useState("home");
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const { currentUser } = useAuthStore();
@@ -32,7 +31,7 @@ const TabsLayout = () => {
         console.log("🎯 TabsLayout focused, fetching unread count...");
         fetchUnreadCount();
       }
-    }, [currentUser?.id, fetchUnreadCount])
+    }, [currentUser?.id, fetchUnreadCount]),
   );
 
   // Initial fetch
@@ -41,8 +40,6 @@ const TabsLayout = () => {
       fetchUnreadCount();
     }
   }, [currentUser?.id, fetchUnreadCount]);
-
-
 
   const handleSubmitAd = () => {
     const state = useAuthStore.getState();
@@ -83,15 +80,14 @@ const TabsLayout = () => {
           headerShown: true,
           headerBackground: () => (
             <LinearGradient
-            
-              colors={['#0066CC', '#00A3FF']}
+              colors={["#0066CC", "#00A3FF"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{ flex: 1 }}
             />
           ),
           headerStyle: {
-            backgroundColor: 'transparent',
+            backgroundColor: "transparent",
             elevation: 0,
           },
           headerShadowVisible: false,
@@ -199,6 +195,17 @@ const TabsLayout = () => {
             },
           }}
         />
+
+        <Tabs.Screen
+          name="fishtripcost"
+          options={{
+            title: "", // Change this to "" if you want NO text
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
       </Tabs>
 
       {/* Sidebar and Overlay */}
@@ -216,97 +223,93 @@ const TabsLayout = () => {
         {/* Navigation Items - This remains exactly the same */}
         <View style={styles.navItemsContainer}>
           {/* ... all your existing navigation items remain the same ... */}
-          
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleTabPress("home", "/(root)/(tabs)/home")}
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "home" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.nav_home}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "home" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "home" && styles.navTextActive,
-                ]}
-              >
-                Home
-              </Text>
-            </TouchableOpacity>
-          
-          
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleTabPress("Market", "/(root)/(tabs)/Market")}
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "Market" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.HouseSale}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "Market" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "Market" && styles.navTextActive,
-                ]}
-              >
-                Market
-              </Text>
-            </TouchableOpacity>
-          
 
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() =>
-                handleTabPress("Quality", "/(root)/(tabs)/Quality")
-              }
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => handleTabPress("home", "/(root)/(tabs)/home")}
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                activeTab === "home" && styles.iconContainerActive,
+              ]}
             >
-              <View
+              <Image
+                source={icons.nav_home}
                 style={[
-                  styles.iconContainer,
-                  activeTab === "Quality" && styles.iconContainerActive,
+                  styles.navIcon,
+                  activeTab === "home" && styles.navIconActive,
                 ]}
-              >
-                <Image
-                  source={icons.Digital}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "Quality" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
+                resizeMode="contain"
+              />
+            </View>
+            <Text
+              style={[
+                styles.navText,
+                activeTab === "home" && styles.navTextActive,
+              ]}
+            >
+              Home
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => handleTabPress("Market", "/(root)/(tabs)/Market")}
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                activeTab === "Market" && styles.iconContainerActive,
+              ]}
+            >
+              <Image
+                source={icons.HouseSale}
                 style={[
-                  styles.navText,
-                  activeTab === "Quality" && styles.navTextActive,
+                  styles.navIcon,
+                  activeTab === "Market" && styles.navIconActive,
                 ]}
-              >
-                Quality
-              </Text>
-            </TouchableOpacity>
+                resizeMode="contain"
+              />
+            </View>
+            <Text
+              style={[
+                styles.navText,
+                activeTab === "Market" && styles.navTextActive,
+              ]}
+            >
+              Market
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => handleTabPress("Quality", "/(root)/(tabs)/Quality")}
+          >
+            <View
+              style={[
+                styles.iconContainer,
+                activeTab === "Quality" && styles.iconContainerActive,
+              ]}
+            >
+              <Image
+                source={icons.Digital}
+                style={[
+                  styles.navIcon,
+                  activeTab === "Quality" && styles.navIconActive,
+                ]}
+                resizeMode="contain"
+              />
+            </View>
+            <Text
+              style={[
+                styles.navText,
+                activeTab === "Quality" && styles.navTextActive,
+              ]}
+            >
+              Quality
+            </Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.navItem}

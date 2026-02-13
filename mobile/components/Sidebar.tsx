@@ -30,6 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
       icon: icons.notification,
     },
     { name: "Profile", path: "/(tabs)/profile", icon: icons.nav_user },
+    { name: "Trip Cost", path: "/(tabs)/fishtripcost", icon: icons.BackArrow },
   ];
 
   // Default avatar if user doesn't have one
