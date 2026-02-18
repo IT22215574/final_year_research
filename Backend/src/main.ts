@@ -55,9 +55,10 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
 
-  const port = process.env.NESTJS_PORT || process.env.PORT || 5000;
-  await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
+  const port = process.env.NESTJS_PORT || process.env.PORT || 5001;
+  await app.listen(port, '0.0.0.0'); // Listen on all network interfaces
+  console.log(`Application is running on: http://0.0.0.0:${port}`);
+  console.log(`Network access: http://10.20.194.185:${port}`);
 }
 
 bootstrap();
