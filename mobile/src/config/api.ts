@@ -90,12 +90,12 @@ export const getPredictionApiBaseUrls = () => {
     envHost !== expoHost;
 
   return uniq([
-    preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 8001) : null,
+    preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 8000) : null,
     preferExpoOverEnv ? env : null,
     !preferExpoOverEnv ? env : null,
-    !preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 8001) : null,
-    Platform.OS === 'android' ? buildHttpBaseUrl('10.0.2.2', 8001) : null,
-    buildHttpBaseUrl('localhost', 8001),
+    !preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 8000) : null,
+    Platform.OS === 'android' ? buildHttpBaseUrl('10.0.2.2', 8000) : null,
+    buildHttpBaseUrl('localhost', 8000),
   ]);
 };
 

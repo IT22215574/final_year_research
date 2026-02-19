@@ -10,15 +10,7 @@ export const saveImageLocally = async (uri: string) => {
       uri + Date.now().toString()
     );
     const filename = `${hash}.jpg`;
-    const baseDir = ((FileSystem as any).documentDirectory ?? (FileSystem as any).cacheDirectory) as
-      | string
-      | undefined;
-
-    if (!baseDir) {
-      throw new Error('No writable directory available');
-    }
-
-    const uploadDir = `${baseDir}uploads/`;
+    const uploadDir = FileSystem.documentDirectory + 'uploads/';
     
     // Create uploads directory if it doesn't exist
     await FileSystem.makeDirectoryAsync(uploadDir, { intermediates: true });
@@ -38,13 +30,5 @@ export const saveImageLocally = async (uri: string) => {
 };
 
 export const getLocalImagePath = (filename: string) => {
-  const baseDir = ((FileSystem as any).documentDirectory ?? (FileSystem as any).cacheDirectory) as
-    | string
-    | undefined;
-
-  if (!baseDir) {
-    return filename;
-  }
-
-  return `${baseDir}uploads/${filename}`;
+  return `${FileSystem.documentDirectory}uploads/${filename}`;
 };

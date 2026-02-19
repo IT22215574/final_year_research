@@ -233,7 +233,7 @@ const OTPRequest = () => {
 
         {/* Subtitle */}
         <Text style={styles.subtitle}>
-          We{"'"}ve sent a 4-digit verification code to{"\n"}
+          We've sent a 4-digit verification code to{"\n"}
           <Text style={styles.emailPhoneText}>{maskedEmailOrPhone}</Text>
         </Text>
 
@@ -242,9 +242,7 @@ const OTPRequest = () => {
           {otp.map((digit, index) => (
             <TextInput
               key={index}
-              ref={(ref) => {
-                inputRefs.current[index] = ref;
-              }}
+              ref={ref => inputRefs.current[index] = ref}
               style={[
                 styles.otpInput,
                 digit && styles.otpInputFilled,
@@ -275,7 +273,7 @@ const OTPRequest = () => {
         {/* Resend OTP - Inline with the text */}
         <View style={styles.resendContainer}>
           <Text style={styles.resendText}>
-            Didn{"'"}t receive the code?{" "}
+            Didn't receive the code?{" "}
           </Text>
           <TouchableOpacity 
             onPress={handleResendOtp} 

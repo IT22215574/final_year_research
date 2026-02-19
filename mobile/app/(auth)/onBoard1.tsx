@@ -390,7 +390,7 @@ const OnBoard1: React.FC = () => {
     return positions;
   };
 
-  const renderDistributedIcons = (): React.ReactElement[] => {
+  const renderDistributedIcons = (): JSX.Element[] => {
     const predefinedPositions = getPredefinedPositions();
     
     return selectedIcons.map((icon: ImageSourcePropType, index: number) => {

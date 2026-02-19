@@ -184,6 +184,7 @@ const SelectSignIn = () => {
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.8,
             shadowRadius: 4,
+            elevation: 4,
           }}
           resizeMode="contain"
         />
@@ -226,7 +227,7 @@ const SelectSignIn = () => {
         {/* Icons Layer */}
         <View style={styles.iconsLayer}>{renderDistributedIcons()}</View>
 
-        {/* Title - Only Learn APP in top section */}
+        {/* Title - Only  in top section */}
         <Text style={styles.header}>
           <Text className="text-blue-400">S</Text>
           <Text>MART </Text>

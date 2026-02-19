@@ -1,3 +1,5 @@
+/* eslint-disable prettier/prettier */
+
 import { ButtonProps } from "@/types/type";
 import { Text, TouchableOpacity } from "react-native";
 

@@ -425,7 +425,7 @@ const OnBoard3: React.FC = () => {
     return positions;
   };
 
-  const renderDistributedIcons = (): React.ReactElement[] => {
+  const renderDistributedIcons = (): JSX.Element[] => {
     const predefinedPositions = getPredefinedPositions();
 
     return selectedIcons.map((icon: ImageSourcePropType, index: number) => {
@@ -511,11 +511,11 @@ const OnBoard3: React.FC = () => {
 
           {/* Title */}
           <Text style={styles.header}>
-            <Text className="text-blue-400">S</Text><Text>MART{" "}</Text>
-            <Text className="text-blue-400">F</Text><Text>ISHER{" "}</Text>
+            <Text className="text-blue-400">S</Text><Text>MART  </Text>
+            <Text className="text-blue-400">F</Text><Text>ISHER</Text>
           </Text>
           <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">
-            LANKA{" "}
+            LANKA
           </Text>
 
           {/* Light Blue Wave - BELOW the white wave */}
@@ -587,7 +587,7 @@ const OnBoard3: React.FC = () => {
           <Animated.View style={[styles.contentWrapper, contentTransform]}>
             {/* Main OnBoard3 image */}
             <Image
-              source={images.Onboard03}
+              source={images.fish_onboard}
               style={styles.bottomImage}
               resizeMode="contain"
             />
@@ -858,4 +858,3 @@ const styles = StyleSheet.create({
 });
 
 export default OnBoard3;
-

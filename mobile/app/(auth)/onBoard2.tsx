@@ -466,7 +466,7 @@ const OnBoard2: React.FC = () => {
     return positions;
   };
 
-  const renderDistributedIcons = (): React.ReactElement[] => {
+  const renderDistributedIcons = (): JSX.Element[] => {
     const predefinedPositions = getPredefinedPositions();
 
     return selectedIcons.map((icon: ImageSourcePropType, index: number) => {
@@ -553,12 +553,12 @@ const OnBoard2: React.FC = () => {
           {/* Title */}
           <Text style={styles.header}>
             <Text className="text-blue-400">S</Text>
-            <Text>MART </Text>
+            <Text>MART  </Text>
             <Text className="text-blue-400">F</Text>
             <Text>ISHER </Text>
           </Text>
           <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">
-            LANKA{" "}
+            LANKA
           </Text>
 
           {/* Light Blue Wave - BELOW the white wave */}
@@ -630,7 +630,7 @@ const OnBoard2: React.FC = () => {
           <Animated.View style={[styles.contentWrapper, contentTransform]}>
             {/* Main OnBoard2 image */}
             <Image
-              source={images.Onboard02}
+              source={images.ship}
               style={styles.bottomImage}
               resizeMode="contain"
             />
