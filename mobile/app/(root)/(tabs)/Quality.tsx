@@ -7,113 +7,177 @@ import {
   TouchableOpacity,
   Image,
   Alert,
-  SafeAreaView,
-  StatusBar,
+  Modal,
   Dimensions,
-  Platform,
-  ActivityIndicator,
-  Animated
+  ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome5, Ionicons, AntDesign } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
 
-const { width } = Dimensions.get('window');
-const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+type CapturedSide = 'side1' | 'side2';
+type CapturedImages = Record<CapturedSide, string | null>;
+
+type GradingDetails = {
+  colorScore: number;
+  textureScore: number;
+  freshnessScore: number;
+  overallScore: number;
+};
+
+type GradingResult = {
+  grade: string;
+  confidence: number;
+  details: GradingDetails;
+  recommendations: string[];
+};
+
+type QualityStandard = {
+  color: string;
+  criteria: string[];
+  pricePremium: string;
+};
+
+type QualityStandardsByFish = Record<string, Record<string, QualityStandard>>;
 
 const Quality = () => {
   const [permission, requestPermission] = useCameraPermissions();
   const [showCamera, setShowCamera] = useState(false);
-  const [cameraFacing, setCameraFacing] = useState<'back' | 'front'>('back');
-  const [capturedImages, setCapturedImages] = useState({
+  const [fishType, setFishType] = useState('');
+  const [capturedImages, setCapturedImages] = useState<CapturedImages>({
     side1: null,
     side2: null
   });
-  const [gradingResult, setGradingResult] = useState(null);
+  const [gradingResult, setGradingResult] = useState<GradingResult | null>(null);
   const [isGrading, setIsGrading] = useState(false);
-  const [step, setStep] = useState(1);
-  const [activeSide, setActiveSide] = useState('side1');
-  const [modelFeatures, setModelFeatures] = useState(null);
-  const cameraRef = useRef(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const [step, setStep] = useState(1); // 1: Select fish, 2: Capture images, 3: View results
+  const [validationError, setValidationError] = useState('');
+  const cameraRef = useRef<CameraView | null>(null);
 
-  // Your model's actual outputs
-  const MODEL_OUTPUTS = {
-    species: ['Tuna', 'Mackerel'],
-    grades: ['A', 'B', 'C'],
-    confidenceThreshold: 0.7,
-    
-    // Feature names that your model extracts
-    features: {
-      color: [
-        'Hue Mean', 'Hue Std', 'Saturation Mean', 'Saturation Std', 
-        'Value Mean', 'Value Std', 'L* Mean', 'L* Std', 'a* Mean', 'a* Std',
-        'b* Mean', 'b* Std', 'R Hist 1', 'R Hist 2', 'R Hist 3', 'R Hist 4',
-        'G Hist 1', 'G Hist 2', 'G Hist 3', 'G Hist 4',
-        'B Hist 1', 'B Hist 2', 'B Hist 3', 'B Hist 4'
-      ],
-      quality: ['Blood %', 'Brightness', 'Contrast', 'Edge Density', 'Entropy'],
-      difference: [
-        'Color Diff 1', 'Color Diff 2', 'Color Diff 3', 'Color Diff 4',
-        'Color Diff 5', 'Color Diff 6', 'Color Diff 7', 'Color Diff 8',
-        'Color Diff 9', 'Color Diff 10'
+  // Fish types available for grading
+  const fishTypes = [
+    { id: 1, name: 'Tuna', localName: 'බලයා' },
+    { id: 2, name: 'Mackerel', localName: 'අබදොල' },
+    { id: 3, name: 'Salmon', localName: 'සැමන්' },
+    { id: 4, name: 'Seer', localName: 'සීර' },
+    { id: 5, name: 'Sardines', localName: 'හැල්මසුන්' },
+  ];
+
+  // Quality standards for each fish type
+  const qualityStandards: QualityStandardsByFish = {
+    'Tuna': {
+      'Grade A': {
+        color: '#10B981',
+        criteria: [
+          'Vibrant red/pink color',
+          'Firm texture',
+          'No discoloration',
+          'Fresh sea smell',
+          'Clear eyes if present'
+        ],
+        pricePremium: '+15-20%'
+      },
+      'Grade B': {
+        color: '#F59E0B',
+        criteria: [
+          'Slight discoloration',
+          'Minor texture changes',
+          'Acceptable smell',
+          'Small blemishes acceptable'
+        ],
+        pricePremium: 'Market Price'
+      },
+      'Grade C': {
+        color: '#EF4444',
+        criteria: [
+          'Significant discoloration',
+          'Soft texture',
+          'Strong odor',
+          'Multiple blemishes'
+        ],
+        pricePremium: '-20-30%'
+      }
+    },
+    'Mackerel': {
+      'Grade A': {
+        color: '#10B981',
+        criteria: [
+          'Shiny silver skin',
+          'Firm and elastic flesh',
+          'Clear bright eyes',
+          'Red gills',
+          'No slime or odor'
+        ],
+        pricePremium: '+10-15%'
+      },
+      'Grade B': {
+        color: '#F59E0B',
+        criteria: [
+          'Slight dullness',
+          'Minor skin damage',
+          'Eyes slightly cloudy',
+          'Mild smell'
+        ],
+        pricePremium: 'Market Price'
+      },
+      'Grade C': {
+        color: '#EF4444',
+        criteria: [
+          'Dull/discolored skin',
+          'Soft/mushy texture',
+          'Cloudy/sunken eyes',
+          'Strong unpleasant odor'
+        ],
+        pricePremium: '-25-35%'
+      }
+    }
+  };
+
+  // Mock grading results for demonstration
+  const mockGradingResults: Record<string, GradingResult> = {
+    'Tuna': {
+      grade: 'Grade B',
+      confidence: 78,
+      details: {
+        colorScore: 75,
+        textureScore: 80,
+        freshnessScore: 79,
+        overallScore: 78
+      },
+      recommendations: [
+        'Market ready - Acceptable quality',
+        'Sell within 24 hours',
+        'Store at 0-2°C'
+      ]
+    },
+    'Mackerel': {
+      grade: 'Grade A',
+      confidence: 92,
+      details: {
+        colorScore: 95,
+        textureScore: 90,
+        freshnessScore: 91,
+        overallScore: 92
+      },
+      recommendations: [
+        'Premium quality - Export grade',
+        'Can be stored for 48 hours',
+        'Ideal for high-end markets'
       ]
     }
   };
 
-  const getGradeColor = (gradeText) => {
-    const letter = String(gradeText || '').trim().split(' ')[1] || String(gradeText || '').trim();
-    if (letter === 'A') return ['#10B981', '#34D399']; // Green
-    if (letter === 'B') return ['#F59E0B', '#FBBF24']; // Yellow/Orange
-    if (letter === 'C') return ['#EF4444', '#F87171']; // Red
-    return ['#0066CC', '#00A3FF']; // Default blue
-  };
-
-  const getSpeciesColor = (species) => {
-    if (species === 'Tuna') return ['#3B82F6', '#60A5FA']; // Blue
-    if (species === 'Mackerel' || species === 'Makerel') return ['#8B5CF6', '#A78BFA']; // Purple
-    return ['#6B7280', '#9CA3AF']; // Gray
-  };
-
-  const getQualityDescription = (grade) => {
-    const descriptions = {
-      'A': 'Premium Quality - Excellent for export markets',
-      'B': 'Good Quality - Suitable for local markets',
-      'C': 'Standard Quality - Best consumed quickly'
-    };
-    return descriptions[grade] || 'Quality assessment completed';
-  };
-
-  const getFeatureExplanation = (featureType) => {
-    const explanations = {
-      'Blood %': 'Percentage of red pixels indicating bleeding',
-      'Brightness': 'Overall image brightness level',
-      'Contrast': 'Difference between light and dark areas',
-      'Edge Density': 'Number of edges (texture complexity)',
-      'Entropy': 'Randomness in texture pattern',
-      'Hue Mean': 'Average color hue value',
-      'Saturation Std': 'Variation in color intensity'
-    };
-    return explanations[featureType] || 'Quality assessment feature';
-  };
-
+  // Request camera permission
   const handleCameraPermission = async () => {
-    try {
-      if (!permission?.granted) {
-        const result = await requestPermission();
-        if (!result?.granted) {
-          Alert.alert('Permission Required', 'Please allow camera access to capture images.');
-          return;
-        }
-      }
-      setShowCamera(true);
-    } catch {
-      Alert.alert('Permission Error', 'Unable to request camera permission.');
+    if (!permission) {
+      await requestPermission();
     }
+    setShowCamera(true);
   };
 
-  const takePicture = async (side) => {
+  // Capture image
+  const takePicture = async (side: CapturedSide) => {
     if (cameraRef.current) {
       try {
         const photo = await cameraRef.current.takePictureAsync({
@@ -122,33 +186,92 @@ const Quality = () => {
           exif: true
         });
         
-        setCapturedImages(prev => ({
-          ...prev,
-          [side]: photo.uri
-        }));
+        // Simulate image validation
+        const isValid = validateFishImage(photo.base64);
         
-        Alert.alert(
-          'Success!',
-          `Side ${side === 'side1' ? '1' : '2'} captured successfully!`,
-          [{ text: 'OK' }]
-        );
+        if (isValid) {
+          setCapturedImages(prev => ({
+            ...prev,
+            [side]: photo.uri
+          }));
+          setValidationError('');
+          
+          // Show success message
+          Alert.alert(
+            'Success',
+            `${side === 'side1' ? 'First' : 'Second'} side captured successfully!`,
+            [{ text: 'OK' }]
+          );
+        } else {
+          setValidationError('Invalid fish image detected. Please capture a clear image of the fish.');
+          Alert.alert(
+            'Validation Failed',
+            'The captured image does not appear to be a valid fish image. Please try again.',
+            [{ text: 'Retry' }]
+          );
+        }
       } catch (error) {
+        console.error('Error taking picture:', error);
         Alert.alert('Error', 'Failed to capture image');
       }
     }
   };
 
-  const pickImage = async (side) => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission Required', 'Please allow access to your gallery');
+  // Validate if the image is a fish (mock implementation)
+  const validateFishImage = (base64Image?: string) => {
+    // In real app, this would call your ML model for validation
+    // For now, we'll simulate validation
+    if (!base64Image) return false;
+    return Math.random() > 0.2; // 80% chance of valid image
+  };
+
+  // Select fish type
+  const handleFishSelect = (selectedFish: string) => {
+    setFishType(selectedFish);
+    setStep(2);
+  };
+
+  // Go back to fish selection
+  const handleBackToSelection = () => {
+    setFishType('');
+    setCapturedImages({ side1: null, side2: null });
+    setGradingResult(null);
+    setStep(1);
+    setValidationError('');
+  };
+
+  // Process grading
+  const handleGradeFish = () => {
+    if (!capturedImages.side1 || !capturedImages.side2) {
+      Alert.alert('Incomplete', 'Please capture both sides of the fish');
       return;
     }
 
+    setIsGrading(true);
+    
+    // Simulate API call to ML model
+    setTimeout(() => {
+      const result = mockGradingResults[fishType] || mockGradingResults['Tuna'];
+      setGradingResult(result);
+      setIsGrading(false);
+      setStep(3);
+      
+      // Log grading event
+      console.log('Grading completed:', {
+        fishType,
+        grade: result.grade,
+        confidence: result.confidence,
+        timestamp: new Date().toISOString()
+      });
+    }, 2000);
+  };
+
+  // Upload from gallery
+  const pickImage = async (side: CapturedSide) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [1, 1],
+      aspect: [4, 3],
       quality: 0.8,
     });
 
@@ -157,182 +280,16 @@ const Quality = () => {
         ...prev,
         [side]: result.assets[0].uri
       }));
+      setValidationError('');
     }
   };
 
-  // Simulate your model's feature extraction
-  const extractSimulatedFeatures = () => {
-    const features = {
-      left: {
-        color: MODEL_OUTPUTS.features.color.map(() => Math.random() * 100),
-        quality: [
-          Math.random() * 10, // Blood %
-          Math.random() * 255, // Brightness
-          Math.random() * 2,   // Contrast
-          Math.random() * 0.5, // Edge Density
-          Math.random() * 3    // Entropy
-        ]
-      },
-      right: {
-        color: MODEL_OUTPUTS.features.color.map(() => Math.random() * 100),
-        quality: [
-          Math.random() * 10,
-          Math.random() * 255,
-          Math.random() * 2,
-          Math.random() * 0.5,
-          Math.random() * 3
-        ]
-      },
-      difference: MODEL_OUTPUTS.features.difference.map(() => Math.random() * 50)
-    };
-    return features;
-  };
-
-  // Simulate your model's prediction
-  const simulateModelPrediction = (features) => {
-    // Your actual model logic would go here
-    // This is a simulation based on your model outputs
-    
-    const speciesProbabilities = [
-      Math.random(), // Tuna probability
-      Math.random()  // Mackerel probability
-    ];
-    
-    const gradeProbabilities = [
-      Math.random() * 0.3, // Grade A probability
-      Math.random() * 0.4 + 0.3, // Grade B probability (higher baseline)
-      Math.random() * 0.3  // Grade C probability
-    ];
-    
-    // Normalize probabilities
-    const speciesSum = speciesProbabilities.reduce((a, b) => a + b, 0);
-    const gradeSum = gradeProbabilities.reduce((a, b) => a + b, 0);
-    
-    const normalizedSpecies = speciesProbabilities.map(p => p / speciesSum);
-    const normalizedGrades = gradeProbabilities.map(p => p / gradeSum);
-    
-    const speciesIndex = normalizedSpecies.indexOf(Math.max(...normalizedSpecies));
-    const gradeIndex = normalizedGrades.indexOf(Math.max(...normalizedGrades));
-    
-    return {
-      species: {
-        label: MODEL_OUTPUTS.species[speciesIndex],
-        class: speciesIndex,
-        confidence: normalizedSpecies[speciesIndex],
-        allProbabilities: normalizedSpecies
-      },
-      grade: {
-        label: `Grade ${MODEL_OUTPUTS.grades[gradeIndex]}`,
-        class: gradeIndex,
-        confidence: normalizedGrades[gradeIndex],
-        allProbabilities: normalizedGrades
-      }
-    };
-  };
-
-  const handleGradeFish = async () => {
-    if (!capturedImages.side1 || !capturedImages.side2) {
-      Alert.alert('Incomplete', 'Please capture both sides of the fish to continue');
-      return;
-    }
-
-    setIsGrading(true);
-
-    try {
-      // Simulate processing delay (like your model inference)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Step 1: Extract features (like your model does)
-      const extractedFeatures = extractSimulatedFeatures();
-      setModelFeatures(extractedFeatures);
-
-      // Step 2: Make prediction (like your model)
-      const prediction = simulateModelPrediction(extractedFeatures);
-
-      // Step 3: Prepare results for display
-      const result = {
-        species: prediction.species,
-        grade: prediction.grade,
-        confidence: Math.round(prediction.grade.confidence * 100),
-        
-        // Feature metrics for display
-        featureMetrics: {
-          brightness: Math.round(extractedFeatures.left.quality[1]),
-          contrast: extractedFeatures.left.quality[2].toFixed(2),
-          edgeDensity: (extractedFeatures.left.quality[3] * 100).toFixed(1),
-          entropy: extractedFeatures.left.quality[4].toFixed(2),
-          asymmetry: (extractedFeatures.difference[0] * 2).toFixed(1)
-        },
-        
-        // Quality details based on your model's features
-        qualityDetails: {
-          colorConsistency: Math.round(100 - extractedFeatures.difference[1]),
-          textureScore: Math.round(extractedFeatures.left.quality[3] * 200),
-          freshness: Math.round(100 - (extractedFeatures.left.quality[0] * 10)),
-          appearance: Math.round((extractedFeatures.left.quality[1] / 255) * 100)
-        },
-        
-        // Recommendations based on grade
-        recommendations: prediction.grade.label === 'Grade A' ? [
-          'Premium export quality - Highest market value',
-          'Perfect color and texture consistency',
-          'Store at 0-2°C for maximum shelf life',
-          'Ideal for sushi/sashimi preparation'
-        ] : prediction.grade.label === 'Grade B' ? [
-          'Good market quality - Local distribution',
-          'Minor variations in color/texture',
-          'Consume within 48 hours',
-          'Suitable for grilling/baking'
-        ] : [
-          'Standard quality - Quick sale recommended',
-          'Monitor for quality changes',
-          'Best for cooked preparations',
-          'Check storage temperature regularly'
-        ],
-        
-        // Model information
-        modelInfo: {
-          totalFeatures: 68,
-          architecture: 'Hybrid CNN + Feature Fusion',
-          processed: new Date().toLocaleTimeString()
-        }
-      };
-
-      setGradingResult(result);
-      setStep(2);
-      
-    } catch (error) {
-      Alert.alert('Analysis Failed', 'Unable to grade fish at this time');
-      console.error('Grading error:', error);
-    } finally {
-      setIsGrading(false);
-    }
-  };
-
-  const handleBackToSelection = () => {
+  // Start new grading
+  const startNewGrading = () => {
     setCapturedImages({ side1: null, side2: null });
     setGradingResult(null);
-    setModelFeatures(null);
-    setStep(1);
-  };
-
-  const handleViewFeatures = () => {
-    Alert.alert(
-      'Model Features Extracted',
-      `Total Features: ${modelFeatures ? '68' : 'Not extracted yet'}\n` +
-      `Feature Types: Color (24) + Quality (5) + Difference (10) × 2 sides\n` +
-      `Model Architecture: Dual CNN + Manual Features`,
-      [{ text: 'OK' }]
-    );
-  };
-
-  const handleExplainGrade = (grade) => {
-    const explanations = {
-      'A': 'Premium Grade: Excellent color, texture, symmetry. Minimal defects. Ideal for premium markets.',
-      'B': 'Market Grade: Good quality with minor variations. Suitable for general markets.',
-      'C': 'Standard Grade: Acceptable quality. Best for quick sale and cooked preparations.'
-    };
-    Alert.alert(`Grade ${grade} Explanation`, explanations[grade] || 'Standard fish quality grade');
+    setStep(2);
+    setValidationError('');
   };
 
   // Camera Screen
@@ -342,1210 +299,873 @@ const Quality = () => {
         <CameraView
           ref={cameraRef}
           style={styles.camera}
-          facing={cameraFacing}
+          facing="back"
           mode="picture"
         >
-          <LinearGradient
-            colors={['rgba(0,0,0,0.9)', 'transparent']}
-            style={styles.cameraHeader}
-          >
+          <View style={styles.cameraControls}>
             <TouchableOpacity
               style={styles.closeCamera}
               onPress={() => setShowCamera(false)}
             >
-              <View style={styles.backButton}>
-                <MaterialIcons name="arrow-back" size={24} color="white" />
-              </View>
+              <MaterialIcons name="close" size={30} color="white" />
             </TouchableOpacity>
-            <Text style={styles.cameraTitle}>
-              {activeSide === 'side1' ? 'Left Side' : 'Right Side'}
-            </Text>
-            <View style={{ width: 44 }} />
-          </LinearGradient>
-
-          <View style={styles.captureGuide}>
-            <View style={styles.guideFrame}>
-              <Text style={styles.guideText}>
-                Align fish within frame
-              </Text>
-              <View style={styles.frameCorners}>
-                <View style={[styles.corner, styles.topLeft]} />
-                <View style={[styles.corner, styles.topRight]} />
-                <View style={[styles.corner, styles.bottomLeft]} />
-                <View style={[styles.corner, styles.bottomRight]} />
+            
+            <View style={styles.captureGuide}>
+              <View style={styles.guideTextContainer}>
+                <Text style={styles.guideText}>
+                  Position fish in the frame
+                </Text>
+                <Text style={styles.guideSubtext}>
+                  Ensure good lighting and clear view
+                </Text>
               </View>
+              
+              <View style={styles.captureFrame}>
+                <View style={styles.frameBorder} />
+                <Text style={styles.frameText}>Fish Area</Text>
+              </View>
+            </View>
+            
+            <View style={styles.captureButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.captureButton,
+                  capturedImages.side1 && styles.capturedButton
+                ]}
+                onPress={() => takePicture('side1')}
+              >
+                <MaterialIcons 
+                  name={capturedImages.side1 ? "check-circle" : "photo-camera"} 
+                  size={30} 
+                  color="white" 
+                />
+                <Text style={styles.captureButtonText}>
+                  {capturedImages.side1 ? 'Side 1 ✓' : 'Capture Side 1'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.captureButton,
+                  capturedImages.side2 && styles.capturedButton
+                ]}
+                onPress={() => takePicture('side2')}
+              >
+                <MaterialIcons 
+                  name={capturedImages.side2 ? "check-circle" : "photo-camera"} 
+                  size={30} 
+                  color="white" 
+                />
+                <Text style={styles.captureButtonText}>
+                  {capturedImages.side2 ? 'Side 2 ✓' : 'Capture Side 2'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
-
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.9)']}
-            style={styles.cameraControls}
-          >
-            <View style={styles.sideInfo}>
-              <Text style={styles.sideInfoText}>
-                {activeSide === 'side1' ? 'Capture left side first' : 'Capture right side for comparison'}
-              </Text>
-            </View>
-
-            <View style={styles.captureButtonsRow}>
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => pickImage(activeSide)}
-              >
-                <MaterialIcons name="photo-library" size={24} color="white" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.captureMainButton}
-                onPress={() => takePicture(activeSide)}
-              >
-                <LinearGradient
-                  colors={['#0066CC', '#00A3FF']}
-                  style={styles.cameraCaptureButtonInner}
-                >
-                  <View style={styles.captureButtonOuter}>
-                    <MaterialIcons name="camera-alt" size={28} color="#0066CC" />
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => setCameraFacing(prev => (prev === 'back' ? 'front' : 'back'))}
-              >
-                <MaterialIcons name="flip-camera-ios" size={24} color="white" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.sideSelector}>
-              <TouchableOpacity
-                style={[styles.sideButton, activeSide === 'side1' && styles.activeSideButton]}
-                onPress={() => setActiveSide('side1')}
-              >
-                <Text style={[styles.sideButtonText, activeSide === 'side1' && styles.activeSideButtonText]}>
-                  Left
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.sideButton, activeSide === 'side2' && styles.activeSideButton]}
-                onPress={() => setActiveSide('side2')}
-              >
-                <Text style={[styles.sideButtonText, activeSide === 'side2' && styles.activeSideButtonText]}>
-                  Right
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
         </CameraView>
       </View>
     );
   }
 
+  // Main UI
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0066CC" />
-      
-      {/* Header */}
-      <Animated.View style={[
-        styles.header,
-        {
-          transform: [{
-            translateY: scrollY.interpolate({
-              inputRange: [0, 50],
-              outputRange: [0, -50],
-              extrapolate: 'clamp'
-            })
-          }]
-        }
-      ]}>
-        <LinearGradient
-          colors={['#0066CC', '#0088FF']}
-          style={styles.headerGradient}
-        >
-          
-
-          <View style={styles.stepIndicator}>
-            <View style={styles.stepItem}>
-              <View style={[
-                styles.stepCircle,
-                step >= 1 && styles.stepCircleActive
-              ]}>
-                {step > 1 ? (
-                  <MaterialIcons name="check" size={16} color="white" />
-                ) : (
-                  <Text style={styles.stepNumber}>1</Text>
-                )}
-              </View>
-              <Text style={styles.stepLabel}>Capture</Text>
-            </View>
-            
-            <View style={styles.stepConnector}>
-              <View style={styles.connectorLine} />
-            </View>
-            
-            <View style={styles.stepItem}>
-              <View style={[
-                styles.stepCircle,
-                step === 2 && styles.stepCircleActive
-              ]}>
-                <Text style={styles.stepNumber}>2</Text>
-              </View>
-              <Text style={styles.stepLabel}>Analysis</Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <MaterialIcons name="assistant-photo" size={32} color="#fff" />
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Fish Quality Grading</Text>
+              <Text style={styles.headerSubtitle}>AI-Powered Quality Assessment</Text>
             </View>
           </View>
-        </LinearGradient>
-      </Animated.View>
-
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
-        scrollEventThrottle={16}
-      >
-        <View style={styles.content}>
-          {/* Step 1: Capture Images */}
-          {step === 1 && (
-            <>
-              <View style={styles.welcomeCard}>
-                <Text style={styles.welcomeTitle}>Fish Quality Grading</Text>
-                <Text style={styles.welcomeText}>
-                  Capture both sides of the fish for AI analysis using modern technology
+          <View style={styles.stepsIndicator}>
+            {[1, 2, 3].map((stepNum) => (
+              <View key={stepNum} style={styles.stepContainer}>
+                <View style={[
+                  styles.stepCircle,
+                  step === stepNum && styles.stepCircleActive,
+                  step > stepNum && styles.stepCircleCompleted
+                ]}>
+                  {step > stepNum ? (
+                    <MaterialIcons name="check" size={20} color="#fff" />
+                  ) : (
+                    <Text style={[
+                      styles.stepNumber,
+                      step === stepNum && styles.stepNumberActive
+                    ]}>
+                      {stepNum}
+                    </Text>
+                  )}
+                </View>
+                <Text style={styles.stepLabel}>
+                  {stepNum === 1 ? 'Select Fish' : stepNum === 2 ? 'Capture' : 'Results'}
                 </Text>
-                <View style={styles.modelInfoBadge}>
-                  <MaterialIcons name="model-training" size={14} color="#0066CC" />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {step === 1 && (
+          <View style={styles.selectionContainer}>
+            <Text style={styles.sectionTitle}>Select Fish Type</Text>
+            <Text style={styles.sectionDescription}>
+              Choose the type of fish you want to grade. Currently supporting:
+            </Text>
+            
+            <View style={styles.fishGrid}>
+              {fishTypes.map((fish) => (
+                <TouchableOpacity
+                  key={fish.id}
+                  style={styles.fishCard}
+                  onPress={() => handleFishSelect(fish.name)}
+                >
+                  <View style={styles.fishIconContainer}>
+                    <MaterialIcons name="pets" size={40} color="#3B82F6" />
+                  </View>
+                  <Text style={styles.fishName}>{fish.name}</Text>
+                  <Text style={styles.fishLocalName}>{fish.localName}</Text>
+                  <View style={styles.statusBadge}>
+                    {fish.name === 'Tuna' || fish.name === 'Mackerel' ? (
+                      <>
+                        <MaterialIcons name="check-circle" size={12} color="#10B981" />
+                        <Text style={styles.statusText}>Model Ready</Text>
+                      </>
+                    ) : (
+                      <>
+                        <MaterialIcons name="schedule" size={12} color="#F59E0B" />
+                        <Text style={styles.statusText}>Coming Soon</Text>
+                      </>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.infoBox}>
+              <MaterialIcons name="info" size={24} color="#3B82F6" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoTitle}>Grading Process</Text>
+                <Text style={styles.infoText}>
+                  1. Select fish type{'\n'}
+                  2. Capture both sides of the fish{'\n'}
+                  3. AI model analyzes quality{'\n'}
+                  4. Get grade (A, B, C) and recommendations
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {step === 2 && (
+          <View style={styles.captureContainer}>
+            <View style={styles.currentFishHeader}>
+              <TouchableOpacity onPress={handleBackToSelection} style={styles.backButton}>
+                <MaterialIcons name="arrow-back" size={24} color="#3B82F6" />
+              </TouchableOpacity>
+              <View>
+                <Text style={styles.currentFishTitle}>Grading: {fishType}</Text>
+                <Text style={styles.currentFishSubtitle}>
+                  {fishTypes.find(f => f.name === fishType)?.localName}
+                </Text>
+              </View>
+            </View>
+
+            {validationError ? (
+              <View style={styles.errorContainer}>
+                <MaterialIcons name="error-outline" size={40} color="#EF4444" />
+                <Text style={styles.errorTitle}>Validation Failed</Text>
+                <Text style={styles.errorText}>{validationError}</Text>
+                <TouchableOpacity 
+                  style={styles.retryButton}
+                  onPress={() => setValidationError('')}
+                >
+                  <Text style={styles.retryButtonText}>Retry Capture</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.instructions}>
+                  Capture clear images of both sides of the fish for accurate grading
+                </Text>
+
+                <View style={styles.imageCaptureSection}>
+                  {/* Side 1 */}
+                  <View style={styles.imageCard}>
+                    <Text style={styles.sideLabel}>Side 1</Text>
+                    {capturedImages.side1 ? (
+                      <View style={styles.imagePreviewContainer}>
+                        <Image 
+                          source={{ uri: capturedImages.side1 }} 
+                          style={styles.imagePreview} 
+                        />
+                        <TouchableOpacity 
+                          style={styles.replaceButton}
+                          onPress={() => setCapturedImages(prev => ({...prev, side1: null}))}
+                        >
+                          <MaterialIcons name="refresh" size={20} color="#3B82F6" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity 
+                        style={styles.captureCard}
+                        onPress={handleCameraPermission}
+                      >
+                        <MaterialIcons name="photo-camera" size={50} color="#9CA3AF" />
+                        <Text style={styles.captureText}>Capture Image</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity 
+                      style={styles.uploadButton}
+                      onPress={() => pickImage('side1')}
+                    >
+                      <MaterialIcons name="cloud-upload" size={20} color="#3B82F6" />
+                      <Text style={styles.uploadButtonText}>Upload from Gallery</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Side 2 */}
+                  <View style={styles.imageCard}>
+                    <Text style={styles.sideLabel}>Side 2</Text>
+                    {capturedImages.side2 ? (
+                      <View style={styles.imagePreviewContainer}>
+                        <Image 
+                          source={{ uri: capturedImages.side2 }} 
+                          style={styles.imagePreview} 
+                        />
+                        <TouchableOpacity 
+                          style={styles.replaceButton}
+                          onPress={() => setCapturedImages(prev => ({...prev, side2: null}))}
+                        >
+                          <MaterialIcons name="refresh" size={20} color="#3B82F6" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <TouchableOpacity 
+                        style={styles.captureCard}
+                        onPress={handleCameraPermission}
+                      >
+                        <MaterialIcons name="photo-camera" size={50} color="#9CA3AF" />
+                        <Text style={styles.captureText}>Capture Image</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity 
+                      style={styles.uploadButton}
+                      onPress={() => pickImage('side2')}
+                    >
+                      <MaterialIcons name="cloud-upload" size={20} color="#3B82F6" />
+                      <Text style={styles.uploadButtonText}>Upload from Gallery</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Capture Tips */}
+                <View style={styles.tipsContainer}>
+                  <Text style={styles.tipsTitle}>
+                    <MaterialIcons name="lightbulb" size={20} color="#F59E0B" /> Tips for Best Results
+                  </Text>
+                  <View style={styles.tipItem}>
+                    <MaterialIcons name="check-circle" size={16} color="#10B981" />
+                    <Text style={styles.tipText}>Use good natural lighting</Text>
+                  </View>
+                  <View style={styles.tipItem}>
+                    <MaterialIcons name="check-circle" size={16} color="#10B981" />
+                    <Text style={styles.tipText}>Place fish on clean, contrasting surface</Text>
+                  </View>
+                  <View style={styles.tipItem}>
+                    <MaterialIcons name="check-circle" size={16} color="#10B981" />
+                    <Text style={styles.tipText}>Capture entire fish in frame</Text>
+                  </View>
+                  <View style={styles.tipItem}>
+                    <MaterialIcons name="check-circle" size={16} color="#10B981" />
+                    <Text style={styles.tipText}>Avoid shadows and glare</Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    style={styles.secondaryButton}
+                    onPress={handleBackToSelection}
+                  >
+                    <Text style={styles.secondaryButtonText}>Back</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[
+                      styles.primaryButton,
+                      (!capturedImages.side1 || !capturedImages.side2) && styles.disabledButton
+                    ]}
+                    onPress={handleGradeFish}
+                    disabled={!capturedImages.side1 || !capturedImages.side2 || isGrading}
+                  >
+                    {isGrading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <MaterialIcons name="analytics" size={20} color="#fff" />
+                        <Text style={styles.primaryButtonText}>Grade Fish</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        )}
+
+        {step === 3 && gradingResult && (
+          <View style={styles.resultsContainer}>
+            <View style={styles.resultsHeader}>
+              <TouchableOpacity onPress={handleBackToSelection} style={styles.backButton}>
+                <MaterialIcons name="arrow-back" size={24} color="#3B82F6" />
+              </TouchableOpacity>
+              <Text style={styles.resultsTitle}>Grading Results</Text>
+            </View>
+
+            {/* Grade Display */}
+            <View style={styles.gradeCard}>
+              <View style={styles.gradeHeader}>
+                <View>
+                  <Text style={styles.fishTypeResult}>{fishType}</Text>
+                  <Text style={styles.fishLocalResult}>
+                    {fishTypes.find(f => f.name === fishType)?.localName}
+                  </Text>
+                </View>
+                <View style={styles.confidenceBadgeResult}>
+                  <Text style={styles.confidenceTextResult}>{gradingResult.confidence}%</Text>
+                  <Text style={styles.confidenceLabel}>Confidence</Text>
                 </View>
               </View>
 
-              <View style={styles.captureCards}>
-                {['side1', 'side2'].map((side, index) => (
-                  <View key={side} style={styles.card}>
-                    <LinearGradient
-                      colors={['#FFFFFF', '#F8FAFC']}
-                      style={styles.cardGradient}
-                    >
-                      <View style={styles.cardHeader}>
-                        <View style={styles.cardTitleContainer}>
-                          <View style={styles.cardIcon}>
-                            <MaterialIcons 
-                              name={index === 0 ? "flip" : "flip"} 
-                              size={20} 
-                              color="#0066CC" 
-                              style={{ transform: [{ rotate: index === 0 ? '0deg' : '180deg' }] }}
-                            />
-                          </View>
-                          <View>
-                            <Text style={styles.cardTitle}>
-                              {index === 0 ? 'Left Side' : 'Right Side'}
-                            </Text>
-                            <Text style={styles.cardSubtitle}>
-                              {index === 0 ? 'Primary analysis' : 'Comparison view'}
-                            </Text>
-                          </View>
-                        </View>
-                        {capturedImages[side] && (
-                          <View style={styles.statusBadge}>
-                            <MaterialIcons name="check-circle" size={14} color="#10B981" />
-                            <Text style={styles.statusText}>Ready</Text>
-                          </View>
-                        )}
-                      </View>
-                      
-                      {capturedImages[side] ? (
-                        <View style={styles.imageContainer}>
-                          <Image 
-                            source={{ uri: capturedImages[side] }} 
-                            style={styles.imagePreview} 
-                          />
-                          <TouchableOpacity 
-                            style={styles.imageActionButton}
-                            onPress={() => setCapturedImages(prev => ({...prev, [side]: null}))}
-                          >
-                            <MaterialIcons name="refresh" size={18} color="white" />
-                          </TouchableOpacity>
-                        </View>
-                      ) : (
-                        <TouchableOpacity 
-                          style={styles.captureButton}
-                          onPress={() => {
-                            setActiveSide(side);
-                            handleCameraPermission();
-                          }}
-                        >
-                          <LinearGradient
-                            colors={['#F0F9FF', '#E0F2FE']}
-                            style={styles.captureCardButtonInner}
-                          >
-                            <View style={styles.captureIconContainer}>
-                              <MaterialIcons name="add-a-photo" size={36} color="#0066CC" />
-                            </View>
-                            <Text style={styles.captureButtonText}>
-                              {index === 0 ? 'Capture Left Side' : 'Capture Right Side'}
-                            </Text>
-                            <Text style={styles.captureSubtext}>
-                              {index === 0 ? 'For primary feature extraction' : 'For bilateral comparison'}
-                            </Text>
-                          </LinearGradient>
-                        </TouchableOpacity>
-                      )}
-                      
-                      <TouchableOpacity 
-                        style={styles.galleryButton}
-                        onPress={() => pickImage(side)}
-                      >
-                        <MaterialIcons name="photo-library" size={18} color="#0066CC" />
-                        <Text style={styles.galleryButtonText}>Choose from Gallery</Text>
-                      </TouchableOpacity>
-                    </LinearGradient>
+              <View style={styles.gradeDisplay}>
+                <View style={[
+                  styles.gradeCircle,
+                  { borderColor: qualityStandards[fishType]?.[gradingResult.grade]?.color || '#10B981' }
+                ]}>
+                  <Text style={styles.gradeLetter}>
+                    {gradingResult.grade.split(' ')[1]}
+                  </Text>
+                  <Text style={styles.gradeLabel}>Grade</Text>
+                </View>
+                
+                <View style={styles.gradeInfo}>
+                  <Text style={[
+                    styles.gradeText,
+                    { color: qualityStandards[fishType]?.[gradingResult.grade]?.color || '#10B981' }
+                  ]}>
+                    {gradingResult.grade}
+                  </Text>
+                  <Text style={styles.gradeDescription}>
+                    {qualityStandards[fishType]?.[gradingResult.grade]?.pricePremium || 'Market Price'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Quality Scores */}
+              <View style={styles.scoresContainer}>
+                <Text style={styles.scoresTitle}>Quality Metrics</Text>
+                <View style={styles.scoreGrid}>
+                  <View style={styles.scoreItem}>
+                    <Text style={styles.scoreLabel}>Color</Text>
+                    <Text style={styles.scoreValue}>{gradingResult.details.colorScore}%</Text>
+                    <View style={styles.scoreBar}>
+                      <View 
+                        style={[
+                          styles.scoreFill,
+                          { 
+                            width: `${gradingResult.details.colorScore}%`,
+                            backgroundColor: gradingResult.details.colorScore > 80 ? '#10B981' : 
+                                          gradingResult.details.colorScore > 60 ? '#F59E0B' : '#EF4444'
+                          }
+                        ]}
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.scoreItem}>
+                    <Text style={styles.scoreLabel}>Texture</Text>
+                    <Text style={styles.scoreValue}>{gradingResult.details.textureScore}%</Text>
+                    <View style={styles.scoreBar}>
+                      <View 
+                        style={[
+                          styles.scoreFill,
+                          { 
+                            width: `${gradingResult.details.textureScore}%`,
+                            backgroundColor: gradingResult.details.textureScore > 80 ? '#10B981' : 
+                                          gradingResult.details.textureScore > 60 ? '#F59E0B' : '#EF4444'
+                          }
+                        ]}
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.scoreItem}>
+                    <Text style={styles.scoreLabel}>Freshness</Text>
+                    <Text style={styles.scoreValue}>{gradingResult.details.freshnessScore}%</Text>
+                    <View style={styles.scoreBar}>
+                      <View 
+                        style={[
+                          styles.scoreFill,
+                          { 
+                            width: `${gradingResult.details.freshnessScore}%`,
+                            backgroundColor: gradingResult.details.freshnessScore > 80 ? '#10B981' : 
+                                          gradingResult.details.freshnessScore > 60 ? '#F59E0B' : '#EF4444'
+                          }
+                        ]}
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.scoreItem}>
+                    <Text style={styles.scoreLabel}>Overall</Text>
+                    <Text style={styles.scoreValue}>{gradingResult.details.overallScore}%</Text>
+                    <View style={styles.scoreBar}>
+                      <View 
+                        style={[
+                          styles.scoreFill,
+                          { 
+                            width: `${gradingResult.details.overallScore}%`,
+                            backgroundColor: gradingResult.details.overallScore > 80 ? '#10B981' : 
+                                          gradingResult.details.overallScore > 60 ? '#F59E0B' : '#EF4444'
+                          }
+                        ]}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Recommendations */}
+              <View style={styles.recommendationsContainer}>
+                <Text style={styles.recommendationsTitle}>
+                  <MaterialIcons name="recommend" size={20} color="#3B82F6" /> Recommendations
+                </Text>
+                {gradingResult.recommendations.map((rec, index) => (
+                  <View key={index} style={styles.recommendationItem}>
+                    <MaterialIcons name="check-circle" size={16} color="#10B981" />
+                    <Text style={styles.recommendationText}>{rec}</Text>
                   </View>
                 ))}
               </View>
 
-              <View style={styles.techInfoCard}>
-                <View style={styles.techInfoHeader}>
-                  <MaterialIcons name="precision-manufacturing" size={22} color="#0066CC" />
-                  <Text style={styles.techInfoTitle}>Model Technology</Text>
+              {/* Quality Criteria */}
+              {qualityStandards[fishType]?.[gradingResult.grade] && (
+                <View style={styles.criteriaContainer}>
+                  <Text style={styles.criteriaTitle}>Grade {gradingResult.grade.split(' ')[1]} Criteria</Text>
+                  {qualityStandards[fishType][gradingResult.grade].criteria.map((criterion, index) => (
+                    <View key={index} style={styles.criterionItem}>
+                      <View style={[
+                        styles.criterionDot,
+                        { backgroundColor: qualityStandards[fishType][gradingResult.grade].color }
+                      ]} />
+                      <Text style={styles.criterionText}>{criterion}</Text>
+                    </View>
+                  ))}
                 </View>
-                <View style={styles.techInfoGrid}>
-                  <View style={styles.techInfoItem}>
-                    <View style={styles.techInfoIcon}>
-                      <MaterialIcons name="view-in-ar" size={14} color="#FFFFFF" />
-                    </View>
-                    <Text style={styles.techInfoLabel}>Dual CNN</Text>
-                    <Text style={styles.techInfoValue}>2 Views</Text>
-                  </View>
-                  <View style={styles.techInfoItem}>
-                    <View style={styles.techInfoIcon}>
-                      <MaterialIcons name="analytics" size={14} color="#FFFFFF" />
-                    </View>
-                    <Text style={styles.techInfoLabel}> Features</Text>
-                    <Text style={styles.techInfoValue}>Extracted</Text>
-                  </View>
-                  <View style={styles.techInfoItem}>
-                    <View style={styles.techInfoIcon}>
-                      <MaterialIcons name="compare" size={14} color="#FFFFFF" />
-                    </View>
-                    <Text style={styles.techInfoLabel}>Asymmetry</Text>
-                    <Text style={styles.techInfoValue}>Analysis</Text>
-                  </View>
-                  <View style={styles.techInfoItem}>
-                    <View style={styles.techInfoIcon}>
-                      <MaterialIcons name="blur-linear" size={14} color="#FFFFFF" />
-                    </View>
-                    <Text style={styles.techInfoLabel}>Hybrid</Text>
-                    <Text style={styles.techInfoValue}>Model</Text>
-                  </View>
-                </View>
-              </View>
-
-              <TouchableOpacity 
-                style={[
-                  styles.primaryButton,
-                  (!capturedImages.side1 || !capturedImages.side2) && styles.primaryButtonDisabled
-                ]}
-                onPress={handleGradeFish}
-                disabled={!capturedImages.side1 || !capturedImages.side2 || isGrading}
-              >
-                <LinearGradient
-                  colors={['#0066CC', '#00A3FF']}
-                  style={styles.buttonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {isGrading ? (
-                    <>
-                      <ActivityIndicator color="#fff" size="small" style={{ marginRight: 10 }} />
-                      <Text style={styles.primaryButtonText}>Analyzing Features...</Text>
-                    </>
-                  ) : (
-                    <>
-                      <MaterialIcons name="auto-awesome" size={22} color="#fff" />
-                      <Text style={styles.primaryButtonText}>Predict Grade</Text>
-                    </>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* Step 2: Results */}
-          {step === 2 && gradingResult && (
-            <>
-              <View style={styles.resultsHeader}>
-                <Text style={styles.resultsTitle}>AI Analysis Complete</Text>
-                <Text style={styles.resultsSubtitle}>Hybrid model assessment results</Text>
-              </View>
-
-              <View style={styles.resultCard}>
-                <LinearGradient
-                  colors={['#FFFFFF', '#F8FAFC']}
-                  style={styles.resultCardGradient}
-                >
-                  {/* Species and Grade Header */}
-                  <View style={styles.resultHeader}>
-                    <View style={styles.resultTitleContainer}>
-                      <LinearGradient
-                        colors={getSpeciesColor(gradingResult.species.label)}
-                        style={styles.speciesBadge}
-                      >
-                        <MaterialIcons name="pets" size={14} color="white" />
-                        <Text style={styles.speciesText}>{gradingResult.species.label}</Text>
-                      </LinearGradient>
-                      <View style={styles.resultTimeContainer}>
-                        <MaterialIcons name="schedule" size={12} color="#94A3B8" />
-                        <Text style={styles.resultTime}>Analyzed: {gradingResult.modelInfo?.processed}</Text>
-                      </View>
-                    </View>
-                    <TouchableOpacity onPress={() => handleExplainGrade(gradingResult.grade.label.split(' ')[1])}>
-                      <LinearGradient
-                        colors={getGradeColor(gradingResult.grade.label)}
-                        style={styles.confidenceBadge}
-                      >
-                        <MaterialIcons name="verified" size={14} color="white" />
-                        <Text style={styles.confidenceText}>{gradingResult.confidence}% Confident</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Grade Display */}
-                  <View style={styles.gradeSection}>
-                    <View style={styles.gradeCircleContainer}>
-                      <TouchableOpacity onPress={() => handleExplainGrade(gradingResult.grade.label.split(' ')[1])}>
-                        <LinearGradient
-                          colors={getGradeColor(gradingResult.grade.label)}
-                          style={styles.gradeCircle}
-                        >
-                          <Text style={styles.gradeLetter}>{gradingResult.grade.label.split(' ')[1]}</Text>
-                          <Text style={styles.gradeLabel}>Grade</Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    </View>
-                    
-                    <View style={styles.gradeInfo}>
-                      <Text style={[
-                        styles.gradeTitle,
-                        { color: getGradeColor(gradingResult.grade.label)[0] }
-                      ]}>
-                        {gradingResult.grade.label}
-                      </Text>
-                      <Text style={styles.gradeDescription}>
-                        {getQualityDescription(gradingResult.grade.label.split(' ')[1])}
-                      </Text>
-                      
-                      {/* Species Probability */}
-                      <View style={styles.probabilityRow}>
-                        <Text style={styles.probabilityLabel}>Species Confidence:</Text>
-                        <View style={styles.probabilityBar}>
-                          <LinearGradient
-                            colors={getSpeciesColor(gradingResult.species.label)}
-                            style={[styles.probabilityFill, { width: `${gradingResult.species.confidence * 100}%` }]}
-                          />
-                        </View>
-                        <Text style={styles.probabilityValue}>
-                          {Math.round(gradingResult.species.confidence * 100)}%
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Feature Metrics */}
-                  <View style={styles.metricsSection}>
-                    <View style={styles.sectionHeader}>
-                      <Text style={styles.metricsTitle}>Feature Analysis</Text>
-                      <TouchableOpacity onPress={handleViewFeatures}>
-                        <Text style={styles.viewFeaturesText}>View 68 Features</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <View style={styles.metricsGrid}>
-                      {Object.entries(gradingResult.featureMetrics || {}).map(([key, value]) => (
-                        <View key={key} style={styles.metricItem}>
-                          <View style={styles.metricHeader}>
-                            <Text style={styles.metricLabel}>
-                              {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                            </Text>
-                            <Text style={styles.metricValue}>{value}</Text>
-                          </View>
-                          <Text style={styles.metricExplanation}>
-                            {getFeatureExplanation(key)}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Quality Scores */}
-                  <View style={styles.qualityScoresSection}>
-                    <Text style={styles.sectionTitle}>Quality Scores</Text>
-                    <View style={styles.scoresGrid}>
-                      {Object.entries(gradingResult.qualityDetails || {}).map(([key, value]) => (
-                        <View key={key} style={styles.scoreItem}>
-                          <LinearGradient
-                            colors={value > 85 ? ['#10B981', '#34D399'] : 
-                                   value > 70 ? ['#F59E0B', '#FBBF24'] : 
-                                   ['#EF4444', '#F87171']}
-                            style={styles.scoreCircle}
-                          >
-                            <Text style={styles.scoreValue}>{value}</Text>
-                          </LinearGradient>
-                          <Text style={styles.scoreLabel}>
-                            {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Model Information
-                  <View style={styles.modelInfoSection}>
-                    <View style={styles.modelInfoHeader}>
-                      <MaterialIcons name="model-training" size={18} color="#0066CC" />
-                      <Text style={styles.modelInfoTitle}>Model Information</Text>
-                    </View>
-                    <View style={styles.modelInfoGrid}>
-                      <View style={styles.modelInfoItem}>
-                        <Text style={styles.modelInfoLabel}>Architecture</Text>
-                        <Text style={styles.modelInfoValue}>Hybrid CNN + Features</Text>
-                      </View>
-                      <View style={styles.modelInfoItem}>
-                        <Text style={styles.modelInfoLabel}>Features Extracted</Text>
-                        <Text style={styles.modelInfoValue}>68</Text>
-                      </View>
-                      <View style={styles.modelInfoItem}>
-                        <Text style={styles.modelInfoLabel}>Analysis Type</Text>
-                        <Text style={styles.modelInfoValue}>Bilateral</Text>
-                      </View>
-                    </View>
-                  </View> */}
-
-                  {/* Recommendations */}
-                  <View style={styles.recommendationsCard}>
-                    <View style={styles.recommendationsHeader}>
-                      <MaterialIcons name="recommend" size={20} color="#0066CC" />
-                      <Text style={styles.recommendationsTitle}>Recommendations</Text>
-                    </View>
-                    <View style={styles.recommendationsList}>
-                      {gradingResult.recommendations.map((rec, index) => (
-                        <View key={index} style={styles.recommendationItem}>
-                          <View style={styles.recommendationIcon}>
-                            <MaterialIcons 
-                              name={index === 0 ? "star" : index === 1 ? "local-shipping" : "thermostat"} 
-                              size={16} 
-                              color="#0066CC" 
-                            />
-                          </View>
-                          <Text style={styles.recommendationText}>{rec}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                </LinearGradient>
-              </View>
+              )}
 
               {/* Action Buttons */}
-              <View style={styles.actionButtons}>
+              <View style={styles.resultsActions}>
                 <TouchableOpacity 
-                  style={styles.secondaryActionButton}
-                  onPress={handleViewFeatures}
+                  style={styles.resultsSecondaryButton}
+                  onPress={() => {
+                    // Share results functionality
+                    Alert.alert('Share', 'Results shared successfully!');
+                  }}
                 >
-                  <MaterialIcons name="analytics" size={20} color="#0066CC" />
-                  <Text style={styles.secondaryActionButtonText}>View Features</Text>
+                  <MaterialIcons name="share" size={20} color="#3B82F6" />
+                  <Text style={styles.resultsSecondaryButtonText}>Share</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
-                  style={styles.primaryButton}
-                  onPress={handleBackToSelection}
+                  style={styles.resultsPrimaryButton}
+                  onPress={startNewGrading}
                 >
-                  <LinearGradient
-                    colors={['#0066CC', '#00A3FF']}
-                    style={styles.buttonGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    <MaterialIcons name="add-circle-outline" size={22} color="#fff" />
-                    <Text style={styles.primaryButtonText}>New Analysis</Text>
-                  </LinearGradient>
+                  <MaterialIcons name="add-circle" size={20} color="#fff" />
+                  <Text style={styles.resultsPrimaryButtonText}>Grade Another</Text>
                 </TouchableOpacity>
               </View>
-            </>
-          )}
-        </View>
+            </View>
+
+            {/* History Preview */}
+            <View style={styles.historyPreview}>
+              <Text style={styles.historyTitle}>Recent Gradings</Text>
+              <View style={styles.historyItem}>
+                <View style={styles.historyFishInfo}>
+                  <Text style={styles.historyFishName}>Tuna</Text>
+                  <Text style={styles.historyDate}>Today, 10:30 AM</Text>
+                </View>
+                <View style={styles.historyGradeBadge}>
+                  <Text style={styles.historyGrade}>B</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={styles.viewHistoryButton}>
+                <Text style={styles.viewHistoryText}>View Full History</Text>
+                <MaterialIcons name="chevron-right" size={20} color="#3B82F6" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
+const { width } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F9FF',
+    backgroundColor: '#F9FAFB',
   },
   header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    elevation: 8,
-  },
-  headerGradient: {
-    paddingTop: STATUS_BAR_HEIGHT + 16,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    backgroundColor: '#0057cf',
+    padding: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  headerIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
+    marginBottom: 20,
   },
   headerTextContainer: {
-    flex: 1,
+    marginLeft: 12,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#fff',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#DBEAFE',
     marginTop: 2,
   },
-  stepIndicator: {
+  stepsIndicator: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 20,
   },
-  stepItem: {
+  stepContainer: {
     alignItems: 'center',
-  },
-  stepConnector: {
-    width: 60,
-    marginHorizontal: 4,
-  },
-  connectorLine: {
-    width: '100%',
-    height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    marginTop: 15,
   },
   stepCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#93C5FD',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   stepCircleActive: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#fff',
+  },
+  stepCircleCompleted: {
+    backgroundColor: '#10B981',
   },
   stepNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0066CC',
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1E40AF',
+  },
+  stepNumberActive: {
+    color: '#3B82F6',
   },
   stepLabel: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#DBEAFE',
     fontWeight: '500',
   },
-  scrollView: {
-    flex: 1,
-    marginTop: 85,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  content: {
+  selectionContainer: {
     padding: 20,
   },
-  welcomeCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
-    elevation: 3,
-  },
-  welcomeTitle: {
+  sectionTitle: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#1E293B',
+    fontWeight: 'bold',
+    color: '#1F2937',
     marginBottom: 8,
   },
-  welcomeText: {
-    fontSize: 15,
-    color: '#64748B',
-    lineHeight: 22,
-    marginBottom: 12,
+  sectionDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 24,
+    lineHeight: 20,
   },
-  modelInfoBadge: {
+  fishGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 102, 204, 0.1)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  modelInfoText: {
-    fontSize: 12,
-    color: '#0066CC',
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  captureCards: {
-    gap: 16,
-    marginBottom: 20,
-  },
-  card: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
-    elevation: 3,
-  },
-  cardGradient: {
-    padding: 20,
-  },
-  cardHeader: {
-    flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
-  cardTitleContainer: {
-    flexDirection: 'row',
+  fishCard: {
+    width: (width - 60) / 3,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  cardIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 102, 204, 0.1)',
+  fishIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginBottom: 12,
   },
-  cardTitle: {
-    fontSize: 18,
+  fishName: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1E293B',
+    color: '#1F2937',
+    marginBottom: 4,
   },
-  cardSubtitle: {
+  fishLocalName: {
     fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
+    color: '#6B7280',
+    marginBottom: 8,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusText: {
-    fontSize: 12,
-    color: '#065F46',
+    fontSize: 10,
     marginLeft: 4,
-    fontWeight: '500',
+    color: '#6B7280',
   },
-  imageContainer: {
-    position: 'relative',
-    height: 180,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
+  infoBox: {
+    flexDirection: 'row',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'flex-start',
   },
-  imagePreview: {
-    width: '100%',
-    height: '100%',
-  },
-  imageActionButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  captureButton: {
-    height: 180,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  captureCardButtonInner: {
+  infoContent: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginLeft: 12,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E40AF',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 20,
+  },
+  captureContainer: {
     padding: 20,
   },
-  captureIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(0, 102, 204, 0.1)',
+  currentFishHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  backButton: {
+    marginRight: 12,
+  },
+  currentFishTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  currentFishSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  errorContainer: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#DC2626',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#7F1D1D',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  instructions: {
+    fontSize: 16,
+    color: '#4B5563',
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  imageCaptureSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  imageCard: {
+    width: (width - 60) / 2,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sideLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  captureCard: {
+    height: 150,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
-  captureButtonText: {
-    fontSize: 16,
-    color: '#0066CC',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  captureSubtext: {
-    fontSize: 12,
-    color: '#94A3B8',
-  },
-  galleryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-  },
-  galleryButtonText: {
+  captureText: {
     fontSize: 14,
-    color: '#0066CC',
-    fontWeight: '500',
-    marginLeft: 8,
+    color: '#9CA3AF',
+    marginTop: 8,
   },
-  techInfoCard: {
-    backgroundColor: '#FFFFFF',
+  imagePreviewContainer: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+  imagePreview: {
+    width: '100%',
+    height: 150,
+    borderRadius: 8,
+  },
+  replaceButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#fff',
     borderRadius: 20,
-    padding: 20,
-    marginBottom: 24,
+    padding: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
     elevation: 3,
   },
-  techInfoHeader: {
+  uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    justifyContent: 'center',
+    paddingVertical: 8,
   },
-  techInfoTitle: {
+  uploadButtonText: {
+    fontSize: 14,
+    color: '#3B82F6',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  tipsContainer: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  tipsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#0066CC',
-    marginLeft: 8,
-  },
-  techInfoGrid: {
+    color: '#92400E',
+    marginBottom: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  techInfoItem: {
     alignItems: 'center',
   },
-  techInfoIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#0066CC',
-    justifyContent: 'center',
+  tipItem: {
+    flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
   },
-  techInfoLabel: {
-    fontSize: 12,
-    color: '#1E293B',
-    fontWeight: '600',
+  tipText: {
+    fontSize: 14,
+    color: '#92400E',
+    marginLeft: 8,
+    flex: 1,
   },
-  techInfoValue: {
-    fontSize: 11,
-    color: '#64748B',
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  secondaryButton: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    marginRight: 12,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4B5563',
   },
   primaryButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#0066CC',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.6,
-  },
-  buttonGradient: {
+    flex: 2,
     paddingVertical: 16,
+    paddingHorizontal: 24,
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#9CA3AF',
+    opacity: 0.6,
   },
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
-    marginLeft: 10,
-    margin: 2,padding: 2,          
-  },
-  resultsHeader: {
-    marginBottom: 20,
-  },
-  resultsTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  resultsSubtitle: {
-    fontSize: 15,
-    color: '#64748B',
-  },
-  resultCard: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 6,
-    marginBottom: 20,
-  },
-  resultCardGradient: {
-    padding: 24,
-  },
-  resultHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 24,
-  },
-  resultTitleContainer: {
-    flex: 1,
-  },
-  speciesBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 8,
-  },
-  speciesText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  resultTimeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  resultTime: {
-    fontSize: 13,
-    color: '#94A3B8',
-    marginLeft: 4,
-  },
-  confidenceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginLeft: 12,
-  },
-  confidenceText: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  gradeSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 32,
-    paddingBottom: 32,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-  },
-  gradeCircleContainer: {
-    marginRight: 24,
-  },
-  gradeCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  gradeLetter: {
-    fontSize: 42,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  gradeLabel: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    opacity: 0.9,
-    fontWeight: '600',
-  },
-  gradeInfo: {
-    flex: 1,
-  },
-  gradeTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  gradeDescription: {
-    fontSize: 14,
-    color: '#64748B',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  probabilityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  probabilityLabel: {
-    fontSize: 13,
-    color: '#64748B',
-    marginRight: 12,
-    minWidth: 120,
-  },
-  probabilityBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  probabilityFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  probabilityValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginLeft: 12,
-    minWidth: 40,
-  },
-  metricsSection: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  metricsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  viewFeaturesText: {
-    fontSize: 13,
-    color: '#0066CC',
-    fontWeight: '500',
-  },
-  metricsGrid: {
-    gap: 16,
-  },
-  metricItem: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 16,
-  },
-  metricHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  metricLabel: {
-    fontSize: 14,
-    color: '#1E293B',
-    fontWeight: '600',
-  },
-  metricValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0066CC',
-  },
-  metricExplanation: {
-    fontSize: 12,
-    color: '#64748B',
-    lineHeight: 16,
-  },
-  qualityScoresSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 20,
-  },
-  scoresGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  scoreItem: {
-    width: (width - 80) / 3,
-    alignItems: 'center',
-  },
-  scoreCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  scoreValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  scoreLabel: {
-    fontSize: 11,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-  modelInfoSection: {
-    backgroundColor: '#F0F9FF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-  },
-  modelInfoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modelInfoTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0066CC',
+    color: '#fff',
     marginLeft: 8,
   },
-  modelInfoGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  modelInfoItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  modelInfoLabel: {
-    fontSize: 11,
-    color: '#64748B',
-    marginBottom: 4,
-  },
-  modelInfoValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  recommendationsCard: {
-    backgroundColor: '#F0F9FF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
-  },
-  recommendationsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  recommendationsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0369A1',
-    marginLeft: 8,
-  },
-  recommendationsList: {
-    gap: 12,
-  },
-  recommendationItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  recommendationIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 102, 204, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    marginTop: 2,
-  },
-  recommendationText: {
-    fontSize: 14,
-    color: '#0369A1',
-    flex: 1,
-    lineHeight: 20,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  secondaryActionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderWidth: 2,
-    borderColor: '#0066CC',
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  secondaryActionButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#0066CC',
-    marginLeft: 8,
-  },
-  // Camera Styles
   cameraContainer: {
     flex: 1,
     backgroundColor: '#000',
@@ -1553,161 +1173,359 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
   },
-  cameraHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  cameraControls: {
+    flex: 1,
+    backgroundColor: 'transparent',
     justifyContent: 'space-between',
-    paddingTop: STATUS_BAR_HEIGHT + 20,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+    padding: 20,
   },
   closeCamera: {
-    zIndex: 10,
+    alignSelf: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 8,
   },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
+  captureGuide: {
     alignItems: 'center',
   },
-  cameraTitle: {
-    color: '#FFFFFF',
+  guideTextContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  guideText: {
+    color: '#fff',
     fontSize: 18,
     fontWeight: '600',
   },
-  captureGuide: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  guideSubtext: {
+    color: '#D1D5DB',
+    fontSize: 14,
+    marginTop: 4,
   },
-  guideFrame: {
-    width: 300,
-    height: 300,
-    borderRadius: 24,
+  captureFrame: {
+    width: 250,
+    height: 250,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: '#fff',
+    borderStyle: 'dashed',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  guideText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-    marginBottom: 20,
-  },
-  frameCorners: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  corner: {
+  frameBorder: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderColor: '#00A3FF',
+    width: '100%',
+    height: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 12,
   },
-  topLeft: {
-    top: -2,
-    left: -2,
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-    borderTopLeftRadius: 12,
-  },
-  topRight: {
-    top: -2,
-    right: -2,
-    borderTopWidth: 4,
-    borderRightWidth: 4,
-    borderTopRightRadius: 12,
-  },
-  bottomLeft: {
-    bottom: -2,
-    left: -2,
-    borderBottomWidth: 4,
-    borderLeftWidth: 4,
-    borderBottomLeftRadius: 12,
-  },
-  bottomRight: {
-    bottom: -2,
-    right: -2,
-    borderBottomWidth: 4,
-    borderRightWidth: 4,
-    borderBottomRightRadius: 12,
-  },
-  cameraControls: {
-    paddingVertical: 40,
-    paddingHorizontal: 30,
-  },
-  sideInfo: {
-    marginBottom: 30,
-  },
-  sideInfoText: {
-    color: 'rgba(255, 255, 255, 0.9)',
+  frameText: {
+    color: '#fff',
     fontSize: 14,
-    textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
-  captureButtonsRow: {
+  captureButtons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+  },
+  captureButton: {
     alignItems: 'center',
-    marginBottom: 30,
+    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+    padding: 16,
+    borderRadius: 12,
+    width: 150,
   },
-  secondaryButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  capturedButton: {
+    backgroundColor: 'rgba(16, 185, 129, 0.8)',
   },
-  captureMainButton: {
-    width: 88,
-    height: 88,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cameraCaptureButtonInner: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  captureButtonOuter: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sideSelector: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 28,
-    padding: 6,
-  },
-  sideButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 22,
-    alignItems: 'center',
-  },
-  activeSideButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  },
-  sideButtonText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+  captureButtonText: {
+    color: '#fff',
     fontSize: 14,
-    fontWeight: '600',
+    marginTop: 8,
+    fontWeight: '500',
   },
-  activeSideButtonText: {
-    color: '#0066CC',
+  resultsContainer: {
+    padding: 20,
+  },
+  resultsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  resultsTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginLeft: 12,
+  },
+  gradeCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  gradeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  fishTypeResult: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  fishLocalResult: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  confidenceBadgeResult: {
+    alignItems: 'center',
+  },
+  confidenceTextResult: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#3B82F6',
+  },
+  confidenceLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  gradeDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  gradeCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  gradeLetter: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  gradeLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  gradeInfo: {
+    flex: 1,
+  },
+  gradeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  gradeDescription: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  scoresContainer: {
+    marginBottom: 24,
+  },
+  scoresTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  scoreGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  scoreItem: {
+    width: (width - 80) / 2,
+    marginBottom: 16,
+  },
+  scoreLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  scoreValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  scoreBar: {
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  scoreFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  recommendationsContainer: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  recommendationsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0369A1',
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recommendationItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  recommendationText: {
+    fontSize: 14,
+    color: '#0369A1',
+    marginLeft: 8,
+    flex: 1,
+    lineHeight: 20,
+  },
+  criteriaContainer: {
+    marginBottom: 24,
+  },
+  criteriaTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  criterionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  criterionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
+    marginRight: 8,
+  },
+  criterionText: {
+    fontSize: 14,
+    color: '#4B5563',
+    flex: 1,
+    lineHeight: 20,
+  },
+  resultsActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  resultsSecondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  resultsSecondaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3B82F6',
+    marginLeft: 8,
+  },
+  resultsPrimaryButton: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+  },
+  resultsPrimaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginLeft: 8,
+  },
+  historyPreview: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  historyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  historyItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  historyFishInfo: {
+    flex: 1,
+  },
+  historyFishName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  historyDate: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  historyGradeBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  historyGrade: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#92400E',
+  },
+  viewHistoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  viewHistoryText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3B82F6',
+    marginRight: 4,
   },
 });
 

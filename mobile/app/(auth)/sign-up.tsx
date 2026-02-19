@@ -1,4 +1,4 @@
-import  { useState, useRef, useEffect } from "react";
+import  { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Image,
   ImageSourcePropType,
   Modal,
   FlatList,
@@ -17,13 +16,13 @@ import {
   Alert,
   ActivityIndicator
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { AntDesign, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { icons } from "@/constants";
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { apiFetch } from "@/utils/api";
+import { getAuthApiBaseUrls } from "@/src/config/api";
 
 // Data arrays
 const districtZoneData = {
@@ -58,8 +57,6 @@ const districts = Object.keys(districtZoneData);
 const mediums = ["Sinhala", "Tamil", "English"];
 const roles = ["customer", "Fisher man", "Boat owner"];
 
-const API = process.env.EXPO_PUBLIC_API_KEY;
-
 const SignUp = () => {
   const [formData, setFormData] = useState({
     email: "",
@@ -74,14 +71,11 @@ const SignUp = () => {
     confirmPassword: "",
   });
 
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showDistrictDropdown, setShowDistrictDropdown] = useState(false);
   const [showZoneDropdown, setShowZoneDropdown] = useState(false);
-  const [showGradeDropdown, setShowGradeDropdown] = useState(false);
   const [showMediumDropdown, setShowMediumDropdown] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
-  const [availableZones, setAvailableZones] = useState([]);
-  const [tempDate, setTempDate] = useState(new Date());
+  const [availableZones, setAvailableZones] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
@@ -93,7 +87,7 @@ const SignUp = () => {
   const animationRefs = useRef<Animated.CompositeAnimation[]>([]);
 
   // Animation functions
-  const startAnimations = () => {
+  const startAnimations = useCallback(() => {
     // Clear any existing animations
     animationRefs.current.forEach(animation => animation.stop());
     animationRefs.current = [];
@@ -131,12 +125,12 @@ const SignUp = () => {
 
     // Start all animations
     iconAnimations.forEach(animation => animation.start());
-  };
+  }, [animatedValues]);
 
-  const stopAnimations = () => {
+  const stopAnimations = useCallback(() => {
     animationRefs.current.forEach(animation => animation.stop());
     animationRefs.current = [];
-  };
+  }, []);
 
   // Start animations when component mounts
   useEffect(() => {
@@ -145,7 +139,7 @@ const SignUp = () => {
     return () => {
       stopAnimations();
     };
-  }, []);
+  }, [startAnimations, stopAnimations]);
 
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({
@@ -154,36 +148,42 @@ const SignUp = () => {
     }));
 
     if (name === "district") {
-      setAvailableZones(districtZoneData[value] || []);
+      setAvailableZones(districtZoneData[value as keyof typeof districtZoneData] || []);
       setFormData(prev => ({ ...prev, zone: "" }));
     }
   };
 
 
-  const handleMediumSelect = (medium) => {
+  const handleMediumSelect = (medium: string) => {
     handleChange("medium", medium);
     setShowMediumDropdown(false);
   };
 
-  const handleRoleSelect = (role) => {
+  const handleRoleSelect = (role: string) => {
     handleChange("role", role);
     setShowRoleDropdown(false);
   };
 
   // Dropdown selection handlers
-  const handleDistrictSelect = (district) => {
+  const handleDistrictSelect = (district: string) => {
     handleChange("district", district);
     setShowDistrictDropdown(false);
   };
 
-  const handleZoneSelect = (zone) => {
+  const handleZoneSelect = (zone: string) => {
     handleChange("zone", zone);
     setShowZoneDropdown(false);
   };
 
 
   // Render dropdown items
-  const renderDropdownItem = ({ item, onSelect }) => (
+  const renderDropdownItem = ({
+    item,
+    onSelect,
+  }: {
+    item: string;
+    onSelect: (value: string) => void;
+  }) => (
     <TouchableOpacity
       style={styles.dropdownItem}
       onPress={() => onSelect(item)}
@@ -245,10 +245,10 @@ const handleSignUp = async () => {
 
     };
 
-    console.log("📤 Sending signup request to:", `${API}/api/v1/auth/complete-signup`);
+    console.log("📤 Sending signup request. API candidates:", getAuthApiBaseUrls());
     console.log("📦 Request body:", JSON.stringify(requestBody, null, 2));
 
-    const response = await fetch(`${API}/api/v1/auth/complete-signup`, {
+    const response = await apiFetch(`/api/v1/auth/complete-signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -320,23 +320,23 @@ const handleSignUp = async () => {
       ]
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Signup error details:", {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
+      name: error?.name,
+      message: error?.message,
+      stack: error?.stack
     });
     
-    let errorMessage = error.message || "Failed to sign up. Please try again.";
+    let errorMessage = error?.message || "Failed to sign up. Please try again.";
     
     // Make error messages more user-friendly
-    if (error.message.includes("User with this phone number already exists")) {
+    if (error?.message?.includes("User with this phone number already exists")) {
       errorMessage = "This phone number is already registered.";
-    } else if (error.message.includes("Email already registered")) {
+    } else if (error?.message?.includes("Email already registered")) {
       errorMessage = "This email address is already registered.";
-    } else if (error.message.includes("network") || error.message.includes("fetch")) {
+    } else if (error?.message?.includes("network") || error?.message?.includes("fetch")) {
       errorMessage = "Network error. Please check your internet connection.";
-    } else if (error.message.includes("Internal teacher accounts")) {
+    } else if (error?.message?.includes("Internal teacher accounts")) {
       errorMessage = "This account type cannot be created through self-registration.";
     }
     
@@ -433,7 +433,6 @@ const handleSignUp = async () => {
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.8,
             shadowRadius: 4,
-            elevation: 4,
           }}
           resizeMode="contain"
         />
@@ -453,7 +452,7 @@ const handleSignUp = async () => {
         {/* Icons Layer with Animation */}
         <View style={styles.iconsLayer}>{renderDistributedIcons()}</View>
 
-        {/* Title - Only  in top section */}
+        {/* Title - Only Learn APP in top section */}
         <Text style={styles.header}><Text  className="text-blue-400">S</Text>MART  <Text  className="text-blue-400">F</Text>ISHER </Text>
         <Text className="text-3xl font-PoppinsBold text-blue-300 mt-0">LANKA </Text>
 

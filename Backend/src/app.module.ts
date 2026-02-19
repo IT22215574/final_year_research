@@ -5,7 +5,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { HealthController } from './health.controller';
+import { NotificationModule } from './notification/notification.module';
 import * as path from 'path';
 
 @Module({
@@ -13,28 +13,21 @@ import * as path from 'path';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    // MongoDB connection to local installation
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
         const mongoUri =
           configService.get<string>('MONGO') ??
           configService.get<string>('MONGODB_URI') ??
-          configService.get<string>('MONGO_URI') ??
-          'mongodb://localhost:27017/final_year_research';
+          configService.get<string>('MONGO_URI');
 
-        console.log('🔄 Connecting to local MongoDB...');
-        console.log('📍 Database URI:', mongoUri);
-        console.log('💾 Database: final_year_research');
+        if (!mongoUri) {
+          throw new Error(
+            'Missing MongoDB connection string. Set MONGO (or MONGODB_URI) in Backend/.env',
+          );
+        }
 
-        return { 
-          uri: mongoUri,
-          // Optimized settings for local MongoDB
-          connectTimeoutMS: 10000,
-          socketTimeoutMS: 45000,
-          serverSelectionTimeoutMS: 5000,
-          maxPoolSize: 10,
-        };
+        return { uri: mongoUri };
       },
       inject: [ConfigService],
     }),
@@ -50,7 +43,7 @@ import * as path from 'path';
     }),
     AuthModule,
     UserModule,
+    NotificationModule,
   ],
-  controllers: [HealthController],
 })
 export class AppModule {}

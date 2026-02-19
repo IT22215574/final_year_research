@@ -68,12 +68,12 @@ export const getAuthApiBaseUrls = () => {
     envHost !== expoHost;
 
   return uniq([
-    preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 5001) : null,
+    preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 3000) : null,
     preferExpoOverEnv ? env : null,
     !preferExpoOverEnv ? env : null,
-    !preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 5001) : null,
-    Platform.OS === 'android' ? buildHttpBaseUrl('10.0.2.2', 5001) : null,
-    buildHttpBaseUrl('localhost', 5001),
+    !preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 3000) : null,
+    Platform.OS === 'android' ? buildHttpBaseUrl('10.0.2.2', 3000) : null,
+    buildHttpBaseUrl('localhost', 3000),
   ]);
 };
 

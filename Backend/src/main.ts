@@ -40,8 +40,10 @@ async function bootstrap() {
   checkConnection();
 
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://localhost:3001'],
+    origin: true, // Allow all origins for development
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-client-type'],
   });
 
   app.use(cookieParser());
@@ -55,10 +57,11 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1');
 
-  const port = process.env.NESTJS_PORT || process.env.PORT || 5001;
-  await app.listen(port, '0.0.0.0'); // Listen on all network interfaces
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0'); // Bind to all interfaces
   console.log(`Application is running on: http://0.0.0.0:${port}`);
-  console.log(`Network access: http://10.20.194.185:${port}`);
+  console.log(`Local access: http://localhost:${port}`);
+  console.log(`Network access: http://172.28.22.68:${port}`);
 }
 
 bootstrap();
