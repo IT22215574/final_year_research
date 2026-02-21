@@ -2,6 +2,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator
 import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
+import * as Notifications from 'expo-notifications';
 import API_CONFIG, { getPredictionApiBaseUrls } from '@/src/config/api';
 
 const screenWidth = Dimensions.get('window').width;
@@ -86,6 +87,24 @@ export default function PredictionsScreen() {
   const [preference, setPreference] = useState<string>('profitable');
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
+  const [favoriteFishIds, setFavoriteFishIds] = useState<number[]>([]);
+
+  // Feedback state
+  const [feedbackGiven, setFeedbackGiven] = useState(false);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+
+  const fetchAccuracy = async () => {
+    try {
+      const data = await predictionRequest<any>('/accuracy', { method: 'GET' }, 5000);
+      setAccuracy(data.accuracy);
+    } catch (err) {
+      console.error('Failed to fetch accuracy', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAccuracy();
+  }, []);
 
   useEffect(() => {
     const loadFish = async () => {
@@ -120,6 +139,7 @@ export default function PredictionsScreen() {
     if (!selectedFishId) return;
     
     setLoadingPredict(true);
+    setFeedbackGiven(false); // Reset feedback state for new prediction
     try {
       const dateStr = new Date().toISOString().split('T')[0];
       const data = await predictionRequest<any>(
@@ -136,10 +156,60 @@ export default function PredictionsScreen() {
       setMinPrice(data.min_price || data.predicted * 0.9);
       setMaxPrice(data.max_price || data.predicted * 1.1);
       setPriceHistory(data.series as PriceHistory[]);
+
+      // Check if tomorrow's price is lower than today's
+      if (data.series && data.series.length > 16) {
+        const todayPrice = data.series[15].price;
+        const tomorrowPrice = data.series[16].price;
+        
+        if (tomorrowPrice < todayPrice) {
+          const fishName = fishList.find(f => f.fish_id === selectedFishId)?.sinhala_name || 'මාළු';
+          const diff = (todayPrice - tomorrowPrice).toFixed(2);
+          
+          // Request permissions if not already granted
+          const { status } = await Notifications.getPermissionsAsync();
+          if (status !== 'granted') {
+            await Notifications.requestPermissionsAsync();
+          }
+          
+          // Schedule notification
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Price Drop Alert! 📉",
+              body: `Tomorrow's price for ${fishName} is expected to drop by Rs. ${diff}.`,
+              data: { fishId: selectedFishId },
+            },
+            trigger: null, // Send immediately
+          });
+        }
+      }
     } catch (err) {
       Alert.alert('Prediction failed', err instanceof Error ? err.message : 'Please check backend API and try again.');
     } finally {
       setLoadingPredict(false);
+    }
+  };
+
+  const handleFeedback = async (isCorrect: boolean) => {
+    try {
+      const data = await predictionRequest<any>(
+        '/feedback',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            is_correct: isCorrect,
+            fish_id: predictedFishId,
+            predicted_price: predictedPrice
+          }),
+        },
+        5000,
+      );
+      setAccuracy(data.accuracy);
+      setFeedbackGiven(true);
+      Alert.alert('Thank you!', 'Your feedback has been recorded.');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to submit feedback.');
     }
   };
 
@@ -172,7 +242,7 @@ export default function PredictionsScreen() {
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ budget, date: dateStr, preference }),
+            body: JSON.stringify({ budget, date: dateStr, preference, favorite_fish_ids: favoriteFishIds }),
           },
           12000,
         );
@@ -184,7 +254,15 @@ export default function PredictionsScreen() {
       }
     };
     fetchRecommendations();
-  }, [budget, preference]);
+  }, [budget, preference, favoriteFishIds]);
+
+  const toggleFavorite = (fishId: number) => {
+    setFavoriteFishIds(prev => 
+      prev.includes(fishId) 
+        ? prev.filter(id => id !== fishId)
+        : [...prev, fishId]
+    );
+  };
 
   const chartData = {
     labels: weekData.map(d => {
@@ -204,14 +282,14 @@ export default function PredictionsScreen() {
     <View style={styles.container}>
       {/* Top Bar */}
       <View style={styles.topBar}>
-        <Text style={styles.topBarTitle}>මිල උච්චාවචනය</Text>
+        <Text style={styles.topBarTitle}>Price Fluctuation</Text>
         
         <TouchableOpacity 
           style={styles.dropdownButton}
           onPress={() => setShowDropdown(!showDropdown)}
         >
           <Text style={styles.dropdownText}>
-            {selectedFishName ? selectedFishName.sinhala_name : 'මාළු තෝරන්න'}
+            {selectedFishName ? `${selectedFishName.sinhala_name} (${selectedFishName.common_name})` : 'Select Fish'}
           </Text>
           <Ionicons name={showDropdown ? "chevron-up" : "chevron-down"} size={16} color="#4b5563" />
         </TouchableOpacity>
@@ -234,7 +312,7 @@ export default function PredictionsScreen() {
                   styles.dropdownItemText,
                   selectedFishId === fish.fish_id && styles.dropdownItemTextSelected
                 ]}>
-                  {fish.sinhala_name}
+                  {fish.sinhala_name} ({fish.common_name})
                 </Text>
               </TouchableOpacity>
             ))}
@@ -246,15 +324,15 @@ export default function PredictionsScreen() {
         {loadingPredict ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2563eb" />
-            <Text style={styles.loadingText}>මිල ගණනය කරමින් පවතී...</Text>
+            <Text style={styles.loadingText}>Calculating Price...</Text>
           </View>
         ) : predictedPrice !== null && predictedFishName && weekData.length > 0 ? (
           <View style={styles.card}>
             {/* Card Header */}
             <View style={styles.cardHeader}>
-              <Text style={styles.fishName}>{predictedFishName.sinhala_name}</Text>
+              <Text style={styles.fishName}>{predictedFishName.sinhala_name} <Text style={styles.recFishNameEnglish}>({predictedFishName.common_name})</Text></Text>
               <View style={styles.priceContainer}>
-                <Text style={styles.priceText}>රු. {predictedPrice.toFixed(2)}</Text>
+                <Text style={styles.priceText}>Rs. {predictedPrice.toFixed(2)}</Text>
                 <View style={[styles.badge, isPositive ? styles.badgePositive : styles.badgeNegative]}>
                   <Text style={styles.badgeText}>{changeText}</Text>
                 </View>
@@ -301,9 +379,9 @@ export default function PredictionsScreen() {
 
             {/* Confidence Interval Box */}
             <View style={styles.confidenceBox}>
-              <Text style={styles.confidenceTitle}>90% විශ්වාස පරාසය</Text>
+              <Text style={styles.confidenceTitle}>90% Confidence Interval</Text>
               <Text style={styles.confidenceValue}>
-                රු. {minPrice?.toFixed(2)} - රු. {maxPrice?.toFixed(2)}
+                Rs. {minPrice?.toFixed(2)} - Rs. {maxPrice?.toFixed(2)}
               </Text>
             </View>
 
@@ -311,17 +389,56 @@ export default function PredictionsScreen() {
             <View style={styles.legendContainer}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#2563eb' }]} />
-                <Text style={styles.legendText}>අපේක්ෂිත මිල</Text>
+                <Text style={styles.legendText}>Expected Price</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#bfdbfe' }]} />
-                <Text style={styles.legendText}>විශ්වාස පරාසය</Text>
+                <Text style={styles.legendText}>Confidence Interval</Text>
               </View>
+            </View>
+
+            {/* Feedback Section */}
+            <View style={styles.feedbackContainer}>
+              <Text style={styles.feedbackTitle}>Is this prediction accurate?</Text>
+              {!feedbackGiven ? (
+                <View style={styles.feedbackButtons}>
+                  <TouchableOpacity 
+                    style={[styles.feedbackBtn, styles.feedbackBtnYes]} 
+                    onPress={() => handleFeedback(true)}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" />
+                    <Text style={styles.feedbackBtnTextYes}>Yes</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.feedbackBtn, styles.feedbackBtnNo]} 
+                    onPress={() => handleFeedback(false)}
+                  >
+                    <Ionicons name="close-circle-outline" size={20} color="#ef4444" />
+                    <Text style={styles.feedbackBtnTextNo}>No</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.feedbackThanks}>
+                  <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                  <Text style={styles.feedbackThanksText}>Thank you for your feedback!</Text>
+                </View>
+              )}
+              {accuracy !== null && (
+                <View style={styles.accuracyContainer}>
+                  <Text style={styles.accuracyText}>System Accuracy: </Text>
+                  <Text style={[
+                    styles.accuracyValue, 
+                    { color: accuracy >= 70 ? '#10b981' : accuracy >= 50 ? '#f59e0b' : '#ef4444' }
+                  ]}>
+                    {accuracy}%
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>මාළුවෙක් තෝරන්න</Text>
+            <Text style={styles.emptyText}>Select a fish</Text>
           </View>
         )}
 
@@ -329,13 +446,13 @@ export default function PredictionsScreen() {
         <View style={styles.recommendationsCard}>
           <View style={styles.recHeader}>
             <Ionicons name="bulb-outline" size={24} color="#2563eb" />
-            <Text style={styles.recTitle}>මාලු නිර්දේශ</Text>
+            <Text style={styles.recTitle}>Fish Recommendations</Text>
             <TouchableOpacity onPress={() => setBudget(budget)}>
               <Ionicons name="refresh-outline" size={20} color="#6b7280" />
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.sectionLabel}>අයවැය (Budget)</Text>
+          <Text style={styles.sectionLabel}>Budget</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.budgetScroll}>
             {[500, 1000, 1500, 2000].map(b => (
               <TouchableOpacity
@@ -344,40 +461,40 @@ export default function PredictionsScreen() {
                 onPress={() => setBudget(b)}
               >
                 <Text style={[styles.budgetText, budget === b && styles.budgetTextActive]}>
-                  රු. {b}
+                  Rs. {b}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          <Text style={styles.sectionLabel}>විකල්ප</Text>
+          <Text style={styles.sectionLabel}>Preferences</Text>
           <View style={styles.prefContainer}>
             <TouchableOpacity
               style={[styles.prefBtn, preference === 'profitable' && styles.prefBtnActive]}
               onPress={() => setPreference('profitable')}
             >
               <Ionicons name="cash-outline" size={16} color={preference === 'profitable' ? '#fff' : '#2563eb'} />
-              <Text style={[styles.prefText, preference === 'profitable' && styles.prefTextActive]}>ලාභදායී</Text>
+              <Text style={[styles.prefText, preference === 'profitable' && styles.prefTextActive]}>Profitable</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.prefBtn, preference === 'seasonal' && styles.prefBtnActive]}
               onPress={() => setPreference('seasonal')}
             >
               <Ionicons name="leaf-outline" size={16} color={preference === 'seasonal' ? '#fff' : '#d97706'} />
-              <Text style={[styles.prefText, preference === 'seasonal' && styles.prefTextActive, { color: preference === 'seasonal' ? '#fff' : '#d97706' }]}>වාර අනුව</Text>
+              <Text style={[styles.prefText, preference === 'seasonal' && styles.prefTextActive, { color: preference === 'seasonal' ? '#fff' : '#d97706' }]}>Seasonal</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.prefBtn, preference === 'popular' && styles.prefBtnActive]}
               onPress={() => setPreference('popular')}
             >
               <Ionicons name="heart-outline" size={16} color={preference === 'popular' ? '#fff' : '#dc2626'} />
-              <Text style={[styles.prefText, preference === 'popular' && styles.prefTextActive, { color: preference === 'popular' ? '#fff' : '#dc2626' }]}>ජනප්‍රිය</Text>
+              <Text style={[styles.prefText, preference === 'popular' && styles.prefTextActive, { color: preference === 'popular' ? '#fff' : '#dc2626' }]}>Popular</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.recListHeader}>
-            <Text style={styles.sectionLabel}>අද දිනයට නිර්දේශ</Text>
-            <Text style={styles.timeText}>අවසන් යාවත්කාලීන: 14:00</Text>
+            <Text style={styles.sectionLabel}>Recommendations for Today</Text>
+            <Text style={styles.timeText}>Last Updated: 14:00</Text>
           </View>
 
           {loadingRecs ? (
@@ -386,9 +503,18 @@ export default function PredictionsScreen() {
             recommendations.map((rec, index) => (
               <View key={index} style={styles.recItem}>
                 <View style={styles.recItemHeader}>
-                  <Text style={styles.recFishName}>{rec.sinhala_name}</Text>
-                  <View style={styles.recPriceBadge}>
-                    <Text style={styles.recPriceText}>රු. {rec.predicted_price.toFixed(2)}</Text>
+                  <Text style={styles.recFishName}>{rec.sinhala_name} <Text style={styles.recFishNameEnglish}>({rec.common_name})</Text></Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={styles.recPriceBadge}>
+                      <Text style={styles.recPriceText}>Rs. {rec.predicted_price.toFixed(2)}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => toggleFavorite(rec.fish_id)}>
+                      <Ionicons 
+                        name={favoriteFishIds.includes(rec.fish_id) ? "heart" : "heart-outline"} 
+                        size={24} 
+                        color={favoriteFishIds.includes(rec.fish_id) ? "#ec4899" : "#9ca3af"} 
+                      />
+                    </TouchableOpacity>
                   </View>
                 </View>
                 
@@ -398,23 +524,25 @@ export default function PredictionsScreen() {
                 </View>
                 
                 <Text style={styles.recDescText}>
-                  {rec.tag === 'අද අඩු මිලේ ලබා ගත හැක' 
-                    ? 'අද අඩු මිලේ ලබා ගත හැක - ලාභදායී තේරීමකි' 
-                    : 'වාර කාලයේ මාළුවකි - සාධාරණ මිලකි'}
+                  {rec.tag === 'Available at a lower price today' 
+                    ? 'Available at a lower price today - Profitable choice' 
+                    : rec.tag === 'Seasonal Fish' 
+                    ? 'Seasonal Fish - Fair price'
+                    : 'Popular Fish - Fair price'}
                 </Text>
                 
                 <View style={styles.recActionRow}>
                   <TouchableOpacity style={styles.recDetailsBtn}>
-                    <Text style={styles.recDetailsText}>විස්තර</Text>
+                    <Text style={styles.recDetailsText}>Details</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.recBuyBtn}>
-                    <Text style={styles.recBuyText}>මිලදී ගන්න</Text>
+                    <Text style={styles.recBuyText}>Buy</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ))
           ) : (
-            <Text style={styles.noRecsText}>මෙම අයවැයට ගැලපෙන මාළු නොමැත.</Text>
+            <Text style={styles.noRecsText}>No fish available for this budget or preference.</Text>
           )}
         </View>
       </ScrollView>
@@ -492,7 +620,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   card: {
     backgroundColor: '#ffffff',
@@ -585,6 +713,79 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 14,
     color: '#6b7280',
+  },
+  feedbackContainer: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+    alignItems: 'center',
+  },
+  feedbackTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  feedbackButtons: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  feedbackBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 8,
+  },
+  feedbackBtnYes: {
+    borderColor: '#10b981',
+    backgroundColor: '#ecfdf5',
+  },
+  feedbackBtnNo: {
+    borderColor: '#ef4444',
+    backgroundColor: '#fef2f2',
+  },
+  feedbackBtnTextYes: {
+    color: '#10b981',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  feedbackBtnTextNo: {
+    color: '#ef4444',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  feedbackThanks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    paddingVertical: 10,
+  },
+  feedbackThanksText: {
+    color: '#10b981',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  accuracyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+  accuracyText: {
+    color: '#6b7280',
+    fontSize: 14,
+  },
+  accuracyValue: {
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   loadingContainer: {
     padding: 40,
@@ -715,6 +916,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#1f2937',
+  },
+  recFishNameEnglish: {
+    fontSize: 12,
+    fontWeight: 'normal',
+    color: '#6b7280',
   },
   recPriceBadge: {
     backgroundColor: '#d1fae5',

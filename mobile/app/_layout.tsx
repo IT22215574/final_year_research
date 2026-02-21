@@ -8,7 +8,17 @@ import { useEffect } from "react";
 import "react-native-reanimated";
 import "../global.css";
 import { StatusBar } from "expo-status-bar";
+import * as Notifications from 'expo-notifications';
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 SplashScreen.preventAutoHideAsync();
 

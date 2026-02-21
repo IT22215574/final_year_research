@@ -25,6 +25,15 @@ try:
     with open(BASE_DIR / "le_sinhala.pkl", "rb") as f:
         le_sinhala = pickle.load(f)
     fish_df = pd.read_csv(DATA_DIR / "fish_names.csv")
+    
+    # Load festivals
+    festivals_path = BASE_DIR / "dataset" / "raw" / "festivals" / "festivals_2020_2026.csv"
+    if festivals_path.exists():
+        fest_df = pd.read_csv(festivals_path)
+        fest_df["date"] = pd.to_datetime(fest_df["festival_date"]).dt.date
+    else:
+        fest_df = pd.DataFrame(columns=["date", "festival_name"])
+        
 except Exception as exc:  # pragma: no cover - startup failure
     raise RuntimeError(f"Failed to load models or data: {exc}")
 
@@ -38,6 +47,13 @@ class RecommendRequest(BaseModel):
     budget: float
     date: str  # YYYY-MM-DD
     preference: Optional[str] = "profitable" # profitable, seasonal, popular
+    favorite_fish_ids: List[int] = []
+
+class FeedbackRequest(BaseModel):
+    is_correct: bool
+    fish_id: Optional[int] = None
+    predicted_price: Optional[float] = None
+    actual_price: Optional[float] = None
 
 
 def _encode_fish(sinhala_name: str) -> int:
@@ -66,6 +82,34 @@ def _build_feature_row(target_date: datetime, fish_encoded: int) -> dict:
     week_of_year = target_date.isocalendar()[1]
     season = 1 if month in [12, 1, 2] else 2 if month in [3, 4, 5] else 3 if month in [6, 7, 8] else 4
     is_weekend = 1 if day_of_week >= 5 else 0
+    is_rough_sea_season = 1 if month in [5, 6, 7, 8, 9] else 0
+    
+    # Festival logic
+    target_date_only = target_date.date()
+    is_festival_day = 0
+    poya_effect = 0
+    festival_effect = 0
+    days_to_festival = 999
+    before_festival_window = 0
+    
+    if not fest_df.empty:
+        # Check if today is a festival
+        today_festivals = fest_df[fest_df["date"] == target_date_only]
+        if not today_festivals.empty:
+            is_festival_day = 1
+            festival_effect = 1
+            fest_names = today_festivals["festival_name"].str.lower().tolist()
+            if any("poya" in name for name in fest_names):
+                poya_effect = 1
+                
+        # Find next festival
+        future_festivals = fest_df[fest_df["date"] > target_date_only]
+        if not future_festivals.empty:
+            next_fest = future_festivals.iloc[0]
+            days_to_festival = (next_fest["date"] - target_date_only).days
+            if days_to_festival <= 7:
+                before_festival_window = 1
+
     features_dict = {
         "fish_encoded": fish_encoded,
         "day_of_week": day_of_week,
@@ -75,13 +119,14 @@ def _build_feature_row(target_date: datetime, fish_encoded: int) -> dict:
         "month_sin": np.sin(2 * np.pi * month / 12),
         "month_cos": np.cos(2 * np.pi * month / 12),
         "season": season,
+        "is_rough_sea_season": is_rough_sea_season,
         "is_weekend": is_weekend,
-        "is_festival_day": 0,
-        "before_festival_window": 0,
-        "days_to_festival": 999,
-        "weather_effect": 0,
-        "poya_effect": 0,
-        "festival_effect": 0,
+        "is_festival_day": is_festival_day,
+        "before_festival_window": before_festival_window,
+        "days_to_festival": days_to_festival,
+        "weather_effect": 0, # Default to 0 for future predictions unless we have forecast
+        "poya_effect": poya_effect,
+        "festival_effect": festival_effect,
     }
     return {name: features_dict.get(name, 0) for name in feature_names}
 
@@ -172,13 +217,13 @@ def recommend(req: RecommendRequest):
             diff = current_price - yesterday_price
             
             # Determine tag based on preference
-            tag = "සාධාරණ මිලකි" # Fair price
+            tag = "Fair Price" # Fair price
             if trend == "down" and diff < -50:
-                tag = "අද අඩු මිලේ ලබා ගත හැක" # Available at a lower price today
+                tag = "Available at a lower price today" # Available at a lower price today
             elif req.preference == "seasonal":
-                tag = "වාර කාලයේ මාළුවකි" # Seasonal fish
+                tag = "Seasonal Fish" # Seasonal fish
             elif req.preference == "popular":
-                tag = "ජනප්‍රිය මාළුවකි" # Popular fish
+                tag = "Popular Fish" # Popular fish
                 
             recommendations.append({
                 "fish_id": row["fish_id"],
@@ -189,8 +234,18 @@ def recommend(req: RecommendRequest):
                 "tag": tag
             })
             
-    # Sort recommendations based on preference
-    if req.preference == "profitable":
+    # Filter and Sort recommendations based on preference
+    if req.preference == "popular":
+        # Filter only favorite fish
+        if req.favorite_fish_ids:
+            recommendations = [r for r in recommendations if r["fish_id"] in req.favorite_fish_ids]
+        else:
+            recommendations = [] # If no favorites, return empty
+    elif req.preference == "seasonal":
+        # Filter fish that are seasonal (for now, just a placeholder logic, you can improve this based on actual seasonal data)
+        # Assuming some fish are seasonal, we can filter them here. For now, we just sort them.
+        recommendations.sort(key=lambda x: x["predicted_price"])
+    elif req.preference == "profitable":
         # Sort by cheapest first
         recommendations.sort(key=lambda x: x["predicted_price"])
     else:
@@ -199,6 +254,45 @@ def recommend(req: RecommendRequest):
         
     # Return top 5 recommendations
     return {"recommendations": recommendations[:5]}
+
+import json
+import os
+
+FEEDBACK_FILE = BASE_DIR / "feedback.json"
+
+def _load_feedback():
+    if not os.path.exists(FEEDBACK_FILE):
+        return {"yes": 0, "no": 0}
+    try:
+        with open(FEEDBACK_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {"yes": 0, "no": 0}
+
+def _save_feedback(data):
+    with open(FEEDBACK_FILE, "w") as f:
+        json.dump(data, f)
+
+@app.post("/feedback")
+def submit_feedback(req: FeedbackRequest):
+    data = _load_feedback()
+    if req.is_correct:
+        data["yes"] += 1
+    else:
+        data["no"] += 1
+    _save_feedback(data)
+    
+    total = data["yes"] + data["no"]
+    accuracy = (data["yes"] / total * 100) if total > 0 else 0
+    
+    return {"message": "Feedback received", "accuracy": round(accuracy, 1), "total_votes": total}
+
+@app.get("/accuracy")
+def get_accuracy():
+    data = _load_feedback()
+    total = data["yes"] + data["no"]
+    accuracy = (data["yes"] / total * 100) if total > 0 else 0
+    return {"accuracy": round(accuracy, 1), "total_votes": total}
 
 
 if __name__ == "__main__":

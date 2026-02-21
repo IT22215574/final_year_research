@@ -117,11 +117,18 @@ def merge_all():
     price_df = fish_price_df.sort_values("date")
     price_df.to_csv(processed / "merged_price.csv", index=False)
 
-    # 2️⃣ Load WEATHER (aggregate across ports)
+    # 2️⃣ Load WEATHER (Focus on Colombo)
     if weather_path.exists():
         weather_df = pd.read_csv(weather_path)
         weather_df["date"] = pd.to_datetime(weather_df["date"], errors="coerce")
         weather_df = weather_df.dropna(subset=["date"])
+        
+        # Filter for Colombo since the market data is from Colombo
+        if "city" in weather_df.columns:
+            colombo_weather = weather_df[weather_df["city"] == "Colombo"]
+            if not colombo_weather.empty:
+                weather_df = colombo_weather
+                print("✅ Filtered weather data for Colombo")
 
         # Aggregate by date so we do not explode rows when merging
         agg = weather_df.groupby("date").agg({
