@@ -1,7 +1,10 @@
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { useEffect, useState } from 'react';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { Ionicons } from '@expo/vector-icons';
+import { LineChart } from 'react-native-chart-kit';
 import API_CONFIG, { getPredictionApiBaseUrls } from '@/src/config/api';
+
+const screenWidth = Dimensions.get('window').width;
 
 interface FishOption {
   fish_id: number;
@@ -70,19 +73,24 @@ export default function PredictionsScreen() {
   const [fishList, setFishList] = useState<FishOption[]>([]);
   const [selectedFishId, setSelectedFishId] = useState<number | null>(null);
   const [predictedFishId, setPredictedFishId] = useState<number | null>(null);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [predictedPrice, setPredictedPrice] = useState<number | null>(null);
+  const [minPrice, setMinPrice] = useState<number | null>(null);
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [loadingPredict, setLoadingPredict] = useState(false);
   const [loadingFish, setLoadingFish] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Recommendations state
+  const [budget, setBudget] = useState<number>(1000);
+  const [preference, setPreference] = useState<string>('profitable');
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [loadingRecs, setLoadingRecs] = useState(false);
 
   useEffect(() => {
     const loadFish = async () => {
       try {
         setLoadingFish(true);
-        console.log('Prediction API base URL candidates:', getPredictionApiBaseUrls());
-
         const data = await predictionRequest<unknown>('/fish', { method: 'GET' }, 8000);
         const list = Array.isArray(data) && data.length > 0 ? (data as FishOption[]) : sampleFish;
 
@@ -91,14 +99,9 @@ export default function PredictionsScreen() {
           setSelectedFishId(list[0].fish_id);
         }
       } catch (err) {
-        console.log('❌ Fish list fetch failed:', {
-          predictionApi: API_CONFIG.PREDICTION_API,
-          message: err instanceof Error ? err.message : String(err),
-        });
         const list = sampleFish;
         setFishList(list);
         if (list.length > 0) setSelectedFishId(list[0].fish_id);
-        Alert.alert('Notice', 'Using sample fish list (backend not reachable).');
       } finally {
         setLoadingFish(false);
       }
@@ -106,21 +109,19 @@ export default function PredictionsScreen() {
     loadFish();
   }, []);
 
-  const handleDateChange = (event: any, date?: Date) => {
-    if (date) {
-      setSelectedDate(date);
+  // Automatically predict when fish is selected
+  useEffect(() => {
+    if (selectedFishId) {
+      handlePredictPrice();
     }
-    setShowDatePicker(false);
-  };
+  }, [selectedFishId]);
 
   const handlePredictPrice = async () => {
-    if (!selectedFishId) {
-      Alert.alert('Select fish', 'Please select a fish first.');
-      return;
-    }
+    if (!selectedFishId) return;
+    
     setLoadingPredict(true);
     try {
-      const dateStr = selectedDate.toISOString().split('T')[0];
+      const dateStr = new Date().toISOString().split('T')[0];
       const data = await predictionRequest<any>(
         '/predict',
         {
@@ -132,6 +133,8 @@ export default function PredictionsScreen() {
       );
       setPredictedFishId(selectedFishId);
       setPredictedPrice(data.predicted);
+      setMinPrice(data.min_price || data.predicted * 0.9);
+      setMaxPrice(data.max_price || data.predicted * 1.1);
       setPriceHistory(data.series as PriceHistory[]);
     } catch (err) {
       Alert.alert('Prediction failed', err instanceof Error ? err.message : 'Please check backend API and try again.');
@@ -142,547 +145,634 @@ export default function PredictionsScreen() {
 
   const selectedFishName = fishList.find(f => f.fish_id === selectedFishId);
   const predictedFishName = fishList.find(f => f.fish_id === predictedFishId);
-  const minPrice = priceHistory.length > 0 ? Math.min(...priceHistory.map(p => p.price)) : 0;
-  const maxPrice = priceHistory.length > 0 ? Math.max(...priceHistory.map(p => p.price)) : 0;
+  
+  // Get 7 days of data starting from today (index 15 in the 31-day series)
+  const weekData = priceHistory.length > 15 ? priceHistory.slice(15, 22) : [];
+  
+  // Calculate percentage change from yesterday (index 14)
+  let percentageChange = 0;
+  let priceDiff = 0;
+  if (priceHistory.length > 15 && predictedPrice) {
+    const yesterdayPrice = priceHistory[14].price;
+    priceDiff = predictedPrice - yesterdayPrice;
+    percentageChange = (priceDiff / yesterdayPrice) * 100;
+  }
+
+  const isPositive = priceDiff >= 0;
+  const changeText = `${isPositive ? '+' : ''}${priceDiff.toFixed(2)} (${Math.abs(percentageChange).toFixed(1)}%)`;
+
+  // Fetch recommendations
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      setLoadingRecs(true);
+      try {
+        const dateStr = new Date().toISOString().split('T')[0];
+        const data = await predictionRequest<any>(
+          '/recommend',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ budget, date: dateStr, preference }),
+          },
+          12000,
+        );
+        setRecommendations(data.recommendations || []);
+      } catch (err) {
+        console.error('Failed to fetch recommendations', err);
+      } finally {
+        setLoadingRecs(false);
+      }
+    };
+    fetchRecommendations();
+  }, [budget, preference]);
+
+  const chartData = {
+    labels: weekData.map(d => {
+      const date = new Date(d.date);
+      return `${date.getMonth() + 1}/${date.getDate()}`;
+    }),
+    datasets: [
+      {
+        data: weekData.map(d => d.price),
+        color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`, // Blue line
+        strokeWidth: 2
+      }
+    ]
+  };
+
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.contentContainer}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>🐟 Fish Price Predictor</Text>
-        <Text style={styles.headerSubtitle}>Real-time market data for Sri Lanka</Text>
-      </View>
-
-      {/* Selection Panel */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Step 1: Select Fish</Text>
-        <Text style={styles.label}>Choose a fish species (සිංහල නම):</Text>
-        <View style={styles.dropdownList}>
-          {loadingFish ? (
-            <View style={styles.dropdownLoading}>
-              <ActivityIndicator size="small" color="#1e40af" />
-              <Text style={styles.dropdownLoadingText}>Loading fish...</Text>
-            </View>
-          ) : (
-            <ScrollView 
-              style={styles.dropdownListScroll}
-              nestedScrollEnabled={true}
-              showsVerticalScrollIndicator={true}>
-              {fishList.map(fish => {
-                const selected = selectedFishId === fish.fish_id;
-                return (
-                  <TouchableOpacity
-                    key={fish.fish_id}
-                    activeOpacity={0.7}
-                    style={[
-                      styles.dropdownRow,
-                      selected && styles.dropdownRowSelected,
-                    ]}
-                    onPress={() => {
-                      setSelectedFishId(fish.fish_id);
-                    }}>
-                    <View style={styles.dropdownRowTextWrap}>
-                      <Text style={[
-                        styles.dropdownOptionText,
-                        selected && styles.dropdownOptionTextSelected,
-                      ]}>
-                        {fish.sinhala_name}
-                      </Text>
-                      {fish.common_name ? (
-                        <Text style={styles.dropdownOptionSub}>{fish.common_name}</Text>
-                      ) : null}
-                    </View>
-                    {selected ? <Text style={styles.dropdownCheck}>✓</Text> : null}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-
-        {/* Selected Fish Display */}
-        {selectedFishName && (
-          <View style={styles.selectedFishInfo}>
-            <Text style={styles.selectedFishLabel}>Selected:</Text>
-            <Text style={styles.selectedFishName}>{selectedFishName.sinhala_name}</Text>
-            <Text style={styles.selectedFishCommon}>{selectedFishName.common_name}</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Date Selection */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Step 2: Select Date</Text>
-        <Text style={styles.label}>Choose a future date for prediction:</Text>
-        <TouchableOpacity
-          style={styles.dateButton}
-          onPress={() => setShowDatePicker(true)}>
-          <Text style={styles.dateIcon}>📅</Text>
-          <View style={styles.dateButtonContent}>
-            <Text style={styles.dateButtonLabel}>Prediction Date</Text>
-            <Text style={styles.dateButtonText}>
-              {selectedDate.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {showDatePicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display="default"
-            onChange={handleDateChange}
-          />
-        )}
-      </View>
-
-      {/* Prediction Button */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Step 3: Get Prediction</Text>
-        <TouchableOpacity
-          style={[styles.predictButton, loadingPredict && styles.predictButtonDisabled]}
-          onPress={handlePredictPrice}
-          disabled={loadingPredict || !selectedFishId}>
-          {loadingPredict ? (
-            <>
-              <ActivityIndicator color="#fff" />
-              <Text style={styles.predictButtonText}>Predicting...</Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.predictButtonIcon}>⚡</Text>
-              <Text style={styles.predictButtonText}>Predict Price</Text>
-            </>
-          )}
+    <View style={styles.container}>
+      {/* Top Bar */}
+      <View style={styles.topBar}>
+        <Text style={styles.topBarTitle}>මිල උච්චාවචනය</Text>
+        
+        <TouchableOpacity 
+          style={styles.dropdownButton}
+          onPress={() => setShowDropdown(!showDropdown)}
+        >
+          <Text style={styles.dropdownText}>
+            {selectedFishName ? selectedFishName.sinhala_name : 'මාළු තෝරන්න'}
+          </Text>
+          <Ionicons name={showDropdown ? "chevron-up" : "chevron-down"} size={16} color="#4b5563" />
         </TouchableOpacity>
       </View>
 
-      {/* Price Prediction Result */}
-      {predictedPrice !== null && predictedFishName && (
-        <View style={styles.resultCard}>
-          <View style={styles.resultHeader}>
-            <Text style={styles.resultTitle}>💰 Price Prediction</Text>
-          </View>
-
-          <View style={styles.priceBox}>
-            <Text style={styles.priceLabel}>Predicted Price</Text>
-            <Text style={styles.priceText}>Rs. {predictedPrice.toFixed(2)}</Text>
-            <Text style={styles.priceUnit}>per Kilogram</Text>
-          </View>
-
-          <View style={styles.predictionDetails}>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Fish Species</Text>
-              <Text style={styles.detailValue}>{predictedFishName.sinhala_name}</Text>
-              <Text style={styles.detailSubtext}>{predictedFishName.common_name}</Text>
-            </View>
-            <View style={[styles.detailItem, styles.detailItemBorder]}>
-              <Text style={styles.detailLabel}>Prediction Date</Text>
-              <Text style={styles.detailValue}>
-                {selectedDate.toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
-              </Text>
-            </View>
-          </View>
+      {/* Dropdown List */}
+      {showDropdown && (
+        <View style={styles.dropdownListContainer}>
+          <ScrollView style={styles.dropdownList} nestedScrollEnabled={true}>
+            {fishList.map(fish => (
+              <TouchableOpacity
+                key={fish.fish_id}
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setSelectedFishId(fish.fish_id);
+                  setShowDropdown(false);
+                }}
+              >
+                <Text style={[
+                  styles.dropdownItemText,
+                  selectedFishId === fish.fish_id && styles.dropdownItemTextSelected
+                ]}>
+                  {fish.sinhala_name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
       )}
 
-      {/* Price Trend */}
-      {priceHistory.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>📊 Price Trend (30 Days)</Text>
-          
-          <View style={styles.statsGrid}>
-            <View style={styles.statBox}>
-              <Text style={styles.statLabel}>Min Price</Text>
-              <Text style={styles.statValue}>Rs. {minPrice.toFixed(0)}</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {loadingPredict ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+            <Text style={styles.loadingText}>මිල ගණනය කරමින් පවතී...</Text>
+          </View>
+        ) : predictedPrice !== null && predictedFishName && weekData.length > 0 ? (
+          <View style={styles.card}>
+            {/* Card Header */}
+            <View style={styles.cardHeader}>
+              <Text style={styles.fishName}>{predictedFishName.sinhala_name}</Text>
+              <View style={styles.priceContainer}>
+                <Text style={styles.priceText}>රු. {predictedPrice.toFixed(2)}</Text>
+                <View style={[styles.badge, isPositive ? styles.badgePositive : styles.badgeNegative]}>
+                  <Text style={styles.badgeText}>{changeText}</Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statLabel}>Avg Price</Text>
-              <Text style={styles.statValue}>
-                Rs. {(priceHistory.reduce((a, b) => a + b.price, 0) / priceHistory.length).toFixed(0)}
+
+            {/* Chart */}
+            <View style={styles.chartWrapper}>
+              <LineChart
+                data={chartData}
+                width={screenWidth - 64} // padding 16*2 + card padding 16*2
+                height={220}
+                withInnerLines={true}
+                withOuterLines={false}
+                withVerticalLines={false}
+                withHorizontalLines={true}
+                yAxisLabel=""
+                yAxisSuffix=""
+                chartConfig={{
+                  backgroundColor: '#ffffff',
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(147, 197, 253, ${opacity})`, // Light blue for shadow
+                  labelColor: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`, // Blue labels
+                  style: {
+                    borderRadius: 16
+                  },
+                  propsForDots: {
+                    r: "4",
+                    strokeWidth: "2",
+                    stroke: "#2563eb",
+                    fill: "#2563eb"
+                  },
+                  propsForBackgroundLines: {
+                    strokeDasharray: "4 4",
+                    stroke: "#e5e7eb"
+                  }
+                }}
+                bezier
+                style={styles.chart}
+              />
+            </View>
+
+            {/* Confidence Interval Box */}
+            <View style={styles.confidenceBox}>
+              <Text style={styles.confidenceTitle}>90% විශ්වාස පරාසය</Text>
+              <Text style={styles.confidenceValue}>
+                රු. {minPrice?.toFixed(2)} - රු. {maxPrice?.toFixed(2)}
               </Text>
             </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statLabel}>Max Price</Text>
-              <Text style={styles.statValue}>Rs. {maxPrice.toFixed(0)}</Text>
+
+            {/* Legend */}
+            <View style={styles.legendContainer}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#2563eb' }]} />
+                <Text style={styles.legendText}>අපේක්ෂිත මිල</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#bfdbfe' }]} />
+                <Text style={styles.legendText}>විශ්වාස පරාසය</Text>
+              </View>
             </View>
           </View>
-
-          {/* Simple bar chart representation */}
-          <View style={styles.sparklineContainer}>
-            <View style={styles.sparkline}>
-              {priceHistory.map((item, idx) => {
-                const normalized = ((item.price - minPrice) / (maxPrice - minPrice)) * 60 + 10;
-                return (
-                  <View
-                    key={idx}
-                    style={[
-                      styles.sparklineBar,
-                      { height: normalized },
-                    ]}
-                  />
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.dateRange}>
-            <Text style={styles.dateRangeText}>
-              {priceHistory[0]?.date} to {priceHistory[priceHistory.length - 1]?.date}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* Empty State */}
-      {predictedPrice === null && (
-        <View style={styles.card}>
+        ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>📈</Text>
-            <Text style={styles.emptyText}>
-              Select a fish and date, then click {"\"Predict Price\""} to see the market forecast
-            </Text>
+            <Text style={styles.emptyText}>මාළුවෙක් තෝරන්න</Text>
           </View>
+        )}
+
+        {/* Recommendations Section */}
+        <View style={styles.recommendationsCard}>
+          <View style={styles.recHeader}>
+            <Ionicons name="bulb-outline" size={24} color="#2563eb" />
+            <Text style={styles.recTitle}>මාලු නිර්දේශ</Text>
+            <TouchableOpacity onPress={() => setBudget(budget)}>
+              <Ionicons name="refresh-outline" size={20} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.sectionLabel}>අයවැය (Budget)</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.budgetScroll}>
+            {[500, 1000, 1500, 2000].map(b => (
+              <TouchableOpacity
+                key={b}
+                style={[styles.budgetBtn, budget === b && styles.budgetBtnActive]}
+                onPress={() => setBudget(b)}
+              >
+                <Text style={[styles.budgetText, budget === b && styles.budgetTextActive]}>
+                  රු. {b}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <Text style={styles.sectionLabel}>විකල්ප</Text>
+          <View style={styles.prefContainer}>
+            <TouchableOpacity
+              style={[styles.prefBtn, preference === 'profitable' && styles.prefBtnActive]}
+              onPress={() => setPreference('profitable')}
+            >
+              <Ionicons name="cash-outline" size={16} color={preference === 'profitable' ? '#fff' : '#2563eb'} />
+              <Text style={[styles.prefText, preference === 'profitable' && styles.prefTextActive]}>ලාභදායී</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.prefBtn, preference === 'seasonal' && styles.prefBtnActive]}
+              onPress={() => setPreference('seasonal')}
+            >
+              <Ionicons name="leaf-outline" size={16} color={preference === 'seasonal' ? '#fff' : '#d97706'} />
+              <Text style={[styles.prefText, preference === 'seasonal' && styles.prefTextActive, { color: preference === 'seasonal' ? '#fff' : '#d97706' }]}>වාර අනුව</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.prefBtn, preference === 'popular' && styles.prefBtnActive]}
+              onPress={() => setPreference('popular')}
+            >
+              <Ionicons name="heart-outline" size={16} color={preference === 'popular' ? '#fff' : '#dc2626'} />
+              <Text style={[styles.prefText, preference === 'popular' && styles.prefTextActive, { color: preference === 'popular' ? '#fff' : '#dc2626' }]}>ජනප්‍රිය</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.recListHeader}>
+            <Text style={styles.sectionLabel}>අද දිනයට නිර්දේශ</Text>
+            <Text style={styles.timeText}>අවසන් යාවත්කාලීන: 14:00</Text>
+          </View>
+
+          {loadingRecs ? (
+            <ActivityIndicator size="small" color="#2563eb" style={{ marginVertical: 20 }} />
+          ) : recommendations.length > 0 ? (
+            recommendations.map((rec, index) => (
+              <View key={index} style={styles.recItem}>
+                <View style={styles.recItemHeader}>
+                  <Text style={styles.recFishName}>{rec.sinhala_name}</Text>
+                  <View style={styles.recPriceBadge}>
+                    <Text style={styles.recPriceText}>රු. {rec.predicted_price.toFixed(2)}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.recTagRow}>
+                  <Ionicons name="trending-up-outline" size={14} color="#10b981" />
+                  <Text style={styles.recTagText}>{rec.tag}</Text>
+                </View>
+                
+                <Text style={styles.recDescText}>
+                  {rec.tag === 'අද අඩු මිලේ ලබා ගත හැක' 
+                    ? 'අද අඩු මිලේ ලබා ගත හැක - ලාභදායී තේරීමකි' 
+                    : 'වාර කාලයේ මාළුවකි - සාධාරණ මිලකි'}
+                </Text>
+                
+                <View style={styles.recActionRow}>
+                  <TouchableOpacity style={styles.recDetailsBtn}>
+                    <Text style={styles.recDetailsText}>විස්තර</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.recBuyBtn}>
+                    <Text style={styles.recBuyText}>මිලදී ගන්න</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noRecsText}>මෙම අයවැයට ගැලපෙන මාළු නොමැත.</Text>
+          )}
         </View>
-      )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f3f4f6',
   },
-  contentContainer: {
-    paddingBottom: 120,
-  },
-  header: {
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 24,
-    backgroundColor: '#1e40af',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    paddingVertical: 16,
+    backgroundColor: '#f3f4f6',
+    zIndex: 10,
   },
-  headerTitle: {
-    fontSize: 28,
+  topBarTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#dbeafe',
-  },
-  card: {
-    backgroundColor: '#fff',
-    margin: 16,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  resultCard: {
-    backgroundColor: '#fff',
-    margin: 16,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 12,
-    borderTopWidth: 4,
-    borderTopColor: '#10b981',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
     color: '#1f2937',
-    marginBottom: 12,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 10,
-  },
-  dropdownList: {
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-    borderRadius: 8,
-    backgroundColor: '#f9fafb',
-    maxHeight: 220,
   },
-  dropdownListScroll: {
-    paddingVertical: 4,
-  },
-  dropdownLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  dropdownLoadingText: {
+  dropdownText: {
     fontSize: 14,
     color: '#4b5563',
-    marginLeft: 8,
+    marginRight: 8,
   },
-  dropdownRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  dropdownListContainer: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    width: 200,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 5,
+    zIndex: 20,
+    maxHeight: 300,
+  },
+  dropdownList: {
+    padding: 8,
+  },
+  dropdownItem: {
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#f3f4f6',
   },
-  dropdownRowSelected: {
-    backgroundColor: '#dbeafe',
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#374151',
   },
-  dropdownRowTextWrap: {
-    flexShrink: 1,
+  dropdownItemTextSelected: {
+    color: '#2563eb',
+    fontWeight: 'bold',
   },
-  dropdownOptionText: {
-    fontSize: 15,
-    color: '#1f2937',
-    fontWeight: '600',
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
   },
-  dropdownOptionSub: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  dropdownOptionTextSelected: {
-    color: '#1e40af',
-  },
-  dropdownCheck: {
-    fontSize: 16,
-    color: '#1e40af',
-    marginLeft: 8,
-  },
-  selectedFishInfo: {
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#f0f9ff',
-    borderLeftWidth: 4,
-    borderLeftColor: '#0284c7',
-    borderRadius: 8,
-  },
-  selectedFishLabel: {
-    fontSize: 12,
-    color: '#0c4a6e',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  selectedFishName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0c4a6e',
-  },
-  selectedFishCommon: {
-    fontSize: 13,
-    color: '#0c4a6e',
-    marginTop: 2,
-  },
-  dateButton: {
+  cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    backgroundColor: '#f9fafb',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
   },
-  dateIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  dateButtonContent: {
+  fishName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1f2937',
     flex: 1,
   },
-  dateButtonLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  dateButtonText: {
-    fontSize: 14,
-    color: '#1f2937',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  predictButton: {
-    backgroundColor: '#10b981',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  predictButtonDisabled: {
-    backgroundColor: '#d1d5db',
-    opacity: 0.6,
-  },
-  predictButtonIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  predictButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  resultHeader: {
-    marginBottom: 16,
-  },
-  resultTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#059669',
-  },
-  priceBox: {
-    backgroundColor: '#ecfdf5',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#10b981',
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  priceLabel: {
-    fontSize: 12,
-    color: '#059669',
-    fontWeight: '600',
-    marginBottom: 4,
+  priceContainer: {
+    alignItems: 'flex-end',
   },
   priceText: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#059669',
-  },
-  priceUnit: {
-    fontSize: 12,
-    color: '#059669',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  predictionDetails: {
-    flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  detailItem: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-  },
-  detailItemBorder: {
-    borderLeftWidth: 1,
-    borderLeftColor: '#e5e7eb',
-  },
-  detailLabel: {
-    fontSize: 11,
-    color: '#6b7280',
-    fontWeight: '600',
+    color: '#2563eb',
     marginBottom: 4,
   },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1f2937',
-  },
-  detailSubtext: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  statBox: {
-    flex: 1,
-    marginHorizontal: 4,
-    backgroundColor: '#f3f4f6',
-    paddingVertical: 12,
+  badge: {
     paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgePositive: {
+    backgroundColor: '#10b981',
+  },
+  badgeNegative: {
+    backgroundColor: '#ef4444',
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  chartWrapper: {
     alignItems: 'center',
+    marginBottom: 24,
+    marginLeft: -16, // Adjust for chart kit default padding
   },
-  statLabel: {
-    fontSize: 11,
+  chart: {
+    borderRadius: 16,
+  },
+  confidenceBox: {
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  confidenceTitle: {
+    fontSize: 16,
     color: '#6b7280',
-    marginBottom: 4,
     fontWeight: '600',
+    marginBottom: 8,
   },
-  statValue: {
-    fontSize: 14,
-    fontWeight: '700',
+  confidenceValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#1f2937',
   },
-  sparklineContainer: {
-    marginVertical: 12,
-  },
-  sparkline: {
+  legendContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    height: 80,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  sparklineBar: {
-    width: '2.5%',
-    backgroundColor: '#3b82f6',
-    borderRadius: 2,
-  },
-  dateRange: {
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
+    gap: 24,
   },
-  dateRangeText: {
-    fontSize: 12,
-    color: '#9ca3af',
-    fontWeight: '500',
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  legendText: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6b7280',
   },
   emptyState: {
+    padding: 40,
     alignItems: 'center',
-    paddingVertical: 32,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 12,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#6b7280',
-    textAlign: 'center',
-    lineHeight: 20,
   },
+  recommendationsCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  recHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  recTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginLeft: 8,
+    flex: 1,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4b5563',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  budgetScroll: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  budgetBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginRight: 8,
+    backgroundColor: '#ffffff',
+  },
+  budgetBtnActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  budgetText: {
+    color: '#4b5563',
+    fontSize: 14,
+  },
+  budgetTextActive: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
+  prefContainer: {
+    flexDirection: 'row',
+    marginBottom: 24,
+    gap: 8,
+  },
+  prefBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  prefBtnActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  prefText: {
+    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  prefTextActive: {
+    color: '#ffffff',
+  },
+  recListHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  timeText: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  recItem: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+  },
+  recItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recFishName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  recPriceBadge: {
+    backgroundColor: '#d1fae5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  recPriceText: {
+    color: '#065f46',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  recTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  recTagText: {
+    color: '#10b981',
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  recDescText: {
+    color: '#6b7280',
+    fontSize: 12,
+    marginBottom: 16,
+  },
+  recActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  recDetailsBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    alignItems: 'center',
+  },
+  recDetailsText: {
+    color: '#4b5563',
+    fontWeight: '600',
+  },
+  recBuyBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+  },
+  recBuyText: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  noRecsText: {
+    textAlign: 'center',
+    color: '#6b7280',
+    marginTop: 20,
+    marginBottom: 20,
+  }
 });

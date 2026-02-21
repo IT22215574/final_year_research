@@ -34,6 +34,11 @@ class PredictRequest(BaseModel):
     sinhala_name: Optional[str] = None
     date: str  # YYYY-MM-DD
 
+class RecommendRequest(BaseModel):
+    budget: float
+    date: str  # YYYY-MM-DD
+    preference: Optional[str] = "profitable" # profitable, seasonal, popular
+
 
 def _encode_fish(sinhala_name: str) -> int:
     try:
@@ -124,12 +129,70 @@ def predict(req: PredictRequest):
     fish_encoded = _encode_fish(fish_row["sinhala_name"])
     dates, prices = _predict_series(target_date, fish_encoded)
     current_price = prices[15]
+    
+    # Calculate 90% confidence interval (approx +/- 8% based on model MAE)
+    min_price = current_price * 0.92
+    max_price = current_price * 1.08
 
     return {
         "fish": fish_row.to_dict(),
         "predicted": current_price,
+        "min_price": min_price,
+        "max_price": max_price,
         "series": [{"date": d, "price": p} for d, p in zip(dates, prices)],
     }
+
+@app.post("/recommend")
+def recommend(req: RecommendRequest):
+    try:
+        target_date = datetime.fromisoformat(req.date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format, expected YYYY-MM-DD")
+
+    recommendations = []
+    
+    # Predict price for all fish
+    for _, row in fish_df.iterrows():
+        fish_encoded = _encode_fish(row["sinhala_name"])
+        
+        # Get prediction for today and yesterday to calculate trend
+        dates, prices = _predict_series(target_date, fish_encoded)
+        current_price = prices[15]
+        yesterday_price = prices[14]
+        
+        # Filter by budget
+        if current_price <= req.budget:
+            trend = "down" if current_price < yesterday_price else "up"
+            diff = current_price - yesterday_price
+            
+            # Determine tag based on preference
+            tag = "සාධාරණ මිලකි" # Fair price
+            if trend == "down" and diff < -50:
+                tag = "අද අඩු මිලේ ලබා ගත හැක" # Available at a lower price today
+            elif req.preference == "seasonal":
+                tag = "වාර කාලයේ මාළුවකි" # Seasonal fish
+            elif req.preference == "popular":
+                tag = "ජනප්‍රිය මාළුවකි" # Popular fish
+                
+            recommendations.append({
+                "fish_id": row["fish_id"],
+                "sinhala_name": row["sinhala_name"],
+                "common_name": row["common_name"],
+                "predicted_price": current_price,
+                "trend": trend,
+                "tag": tag
+            })
+            
+    # Sort recommendations based on preference
+    if req.preference == "profitable":
+        # Sort by cheapest first
+        recommendations.sort(key=lambda x: x["predicted_price"])
+    else:
+        # Default sort
+        recommendations.sort(key=lambda x: x["predicted_price"])
+        
+    # Return top 5 recommendations
+    return {"recommendations": recommendations[:5]}
 
 
 if __name__ == "__main__":

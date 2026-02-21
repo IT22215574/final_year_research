@@ -3,6 +3,7 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
+    "prestart": "npx kill-port 8081",
     "start": "npx expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "npx expo start --android",

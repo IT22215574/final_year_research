@@ -3,7 +3,8 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import pickle
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error
@@ -166,13 +167,14 @@ def train_model(X, y):
     )
     rf_model.fit(X_train, y_train)
     
-    # Train Gradient Boosting
-    print("🔄 Training Gradient Boosting model...")
-    gb_model = GradientBoostingRegressor(
+    # Train XGBoost
+    print("🔄 Training XGBoost model...")
+    gb_model = XGBRegressor(
         n_estimators=200,
         max_depth=7,
         learning_rate=0.1,
-        random_state=42
+        random_state=42,
+        n_jobs=-1
     )
     gb_model.fit(X_train, y_train)
     
@@ -187,12 +189,12 @@ def train_model(X, y):
     
     # Calculate detailed metrics
     metrics_rf = calculate_detailed_metrics(y_test, rf_pred, "Random Forest")
-    metrics_gb = calculate_detailed_metrics(y_test, gb_pred, "Gradient Boosting")
+    metrics_gb = calculate_detailed_metrics(y_test, gb_pred, "XGBoost")
     metrics_ensemble = calculate_detailed_metrics(y_test, ensemble_pred, "Ensemble")
     
     # Print metrics
     print_model_metrics("🌳 Random Forest", metrics_rf)
-    print_model_metrics("📈 Gradient Boosting", metrics_gb)
+    print_model_metrics("📈 XGBoost", metrics_gb)
     print_model_metrics("🎯 Ensemble Model", metrics_ensemble)
     
     # Cross-validation scores
