@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 import * as Notifications from 'expo-notifications';
@@ -45,7 +46,7 @@ const fetchJsonWithTimeout = async (url: string, init: RequestInit, timeoutMs: n
   }
 };
 
-const predictionRequest = async <T,>(path: string, init: RequestInit = {}, timeoutMs = 8000): Promise<T> => {
+async function predictionRequest<T>(path: string, init: RequestInit = {}, timeoutMs = 8000): Promise<T> {
   const baseUrls = getPredictionApiBaseUrls();
   let lastError: unknown;
 
@@ -68,9 +69,10 @@ const predictionRequest = async <T,>(path: string, init: RequestInit = {}, timeo
   const tried = getPredictionApiBaseUrls().join(', ');
   const message = String((lastError as any)?.message || lastError || 'Network request failed');
   throw new Error(`${message}. Tried: ${tried}`);
-};
+}
 
 export default function PredictionsScreen() {
+  const router = useRouter();
   const [fishList, setFishList] = useState<FishOption[]>([]);
   const [selectedFishId, setSelectedFishId] = useState<number | null>(null);
   const [predictedFishId, setPredictedFishId] = useState<number | null>(null);
@@ -532,7 +534,10 @@ export default function PredictionsScreen() {
                 </Text>
                 
                 <View style={styles.recActionRow}>
-                  <TouchableOpacity style={styles.recDetailsBtn}>
+                  <TouchableOpacity
+                    style={styles.recDetailsBtn}
+                    onPress={() => router.push(`/(root)/(tabs)/fish/${rec.fish_id}` as any)}
+                  >
                     <Text style={styles.recDetailsText}>Details</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.recBuyBtn}>

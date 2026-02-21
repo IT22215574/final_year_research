@@ -211,8 +211,9 @@ def recommend(req: RecommendRequest):
         current_price = _predict_single_day(target_date, fish_encoded)
         yesterday_price = _predict_single_day(target_date - timedelta(days=1), fish_encoded)
         
-        # Filter by budget
-        if current_price <= req.budget:
+        # Filter by budget range
+        lower_bound = req.budget - 500 if req.budget > 500 else 0
+        if lower_bound < current_price <= req.budget:
             trend = "down" if current_price < yesterday_price else "up"
             diff = current_price - yesterday_price
             
