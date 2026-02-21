@@ -86,6 +86,13 @@ def _build_feature_row(target_date: datetime, fish_encoded: int) -> dict:
     return {name: features_dict.get(name, 0) for name in feature_names}
 
 
+def _predict_single_day(target_date: datetime, fish_encoded: int) -> float:
+    feature_row = _build_feature_row(target_date, fish_encoded)
+    features_df = pd.DataFrame([feature_row])
+    rf_pred = float(rf_model.predict(features_df)[0])
+    gb_pred = float(gb_model.predict(features_df)[0])
+    return (rf_pred + gb_pred) / 2
+
 def _predict_series(center_date: datetime, fish_encoded: int):
     dates: List[str] = []
     prices: List[float] = []
@@ -156,9 +163,8 @@ def recommend(req: RecommendRequest):
         fish_encoded = _encode_fish(row["sinhala_name"])
         
         # Get prediction for today and yesterday to calculate trend
-        dates, prices = _predict_series(target_date, fish_encoded)
-        current_price = prices[15]
-        yesterday_price = prices[14]
+        current_price = _predict_single_day(target_date, fish_encoded)
+        yesterday_price = _predict_single_day(target_date - timedelta(days=1), fish_encoded)
         
         # Filter by budget
         if current_price <= req.budget:
