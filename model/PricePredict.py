@@ -29,22 +29,27 @@ class FishPricePredictorGUI:
         """Load trained models, fish data and encoders"""
         try:
             script_dir = Path(__file__).parent
-            models_folder = script_dir / "models"
+            # Model files are directly in the script directory, not in a subfolder
             processed_dir = script_dir / "dataset" / "processed"
             
-            if not models_folder.exists():
-                messagebox.showerror("Error", f"Models folder not found:\n{models_folder}\n\nPlease run model_train.py first!")
+            # Check if model files exist
+            rf_model_path = script_dir / "rf_model.pkl"
+            gb_model_path = script_dir / "gb_model.pkl"
+            feature_names_path = script_dir / "feature_names.pkl"
+            
+            if not rf_model_path.exists():
+                messagebox.showerror("Error", f"RF model not found:\n{rf_model_path}\n\nPlease run model_train.py first!")
                 return False
             
             # Load models
-            with open(models_folder / "rf_model.pkl", "rb") as f:
+            with open(rf_model_path, "rb") as f:
                 self.rf_model = pickle.load(f)
             
-            with open(models_folder / "gb_model.pkl", "rb") as f:
+            with open(gb_model_path, "rb") as f:
                 self.gb_model = pickle.load(f)
             
             # Load feature names
-            with open(models_folder / "feature_names.pkl", "rb") as f:
+            with open(feature_names_path, "rb") as f:
                 self.feature_names = pickle.load(f)
             
             # Load fish names from CSV
@@ -59,7 +64,7 @@ class FishPricePredictorGUI:
                 return False
             
             # Load fish encoder
-            le_sinhala_path = models_folder / "le_sinhala.pkl"
+            le_sinhala_path = script_dir / "le_sinhala.pkl"
             if le_sinhala_path.exists():
                 with open(le_sinhala_path, "rb") as f:
                     self.le_sinhala = pickle.load(f)

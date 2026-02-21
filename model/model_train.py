@@ -247,9 +247,8 @@ def visualize_model_accuracy(metrics, backend_dir):
     print("GENERATING ACCURACY CHART")
     print("="*60)
     
-    # Create output directory
-    charts_folder = backend_dir / "models"
-    charts_folder.mkdir(exist_ok=True)
+    # Save chart directly in the backend_dir
+    charts_folder = backend_dir
     
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 8))
@@ -299,32 +298,31 @@ def visualize_model_accuracy(metrics, backend_dir):
 def save_model(rf_model, gb_model, feature_names, le_sinhala):
     """Save trained models"""
     script_dir = Path(__file__).parent
-    models_folder = script_dir / "models"
-    models_folder.mkdir(exist_ok=True)
+    # Save models directly in the script directory, not in a subdirectory
     
     print("\n" + "="*60)
     print("SAVING MODELS")
     print("="*60)
     
-    with open(models_folder / "rf_model.pkl", "wb") as f:
+    with open(script_dir / "rf_model.pkl", "wb") as f:
         pickle.dump(rf_model, f)
     print("✅ Saved: Random Forest model")
     
-    with open(models_folder / "gb_model.pkl", "wb") as f:
+    with open(script_dir / "gb_model.pkl", "wb") as f:
         pickle.dump(gb_model, f)
     print("✅ Saved: Gradient Boosting model")
     
-    with open(models_folder / "feature_names.pkl", "wb") as f:
+    with open(script_dir / "feature_names.pkl", "wb") as f:
         pickle.dump(feature_names, f)
     print("✅ Saved: Feature names")
     
     # Save fish encoder
     if le_sinhala is not None:
-        with open(models_folder / "le_sinhala.pkl", "wb") as f:
+        with open(script_dir / "le_sinhala.pkl", "wb") as f:
             pickle.dump(le_sinhala, f)
         print("✅ Saved: Fish name encoder")
     
-    print(f"\n📁 All models saved in '{models_folder}' folder")
+    print(f"\n📁 All models saved in '{script_dir}' folder")
 
 def main():
     print("="*60)

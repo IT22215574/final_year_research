@@ -11,18 +11,18 @@ from pydantic import BaseModel
 app = FastAPI(title="Fish Price Predictor API", version="1.0.0")
 
 BASE_DIR = Path(__file__).parent
-MODELS_DIR = BASE_DIR / "models"
+# Model files are directly in the BASE_DIR, not in a subdirectory
 DATA_DIR = BASE_DIR / "dataset" / "processed"
 
 # Load artifacts at startup
 try:
-    with open(MODELS_DIR / "rf_model.pkl", "rb") as f:
+    with open(BASE_DIR / "rf_model.pkl", "rb") as f:
         rf_model = pickle.load(f)
-    with open(MODELS_DIR / "gb_model.pkl", "rb") as f:
+    with open(BASE_DIR / "gb_model.pkl", "rb") as f:
         gb_model = pickle.load(f)
-    with open(MODELS_DIR / "feature_names.pkl", "rb") as f:
+    with open(BASE_DIR / "feature_names.pkl", "rb") as f:
         feature_names: List[str] = pickle.load(f)
-    with open(MODELS_DIR / "le_sinhala.pkl", "rb") as f:
+    with open(BASE_DIR / "le_sinhala.pkl", "rb") as f:
         le_sinhala = pickle.load(f)
     fish_df = pd.read_csv(DATA_DIR / "fish_names.csv")
 except Exception as exc:  # pragma: no cover - startup failure

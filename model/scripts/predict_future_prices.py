@@ -5,7 +5,8 @@ from pathlib import Path
 
 backend_dir = Path(__file__).parent.parent
 processed_dir = backend_dir / "dataset" / "processed"
-models_dir = backend_dir / "models"
+# Model files are directly in backend_dir, not in models subdirectory
+models_dir = backend_dir
 
 FUTURE_FEATURES = processed_dir / "future_features.csv"
 FISH_NAMES = processed_dir / "fish_names.csv"
