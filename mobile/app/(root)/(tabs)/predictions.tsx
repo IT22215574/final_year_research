@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LineChart } from 'react-native-chart-kit';
 import * as Notifications from 'expo-notifications';
-import API_CONFIG, { getPredictionApiBaseUrls } from '@/src/config/api';
+import { getPredictionApiBaseUrls } from '@/src/config/api';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -81,7 +81,6 @@ export default function PredictionsScreen() {
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [loadingPredict, setLoadingPredict] = useState(false);
-  const [loadingFish, setLoadingFish] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
   // Recommendations state
@@ -111,7 +110,6 @@ export default function PredictionsScreen() {
   useEffect(() => {
     const loadFish = async () => {
       try {
-        setLoadingFish(true);
         const data = await predictionRequest<unknown>('/fish', { method: 'GET' }, 8000);
         const list = Array.isArray(data) && data.length > 0 ? (data as FishOption[]) : sampleFish;
 
@@ -120,11 +118,10 @@ export default function PredictionsScreen() {
           setSelectedFishId(list[0].fish_id);
         }
       } catch (err) {
+        console.error('Failed to load fish list', err);
         const list = sampleFish;
         setFishList(list);
         if (list.length > 0) setSelectedFishId(list[0].fish_id);
-      } finally {
-        setLoadingFish(false);
       }
     };
     loadFish();
@@ -135,6 +132,7 @@ export default function PredictionsScreen() {
     if (selectedFishId) {
       handlePredictPrice();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFishId]);
 
   const handlePredictPrice = async () => {
@@ -211,6 +209,7 @@ export default function PredictionsScreen() {
       setFeedbackGiven(true);
       Alert.alert('Thank you!', 'Your feedback has been recorded.');
     } catch (err) {
+      console.error('Failed to submit feedback', err);
       Alert.alert('Error', 'Failed to submit feedback.');
     }
   };

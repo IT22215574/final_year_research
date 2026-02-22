@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import API_CONFIG, { getAuthApiBaseUrls } from '@/src/config/api';
+import { getAuthApiBaseUrls } from '@/src/config/api';
 
 const normalizeUrl = (baseUrl: string, endpoint: string) => {
   const base = String(baseUrl).replace(/\/$/, '');
