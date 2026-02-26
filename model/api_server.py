@@ -295,6 +295,40 @@ def get_accuracy():
     accuracy = (data["yes"] / total * 100) if total > 0 else 0
     return {"accuracy": round(accuracy, 1), "total_votes": total}
 
+@app.post("/trend")
+def get_trend(req: PredictRequest):
+    try:
+        fish_row = _find_fish(req)
+    except HTTPException:
+        raise
+        
+    fish_encoded = _encode_fish(fish_row["sinhala_name"])
+    
+    # Generate 12 months of historical data (using the 15th of each month)
+    today = datetime.now()
+    trend_data = []
+    
+    for i in range(11, -1, -1):
+        # Calculate the month and year
+        month = today.month - i
+        year = today.year
+        if month <= 0:
+            month += 12
+            year -= 1
+            
+        target_date = datetime(year, month, 15)
+        price = _predict_single_day(target_date, fish_encoded)
+        
+        trend_data.append({
+            "month": target_date.strftime("%b"),
+            "year": year,
+            "price": round(price, 2)
+        })
+        
+    return {
+        "fish": fish_row.to_dict(),
+        "trend": trend_data
+    }
 
 if __name__ == "__main__":
     import uvicorn

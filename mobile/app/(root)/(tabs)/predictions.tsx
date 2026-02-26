@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, ActivityIndicator, Alert, Dimensions } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -83,6 +83,12 @@ export default function PredictionsScreen() {
   const [loadingPredict, setLoadingPredict] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // Market Trends state
+  const [trendFishId, setTrendFishId] = useState<number | null>(null);
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [loadingTrend, setLoadingTrend] = useState(false);
+  const [showTrendDropdown, setShowTrendDropdown] = useState(false);
+
   // Recommendations state
   const [budget, setBudget] = useState<number>(1000);
   const [preference, setPreference] = useState<string>('profitable');
@@ -116,12 +122,16 @@ export default function PredictionsScreen() {
         setFishList(list);
         if (list.length > 0) {
           setSelectedFishId(list[0].fish_id);
+          setTrendFishId(list[0].fish_id);
         }
       } catch (err) {
         console.error('Failed to load fish list', err);
         const list = sampleFish;
         setFishList(list);
-        if (list.length > 0) setSelectedFishId(list[0].fish_id);
+        if (list.length > 0) {
+          setSelectedFishId(list[0].fish_id);
+          setTrendFishId(list[0].fish_id);
+        }
       }
     };
     loadFish();
@@ -232,6 +242,45 @@ export default function PredictionsScreen() {
   const isPositive = priceDiff >= 0;
   const changeText = `${isPositive ? '+' : ''}${priceDiff.toFixed(2)} (${Math.abs(percentageChange).toFixed(1)}%)`;
 
+  // Fetch Market Trend
+  useEffect(() => {
+    const fetchTrend = async () => {
+      if (!trendFishId) return;
+      setLoadingTrend(true);
+      try {
+        const dateStr = new Date().toISOString().split('T')[0];
+        const data = await predictionRequest<any>(
+          '/trend',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fish_id: trendFishId, date: dateStr }),
+          },
+          12000,
+        );
+        setTrendData(data.trend || []);
+      } catch (err) {
+        console.error('Failed to fetch trend data', err);
+      } finally {
+        setLoadingTrend(false);
+      }
+    };
+    fetchTrend();
+  }, [trendFishId]);
+
+  const selectedTrendFishName = fishList.find(f => f.fish_id === trendFishId);
+
+  const trendChartData = {
+    labels: trendData.map(d => d.month),
+    datasets: [
+      {
+        data: trendData.map(d => d.price),
+        color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
+        strokeWidth: 2
+      }
+    ]
+  };
+
   // Fetch recommendations
   useEffect(() => {
     const fetchRecommendations = async () => {
@@ -281,54 +330,80 @@ export default function PredictionsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Top Bar */}
-      <View style={styles.topBar}>
-        <Text style={styles.topBarTitle}>Price Fluctuation</Text>
-        
-        <TouchableOpacity 
-          style={styles.dropdownButton}
-          onPress={() => setShowDropdown(!showDropdown)}
-        >
-          <Text style={styles.dropdownText}>
-            {selectedFishName ? `${selectedFishName.sinhala_name} (${selectedFishName.common_name})` : 'Select Fish'}
-          </Text>
-          <Ionicons name={showDropdown ? "chevron-up" : "chevron-down"} size={16} color="#4b5563" />
-        </TouchableOpacity>
-      </View>
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+        onScrollBeginDrag={() => {
+          setShowDropdown(false);
+          setShowTrendDropdown(false);
+        }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <TouchableWithoutFeedback onPress={() => {
+          setShowDropdown(false);
+          setShowTrendDropdown(false);
+        }}>
+          <View>
+            {/* Top Bar */}
+            <View style={{ zIndex: 20, position: 'relative', marginBottom: 16 }}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionHeaderTitle}>Price Fluctuation</Text>
+                
+                <TouchableOpacity 
+                  style={styles.dropdownButton}
+                  onPress={() => {
+                    setShowDropdown(!showDropdown);
+                    setShowTrendDropdown(false);
+                  }}
+                >
+                  <Text
+                    style={styles.dropdownText}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {selectedFishName ? `${selectedFishName.sinhala_name} (${selectedFishName.common_name})` : 'Select Fish'}
+                  </Text>
+                  <Ionicons name={showDropdown ? "chevron-up" : "chevron-down"} size={16} color="#4b5563" />
+                </TouchableOpacity>
+              </View>
 
-      {/* Dropdown List */}
-      {showDropdown && (
-        <View style={styles.dropdownListContainer}>
-          <ScrollView style={styles.dropdownList} nestedScrollEnabled={true}>
-            {fishList.map(fish => (
-              <TouchableOpacity
-                key={fish.fish_id}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setSelectedFishId(fish.fish_id);
-                  setShowDropdown(false);
-                }}
-              >
-                <Text style={[
-                  styles.dropdownItemText,
-                  selectedFishId === fish.fish_id && styles.dropdownItemTextSelected
-                ]}>
-                  {fish.sinhala_name} ({fish.common_name})
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+              {/* Dropdown List */}
+              {showDropdown && (
+                <View style={styles.dropdownListContainer}>
+                  <ScrollView style={styles.dropdownList} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
+                    {fishList.map(fish => (
+                      <TouchableOpacity
+                        key={fish.fish_id}
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setSelectedFishId(fish.fish_id);
+                          setShowDropdown(false);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.dropdownItemText,
+                            selectedFishId === fish.fish_id && styles.dropdownItemTextSelected
+                          ]}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {fish.sinhala_name} ({fish.common_name})
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {loadingPredict ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2563eb" />
             <Text style={styles.loadingText}>Calculating Price...</Text>
           </View>
         ) : predictedPrice !== null && predictedFishName && weekData.length > 0 ? (
-          <View style={styles.card}>
+          <View style={[styles.card, { marginBottom: 16 }]}>
             {/* Card Header */}
             <View style={styles.cardHeader}>
               <Text style={styles.fishName}>{predictedFishName.sinhala_name} <Text style={styles.recFishNameEnglish}>({predictedFishName.common_name})</Text></Text>
@@ -398,53 +473,10 @@ export default function PredictionsScreen() {
               </View>
             </View>
 
-            {/* Feedback Section */}
-            <View style={styles.feedbackContainer}>
-              <Text style={styles.feedbackTitle}>Is this prediction accurate?</Text>
-              {!feedbackGiven ? (
-                <View style={styles.feedbackButtons}>
-                  <TouchableOpacity 
-                    style={[styles.feedbackBtn, styles.feedbackBtnYes]} 
-                    onPress={() => handleFeedback(true)}
-                  >
-                    <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" />
-                    <Text style={styles.feedbackBtnTextYes}>Yes</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.feedbackBtn, styles.feedbackBtnNo]} 
-                    onPress={() => handleFeedback(false)}
-                  >
-                    <Ionicons name="close-circle-outline" size={20} color="#ef4444" />
-                    <Text style={styles.feedbackBtnTextNo}>No</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.feedbackThanks}>
-                  <Ionicons name="checkmark-circle" size={24} color="#10b981" />
-                  <Text style={styles.feedbackThanksText}>Thank you for your feedback!</Text>
-                </View>
-              )}
-              {accuracy !== null && (
-                <View style={styles.accuracyContainer}>
-                  <Text style={styles.accuracyText}>System Accuracy: </Text>
-                  <Text style={[
-                    styles.accuracyValue, 
-                    { color: accuracy >= 70 ? '#10b981' : accuracy >= 50 ? '#f59e0b' : '#ef4444' }
-                  ]}>
-                    {accuracy}%
-                  </Text>
-                </View>
-              )}
-            </View>
           </View>
-        ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Select a fish</Text>
-          </View>
-        )}
+        ) : null}
 
-        {/* Recommendations Section */}
-        <View style={styles.recommendationsCard}>
+        <View style={[styles.recommendationsCard, { marginTop: 0, marginBottom: 16 }]}>
           <View style={styles.recHeader}>
             <Ionicons name="bulb-outline" size={24} color="#2563eb" />
             <Text style={styles.recTitle}>Fish Recommendations</Text>
@@ -549,6 +581,141 @@ export default function PredictionsScreen() {
             <Text style={styles.noRecsText}>No fish available for this budget or preference.</Text>
           )}
         </View>
+
+        {/* Market Trends Section */}
+        <View style={[styles.card, { zIndex: 10, marginBottom: 16 }]}>
+          <View style={{ zIndex: 20, position: 'relative', marginBottom: 16 }}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderTitle}>Market Trends</Text>
+              <TouchableOpacity 
+                style={styles.dropdownButton}
+                onPress={() => {
+                  setShowTrendDropdown(!showTrendDropdown);
+                  setShowDropdown(false);
+                }}
+              >
+                <Text
+                  style={styles.dropdownText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {selectedTrendFishName ? `${selectedTrendFishName.sinhala_name} (${selectedTrendFishName.common_name})` : 'Select Fish'}
+                </Text>
+                <Ionicons name={showTrendDropdown ? "chevron-up" : "chevron-down"} size={16} color="#4b5563" />
+              </TouchableOpacity>
+            </View>
+
+            {showTrendDropdown && (
+              <View style={styles.dropdownListContainer}>
+                <ScrollView style={styles.dropdownList} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
+                  {fishList.map(fish => (
+                    <TouchableOpacity
+                      key={fish.fish_id}
+                      style={styles.dropdownItem}
+                      onPress={() => {
+                        setTrendFishId(fish.fish_id);
+                        setShowTrendDropdown(false);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownItemText,
+                          trendFishId === fish.fish_id && styles.dropdownItemTextSelected
+                        ]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {fish.sinhala_name} ({fish.common_name})
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+
+          {loadingTrend ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color="#2563eb" />
+              <Text style={styles.loadingText}>Loading Trend...</Text>
+            </View>
+          ) : trendData.length > 0 ? (
+            <View style={styles.chartWrapper}>
+              <LineChart
+                data={trendChartData}
+                width={screenWidth - 64}
+                height={220}
+                withInnerLines={true}
+                withOuterLines={false}
+                withVerticalLines={false}
+                withHorizontalLines={true}
+                yAxisLabel=""
+                yAxisSuffix=""
+                chartConfig={{
+                  backgroundColor: '#ffffff',
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(147, 197, 253, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
+                  style: { borderRadius: 16 },
+                  propsForDots: { r: "4", strokeWidth: "2", stroke: "#2563eb", fill: "#2563eb" },
+                  propsForBackgroundLines: { strokeDasharray: "4 4", stroke: "#e5e7eb" }
+                }}
+                bezier
+                style={styles.chart}
+              />
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No trend data available</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Market Alerts Section */}
+        <View style={[styles.card, { zIndex: 5, marginBottom: 16 }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={styles.sectionHeaderTitle}>Market Alerts</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/market-alerts' as any)}>
+              <Text style={{ color: '#2563eb', fontWeight: '600' }}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={{ marginTop: 16, gap: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#f9fafb', padding: 12, borderRadius: 12 }}>
+              <View style={{ backgroundColor: '#f59e0b', padding: 8, borderRadius: 20 }}>
+                <Ionicons name="warning" size={20} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '600', color: '#1f2937' }}>High demand for Mackerel expected tomorrow</Text>
+                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>2 hours ago</Text>
+              </View>
+            </View>
+            
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#f9fafb', padding: 12, borderRadius: 12 }}>
+              <View style={{ backgroundColor: '#10b981', padding: 8, borderRadius: 20 }}>
+                <Ionicons name="checkmark" size={20} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '600', color: '#1f2937' }}>Cod prices stabilizing</Text>
+                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>4 hours ago</Text>
+              </View>
+            </View>
+            
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#f9fafb', padding: 12, borderRadius: 12 }}>
+              <View style={{ backgroundColor: '#3b82f6', padding: 8, borderRadius: 20 }}>
+                <Ionicons name="information" size={20} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '600', color: '#1f2937' }}>New fishing zone opened in North region</Text>
+                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>1 day ago</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+          </View>
+        </TouchableWithoutFeedback>
       </ScrollView>
     </View>
   );
@@ -558,6 +725,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f3f4f6',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  sectionHeaderTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1f2937',
   },
   topBar: {
     flexDirection: 'row',
@@ -584,15 +762,15 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   dropdownText: {
-    fontSize: 14,
-    color: '#4b5563',
-    marginRight: 8,
+    fontSize: 16,
+    color: '#374151',
+    flex: 1,
+    maxWidth: 170,
   },
   dropdownListContainer: {
-    position: 'absolute',
-    top: 60,
-    right: 16,
-    width: 200,
+    position: 'relative',
+    marginTop: 8,
+    width: '100%',
     backgroundColor: '#ffffff',
     borderRadius: 8,
     borderWidth: 1,
@@ -603,7 +781,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 5,
     zIndex: 20,
-    maxHeight: 300,
+    maxHeight: 220,
   },
   dropdownList: {
     padding: 8,
