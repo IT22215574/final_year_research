@@ -344,6 +344,8 @@ export default function PredictionsScreen() {
           setShowTrendDropdown(false);
         }}>
           <View>
+            {/* Price Fluctuation Section */}
+            <View style={[styles.card, { zIndex: 10, marginBottom: 16 }]}>
             {/* Top Bar */}
             <View style={{ zIndex: 20, position: 'relative', marginBottom: 16 }}>
               <View style={styles.sectionHeader}>
@@ -403,7 +405,7 @@ export default function PredictionsScreen() {
             <Text style={styles.loadingText}>Calculating Price...</Text>
           </View>
         ) : predictedPrice !== null && predictedFishName && weekData.length > 0 ? (
-          <View style={[styles.card, { marginBottom: 16 }]}>
+          <>
             {/* Card Header */}
             <View style={styles.cardHeader}>
               <Text style={styles.fishName}>{predictedFishName.sinhala_name} <Text style={styles.recFishNameEnglish}>({predictedFishName.common_name})</Text></Text>
@@ -473,8 +475,9 @@ export default function PredictionsScreen() {
               </View>
             </View>
 
-          </View>
+          </>
         ) : null}
+            </View>
 
         <View style={[styles.recommendationsCard, { marginTop: 0, marginBottom: 16 }]}>
           <View style={styles.recHeader}>
@@ -736,6 +739,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#1f2937',
+    flex: 1,
+    marginRight: 8,
   },
   topBar: {
     flexDirection: 'row',
@@ -760,6 +765,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    maxWidth: 200,
+    minWidth: 140,
   },
   dropdownText: {
     fontSize: 16,
