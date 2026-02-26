@@ -24,6 +24,7 @@ def main():
     xl_converter = scripts_dir / "xl_to_csv_converter.py"
     festival_generator = scripts_dir / "festival_master_generator.py"
     weather_fetcher = scripts_dir / "fetch_weather_data.py"  # use existing daily weather fetcher
+    fuel_price_script = scripts_dir / "process_fuel_price.py"
     merge_script = scripts_dir / "merge_all_data.py"
     festival_features_script = scripts_dir / "generate_festival_window_features.py"
     feature_script = scripts_dir / "feature_engineering.py"
@@ -32,7 +33,7 @@ def main():
     future_features_script = scripts_dir / "build_future_features.py"
     predict_future = scripts_dir / "predict_future_prices.py"
 
-    print("\n🚀 Starting Pipeline: xl → festivals → weather(optional) → merge → features → train → forecast → future predict\n")
+    print("\n🚀 Starting Pipeline: xl → festivals → weather(optional) → fuel → merge → features → train → forecast → future predict\n")
 
     # 0) Convert Excel to CSV (if exists)
     if xl_converter.exists():
@@ -54,7 +55,13 @@ def main():
     else:
         print("\n⚠️ Skipping weather fetch (script not found)")
 
-    # 3) Merge all data (price + weather + festivals)
+    # 2b) Process LK (Lanka Kerosene) fuel price → daily forward-filled CSV
+    if fuel_price_script.exists():
+        run_python(fuel_price_script)
+    else:
+        print("\n⚠️ process_fuel_price.py not found — skipping fuel price step")
+
+    # 3) Merge all data (fish prices + fuel + weather + festivals)
     run_python(merge_script)
 
     # 4) Generate festival window features

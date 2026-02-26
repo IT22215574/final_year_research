@@ -11,10 +11,9 @@ from pydantic import BaseModel
 app = FastAPI(title="Fish Price Predictor API", version="1.0.0")
 
 BASE_DIR = Path(__file__).parent
-# Model files are directly in the BASE_DIR, not in a subdirectory
 DATA_DIR = BASE_DIR / "dataset" / "processed"
 
-# Load artifacts at startup
+# ── Load artifacts at startup ────────────────────────────────────────────────
 try:
     with open(BASE_DIR / "rf_model.pkl", "rb") as f:
         rf_model = pickle.load(f)
@@ -25,18 +24,80 @@ try:
     with open(BASE_DIR / "le_sinhala.pkl", "rb") as f:
         le_sinhala = pickle.load(f)
     fish_df = pd.read_csv(DATA_DIR / "fish_names.csv")
-    
-    # Load festivals
+
+    # Festivals
     festivals_path = BASE_DIR / "dataset" / "raw" / "festivals" / "festivals_2020_2026.csv"
     if festivals_path.exists():
         fest_df = pd.read_csv(festivals_path)
         fest_df["date"] = pd.to_datetime(fest_df["festival_date"]).dt.date
     else:
         fest_df = pd.DataFrame(columns=["date", "festival_name"])
-        
-except Exception as exc:  # pragma: no cover - startup failure
+
+    # ── Fuel price (LK kerosene) ──────────────────────────────────────────────
+    fuel_path = DATA_DIR / "fuel_price_daily.csv"
+    if fuel_path.exists():
+        fuel_df = pd.read_csv(fuel_path, parse_dates=["date"])
+        fuel_df = fuel_df.sort_values("date").set_index("date")
+        # Latest known kerosene price (for future dates beyond history)
+        _latest_lk          = float(fuel_df["lk_price"].iloc[-1])
+        _latest_lk_lag1     = float(fuel_df["lk_price_lag1"].iloc[-1])
+        _latest_lk_lag2     = float(fuel_df["lk_price_lag2"].iloc[-1])
+        _latest_lk_change   = float(fuel_df["lk_price_change"].fillna(0).iloc[-1])
+        _latest_lk_pct      = float(fuel_df["lk_price_pct_change"].fillna(0).iloc[-1])
+    else:
+        fuel_df = None
+        _latest_lk = _latest_lk_lag1 = _latest_lk_lag2 = 0.0
+        _latest_lk_change = _latest_lk_pct = 0.0
+
+    # ── Weather forecast (for upcoming dates) ────────────────────────────────
+    forecast_path = DATA_DIR / "weather_forecast.csv"
+    if forecast_path.exists():
+        forecast_df = pd.read_csv(forecast_path, parse_dates=["date"])
+        # Average across cities per date (same approach as build_future_features)
+        forecast_agg = forecast_df.groupby("date").agg({
+            "temp_c":     "mean",
+            "humidity":   "mean",
+            "wind_speed": "max",
+            "rainfall":   "sum",
+            "bad_weather":"max",
+        }).rename(columns={
+            "temp_c":     "temp_c_mean",
+            "humidity":   "humidity_mean",
+            "wind_speed": "wind_speed_max",
+            "rainfall":   "rainfall_sum",
+            "bad_weather":"bad_weather_any",
+        })
+    else:
+        forecast_agg = pd.DataFrame()
+
+    # ── Historical weather (for past / current dates without forecast) ────────
+    weather_hist_path = DATA_DIR / "weather_dataset.csv"
+    if weather_hist_path.exists():
+        weather_hist = pd.read_csv(weather_hist_path, parse_dates=["date"])
+        # Keep Colombo only (same city used for training)
+        if "city" in weather_hist.columns:
+            weather_hist = weather_hist[weather_hist["city"] == "Colombo"]
+        weather_hist_agg = weather_hist.groupby("date").agg({
+            "temp_c":     "mean",
+            "humidity":   "mean",
+            "wind_speed": "max",
+            "rainfall":   "sum",
+            "bad_weather":"max",
+        }).rename(columns={
+            "temp_c":     "temp_c_mean",
+            "humidity":   "humidity_mean",
+            "wind_speed": "wind_speed_max",
+            "rainfall":   "rainfall_sum",
+            "bad_weather":"bad_weather_any",
+        })
+    else:
+        weather_hist_agg = pd.DataFrame()
+
+except Exception as exc:
     raise RuntimeError(f"Failed to load models or data: {exc}")
 
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
 
 class PredictRequest(BaseModel):
     fish_id: Optional[int] = None
@@ -46,7 +107,7 @@ class PredictRequest(BaseModel):
 class RecommendRequest(BaseModel):
     budget: float
     date: str  # YYYY-MM-DD
-    preference: Optional[str] = "profitable" # profitable, seasonal, popular
+    preference: Optional[str] = "profitable"
     favorite_fish_ids: List[int] = []
 
 class FeedbackRequest(BaseModel):
@@ -75,34 +136,94 @@ def _find_fish(req: PredictRequest) -> pd.Series:
     return matches.iloc[0]
 
 
+def _get_weather_row(target_date: datetime) -> dict:
+    """Return weather features for a date (forecast preferred, history fallback)."""
+    ts = pd.Timestamp(target_date.date())
+    for source in (forecast_agg, weather_hist_agg):
+        if not source.empty and ts in source.index:
+            row = source.loc[ts]
+            rain = float(row.get("rainfall_sum", 0) or 0)
+            return {
+                "temp_c_mean":    float(row.get("temp_c_mean", 28)),
+                "humidity_mean":  float(row.get("humidity_mean", 75)),
+                "wind_speed_max": float(row.get("wind_speed_max", 15)),
+                "rainfall_sum":   rain,
+                "bad_weather_any":float(row.get("bad_weather_any", 0)),
+                "weather_effect": 1 if rain > 10 else 0,
+            }
+    # No data – sensible Sri Lanka defaults
+    return {
+        "temp_c_mean": 28.0, "humidity_mean": 75.0,
+        "wind_speed_max": 15.0, "rainfall_sum": 0.0,
+        "bad_weather_any": 0.0, "weather_effect": 0,
+    }
+
+
+def _get_fuel_row(target_date: datetime) -> dict:
+    """Return LK kerosene price features for a given date."""
+    if fuel_df is not None:
+        ts = pd.Timestamp(target_date.date())
+        # Use last available price on-or-before the target date
+        past = fuel_df[fuel_df.index <= ts]
+        if not past.empty:
+            row = past.iloc[-1]
+            change  = float(row.get("lk_price_change", 0)  or 0)
+            pct     = float(row.get("lk_price_pct_change", 0) or 0)
+            lk      = float(row["lk_price"])
+            lag1    = float(row.get("lk_price_lag1", lk) or lk)
+            lag2    = float(row.get("lk_price_lag2", lk) or lk)
+            return {
+                "lk_price":           lk,
+                "lk_price_lag1":      lag1,
+                "lk_price_lag2":      lag2,
+                "lk_price_change":    change,
+                "lk_price_pct_change":pct,
+                "lk_price_rose":      1 if change > 0 else 0,
+            }
+    return {
+        "lk_price": _latest_lk, "lk_price_lag1": _latest_lk_lag1,
+        "lk_price_lag2": _latest_lk_lag2, "lk_price_change": _latest_lk_change,
+        "lk_price_pct_change": _latest_lk_pct, "lk_price_rose": 0,
+    }
+
+
 def _build_feature_row(target_date: datetime, fish_encoded: int) -> dict:
-    year = target_date.year
-    month = target_date.month
+    month       = target_date.month
     day_of_week = target_date.weekday()
-    week_of_year = target_date.isocalendar()[1]
-    season = 1 if month in [12, 1, 2] else 2 if month in [3, 4, 5] else 3 if month in [6, 7, 8] else 4
-    is_weekend = 1 if day_of_week >= 5 else 0
-    is_rough_sea_season = 1 if month in [5, 6, 7, 8, 9] else 0
-    
-    # Festival logic
+    year        = target_date.year
+    week_of_year= target_date.isocalendar()[1]
+    is_weekend  = 1 if day_of_week >= 5 else 0
+
+    # Generic legacy season
+    season = (1 if month in [12, 1, 2] else
+              2 if month in [3, 4, 5] else
+              3 if month in [6, 7, 8] else 4)
+
+    # Sri Lankan fishing seasons
+    is_waragam_west  = 1 if month in [5, 6, 7, 8, 9]   else 0
+    is_waragam_east  = 1 if month in [10, 11, 12, 1]    else 0
+    is_awaragam      = 1 if month in [2, 3, 4]          else 0
+    fishing_season   = (1 if is_waragam_west else 2 if is_waragam_east else 0)
+    is_rough_sea_season = 1 if (is_waragam_west or is_waragam_east) else 0
+
+    # Festival / Poya logic
     target_date_only = target_date.date()
-    is_festival_day = 0
-    poya_effect = 0
-    festival_effect = 0
+    is_festival_day = poya_effect = festival_effect = 0
+    is_poya = is_holiday = 0
     days_to_festival = 999
     before_festival_window = 0
-    
+
     if not fest_df.empty:
-        # Check if today is a festival
         today_festivals = fest_df[fest_df["date"] == target_date_only]
         if not today_festivals.empty:
             is_festival_day = 1
             festival_effect = 1
             fest_names = today_festivals["festival_name"].str.lower().tolist()
-            if any("poya" in name for name in fest_names):
+            if any("poya" in n for n in fest_names):
                 poya_effect = 1
-                
-        # Find next festival
+                is_poya = 1
+            is_holiday = 1
+
         future_festivals = fest_df[fest_df["date"] > target_date_only]
         if not future_festivals.empty:
             next_fest = future_festivals.iloc[0]
@@ -110,23 +231,43 @@ def _build_feature_row(target_date: datetime, fish_encoded: int) -> dict:
             if days_to_festival <= 7:
                 before_festival_window = 1
 
+    weather = _get_weather_row(target_date)
+    fuel    = _get_fuel_row(target_date)
+
     features_dict = {
-        "fish_encoded": fish_encoded,
-        "day_of_week": day_of_week,
-        "month": month,
-        "year": year,
-        "week_of_year": week_of_year,
-        "month_sin": np.sin(2 * np.pi * month / 12),
-        "month_cos": np.cos(2 * np.pi * month / 12),
-        "season": season,
-        "is_rough_sea_season": is_rough_sea_season,
-        "is_weekend": is_weekend,
-        "is_festival_day": is_festival_day,
+        "fish_encoded":           fish_encoded,
+        "day_of_week":            day_of_week,
+        "month":                  month,
+        "year":                   year,
+        "week_of_year":           week_of_year,
+        "month_sin":              np.sin(2 * np.pi * month / 12),
+        "month_cos":              np.cos(2 * np.pi * month / 12),
+        # Seasons
+        "season":                 season,
+        "fishing_season":         fishing_season,
+        "is_waragam_west":        is_waragam_west,
+        "is_waragam_east":        is_waragam_east,
+        "is_awaragam":            is_awaragam,
+        "is_rough_sea_season":    is_rough_sea_season,
+        # Calendar
+        "is_weekend":             is_weekend,
+        # Holidays
+        "is_festival_day":        is_festival_day,
+        "is_poya":                is_poya,
+        "is_holiday":             is_holiday,
         "before_festival_window": before_festival_window,
-        "days_to_festival": days_to_festival,
-        "weather_effect": 0, # Default to 0 for future predictions unless we have forecast
-        "poya_effect": poya_effect,
-        "festival_effect": festival_effect,
+        "days_to_festival":       days_to_festival,
+        "weather_effect":         weather["weather_effect"],
+        "poya_effect":            poya_effect,
+        "festival_effect":        festival_effect,
+        # Weather
+        "temp_c_mean":            weather["temp_c_mean"],
+        "humidity_mean":          weather["humidity_mean"],
+        "wind_speed_max":         weather["wind_speed_max"],
+        "rainfall_sum":           weather["rainfall_sum"],
+        "bad_weather_any":        weather["bad_weather_any"],
+        # Fuel (LK Kerosene)
+        **fuel,
     }
     return {name: features_dict.get(name, 0) for name in feature_names}
 

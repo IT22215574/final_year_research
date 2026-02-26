@@ -59,6 +59,36 @@ def extract_fish_names_from_csv():
     
     return None
 
+def add_sri_lankan_seasons(df: "pd.DataFrame") -> "pd.DataFrame":
+    """
+    Assign Sri Lankan fishing seasons based on monsoon patterns.
+
+    West Coast (Colombo, Negombo, Chilaw) – Waragam (Rough Season):
+        South-West monsoon: May–September  →  is_waragam_west = 1
+    East Coast (Trincomalee, Batticaloa)   – Waragam (Rough Season):
+        North-East monsoon: October–January →  is_waragam_east = 1
+    Awaragam (Calm / Open Season) = when neither west nor east waragam applies.
+
+    Combined season label:
+        0 = Awaragam  (open sea, abundant supply, lower prices)
+        1 = Waragam-West  (rough SW monsoon, reduced supply)
+        2 = Waragam-East  (rough NE monsoon, reduced supply)
+    """
+    month = df["date"].dt.month
+
+    df["is_waragam_west"] = month.isin([5, 6, 7, 8, 9]).astype(int)
+    df["is_waragam_east"] = month.isin([10, 11, 12, 1]).astype(int)
+    df["is_awaragam"]     = (~month.isin([5, 6, 7, 8, 9, 10, 11, 12, 1])).astype(int)  # Feb-Apr
+
+    # Consolidated numeric season (used by the ML model)
+    # 0=Awaragam, 1=Waragam-West, 2=Waragam-East
+    df["fishing_season"] = 0
+    df.loc[df["is_waragam_west"] == 1, "fishing_season"] = 1
+    df.loc[df["is_waragam_east"] == 1, "fishing_season"] = 2
+
+    return df
+
+
 def add_features():
     script_dir = Path(__file__).resolve().parent
     backend_dir = script_dir.parent
@@ -76,31 +106,70 @@ def add_features():
     df = pd.read_csv(IN)
     df["date"] = pd.to_datetime(df["date"])
 
-    # Time features
+    # ── Time features ────────────────────────────────────────────────
     df["day_of_week"] = df["date"].dt.dayofweek
-    df["is_weekend"] = df["day_of_week"].isin([5, 6]).astype(int)
+    df["month"]       = df["date"].dt.month
+    df["year"]        = df["date"].dt.year
+    df["week_of_year"]= df["date"].dt.isocalendar().week.astype(int)
+    df["is_weekend"]  = df["day_of_week"].isin([5, 6]).astype(int)
 
-    # Weather effect using aggregated rainfall if present
-    rain_col = "rainfall_sum" if "rainfall_sum" in df.columns else ("rainfall" if "rainfall" in df.columns else None)
+    # Cyclical month encoding
+    import numpy as np
+    df["month_sin"] = np.sin(2 * np.pi * df["month"] / 12)
+    df["month_cos"] = np.cos(2 * np.pi * df["month"] / 12)
+
+    # ── Sri Lankan fishing seasons ────────────────────────────────────
+    df = add_sri_lankan_seasons(df)
+
+    # Legacy rough-sea flag (kept for backward compatibility)
+    df["is_rough_sea_season"] = (df["is_waragam_west"] | df["is_waragam_east"]).astype(int)
+
+    # ── Weather effect ────────────────────────────────────────────────
+    rain_col = ("rainfall_sum" if "rainfall_sum" in df.columns
+                else ("rainfall" if "rainfall" in df.columns else None))
     if rain_col:
         df["weather_effect"] = (df[rain_col] > 10).astype(int)
     else:
         df["weather_effect"] = 0
 
-    # Festival and price behavior signals
-    # FIX: Better Poya detection
-    df["poya_effect"] = (
-        df["festival_name"].str.lower().str.contains("poya", na=False) |
-        df["festival_name"].str.lower().str.contains("full moon", na=False)
-    ).astype(int)
-    df["festival_effect"] = df["is_festival_day"]
+    # ── Festival / Poya / Holiday features ───────────────────────────
+    festival_name_col = "festival_name" if "festival_name" in df.columns else None
 
-    # Final price behavior signal
+    df["is_poya"] = (
+        df[festival_name_col].str.lower().str.contains("poya", na=False) |
+        df[festival_name_col].str.lower().str.contains("full moon", na=False)
+    ).astype(int) if festival_name_col else 0
+
+    festival_day_col = ("is_festival_day" if "is_festival_day" in df.columns
+                        else ("is_festival" if "is_festival" in df.columns else None))
+    df["is_holiday"] = (
+        (df["is_poya"] == 1) |
+        (df[festival_day_col] == 1 if festival_day_col else False)
+    ).astype(int)
+
+    df["poya_effect"]    = df["is_poya"]
+    df["festival_effect"]= df[festival_day_col] if festival_day_col else 0
+
+    # ── Fuel price features ───────────────────────────────────────────
+    # These arrive from the merge step already; just make sure NaN is filled
+    for fuel_col in ["lk_price", "lk_price_lag1", "lk_price_lag2",
+                     "lk_price_change", "lk_price_pct_change"]:
+        if fuel_col not in df.columns:
+            df[fuel_col] = 0
+        else:
+            df[fuel_col] = df[fuel_col].ffill().fillna(0)
+
+    # Boolean: did kerosene price rise vs yesterday?
+    df["lk_price_rose"]  = (df["lk_price_change"] > 0).astype(int)
+
+    # ── Final composite signal ────────────────────────────────────────
     df["price_behavior_signal"] = (
         df["weather_effect"] +
         df["poya_effect"] +
         df["festival_effect"]
     )
+
+    df = df.sort_values("date").reset_index(drop=True)
 
     df.to_csv(OUT, index=False)
     print("✅ Feature dataset ready:", OUT)

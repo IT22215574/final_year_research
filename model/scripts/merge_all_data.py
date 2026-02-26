@@ -99,10 +99,11 @@ def merge_all():
     raw_csv = backend_dir / "dataset" / "raw" / "csv"
     festivals_path = backend_dir / "dataset" / "raw" / "festivals" / "festivals_2020_2026.csv"
     weather_path = processed / "weather_dataset.csv"
+    fuel_path = processed / "fuel_price_daily.csv"
 
     processed.mkdir(parents=True, exist_ok=True)
 
-    print("\n========== MERGING PRICE + WEATHER + FESTIVALS ==========")
+    print("\n========== MERGING PRICE + FUEL + WEATHER + FESTIVALS ==========")
 
     # 1️⃣ Extract fish prices directly from CSVs
     print("\n📊 Extracting fish prices from CSV files...")
@@ -153,7 +154,22 @@ def merge_all():
         print("⚠ No weather dataset found")
         weather_df = None
 
-    # 3️⃣ Load FESTIVALS
+    # 3️⃣ Load FUEL PRICE (LK – Lanka Kerosene, daily forward-filled)
+    if fuel_path.exists():
+        fuel_df = pd.read_csv(fuel_path)
+        fuel_df["date"] = pd.to_datetime(fuel_df["date"], errors="coerce")
+        fuel_df = fuel_df.dropna(subset=["date"])
+        # Keep only the fuel columns we need
+        fuel_cols = [c for c in ["date", "lk_price", "lk_price_lag1", "lk_price_lag2",
+                                  "lk_price_change", "lk_price_pct_change"]
+                     if c in fuel_df.columns]
+        fuel_df = fuel_df[fuel_cols]
+        print(f"✅ Fuel price data loaded: {len(fuel_df)} rows, cols: {fuel_cols}")
+    else:
+        fuel_df = None
+        print("⚠ No fuel price dataset found (run process_fuel_price.py first)")
+
+    # 4️⃣ Load FESTIVALS
     if festivals_path.exists():
         fest_df = pd.read_csv(festivals_path)
         
@@ -176,8 +192,14 @@ def merge_all():
         fest_df = None
         print("⚠ No festival dataset found")
 
-    # 4️⃣ Merge everything
-    merged = price_df.merge(weather_df, on="date", how="left") if weather_df is not None else price_df
+    # 5️⃣ Merge everything
+    # Fish prices ← fuel price (left join on date)
+    merged = price_df.merge(fuel_df, on="date", how="left") if fuel_df is not None else price_df
+
+    # Fish+fuel ← weather (left join on date)
+    merged = merged.merge(weather_df, on="date", how="left") if weather_df is not None else merged
+
+    # Fish+fuel+weather ← festivals (left join on date)
     merged = merged.merge(fest_df, on="date", how="left") if fest_df is not None else merged
     merged["is_festival"] = merged["is_festival"].fillna(0)
     merged["festival_name"] = merged["festival_name"].fillna("None")

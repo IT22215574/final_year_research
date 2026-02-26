@@ -51,17 +51,31 @@ def create_ml_features(df):
     df['month_sin'] = np.sin(2 * np.pi * df['month'] / 12)
     df['month_cos'] = np.cos(2 * np.pi * df['month'] / 12)
     
-    # Season feature
-    df['season'] = df['month'].apply(lambda x: 
-        1 if x in [12, 1, 2] else  # Winter
-        2 if x in [3, 4, 5] else    # Spring
-        3 if x in [6, 7, 8] else    # Summer
-        4                            # Fall
+    # Legacy generic season (kept for backward compatibility)
+    df['season'] = df['month'].apply(lambda x:
+        1 if x in [12, 1, 2] else  # DJF
+        2 if x in [3, 4, 5] else   # MAM
+        3 if x in [6, 7, 8] else   # JJA
+        4                           # SON
     )
-    
-    # Rough sea season (Vaaragam Kalaya) for West Coast (Colombo)
-    # May (5) to September (9)
-    df['is_rough_sea_season'] = df['month'].apply(lambda x: 1 if x in [5, 6, 7, 8, 9] else 0)
+
+    # ── Sri Lankan fishing seasons (Waragam / Awaragam) ──────────────
+    # West coast (Colombo) Waragam: SW monsoon  May–Sep
+    # East coast (Trinco)  Waragam: NE monsoon  Oct–Jan
+    # Awaragam (calm/open): Feb–Apr (both coasts)
+    df['is_waragam_west']  = df['month'].apply(lambda x: 1 if x in [5, 6, 7, 8, 9] else 0)
+    df['is_waragam_east']  = df['month'].apply(lambda x: 1 if x in [10, 11, 12, 1]  else 0)
+    df['is_awaragam']      = df['month'].apply(lambda x: 1 if x in [2, 3, 4]        else 0)
+
+    # Consolidated fishing season: 0=Awaragam, 1=Waragam-West, 2=Waragam-East
+    def _fishing_season(m):
+        if m in [5, 6, 7, 8, 9]:    return 1
+        if m in [10, 11, 12, 1]:    return 2
+        return 0
+    df['fishing_season'] = df['month'].apply(_fishing_season)
+
+    # Rough sea = either Waragam coast
+    df['is_rough_sea_season'] = ((df['is_waragam_west'] == 1) | (df['is_waragam_east'] == 1)).astype(int)
     
     return df
 
@@ -87,11 +101,27 @@ def prepare_training_data(df):
     
     # Available feature columns (INCLUDE FISH_ENCODED)
     feature_cols = [
-        'fish_encoded', 'day_of_week', 'month', 'year', 'week_of_year',
-        'month_sin', 'month_cos', 'season', 'is_rough_sea_season',
-        'is_weekend', 'is_festival_day', 'before_festival_window',
-        'days_to_festival', 'weather_effect', 'poya_effect', 'festival_effect',
-        'temp_c_mean', 'humidity_mean', 'wind_speed_max', 'rainfall_sum', 'bad_weather_any'
+        # Identity
+        'fish_encoded',
+        # Time
+        'day_of_week', 'month', 'year', 'week_of_year',
+        'month_sin', 'month_cos',
+        # Generic season (legacy)
+        'season',
+        # Sri Lankan fishing seasons (primary)
+        'fishing_season', 'is_waragam_west', 'is_waragam_east', 'is_awaragam',
+        'is_rough_sea_season',
+        # Calendar
+        'is_weekend',
+        # Holidays & festivals
+        'is_festival_day', 'is_poya', 'is_holiday',
+        'before_festival_window', 'days_to_festival',
+        'weather_effect', 'poya_effect', 'festival_effect',
+        # Weather
+        'temp_c_mean', 'humidity_mean', 'wind_speed_max', 'rainfall_sum', 'bad_weather_any',
+        # Fuel price (Lanka Kerosene – LK) with lag effect
+        'lk_price', 'lk_price_lag1', 'lk_price_lag2',
+        'lk_price_change', 'lk_price_pct_change', 'lk_price_rose',
     ]
     
     # Filter to columns that exist
