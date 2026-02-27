@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,9 +17,11 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImageManipulator from 'expo-image-manipulator';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 const STATUS_BAR_HEIGHT = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
 
 const Quality = () => {
@@ -30,11 +32,23 @@ const Quality = () => {
     side1: null,
     side2: null
   });
+  const [fishDimensions, setFishDimensions] = useState({
+    side1: null,
+    side2: null
+  });
   const [gradingResult, setGradingResult] = useState(null);
   const [isGrading, setIsGrading] = useState(false);
   const [step, setStep] = useState(1);
   const [activeSide, setActiveSide] = useState('side1');
   const [modelFeatures, setModelFeatures] = useState(null);
+  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [measurementPoints, setMeasurementPoints] = useState({
+    start: null,
+    end: null
+  });
+  const [currentMeasurement, setCurrentMeasurement] = useState(null);
+  const [showGrid, setShowGrid] = useState(true);
+  
   const cameraRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -59,6 +73,185 @@ const Quality = () => {
         'Color Diff 5', 'Color Diff 6', 'Color Diff 7', 'Color Diff 8',
         'Color Diff 9', 'Color Diff 10'
       ]
+    }
+  };
+
+  // Function to detect fish dimensions from image
+  const detectFishDimensions = async (imageUri) => {
+    try {
+      // Load image to get dimensions
+      const imageInfo = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [], // No manipulations
+        { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      // Simple segmentation to find fish boundaries
+      // In a real app, you might use ML models like YOLO or segmentation models
+      // For demo, we'll simulate fish detection with random values based on actual image size
+      
+      // Simulate fish detection with reasonable fish dimensions
+      // Typically fish length is 70-80% of image width, height is 20-30% of length
+      const imageWidth = imageInfo.width;
+      const imageHeight = imageInfo.height;
+      
+      // Simulate fish detection with random but realistic values
+      const fishLength = Math.round(imageWidth * (0.7 + Math.random() * 0.2)); // 70-90% of image width
+      const fishHeight = Math.round(fishLength * (0.2 + Math.random() * 0.15)); // 20-35% of length
+      
+      // Calculate position (simulate bounding box)
+      const fishX = Math.round((imageWidth - fishLength) / 2) + (Math.random() * 20 - 10);
+      const fishY = Math.round((imageHeight - fishHeight) / 2) + (Math.random() * 10 - 5);
+      
+      return {
+        length: fishLength,
+        height: fishHeight,
+        boundingBox: {
+          x: Math.max(0, fishX),
+          y: Math.max(0, fishY),
+          width: fishLength,
+          height: fishHeight
+        },
+        confidence: 0.85 + Math.random() * 0.1, // 85-95% confidence
+        originalImageSize: {
+          width: imageWidth,
+          height: imageHeight
+        }
+      };
+    } catch (error) {
+      console.error('Error detecting fish dimensions:', error);
+      return null;
+    }
+  };
+
+  // Handle touch for manual measurement
+  const handleTouchStart = (event) => {
+    if (!isMeasuring) return;
+    
+    const { locationX, locationY } = event.nativeEvent;
+    setMeasurementPoints({
+      start: { x: locationX, y: locationY },
+      end: null
+    });
+  };
+
+  const handleTouchMove = (event) => {
+    if (!isMeasuring || !measurementPoints.start) return;
+    
+    const { locationX, locationY } = event.nativeEvent;
+    setMeasurementPoints(prev => ({
+      ...prev,
+      end: { x: locationX, y: locationY }
+    }));
+    
+    // Calculate current measurement
+    if (measurementPoints.start) {
+      const dx = locationX - measurementPoints.start.x;
+      const dy = locationY - measurementPoints.start.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      
+      setCurrentMeasurement({
+        distance: Math.round(distance),
+        dx: Math.round(dx),
+        dy: Math.round(dy),
+        angle: Math.round(angle)
+      });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isMeasuring) return;
+    
+    // Finalize measurement
+    if (measurementPoints.start && measurementPoints.end) {
+      Alert.alert(
+        'Measurement Complete',
+        `Distance: ${currentMeasurement?.distance}px\n` +
+        `Horizontal: ${currentMeasurement?.dx}px\n` +
+        `Vertical: ${currentMeasurement?.dy}px\n` +
+        `Angle: ${currentMeasurement?.angle}°`,
+        [{ text: 'OK' }]
+      );
+    }
+    
+    // Reset measurement mode
+    setIsMeasuring(false);
+    setMeasurementPoints({ start: null, end: null });
+    setCurrentMeasurement(null);
+  };
+
+  // Modified takePicture function to include dimension detection
+  const takePicture = async (side) => {
+    if (cameraRef.current) {
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          base64: true,
+          exif: true
+        });
+        
+        // Detect fish dimensions
+        const dimensions = await detectFishDimensions(photo.uri);
+        
+        setCapturedImages(prev => ({
+          ...prev,
+          [side]: photo.uri
+        }));
+        
+        setFishDimensions(prev => ({
+          ...prev,
+          [side]: dimensions
+        }));
+        
+        Alert.alert(
+          'Success!',
+          `Side ${side === 'side1' ? '1' : '2'} captured successfully!\n` +
+          `Fish detected: ${dimensions ? `${Math.round(dimensions.length)}px length, ${Math.round(dimensions.height)}px height` : 'Size detection pending'}`,
+          [{ text: 'OK' }]
+        );
+      } catch (error) {
+        Alert.alert('Error', 'Failed to capture image');
+      }
+    }
+  };
+
+  // Modified pickImage function to include dimension detection
+  const pickImage = async (side) => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission Required', 'Please allow access to your gallery');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      const imageUri = result.assets[0].uri;
+      
+      // Detect fish dimensions
+      const dimensions = await detectFishDimensions(imageUri);
+      
+      setCapturedImages(prev => ({
+        ...prev,
+        [side]: imageUri
+      }));
+      
+      setFishDimensions(prev => ({
+        ...prev,
+        [side]: dimensions
+      }));
+      
+      Alert.alert(
+        'Image Selected',
+        `Fish detected: ${dimensions ? `${Math.round(dimensions.length)}px length, ${Math.round(dimensions.height)}px height` : 'Size detection pending'}`,
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -113,54 +306,7 @@ const Quality = () => {
     }
   };
 
-  const takePicture = async (side) => {
-    if (cameraRef.current) {
-      try {
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
-          base64: true,
-          exif: true
-        });
-        
-        setCapturedImages(prev => ({
-          ...prev,
-          [side]: photo.uri
-        }));
-        
-        Alert.alert(
-          'Success!',
-          `Side ${side === 'side1' ? '1' : '2'} captured successfully!`,
-          [{ text: 'OK' }]
-        );
-      } catch (error) {
-        Alert.alert('Error', 'Failed to capture image');
-      }
-    }
-  };
-
-  const pickImage = async (side) => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission Required', 'Please allow access to your gallery');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setCapturedImages(prev => ({
-        ...prev,
-        [side]: result.assets[0].uri
-      }));
-    }
-  };
-
-  // Simulate your model's feature extraction
+  // Simulate your model's feature extraction (now including dimensions)
   const extractSimulatedFeatures = () => {
     const features = {
       left: {
@@ -171,7 +317,12 @@ const Quality = () => {
           Math.random() * 2,   // Contrast
           Math.random() * 0.5, // Edge Density
           Math.random() * 3    // Entropy
-        ]
+        ],
+        dimensions: fishDimensions.side1 || {
+          length: 400,
+          height: 120,
+          confidence: 0.9
+        }
       },
       right: {
         color: MODEL_OUTPUTS.features.color.map(() => Math.random() * 100),
@@ -181,7 +332,12 @@ const Quality = () => {
           Math.random() * 2,
           Math.random() * 0.5,
           Math.random() * 3
-        ]
+        ],
+        dimensions: fishDimensions.side2 || {
+          length: 400,
+          height: 120,
+          confidence: 0.9
+        }
       },
       difference: MODEL_OUTPUTS.features.difference.map(() => Math.random() * 50)
     };
@@ -249,11 +405,41 @@ const Quality = () => {
       // Step 2: Make prediction (like your model)
       const prediction = simulateModelPrediction(extractedFeatures);
 
+      // Calculate average dimensions from both sides
+      const avgLength = Math.round(
+        ((extractedFeatures.left.dimensions?.length || 0) + 
+         (extractedFeatures.right.dimensions?.length || 0)) / 2
+      );
+      const avgHeight = Math.round(
+        ((extractedFeatures.left.dimensions?.height || 0) + 
+         (extractedFeatures.right.dimensions?.height || 0)) / 2
+      );
+      
+      // Estimate weight based on dimensions (simplified formula)
+      // For fish, approximate weight = length * height * constant
+      const estimatedWeight = Math.round(avgLength * avgHeight * 0.0008); // Rough estimate in grams
+
       // Step 3: Prepare results for display
       const result = {
         species: prediction.species,
         grade: prediction.grade,
         confidence: Math.round(prediction.grade.confidence * 100),
+        
+        // Dimension information
+        dimensions: {
+          length: avgLength,
+          height: avgHeight,
+          lengthLeft: Math.round(extractedFeatures.left.dimensions?.length || 0),
+          lengthRight: Math.round(extractedFeatures.right.dimensions?.length || 0),
+          heightLeft: Math.round(extractedFeatures.left.dimensions?.height || 0),
+          heightRight: Math.round(extractedFeatures.right.dimensions?.height || 0),
+          detectionConfidence: Math.round(
+            ((extractedFeatures.left.dimensions?.confidence || 0) + 
+             (extractedFeatures.right.dimensions?.confidence || 0)) / 2 * 100
+          ),
+          estimatedWeight: estimatedWeight,
+          sizeCategory: estimatedWeight > 2000 ? 'Large' : estimatedWeight > 1000 ? 'Medium' : 'Small'
+        },
         
         // Feature metrics for display
         featureMetrics: {
@@ -272,19 +458,22 @@ const Quality = () => {
           appearance: Math.round((extractedFeatures.left.quality[1] / 255) * 100)
         },
         
-        // Recommendations based on grade
+        // Recommendations based on grade and size
         recommendations: prediction.grade.label === 'Grade A' ? [
           'Premium export quality - Highest market value',
+          `Perfect size (${avgLength}px length, ~${estimatedWeight}g) for premium markets`,
           'Perfect color and texture consistency',
           'Store at 0-2°C for maximum shelf life',
           'Ideal for sushi/sashimi preparation'
         ] : prediction.grade.label === 'Grade B' ? [
           'Good market quality - Local distribution',
+          `Good size (${avgLength}px length, ~${estimatedWeight}g) for local markets`,
           'Minor variations in color/texture',
           'Consume within 48 hours',
           'Suitable for grilling/baking'
         ] : [
           'Standard quality - Quick sale recommended',
+          `Standard size (${avgLength}px length, ~${estimatedWeight}g)`,
           'Monitor for quality changes',
           'Best for cooked preparations',
           'Check storage temperature regularly'
@@ -311,6 +500,7 @@ const Quality = () => {
 
   const handleBackToSelection = () => {
     setCapturedImages({ side1: null, side2: null });
+    setFishDimensions({ side1: null, side2: null });
     setGradingResult(null);
     setModelFeatures(null);
     setStep(1);
@@ -321,6 +511,7 @@ const Quality = () => {
       'Model Features Extracted',
       `Total Features: ${modelFeatures ? '68' : 'Not extracted yet'}\n` +
       `Feature Types: Color (24) + Quality (5) + Difference (10) × 2 sides\n` +
+      `Including: Fish dimensions (length/height) from both sides\n` +
       `Model Architecture: Dual CNN + Manual Features`,
       [{ text: 'OK' }]
     );
@@ -335,6 +526,28 @@ const Quality = () => {
     Alert.alert(`Grade ${grade} Explanation`, explanations[grade] || 'Standard fish quality grade');
   };
 
+  const showDimensionDetails = () => {
+    if (!fishDimensions.side1 || !fishDimensions.side2) {
+      Alert.alert('Dimensions', 'Fish dimensions not fully detected yet');
+      return;
+    }
+    
+    Alert.alert(
+      'Fish Dimensions Detected',
+      `Left Side:\n` +
+      `  Length: ${Math.round(fishDimensions.side1?.length || 0)}px\n` +
+      `  Height: ${Math.round(fishDimensions.side1?.height || 0)}px\n` +
+      `  Confidence: ${Math.round((fishDimensions.side1?.confidence || 0) * 100)}%\n\n` +
+      `Right Side:\n` +
+      `  Length: ${Math.round(fishDimensions.side2?.length || 0)}px\n` +
+      `  Height: ${Math.round(fishDimensions.side2?.height || 0)}px\n` +
+      `  Confidence: ${Math.round((fishDimensions.side2?.confidence || 0) * 100)}%\n\n` +
+      `Average Length: ${Math.round(((fishDimensions.side1?.length || 0) + (fishDimensions.side2?.length || 0)) / 2)}px\n` +
+      `Average Height: ${Math.round(((fishDimensions.side1?.height || 0) + (fishDimensions.side2?.height || 0)) / 2)}px`,
+      [{ text: 'OK' }]
+    );
+  };
+
   // Camera Screen
   if (showCamera) {
     return (
@@ -345,6 +558,120 @@ const Quality = () => {
           facing={cameraFacing}
           mode="picture"
         >
+          {/* Measurement Grid Overlay */}
+          {showGrid && (
+            <View style={styles.gridOverlay} pointerEvents="none">
+              {/* Horizontal lines */}
+              <View style={[styles.gridLine, styles.gridLineHorizontal, { top: '25%' }]} />
+              <View style={[styles.gridLine, styles.gridLineHorizontal, { top: '50%' }]} />
+              <View style={[styles.gridLine, styles.gridLineHorizontal, { top: '75%' }]} />
+              
+              {/* Vertical lines */}
+              <View style={[styles.gridLine, styles.gridLineVertical, { left: '25%' }]} />
+              <View style={[styles.gridLine, styles.gridLineVertical, { left: '50%' }]} />
+              <View style={[styles.gridLine, styles.gridLineVertical, { left: '75%' }]} />
+              
+              {/* Center crosshair */}
+              <View style={styles.centerCrosshair}>
+                <View style={[styles.crosshairLine, styles.crosshairHorizontal]} />
+                <View style={[styles.crosshairLine, styles.crosshairVertical]} />
+              </View>
+              
+              {/* Measurement rulers */}
+              <View style={styles.topRuler}>
+                {[...Array(10)].map((_, i) => (
+                  <View key={i} style={styles.rulerMark}>
+                    <View style={styles.rulerMarkLine} />
+                    {i % 2 === 0 && <Text style={styles.rulerMarkText}>{i * 10}</Text>}
+                  </View>
+                ))}
+              </View>
+              
+              <View style={styles.leftRuler}>
+                {[...Array(10)].map((_, i) => (
+                  <View key={i} style={[styles.rulerMark, styles.rulerMarkHorizontal]}>
+                    <View style={[styles.rulerMarkLine, styles.rulerMarkLineHorizontal]} />
+                    {i % 2 === 0 && <Text style={styles.rulerMarkText}>{i * 10}</Text>}
+                  </View>
+                ))}
+              </View>
+              
+              {/* Measurement indicators */}
+              <View style={styles.measurementIndicators}>
+                <View style={styles.measurementIndicator}>
+                  <MaterialIcons name="straighten" size={16} color="#00A3FF" />
+                  <Text style={styles.measurementIndicatorText}>Drag to measure</Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.gridToggleButton}
+                  onPress={() => setShowGrid(!showGrid)}
+                >
+                  <MaterialIcons name="grid-on" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          
+          {/* Live measurement overlay */}
+          {isMeasuring && measurementPoints.start && measurementPoints.end && (
+            <View style={styles.measurementOverlay} pointerEvents="none">
+              {/* Measurement line */}
+              <View 
+                style={[
+                  styles.measurementLine,
+                  {
+                    left: measurementPoints.start.x,
+                    top: measurementPoints.start.y,
+                    width: currentMeasurement?.dx || 0,
+                    transform: [
+                      { rotate: `${currentMeasurement?.angle || 0}deg` }
+                    ]
+                  }
+                ]} 
+              />
+              
+              {/* Start point */}
+              <View 
+                style={[
+                  styles.measurementPoint,
+                  styles.measurementPointStart,
+                  { left: measurementPoints.start.x - 10, top: measurementPoints.start.y - 10 }
+                ]}
+              >
+                <Text style={styles.measurementPointText}>●</Text>
+              </View>
+              
+              {/* End point */}
+              <View 
+                style={[
+                  styles.measurementPoint,
+                  styles.measurementPointEnd,
+                  { left: measurementPoints.end.x - 10, top: measurementPoints.end.y - 10 }
+                ]}
+              >
+                <Text style={styles.measurementPointText}>●</Text>
+              </View>
+              
+              {/* Measurement info */}
+              <View 
+                style={[
+                  styles.measurementInfo,
+                  {
+                    left: (measurementPoints.start.x + measurementPoints.end.x) / 2 - 50,
+                    top: (measurementPoints.start.y + measurementPoints.end.y) / 2 - 30
+                  }
+                ]}
+              >
+                <Text style={styles.measurementInfoText}>
+                  {currentMeasurement?.distance}px
+                </Text>
+                <Text style={styles.measurementInfoSubtext}>
+                  H:{currentMeasurement?.dx} V:{currentMeasurement?.dy}
+                </Text>
+              </View>
+            </View>
+          )}
+
           <LinearGradient
             colors={['rgba(0,0,0,0.9)', 'transparent']}
             style={styles.cameraHeader}
@@ -360,14 +687,40 @@ const Quality = () => {
             <Text style={styles.cameraTitle}>
               {activeSide === 'side1' ? 'Left Side' : 'Right Side'}
             </Text>
-            <View style={{ width: 44 }} />
+            <TouchableOpacity
+              style={styles.measureButton}
+              onPress={() => setIsMeasuring(!isMeasuring)}
+            >
+              <LinearGradient
+                colors={isMeasuring ? ['#00A3FF', '#0066CC'] : ['#FFFFFF', '#F0F0F0']}
+                style={styles.measureButtonInner}
+              >
+                <MaterialIcons 
+                  name="straighten" 
+                  size={22} 
+                  color={isMeasuring ? 'white' : '#0066CC'} 
+                />
+              </LinearGradient>
+            </TouchableOpacity>
           </LinearGradient>
 
-          <View style={styles.captureGuide}>
+          <View 
+            style={styles.captureGuide}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             <View style={styles.guideFrame}>
               <Text style={styles.guideText}>
-                Align fish within frame
+                {isMeasuring ? 'Drag to measure' : 'Align fish within frame'}
               </Text>
+              
+              {/* Measurement scale */}
+              <View style={styles.scaleBar}>
+                <View style={styles.scaleBarLine} />
+                <Text style={styles.scaleBarText}>10px</Text>
+              </View>
+              
               <View style={styles.frameCorners}>
                 <View style={[styles.corner, styles.topLeft]} />
                 <View style={[styles.corner, styles.topRight]} />
@@ -462,8 +815,6 @@ const Quality = () => {
           colors={['#0066CC', '#0088FF']}
           style={styles.headerGradient}
         >
-          
-
           <View style={styles.stepIndicator}>
             <View style={styles.stepItem}>
               <View style={[
@@ -513,10 +864,11 @@ const Quality = () => {
               <View style={styles.welcomeCard}>
                 <Text style={styles.welcomeTitle}>Fish Quality Grading</Text>
                 <Text style={styles.welcomeText}>
-                  Capture both sides of the fish for AI analysis using modern technology
+                  Capture both sides of the fish for AI analysis including size detection
                 </Text>
                 <View style={styles.modelInfoBadge}>
-                  <MaterialIcons name="model-training" size={14} color="#0066CC" />
+                  <MaterialIcons name="straighten" size={14} color="#0066CC" />
+                  <Text style={styles.modelInfoText}>Includes dimension detection</Text>
                 </View>
               </View>
 
@@ -562,10 +914,23 @@ const Quality = () => {
                           />
                           <TouchableOpacity 
                             style={styles.imageActionButton}
-                            onPress={() => setCapturedImages(prev => ({...prev, [side]: null}))}
+                            onPress={() => {
+                              setCapturedImages(prev => ({...prev, [side]: null}));
+                              setFishDimensions(prev => ({...prev, [side]: null}));
+                            }}
                           >
                             <MaterialIcons name="refresh" size={18} color="white" />
                           </TouchableOpacity>
+                          
+                          {/* Show dimension overlay if available */}
+                          {fishDimensions[side] && (
+                            <View style={styles.dimensionOverlay}>
+                              <Text style={styles.dimensionOverlayText}>
+                                L: {Math.round(fishDimensions[side].length)}px | 
+                                H: {Math.round(fishDimensions[side].height)}px
+                              </Text>
+                            </View>
+                          )}
                         </View>
                       ) : (
                         <TouchableOpacity 
@@ -606,40 +971,77 @@ const Quality = () => {
 
               <View style={styles.techInfoCard}>
                 <View style={styles.techInfoHeader}>
-                  <MaterialIcons name="precision-manufacturing" size={22} color="#0066CC" />
-                  <Text style={styles.techInfoTitle}>Model Technology</Text>
+                  <MaterialIcons name="straighten" size={22} color="#0066CC" />
+                  <Text style={styles.techInfoTitle}>Size Detection Technology</Text>
                 </View>
                 <View style={styles.techInfoGrid}>
                   <View style={styles.techInfoItem}>
                     <View style={styles.techInfoIcon}>
-                      <MaterialIcons name="view-in-ar" size={14} color="#FFFFFF" />
+                      <MaterialIcons name="straighten" size={14} color="#FFFFFF" />
                     </View>
-                    <Text style={styles.techInfoLabel}>Dual CNN</Text>
-                    <Text style={styles.techInfoValue}>2 Views</Text>
+                    <Text style={styles.techInfoLabel}>Length</Text>
+                    <Text style={styles.techInfoValue}>Detection</Text>
                   </View>
                   <View style={styles.techInfoItem}>
                     <View style={styles.techInfoIcon}>
-                      <MaterialIcons name="analytics" size={14} color="#FFFFFF" />
+                      <MaterialIcons name="height" size={14} color="#FFFFFF" />
                     </View>
-                    <Text style={styles.techInfoLabel}> Features</Text>
-                    <Text style={styles.techInfoValue}>Extracted</Text>
+                    <Text style={styles.techInfoLabel}>Height</Text>
+                    <Text style={styles.techInfoValue}>Detection</Text>
                   </View>
                   <View style={styles.techInfoItem}>
                     <View style={styles.techInfoIcon}>
-                      <MaterialIcons name="compare" size={14} color="#FFFFFF" />
+                      <MaterialIcons name="aspect-ratio" size={14} color="#FFFFFF" />
                     </View>
-                    <Text style={styles.techInfoLabel}>Asymmetry</Text>
-                    <Text style={styles.techInfoValue}>Analysis</Text>
+                    <Text style={styles.techInfoLabel}>Bounding</Text>
+                    <Text style={styles.techInfoValue}>Box</Text>
                   </View>
                   <View style={styles.techInfoItem}>
                     <View style={styles.techInfoIcon}>
-                      <MaterialIcons name="blur-linear" size={14} color="#FFFFFF" />
+                      <MaterialIcons name="weight" size={14} color="#FFFFFF" />
                     </View>
-                    <Text style={styles.techInfoLabel}>Hybrid</Text>
-                    <Text style={styles.techInfoValue}>Model</Text>
+                    <Text style={styles.techInfoLabel}>Weight</Text>
+                    <Text style={styles.techInfoValue}>Estimate</Text>
                   </View>
                 </View>
               </View>
+
+              {/* Dimension Status Summary */}
+              {capturedImages.side1 && capturedImages.side2 && (
+                <TouchableOpacity 
+                  style={styles.dimensionSummaryCard}
+                  onPress={showDimensionDetails}
+                >
+                  <LinearGradient
+                    colors={['#F0F9FF', '#E6F7FF']}
+                    style={styles.dimensionSummaryGradient}
+                  >
+                    <View style={styles.dimensionSummaryHeader}>
+                      <MaterialIcons name="straighten" size={20} color="#0066CC" />
+                      <Text style={styles.dimensionSummaryTitle}>Fish Dimensions Detected</Text>
+                      <MaterialIcons name="info-outline" size={16} color="#0066CC" />
+                    </View>
+                    <View style={styles.dimensionSummaryContent}>
+                      <View style={styles.dimensionSummaryItem}>
+                        <Text style={styles.dimensionSummaryLabel}>Avg Length</Text>
+                        <Text style={styles.dimensionSummaryValue}>
+                          {Math.round(((fishDimensions.side1?.length || 0) + (fishDimensions.side2?.length || 0)) / 2)}px
+                        </Text>
+                      </View>
+                      <View style={styles.dimensionDivider} />
+                      <View style={styles.dimensionSummaryItem}>
+                        <Text style={styles.dimensionSummaryLabel}>Avg Height</Text>
+                        <Text style={styles.dimensionSummaryValue}>
+                          {Math.round(((fishDimensions.side1?.height || 0) + (fishDimensions.side2?.height || 0)) / 2)}px
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.dimensionSummaryNote}>
+                      Tap for detailed dimension info
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity 
                 style={[
@@ -751,6 +1153,74 @@ const Quality = () => {
                     </View>
                   </View>
 
+                  {/* NEW: Dimensions Section */}
+                  <View style={styles.dimensionsResultSection}>
+                    <View style={styles.sectionHeader}>
+                      <Text style={styles.metricsTitle}>Fish Size Analysis</Text>
+                      <TouchableOpacity onPress={showDimensionDetails}>
+                        <Text style={styles.viewFeaturesText}>View Details</Text>
+                      </TouchableOpacity>
+                    </View>
+                    
+                    <View style={styles.dimensionsResultGrid}>
+                      <View style={styles.dimensionsResultItem}>
+                        <View style={styles.dimensionsResultIcon}>
+                          <MaterialIcons name="straighten" size={24} color="#0066CC" />
+                        </View>
+                        <Text style={styles.dimensionsResultLabel}>Length</Text>
+                        <Text style={styles.dimensionsResultValue}>
+                          {gradingResult.dimensions?.length || 0}px
+                        </Text>
+                        <Text style={styles.dimensionsResultNote}>
+                          (L: {gradingResult.dimensions?.lengthLeft} / {gradingResult.dimensions?.lengthRight})
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.dimensionsResultItem}>
+                        <View style={styles.dimensionsResultIcon}>
+                          <MaterialIcons name="height" size={24} color="#0066CC" />
+                        </View>
+                        <Text style={styles.dimensionsResultLabel}>Height</Text>
+                        <Text style={styles.dimensionsResultValue}>
+                          {gradingResult.dimensions?.height || 0}px
+                        </Text>
+                        <Text style={styles.dimensionsResultNote}>
+                          (H: {gradingResult.dimensions?.heightLeft} / {gradingResult.dimensions?.heightRight})
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.dimensionsResultItem}>
+                        <View style={styles.dimensionsResultIcon}>
+                          <MaterialIcons name="fitness-center" size={24} color="#0066CC" />
+                        </View>
+                        <Text style={styles.dimensionsResultLabel}>Est. Weight</Text>
+                        <Text style={styles.dimensionsResultValue}>
+                          {gradingResult.dimensions?.estimatedWeight || 0}g
+                        </Text>
+                        <Text style={styles.dimensionsResultNote}>
+                          {gradingResult.dimensions?.sizeCategory || 'Medium'}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.dimensionConfidenceBar}>
+                      <View style={styles.dimensionConfidenceHeader}>
+                        <Text style={styles.dimensionConfidenceLabel}>Detection Confidence</Text>
+                        <Text style={styles.dimensionConfidenceValue}>
+                          {gradingResult.dimensions?.detectionConfidence || 0}%
+                        </Text>
+                      </View>
+                      <View style={styles.dimensionConfidenceProgress}>
+                        <LinearGradient
+                          colors={['#10B981', '#34D399']}
+                          style={[styles.dimensionConfidenceFill, { 
+                            width: `${gradingResult.dimensions?.detectionConfidence || 0}%` 
+                          }]}
+                        />
+                      </View>
+                    </View>
+                  </View>
+
                   {/* Feature Metrics */}
                   <View style={styles.metricsSection}>
                     <View style={styles.sectionHeader}>
@@ -798,28 +1268,6 @@ const Quality = () => {
                     </View>
                   </View>
 
-                  {/* Model Information
-                  <View style={styles.modelInfoSection}>
-                    <View style={styles.modelInfoHeader}>
-                      <MaterialIcons name="model-training" size={18} color="#0066CC" />
-                      <Text style={styles.modelInfoTitle}>Model Information</Text>
-                    </View>
-                    <View style={styles.modelInfoGrid}>
-                      <View style={styles.modelInfoItem}>
-                        <Text style={styles.modelInfoLabel}>Architecture</Text>
-                        <Text style={styles.modelInfoValue}>Hybrid CNN + Features</Text>
-                      </View>
-                      <View style={styles.modelInfoItem}>
-                        <Text style={styles.modelInfoLabel}>Features Extracted</Text>
-                        <Text style={styles.modelInfoValue}>68</Text>
-                      </View>
-                      <View style={styles.modelInfoItem}>
-                        <Text style={styles.modelInfoLabel}>Analysis Type</Text>
-                        <Text style={styles.modelInfoValue}>Bilateral</Text>
-                      </View>
-                    </View>
-                  </View> */}
-
                   {/* Recommendations */}
                   <View style={styles.recommendationsCard}>
                     <View style={styles.recommendationsHeader}>
@@ -848,10 +1296,10 @@ const Quality = () => {
               <View style={styles.actionButtons}>
                 <TouchableOpacity 
                   style={styles.secondaryActionButton}
-                  onPress={handleViewFeatures}
+                  onPress={showDimensionDetails}
                 >
-                  <MaterialIcons name="analytics" size={20} color="#0066CC" />
-                  <Text style={styles.secondaryActionButtonText}>View Features</Text>
+                  <MaterialIcons name="straighten" size={20} color="#0066CC" />
+                  <Text style={styles.secondaryActionButtonText}>Dimensions</Text>
                 </TouchableOpacity>
                 
                 <TouchableOpacity 
@@ -1093,6 +1541,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  dimensionOverlay: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  dimensionOverlayText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   captureButton: {
     height: 180,
     borderRadius: 16,
@@ -1187,6 +1649,58 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
   },
+  dimensionSummaryCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  dimensionSummaryGradient: {
+    padding: 16,
+    borderRadius: 16,
+  },
+  dimensionSummaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  dimensionSummaryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0066CC',
+    flex: 1,
+    marginLeft: 8,
+  },
+  dimensionSummaryContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 8,
+  },
+  dimensionSummaryItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  dimensionSummaryLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  dimensionSummaryValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0066CC',
+  },
+  dimensionDivider: {
+    width: 1,
+    backgroundColor: '#E2E8F0',
+    marginHorizontal: 16,
+  },
+  dimensionSummaryNote: {
+    fontSize: 11,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 8,
+  },
   primaryButton: {
     borderRadius: 16,
     overflow: 'hidden',
@@ -1210,7 +1724,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     marginLeft: 10,
-    margin: 2,padding: 2,          
+    margin: 2,
+    padding: 2,
   },
   resultsHeader: {
     marginBottom: 20,
@@ -1362,6 +1877,72 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     marginLeft: 12,
     minWidth: 40,
+  },
+  dimensionsResultSection: {
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 16,
+  },
+  dimensionsResultGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  dimensionsResultItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  dimensionsResultIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 102, 204, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  dimensionsResultLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  dimensionsResultValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0066CC',
+  },
+  dimensionsResultNote: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  dimensionConfidenceBar: {
+    marginTop: 12,
+  },
+  dimensionConfidenceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  dimensionConfidenceLabel: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  dimensionConfidenceValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  dimensionConfidenceProgress: {
+    height: 8,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  dimensionConfidenceFill: {
+    height: '100%',
+    borderRadius: 4,
   },
   metricsSection: {
     marginBottom: 24,
@@ -1560,6 +2141,7 @@ const styles = StyleSheet.create({
     paddingTop: STATUS_BAR_HEIGHT + 20,
     paddingHorizontal: 20,
     paddingBottom: 30,
+    zIndex: 10,
   },
   closeCamera: {
     zIndex: 10,
@@ -1576,6 +2158,179 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+  },
+  measureButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  measureButtonInner: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gridOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 5,
+  },
+  gridLine: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  gridLineHorizontal: {
+    left: 0,
+    right: 0,
+    height: 1,
+  },
+  gridLineVertical: {
+    top: 0,
+    bottom: 0,
+    width: 1,
+  },
+  centerCrosshair: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: 60,
+    height: 60,
+    marginLeft: -30,
+    marginTop: -30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  crosshairLine: {
+    position: 'absolute',
+    backgroundColor: '#00A3FF',
+  },
+  crosshairHorizontal: {
+    left: 0,
+    right: 0,
+    height: 2,
+  },
+  crosshairVertical: {
+    top: 0,
+    bottom: 0,
+    width: 2,
+  },
+  topRuler: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    height: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  leftRuler: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    bottom: 20,
+    width: 30,
+    justifyContent: 'space-between',
+  },
+  rulerMark: {
+    alignItems: 'center',
+    width: 20,
+  },
+  rulerMarkHorizontal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: 30,
+    height: 20,
+  },
+  rulerMarkLine: {
+    width: 1,
+    height: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginBottom: 4,
+  },
+  rulerMarkLineHorizontal: {
+    width: 10,
+    height: 1,
+    marginBottom: 0,
+    marginRight: 4,
+  },
+  rulerMarkText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 8,
+  },
+  measurementIndicators: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  measurementIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  measurementIndicatorText: {
+    color: 'white',
+    fontSize: 12,
+    marginLeft: 6,
+  },
+  gridToggleButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  measurementOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 15,
+  },
+  measurementLine: {
+    position: 'absolute',
+    height: 2,
+    backgroundColor: '#00A3FF',
+    transformOrigin: 'left',
+  },
+  measurementPoint: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  measurementPointStart: {
+    backgroundColor: '#00A3FF',
+  },
+  measurementPointEnd: {
+    backgroundColor: '#FF3B30',
+  },
+  measurementPointText: {
+    color: 'white',
+    fontSize: 12,
+  },
+  measurementInfo: {
+    position: 'absolute',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  measurementInfoText: {
+    color: '#00A3FF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  measurementInfoSubtext: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 10,
   },
   captureGuide: {
     flex: 1,
@@ -1595,6 +2350,23 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 14,
     marginBottom: 20,
+  },
+  scaleBar: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scaleBarLine: {
+    width: 50,
+    height: 2,
+    backgroundColor: 'white',
+    marginRight: 8,
+  },
+  scaleBarText: {
+    color: 'white',
+    fontSize: 12,
   },
   frameCorners: {
     ...StyleSheet.absoluteFillObject,
