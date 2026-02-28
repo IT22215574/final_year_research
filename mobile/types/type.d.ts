@@ -138,3 +138,81 @@ declare interface DriverCardProps {
   selected: number;
   setSelected: () => void;
 }
+
+// ========================================
+// Trip Cost Types  start
+// ========================================
+
+declare interface Trip {
+  _id: string;
+  userId: string;
+  
+  // Trip Duration
+  departureTime: string | Date;
+  returnTime: string | Date;
+  tripDurationHours?: number;
+  
+  // Travel & Engine
+  distanceKm?: number;
+  engineHorsePower?: number;
+  boatType?: string;
+  
+  // Weather Factors
+  windSpeed?: number;
+  waveHeight?: number;
+  weatherCondition?: string;
+  
+  // Fuel
+  fuelUsedLiters?: number;
+  fuelPricePerLiter?: number;
+  fuelCost?: number;
+  
+  // Operational Costs
+  iceCost?: number;
+  crewCost?: number;
+  foodCost?: number;
+  maintenanceCost?: number;
+  otherCost?: number;
+  totalCost?: number;
+  
+  // Timestamps
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+declare interface CreateTripDto {
+  departureTime: string;
+  returnTime: string;
+  distanceKm?: number;
+  engineHorsePower?: number;
+  boatType?: string;
+  windSpeed?: number;
+  waveHeight?: number;
+  weatherCondition?: string;
+  fuelUsedLiters?: number;
+  fuelPricePerLiter?: number;
+  iceCost?: number;
+  crewCost?: number;
+  foodCost?: number;
+  maintenanceCost?: number;
+  otherCost?: number;
+}
+
+declare interface TripStats {
+  totalTrips: number;
+  totalCost: number;
+  averageCost: number;
+  totalFuelUsed: number;
+  totalDistance: number;
+}
+
+declare interface MLPrediction {
+  predictedFuelLiters?: number;
+  predictedCost?: number;
+  recommendations?: string[];
+  riskScore?: string;
+}
+
+// ========================================
+// Trip Cost Types  end
+// ========================================

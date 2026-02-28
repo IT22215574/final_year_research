@@ -57,3 +57,52 @@ uploads/
 # Temporary files
 *.tmp
 *.temp
+
+
+
+# ===============================
+# Python / AI / ML Ignore Rules
+# ===============================
+
+# Virtual environments
+venv/
+.venv/
+env/
+*/venv/
+*/.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Model files
+models/
+*.h5
+*.keras
+*.pkl
+*.joblib
+*.pt
+*.pth
+
+# Dataset files
+*.csv
+*.xlsx
+*.jsonl
+data/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Python build files
+build/
+dist/
+*.egg-info/
+
+# FastAPI / Flask cache
+instance/
+
+# Training outputs
+runs/
+outputs/
+checkpoints/

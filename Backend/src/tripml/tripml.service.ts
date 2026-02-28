@@ -4,7 +4,8 @@ import axios from 'axios';
 @Injectable()
 export class MlService {
   // URL of your Python ML API (create this later)
-  private readonly ML_API_URL = process.env.ML_API_URL || 'http://localhost:5000';
+  private readonly ML_API_URL =
+    process.env.ML_API_URL || 'http://localhost:5001';
 
   // Predict fuel consumption
   async predictFuelConsumption(data: {
@@ -15,7 +16,10 @@ export class MlService {
     tripDurationHours: number;
   }): Promise<{ predictedFuelLiters: number }> {
     try {
-      const response = await axios.post(`${this.ML_API_URL}/predict/fuel`, data);
+      const response = await axios.post(
+        `${this.ML_API_URL}/predict-fuel`,
+        data,
+      );
       return response.data;
     } catch (error) {
       throw new HttpException(
@@ -35,7 +39,10 @@ export class MlService {
     fuelPricePerLiter: number;
   }): Promise<{ predictedCost: number }> {
     try {
-      const response = await axios.post(`${this.ML_API_URL}/predict/cost`, data);
+      const response = await axios.post(
+        `${this.ML_API_URL}/predict-cost`, 
+        data,
+      );
       return response.data;
     } catch (error) {
       throw new HttpException(
