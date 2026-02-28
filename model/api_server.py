@@ -327,13 +327,150 @@ def predict(req: PredictRequest):
     min_price = current_price * 0.92
     max_price = current_price * 1.08
 
+    reasons = _build_prediction_reasons(
+        target_date, fish_row, current_price,
+        prices[14] if len(prices) > 14 else current_price,
+        prices[16] if len(prices) > 16 else current_price,
+    )
+
     return {
         "fish": fish_row.to_dict(),
         "predicted": current_price,
         "min_price": min_price,
         "max_price": max_price,
         "series": [{"date": d, "price": p} for d, p in zip(dates, prices)],
+        "reasons": reasons,
     }
+
+# ── XAI: build human-readable reasons for a price prediction ─────────────────
+def _build_prediction_reasons(
+    target_date: datetime,
+    fish_row,
+    today_price: float,
+    yesterday_price: float,
+    tomorrow_price: float,
+) -> list[dict]:
+    """
+    Return a list of reason dicts each with:
+      { icon, text, impact }   impact: 'up' | 'down' | 'neutral'
+    Ordered by relevance (most impactful first).
+    """
+    reasons: list[dict] = []
+
+    # 1. Price trend vs yesterday
+    diff = today_price - yesterday_price
+    pct  = (diff / yesterday_price * 100) if yesterday_price else 0
+    if abs(pct) >= 1:
+        direction = "up" if diff > 0 else "down"
+        reasons.append({
+            "icon":   "trending-up-outline" if diff > 0 else "trending-down-outline",
+            "text":   f"Price {'rose' if diff > 0 else 'dropped'} {abs(pct):.1f}% compared to yesterday",
+            "impact": direction,
+        })
+
+    # 2. Tomorrow's direction
+    t_diff = tomorrow_price - today_price
+    if abs(t_diff) >= 5:
+        reasons.append({
+            "icon":   "arrow-up-circle-outline" if t_diff > 0 else "arrow-down-circle-outline",
+            "text":   f"Tomorrow price expected to {'rise' if t_diff > 0 else 'fall'} by {formatLKR_py(abs(t_diff))}",
+            "impact": "up" if t_diff > 0 else "down",
+        })
+
+    # 3. Fuel price signal
+    fuel_row = _get_fuel_row(target_date)
+    lk_price = fuel_row.get("lk_price", 0)
+    if lk_price > 220:
+        reasons.append({
+            "icon":   "flame-outline",
+            "text":   f"High kerosene price ({formatLKR_py(lk_price)}/L) adds to fishing costs",
+            "impact": "up",
+        })
+    elif lk_price > 0 and lk_price < 170:
+        reasons.append({
+            "icon":   "flame-outline",
+            "text":   f"Low fuel cost ({formatLKR_py(lk_price)}/L) keeps fishing costs down",
+            "impact": "down",
+        })
+
+    # 4. Weather
+    w = _get_weather_row(target_date)
+    wind, rain = w["wind_speed_max"], w["rainfall_sum"]
+    if wind > 30 or rain > 30:
+        reasons.append({
+            "icon":   "thunderstorm-outline",
+            "text":   "Severe weather expected — reduced fishing activity raises prices",
+            "impact": "up",
+        })
+    elif wind > 20 or rain > 10:
+        reasons.append({
+            "icon":   "cloudy-outline",
+            "text":   f"Above-average wind ({wind:.0f} km/h) / rain ({rain:.0f} mm) may limit supply",
+            "impact": "up",
+        })
+    else:
+        reasons.append({
+            "icon":   "sunny-outline",
+            "text":   "Good weather — fishing conditions are normal",
+            "impact": "neutral",
+        })
+
+    # 5. Festival / Poya
+    boost, event = _high_demand_period(target_date)
+    if event:
+        reasons.append({
+            "icon":   "calendar-outline",
+            "text":   f"{event} — high demand period drives prices up",
+            "impact": "up",
+        })
+    elif _is_pre_poya(target_date):
+        reasons.append({
+            "icon":   "moon-outline",
+            "text":   "Day before Poya — buyers stock up early, increasing demand",
+            "impact": "up",
+        })
+    else:
+        nearby = _nearby_festival(target_date)
+        if nearby:
+            reasons.append({
+                "icon":   "calendar-outline",
+                "text":   f"Upcoming {nearby} — demand likely to rise soon",
+                "impact": "up",
+            })
+
+    # 6. Season
+    season_info = _get_season_info(target_date.month)
+    season_impact = season_info.get("season_price_impact", "0%")
+    alert = season_info.get("season_alert", "")
+    if alert:
+        reasons.append({
+            "icon":   "leaf-outline",
+            "text":   f"{season_info['current_season']}: {alert}",
+            "impact": "+" in season_impact and int(season_impact.replace("+","").replace("%","")) > 0 and "up" or "neutral",
+        })
+
+    # 7. Elasticity (demand sensitivity)
+    cn = str(fish_row.get("common_name", ""))
+    elasticity, e_label = _get_elasticity(cn)
+    if abs(elasticity) >= 2.0:
+        reasons.append({
+            "icon":   "people-outline",
+            "text":   f"{cn} has Very High price sensitivity — small price rises cause large demand drops",
+            "impact": "neutral",
+        })
+    elif abs(elasticity) <= 1.0:
+        reasons.append({
+            "icon":   "people-outline",
+            "text":   f"{cn} has Low price sensitivity — demand stays stable even when prices rise",
+            "impact": "neutral",
+        })
+
+    return reasons[:5]   # cap at 5 most relevant reasons
+
+
+def formatLKR_py(amount: float) -> str:
+    return f"Rs. {round(amount):,}"
+
 
 @app.post("/recommend")
 def recommend(req: RecommendRequest):
@@ -889,6 +1026,176 @@ def get_elasticity_chart(fish_id: Optional[int] = None):
                 highlighted_name = closest["name"]
 
     return {"items": chart_items, "highlighted": highlighted_name}
+
+
+# ── Market Alerts endpoint ───────────────────────────────────────────────────
+@app.get("/alerts")
+def get_market_alerts(date: Optional[str] = None):
+    """
+    Generate real-time market alerts based on:
+      - Weather forecast (wind / rain severity)
+      - Fuel price level
+      - Festival & Poya calendar
+      - Sri Lanka fishing season
+      - Price spike risk from demand sentiment
+    Returns: { alerts: [ {type, icon, color, title, description, age} ] }
+    """
+    today = datetime.fromisoformat(date) if date else datetime.now()
+    alerts: list[dict] = []
+
+    # ── 1. Weather check for today & next 2 days ─────────────────────────────
+    for offset in range(3):
+        check_date = today + timedelta(days=offset)
+        w = _get_weather_row(check_date)
+        wind = w["wind_speed_max"]
+        rain = w["rainfall_sum"]
+        label = "Today" if offset == 0 else "Tomorrow" if offset == 1 else f"In {offset} days"
+        if wind > 35 or rain > 40:
+            alerts.append({
+                "type":        "danger",
+                "icon":        "thunderstorm-outline",
+                "color":       "#ef4444",
+                "title":       f"Storm Warning — {label}",
+                "description": f"Wind {wind:.0f} km/h, Rain {rain:.0f} mm — Fishing boats may stay ashore",
+                "age":         label,
+            })
+        elif wind > 22 or rain > 15:
+            alerts.append({
+                "type":        "warning",
+                "icon":        "cloudy-outline",
+                "color":       "#f59e0b",
+                "title":       f"Rough Weather — {label}",
+                "description": f"Wind {wind:.0f} km/h, Rain {rain:.0f} mm — Supply may be reduced",
+                "age":         label,
+            })
+
+    # ── 2. Fuel price alert ───────────────────────────────────────────────────
+    fuel = _get_fuel_row(today)
+    lk   = fuel.get("lk_price", 0)
+    chg  = fuel.get("lk_price_pct_change", 0)
+    if lk > 220:
+        alerts.append({
+            "type":        "warning",
+            "icon":        "flame-outline",
+            "color":       "#f59e0b",
+            "title":       f"High Kerosene Price — Rs. {lk:.0f}/L",
+            "description": "Elevated fuel cost raises fishing overheads — expect prices to rise within 2–3 weeks",
+            "age":         "Today",
+        })
+    elif chg > 5:
+        alerts.append({
+            "type":        "warning",
+            "icon":        "flame-outline",
+            "color":       "#f59e0b",
+            "title":       f"Fuel Price Rose {chg:.1f}% This Week",
+            "description": "Recent kerosene price hike may push fish prices up in coming weeks",
+            "age":         "This week",
+        })
+    elif lk > 0 and lk < 160:
+        alerts.append({
+            "type":        "success",
+            "icon":        "checkmark-circle-outline",
+            "color":       "#10b981",
+            "title":       f"Low Fuel Cost — Rs. {lk:.0f}/L",
+            "description": "Cheap kerosene keeps fishing overhead low — stable prices expected",
+            "age":         "Today",
+        })
+
+    # ── 3. Festival / Poya alerts ────────────────────────────────────────────
+    boost, event = _high_demand_period(today)
+    if event:
+        alerts.append({
+            "type":        "info",
+            "icon":        "calendar-outline",
+            "color":       "#8b5cf6",
+            "title":       f"High Demand Period: {event}",
+            "description": f"Festival window — demand up ~{int(boost * 100)}%. Prices expected to be elevated",
+            "age":         "Today",
+        })
+    elif _is_pre_poya(today):
+        alerts.append({
+            "type":        "info",
+            "icon":        "moon-outline",
+            "color":       "#6366f1",
+            "title":       "Poya Day Tomorrow",
+            "description": "Buyers are stocking up early — expect a short demand surge today",
+            "age":         "Today",
+        })
+    else:
+        nearby = _nearby_festival(today)
+        if nearby:
+            alerts.append({
+                "type":        "info",
+                "icon":        "calendar-outline",
+                "color":       "#3b82f6",
+                "title":       f"Upcoming Festival: {nearby}",
+                "description": "Demand likely to rise as the festival approaches",
+                "age":         "Next 3 days",
+            })
+
+    # ── 4. Seasonal alert ────────────────────────────────────────────────────
+    season = _get_season_info(today.month)
+    alert_text = season.get("season_alert", "")
+    if alert_text:
+        impact = season.get("season_price_impact", "")
+        alerts.append({
+            "type":        "info",
+            "icon":        "leaf-outline",
+            "color":       "#0ea5e9",
+            "title":       season["current_season"],
+            "description": f"{alert_text} ({impact} price impact)",
+            "age":         f"Month {today.month}",
+        })
+
+    # ── 5. Demand spike risk (via representative elasticity + weather) ────────
+    try:
+        w0 = _get_weather_row(today)
+        wf = 1.0 + (0.05 if w0["wind_speed_max"] > 20 else 0) + (0.05 if w0["rainfall_sum"] > 10 else 0)
+        sentiment = calculate_demand_sentiment(today, -1.5, wf)
+        if sentiment.get("spike_risk"):
+            day = sentiment.get("festival", "upcoming event")
+            alerts.append({
+                "type":        "warning",
+                "icon":        "trending-up-outline",
+                "color":       "#ef4444",
+                "title":       "Price Spike Risk Detected",
+                "description": f"Combined weather + calendar signals suggest a price spike around {day}",
+                "age":         "Forecast",
+            })
+        elif sentiment.get("score", 0.5) >= 0.7:
+            alerts.append({
+                "type":        "warning",
+                "icon":        "arrow-up-circle-outline",
+                "color":       "#f59e0b",
+                "title":       "Above-Normal Demand Expected",
+                "description": "Demand sentiment score is elevated — prices may drift higher this week",
+                "age":         "This week",
+            })
+    except Exception:
+        pass
+
+    # Deduplicate by title (keep first occurrence), cap at 6
+    seen: set[str] = set()
+    unique: list[dict] = []
+    for a in alerts:
+        if a["title"] not in seen:
+            seen.add(a["title"])
+            unique.append(a)
+        if len(unique) >= 6:
+            break
+
+    # Always return at least one informational alert when things are calm
+    if not unique:
+        unique.append({
+            "type":        "success",
+            "icon":        "checkmark-circle-outline",
+            "color":       "#10b981",
+            "title":       "Market Conditions Normal",
+            "description": "No significant weather, fuel, or demand signals detected today",
+            "age":         "Today",
+        })
+
+    return {"alerts": unique}
 
 
 if __name__ == "__main__":

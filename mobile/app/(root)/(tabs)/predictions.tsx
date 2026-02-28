@@ -57,6 +57,21 @@ interface DemandDay {
   spike_risk: boolean;
 }
 
+interface PredictionReason {
+  icon: string;      // Ionicons name
+  text: string;
+  impact: 'up' | 'down' | 'neutral';
+}
+
+interface MarketAlert {
+  type: string;          // 'warning' | 'danger' | 'success' | 'info'
+  icon: string;          // Ionicons name
+  color: string;
+  title: string;
+  description: string;
+  age: string;           // human readable time label
+}
+
 interface InsightsData {
   fish: { fish_id: number; sinhala_name: string; common_name: string };
   labels: string[];
@@ -511,10 +526,14 @@ export default function PredictionsScreen() {
   // Per-section error states for Daily Prices tab
   const [predictError, setPredictError] = useState<string | null>(null);
   const [, setPredictRetryKey] = useState(0);
+  const [predictionReasons, setPredictionReasons] = useState<PredictionReason[]>([]);
   const [trendError, setTrendError] = useState<string | null>(null);
   const [trendRetryKey, setTrendRetryKey] = useState(0);
   const [recsError, setRecsError] = useState<string | null>(null);
   const [recsRetryKey, setRecsRetryKey] = useState(0);
+
+  const [marketAlerts, setMarketAlerts] = useState<MarketAlert[]>([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
 
   const fetchAccuracy = async () => {
     try {
@@ -527,6 +546,27 @@ export default function PredictionsScreen() {
 
   useEffect(() => {
     fetchAccuracy();
+  }, []);
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      setLoadingAlerts(true);
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const data = await predictionRequest<{ alerts: MarketAlert[] }>(
+          `/alerts?date=${today}`,
+          { method: 'GET' },
+          8000,
+        );
+        setMarketAlerts(data.alerts ?? []);
+      } catch (err) {
+        console.error('Market alerts fetch failed', err);
+        setMarketAlerts([]);
+      } finally {
+        setLoadingAlerts(false);
+      }
+    };
+    fetchAlerts();
   }, []);
 
   useEffect(() => {
@@ -581,6 +621,7 @@ export default function PredictionsScreen() {
       setMinPrice(data.min_price || data.predicted * 0.9);
       setMaxPrice(data.max_price || data.predicted * 1.1);
       setPriceHistory(data.series as PriceHistory[]);
+      setPredictionReasons((data.reasons ?? []) as PredictionReason[]);
 
       // Check if tomorrow's price is lower than today's
       if (data.series && data.series.length > 16) {
@@ -611,6 +652,7 @@ export default function PredictionsScreen() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Please check the prediction server and try again.';
       setPredictError(msg);
+      setPredictionReasons([]);
     } finally {
       setLoadingPredict(false);
     }
@@ -955,6 +997,50 @@ export default function PredictionsScreen() {
               </View>
             </View>
 
+            {/* ── Why This Price? (XAI) ─────────────────────────── */}
+            {predictionReasons.length > 0 && (
+              <View style={{
+                backgroundColor: '#f0fdf4',
+                borderRadius: 12,
+                borderLeftWidth: 4,
+                borderLeftColor: '#10b981',
+                padding: 14,
+                marginTop: 14,
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <Ionicons name="information-circle-outline" size={18} color="#059669" />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#065f46', marginLeft: 6 }}>
+                    Why this price?
+                  </Text>
+                </View>
+                {predictionReasons.map((reason, i) => {
+                  const dotColor =
+                    reason.impact === 'up'   ? '#ef4444' :
+                    reason.impact === 'down' ? '#10b981' : '#6b7280';
+                  const arrowIcon =
+                    reason.impact === 'up'   ? 'arrow-up-outline' :
+                    reason.impact === 'down' ? 'arrow-down-outline' : 'remove-outline';
+                  return (
+                    <View
+                      key={i}
+                      style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6, gap: 8 }}
+                    >
+                      <View style={{
+                        width: 24, height: 24, borderRadius: 12,
+                        backgroundColor: dotColor + '1a',
+                        alignItems: 'center', justifyContent: 'center', marginTop: 1,
+                      }}>
+                        <Ionicons name={arrowIcon as any} size={14} color={dotColor} />
+                      </View>
+                      <Text style={{ flex: 1, fontSize: 12, color: '#374151', lineHeight: 18, paddingTop: 3 }}>
+                        {reason.text}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
             {/* Model Accuracy + Feedback */}
             <View style={{ marginTop: 16 }}>
               {accuracy !== null && (
@@ -1202,35 +1288,37 @@ export default function PredictionsScreen() {
           </View>
           
           <View style={{ marginTop: 16, gap: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#f9fafb', padding: 12, borderRadius: 12 }}>
-              <View style={{ backgroundColor: '#f59e0b', padding: 8, borderRadius: 20 }}>
-                <Ionicons name="warning" size={20} color="#fff" />
+            {loadingAlerts ? (
+              <ActivityIndicator size="small" color="#2563eb" style={{ marginVertical: 16 }} />
+            ) : marketAlerts.length === 0 ? (
+              <View style={{ alignItems: 'center', padding: 24 }}>
+                <Ionicons name="checkmark-circle-outline" size={36} color="#10b981" />
+                <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 8, textAlign: 'center' }}>
+                  No active market alerts right now
+                </Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: '600', color: '#1f2937' }}>High demand for Mackerel expected tomorrow</Text>
-                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>2 hours ago</Text>
-              </View>
-            </View>
-            
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#f9fafb', padding: 12, borderRadius: 12 }}>
-              <View style={{ backgroundColor: '#10b981', padding: 8, borderRadius: 20 }}>
-                <Ionicons name="checkmark" size={20} color="#fff" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: '600', color: '#1f2937' }}>Cod prices stabilizing</Text>
-                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>4 hours ago</Text>
-              </View>
-            </View>
-            
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#f9fafb', padding: 12, borderRadius: 12 }}>
-              <View style={{ backgroundColor: '#3b82f6', padding: 8, borderRadius: 20 }}>
-                <Ionicons name="information" size={20} color="#fff" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: '600', color: '#1f2937' }}>New fishing zone opened in North region</Text>
-                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>1 day ago</Text>
-              </View>
-            </View>
+            ) : (
+              marketAlerts.map((alert, i) => (
+                <View
+                  key={i}
+                  style={{
+                    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+                    backgroundColor: alert.color + '14',
+                    borderLeftWidth: 3, borderLeftColor: alert.color,
+                    padding: 12, borderRadius: 12,
+                  }}
+                >
+                  <View style={{ backgroundColor: alert.color, padding: 8, borderRadius: 20, marginTop: 2 }}>
+                    <Ionicons name={alert.icon as any} size={18} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: '700', color: '#1f2937', fontSize: 13 }}>{alert.title}</Text>
+                    <Text style={{ fontSize: 12, color: '#4b5563', marginTop: 3, lineHeight: 17 }}>{alert.description}</Text>
+                    <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>{alert.age}</Text>
+                  </View>
+                </View>
+              ))
+            )}
           </View>
         </View>
               </>
