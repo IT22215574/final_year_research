@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LineChart } from 'react-native-chart-kit';
 import Svg, { Path, Line as SvgLine, Text as SvgText, Circle } from 'react-native-svg';
 import * as Notifications from 'expo-notifications';
@@ -34,11 +35,36 @@ interface PriceHistory {
   price: number;
 }
 
+interface FavoriteItem {
+  fish_id: number;
+  sinhala_name: string;
+  common_name: string;
+  predicted_price: number;
+  date_added: string;
+}
+
+interface ElasticityItem {
+  name: string;
+  elasticity: number; // negative value
+}
+
+interface DemandDay {
+  date: string;
+  score: number;       // 0–1
+  label: string;      // 'Low' | 'Normal' | 'High' | 'Very High'
+  color: string;
+  festival: string;
+  spike_risk: boolean;
+}
+
 interface InsightsData {
   fish: { fish_id: number; sinhala_name: string; common_name: string };
   labels: string[];
   prediction_7_days: number[];
   knn_baseline: number[];
+  demand_sentiment_7_days: DemandDay[];
+  price_spike_warning: boolean;
+  price_spike_day: string;
   insights: {
     fuel_lag_weeks: number;
     correlation_score: number;
@@ -225,6 +251,211 @@ function PriceFluctuationChart({
 }
 // ────────────────────────────────────────────────────────────────────────────
 
+// ── Elasticity Comparison Chart ───────────────────────────────────────────
+function ElasticityChart({ items, highlighted }: {
+  items: ElasticityItem[];
+  highlighted: string | null;
+}) {
+  // Max bar width: screen − outer padding(32) − card padding(32) − label(120) − value(42)
+  const barMaxW = screenWidth - 32 - 32 - 120 - 42;
+  const maxAbs  = 3.0;
+
+  const barColor = (absE: number, isCurrent: boolean) => {
+    if (isCurrent) return '#2563eb';
+    if (absE >= 2.0) return '#dc2626';
+    if (absE >= 1.5) return '#f59e0b';
+    if (absE >= 1.0) return '#10b981';
+    return '#94a3b8';
+  };
+
+  return (
+    <View style={{ backgroundColor: '#ffffff', borderRadius: 14, padding: 16, marginBottom: 12 }}>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+        <View style={{ backgroundColor: '#fce7f3', borderRadius: 10, padding: 8, marginRight: 10 }}>
+          <Ionicons name="git-compare-outline" size={22} color="#db2777" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#1e293b' }}>📉 Price Elasticity by Fish Type</Text>
+          <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>How fast demand drops when price rises</Text>
+        </View>
+      </View>
+
+      {/* Bar rows */}
+      {items.map((item, i) => {
+        const absE      = Math.abs(item.elasticity);
+        const barW      = Math.round((absE / maxAbs) * barMaxW);
+        const isCurrent = highlighted === item.name;
+        const color     = barColor(absE, isCurrent);
+        return (
+          <View key={i} style={{ marginBottom: 7 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              {/* Fish label */}
+              <Text
+                numberOfLines={1}
+                style={{ width: 120, fontSize: 11,
+                  color: isCurrent ? '#2563eb' : '#374151',
+                  fontWeight: isCurrent ? '700' : '400' }}
+              >
+                {item.name}{isCurrent ? ' ◀' : ''}
+              </Text>
+              {/* Bar track + fill */}
+              <View style={{ flex: 1, height: 13, backgroundColor: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                <View style={{ width: barW, height: '100%', backgroundColor: color, borderRadius: 4,
+                               borderWidth: isCurrent ? 1 : 0, borderColor: '#1d4ed8' }} />
+              </View>
+              {/* Value */}
+              <Text style={{ width: 38, fontSize: 10, color: color, fontWeight: '700',
+                             textAlign: 'right', marginLeft: 4 }}>
+                {item.elasticity.toFixed(2)}
+              </Text>
+            </View>
+          </View>
+        );
+      })}
+
+      {/* Axis labels */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between',
+                     marginLeft: 120, marginTop: 4, marginRight: 42 }}>
+        <Text style={{ fontSize: 9, color: '#9ca3af' }}>Stable ↟ slow drop</Text>
+        <Text style={{ fontSize: 9, color: '#9ca3af' }}>Very sensitive ↟ fast drop</Text>
+      </View>
+
+      {/* Colour legend */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10,
+                     borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 10 }}>
+        {([
+          ['#dc2626', 'Very High (>2.0)'],
+          ['#f59e0b', 'High (1.5–2.0)'],
+          ['#10b981', 'Medium (1.0–1.5)'],
+          ['#94a3b8', 'Low (<1.0)'],
+          ['#2563eb', 'You selected'],
+        ] as [string, string][]).map(([c, lbl]) => (
+          <View key={lbl} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: c }} />
+            <Text style={{ fontSize: 10, color: '#6b7280' }}>{lbl}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Reading tip */}
+      <View style={{ backgroundColor: '#fce7f3', borderRadius: 10, padding: 10, marginTop: 10 }}>
+        <Text style={{ fontSize: 12, color: '#831843', lineHeight: 18 }}>
+          💡 <Text style={{ fontWeight: '600' }}>How to read this:</Text> A longer bar means demand
+          drops faster when prices rise. Squid buyers switch to alternatives quickly;
+          Swordfish buyers are less price-sensitive.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// ── Market Demand Meter ─────────────────────────────────────────────────────
+function MarketDemandMeter({ days, spikeWarning, spikeDay }: {
+  days: DemandDay[];
+  spikeWarning: boolean;
+  spikeDay: string;
+}) {
+  return (
+    <View style={{ backgroundColor: '#ffffff', borderRadius: 14, padding: 16, marginBottom: 12 }}>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+        <View style={{ backgroundColor: '#ede9fe', borderRadius: 10, padding: 8, marginRight: 10 }}>
+          <Ionicons name="pulse-outline" size={22} color="#7c3aed" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#1e293b' }}>📊 Market Demand Meter</Text>
+          <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>Demand sentiment for the next 7 days</Text>
+        </View>
+      </View>
+
+      {/* Price spike warning banner */}
+      {spikeWarning && (
+        <View style={{ flexDirection: 'row', backgroundColor: '#fef2f2', borderRadius: 10, padding: 10,
+                       borderLeftWidth: 4, borderLeftColor: '#dc2626', marginBottom: 12, gap: 8, alignItems: 'flex-start' }}>
+          <Ionicons name="warning-outline" size={18} color="#dc2626" />
+          <Text style={{ flex: 1, fontSize: 13, color: '#991b1b', lineHeight: 20 }}>
+            <Text style={{ fontWeight: '700' }}>⚠️ Price Spike Risk</Text>{' '}on{' '}
+            <Text style={{ fontWeight: '700' }}>{spikeDay}</Text>: bad weather + high demand detected.
+            Consider buying earlier.
+          </Text>
+        </View>
+      )}
+
+      {/* 7-bar demand chart */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 90 }}>
+        {days.map((day, i) => {
+          const barH = Math.round(day.score * 72);
+          return (
+            <View key={i} style={{ alignItems: 'center', flex: 1 }}>
+              {/* Festival badge above bar */}
+              {day.festival ? (
+                <View style={{ backgroundColor: '#fef3c7', borderRadius: 4, paddingHorizontal: 4,
+                               paddingVertical: 1, marginBottom: 2, maxWidth: 44 }}>
+                  <Text style={{ fontSize: 8, color: '#92400e', textAlign: 'center' }} numberOfLines={1}>
+                    {day.festival.replace(/ 🎊| 🎄| 🎆| 🪔/, '')}
+                  </Text>
+                </View>
+              ) : <View style={{ height: 14 }} />}
+              {/* Bar */}
+              <View style={{ width: 28, height: barH, backgroundColor: day.color,
+                             borderRadius: 6, opacity: day.spike_risk ? 1 : 0.82 }} />
+              {/* Score % */}
+              <Text style={{ fontSize: 10, color: day.color, fontWeight: '700', marginTop: 3 }}>
+                {Math.round(day.score * 100)}%
+              </Text>
+              {/* Date label */}
+              <Text style={{ fontSize: 9, color: '#9ca3af', marginTop: 1 }}>{day.date}</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Legend */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+        {([['#6b7280','Low'],['#10b981','Normal'],['#f59e0b','High'],['#dc2626','Very High']] as [string,string][]).map(
+          ([color, label]) => (
+            <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: color }} />
+              <Text style={{ fontSize: 11, color: '#6b7280' }}>{label}</Text>
+            </View>
+          )
+        )}
+      </View>
+
+      {/* How it works */}
+      <View style={{ backgroundColor: '#f5f3ff', borderRadius: 10, padding: 10, marginTop: 10 }}>
+        <Text style={{ fontSize: 12, color: '#5b21b6', lineHeight: 18 }}>
+          💡 <Text style={{ fontWeight: '600' }}>How it works:</Text> Score is derived from
+          festival calendar, price elasticity, and weather conditions. A score above 60% with
+          bad weather triggers a ⚠️ Price Spike Risk.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// Reusable error card shown when any section fails to load
+function DataUnavailableCard({ message, onRetry }: { message?: string; onRetry?: () => void }) {
+  return (
+    <View style={{ padding: 32, alignItems: 'center' }}>
+      <Ionicons name="cloud-offline-outline" size={48} color="#ef4444" />
+      <Text style={{ fontSize: 16, fontWeight: '600', color: '#ef4444', marginTop: 12 }}>Data Unavailable</Text>
+      <Text style={{ fontSize: 13, color: '#6b7280', textAlign: 'center', marginTop: 6, lineHeight: 20 }}>
+        {message ?? 'Unable to reach the prediction server. Check your network connection.'}
+      </Text>
+      {onRetry && (
+        <TouchableOpacity
+          style={{ marginTop: 16, backgroundColor: '#2563eb', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20 }}
+          onPress={onRetry}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 export default function PredictionsScreen() {
   const router = useRouter();
   const [fishList, setFishList] = useState<FishOption[]>([]);
@@ -246,7 +477,19 @@ export default function PredictionsScreen() {
   const [preference, setPreference] = useState<string>('profitable');
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
-  const [favoriteFishIds, setFavoriteFishIds] = useState<number[]>([]);
+  const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
+
+  // Load favorites from storage on mount
+  useEffect(() => {
+    AsyncStorage.getItem('favoriteItems').then(stored => {
+      if (stored) { try { setFavoriteItems(JSON.parse(stored)); } catch {} }
+    });
+  }, []);
+
+  // Persist favorites whenever they change
+  useEffect(() => {
+    AsyncStorage.setItem('favoriteItems', JSON.stringify(favoriteItems));
+  }, [favoriteItems]);
 
   // Feedback state
   const [feedbackGiven, setFeedbackGiven] = useState(false);
@@ -260,6 +503,18 @@ export default function PredictionsScreen() {
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const [insightsRetryKey, setInsightsRetryKey] = useState(0);
+
+  // Elasticity comparison chart
+  const [elasticityItems, setElasticityItems] = useState<ElasticityItem[]>([]);
+  const [elasticityHighlight, setElasticityHighlight] = useState<string | null>(null);
+
+  // Per-section error states for Daily Prices tab
+  const [predictError, setPredictError] = useState<string | null>(null);
+  const [, setPredictRetryKey] = useState(0);
+  const [trendError, setTrendError] = useState<string | null>(null);
+  const [trendRetryKey, setTrendRetryKey] = useState(0);
+  const [recsError, setRecsError] = useState<string | null>(null);
+  const [recsRetryKey, setRecsRetryKey] = useState(0);
 
   const fetchAccuracy = async () => {
     try {
@@ -308,6 +563,7 @@ export default function PredictionsScreen() {
     if (!selectedFishId) return;
     
     setLoadingPredict(true);
+    setPredictError(null);
     setFeedbackGiven(false); // Reset feedback state for new prediction
     try {
       const dateStr = new Date().toISOString().split('T')[0];
@@ -332,7 +588,7 @@ export default function PredictionsScreen() {
         const tomorrowPrice = data.series[16].price;
         
         if (tomorrowPrice < todayPrice) {
-          const fishName = fishList.find(f => f.fish_id === selectedFishId)?.sinhala_name || 'මාළු';
+          const fishName = fishList.find(f => f.fish_id === selectedFishId)?.common_name || 'fish';
           const diff = (todayPrice - tomorrowPrice).toFixed(2);
           
           // Request permissions if not already granted
@@ -353,7 +609,8 @@ export default function PredictionsScreen() {
         }
       }
     } catch (err) {
-      Alert.alert('Prediction failed', err instanceof Error ? err.message : 'Please check backend API and try again.');
+      const msg = err instanceof Error ? err.message : 'Please check the prediction server and try again.';
+      setPredictError(msg);
     } finally {
       setLoadingPredict(false);
     }
@@ -406,6 +663,7 @@ export default function PredictionsScreen() {
     const fetchTrend = async () => {
       if (!selectedFishId) return;
       setLoadingTrend(true);
+      setTrendError(null);
       try {
         const dateStr = new Date().toISOString().split('T')[0];
         const data = await predictionRequest<any>(
@@ -418,13 +676,31 @@ export default function PredictionsScreen() {
           12000,
         );
         setTrendData(data.trend || []);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch trend data', err);
+        setTrendError(String(err?.message ?? 'Unable to reach the prediction server. Check your network connection.'));
       } finally {
         setLoadingTrend(false);
       }
     };
     fetchTrend();
+  }, [selectedFishId, trendRetryKey]);
+
+  // Fetch Elasticity chart data whenever selected fish changes
+  useEffect(() => {
+    const fetchElasticity = async () => {
+      try {
+        const qs = selectedFishId ? `?fish_id=${selectedFishId}` : '';
+        const data = await predictionRequest<{ items: ElasticityItem[]; highlighted: string | null }>(
+          `/elasticity${qs}`, { method: 'GET' }, 8000,
+        );
+        setElasticityItems(data.items ?? []);
+        setElasticityHighlight(data.highlighted ?? null);
+      } catch (err) {
+        console.warn('Elasticity fetch failed', err);
+      }
+    };
+    fetchElasticity();
   }, [selectedFishId]);
 
   // Fetch Market Insights
@@ -478,6 +754,7 @@ export default function PredictionsScreen() {
   useEffect(() => {
     const fetchRecommendations = async () => {
       setLoadingRecs(true);
+      setRecsError(null);
       try {
         const dateStr = new Date().toISOString().split('T')[0];
         const data = await predictionRequest<any>(
@@ -485,27 +762,62 @@ export default function PredictionsScreen() {
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ budget, date: dateStr, preference, favorite_fish_ids: favoriteFishIds }),
+            body: JSON.stringify({ budget: budget === 9999 ? 99999 : budget, date: dateStr, preference, favorite_fish_ids: favoriteItems.map(f => f.fish_id) }),
           },
           12000,
         );
         setRecommendations(data.recommendations || []);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch recommendations', err);
+        setRecsError(String(err?.message ?? 'Unable to reach the prediction server. Check your network connection.'));
       } finally {
         setLoadingRecs(false);
       }
     };
     fetchRecommendations();
-  }, [budget, preference, favoriteFishIds]);
+  }, [budget, preference, favoriteItems, recsRetryKey]);
 
-  const toggleFavorite = (fishId: number) => {
-    setFavoriteFishIds(prev => 
-      prev.includes(fishId) 
-        ? prev.filter(id => id !== fishId)
-        : [...prev, fishId]
-    );
+  const favIds = favoriteItems.map(f => f.fish_id);
+
+  const toggleFavorite = (rec: any) => {
+    setFavoriteItems(prev => {
+      if (prev.some(f => f.fish_id === rec.fish_id)) {
+        return prev.filter(f => f.fish_id !== rec.fish_id);
+      }
+      return [
+        ...prev,
+        {
+          fish_id: rec.fish_id,
+          sinhala_name: rec.sinhala_name,
+          common_name: rec.common_name,
+          predicted_price: rec.predicted_price ?? 0,
+          date_added: new Date().toISOString().split('T')[0],
+        },
+      ];
+    });
   };
+
+  // Filtered recommendations — API already applies budget + seasonal filter server-side.
+  // Client only needs to merge locally-saved favorites for the Popular tab.
+  const filteredRecs: any[] = (() => {
+    if (preference === 'popular') {
+      const isAbove2k = budget === 9999;
+      const inBudget = (price: number) => isAbove2k ? price > 2000 : price <= budget;
+      // Favorites stored locally (may not be returned by API if they're out of budget)
+      const favInBudget = favoriteItems
+        .filter(f => inBudget(f.predicted_price))
+        .map(f => ({ ...f, tag: 'Popular Fish', isFavorite: true }));
+      // Merge API results + local favorites, deduplicating by fish_id
+      const seen = new Set<number>();
+      const merged: any[] = [];
+      [...recommendations, ...favInBudget].forEach(item => {
+        if (!seen.has(item.fish_id)) { seen.add(item.fish_id); merged.push(item); }
+      });
+      return merged;
+    }
+    // seasonal / profitable: API already returned the correct filtered list
+    return recommendations;
+  })();
 
   return (
     <View style={styles.container}>
@@ -559,7 +871,7 @@ export default function PredictionsScreen() {
                     numberOfLines={1}
                     ellipsizeMode="tail"
                   >
-                    {selectedFishName ? `${selectedFishName.sinhala_name} (${selectedFishName.common_name})` : 'Select Fish'}
+                    {selectedFishName ? selectedFishName.common_name : 'Select Fish'}
                   </Text>
                   <Ionicons name={showDropdown ? "chevron-up" : "chevron-down"} size={16} color="#4b5563" />
                 </TouchableOpacity>
@@ -586,7 +898,7 @@ export default function PredictionsScreen() {
                           numberOfLines={1}
                           ellipsizeMode="tail"
                         >
-                          {fish.sinhala_name} ({fish.common_name})
+                          {fish.common_name}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -600,11 +912,16 @@ export default function PredictionsScreen() {
             <ActivityIndicator size="large" color="#2563eb" />
             <Text style={styles.loadingText}>Calculating Price...</Text>
           </View>
+        ) : predictError ? (
+          <DataUnavailableCard
+            message="Unable to reach the prediction server. Check your network connection."
+            onRetry={() => { setPredictError(null); setPredictRetryKey(k => k + 1); handlePredictPrice(); }}
+          />
         ) : predictedPrice !== null && predictedFishName && weekData.length > 0 ? (
           <>
             {/* Card Header */}
             <View style={styles.cardHeader}>
-              <Text style={styles.fishName}>{predictedFishName.sinhala_name} <Text style={styles.recFishNameEnglish}>({predictedFishName.common_name})</Text></Text>
+              <Text style={styles.fishName}>{predictedFishName.common_name}</Text>
               <View style={styles.priceContainer}>
                 <Text style={styles.priceText}>{formatLKR(predictedPrice)}</Text>
                 <View style={[styles.badge, isPositive ? styles.badgePositive : styles.badgeNegative]}>
@@ -692,7 +1009,7 @@ export default function PredictionsScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
                 <Ionicons name="fish-outline" size={14} color="#2563eb" style={{ marginRight: 4 }} />
                 <Text style={{ color: '#2563eb', fontWeight: '600', fontSize: 12 }} numberOfLines={1} ellipsizeMode="tail">
-                  {selectedFishName.sinhala_name} ({selectedFishName.common_name})
+                  {selectedFishName.common_name}
                 </Text>
               </View>
             )}
@@ -703,6 +1020,11 @@ export default function PredictionsScreen() {
               <ActivityIndicator size="small" color="#2563eb" />
               <Text style={styles.loadingText}>Loading Trend...</Text>
             </View>
+          ) : trendError ? (
+            <DataUnavailableCard
+              message="Unable to load market trend data. Check your network connection."
+              onRetry={() => { setTrendError(null); setTrendRetryKey(k => k + 1); }}
+            />
           ) : trendData.length > 0 ? (
             <View style={styles.chartWrapper}>
               <LineChart
@@ -748,14 +1070,14 @@ export default function PredictionsScreen() {
 
           <Text style={styles.sectionLabel}>Budget</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.budgetScroll}>
-            {[500, 1000, 1500, 2000].map(b => (
+            {[500, 1000, 1500, 2000, 9999].map(b => (
               <TouchableOpacity
                 key={b}
                 style={[styles.budgetBtn, budget === b && styles.budgetBtnActive]}
                 onPress={() => setBudget(b)}
               >
                 <Text style={[styles.budgetText, budget === b && styles.budgetTextActive]}>
-                  Rs. {b}
+                  {b === 9999 ? 'Rs. 2000+' : `Rs. ${b}`}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -793,53 +1115,80 @@ export default function PredictionsScreen() {
 
           {loadingRecs ? (
             <ActivityIndicator size="small" color="#2563eb" style={{ marginVertical: 20 }} />
-          ) : recommendations.length > 0 ? (
-            recommendations.map((rec, index) => (
-              <View key={index} style={styles.recItem}>
-                <View style={styles.recItemHeader}>
-                  <Text style={styles.recFishName}>{rec.sinhala_name} <Text style={styles.recFishNameEnglish}>({rec.common_name})</Text></Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={styles.recPriceBadge}>
-                      <Text style={styles.recPriceText}>{formatLKR(rec.predicted_price)}</Text>
+          ) : recsError ? (
+            <DataUnavailableCard
+              message="Unable to load fish recommendations. Check your network connection."
+              onRetry={() => { setRecsError(null); setRecsRetryKey(k => k + 1); }}
+            />
+          ) : filteredRecs.length > 0 ? (
+            filteredRecs.map((rec, index) => {
+              const isFav = favIds.includes(rec.fish_id);
+              // In popular tab, also show a "my favorite" badge
+              const isPopularFav = preference === 'popular' && isFav;
+              return (
+                <View key={`${rec.fish_id}-${index}`} style={[
+                  styles.recItem,
+                  isPopularFav && { borderLeftWidth: 3, borderLeftColor: '#ec4899' },
+                ]}>
+                  <View style={styles.recItemHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.recFishName}>
+                        {rec.common_name}
+                      </Text>
+                      {isPopularFav && rec.date_added && (
+                        <Text style={{ fontSize: 11, color: '#ec4899', marginTop: 2 }}>❤️ Favourite since: {rec.date_added}</Text>
+                      )}
                     </View>
-                    <TouchableOpacity onPress={() => toggleFavorite(rec.fish_id)}>
-                      <Ionicons 
-                        name={favoriteFishIds.includes(rec.fish_id) ? "heart" : "heart-outline"} 
-                        size={24} 
-                        color={favoriteFishIds.includes(rec.fish_id) ? "#ec4899" : "#9ca3af"} 
-                      />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={styles.recPriceBadge}>
+                        <Text style={styles.recPriceText}>{formatLKR(rec.predicted_price)}</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => toggleFavorite(rec)}>
+                        <Ionicons
+                          name={isFav ? 'heart' : 'heart-outline'}
+                          size={24}
+                          color={isFav ? '#ec4899' : '#9ca3af'}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.recTagRow}>
+                    <Ionicons name="trending-up-outline" size={14} color="#10b981" />
+                    <Text style={styles.recTagText}>{rec.tag}</Text>
+                  </View>
+
+                  <Text style={styles.recDescText}>
+                    {rec.tag === 'Available at a lower price today'
+                      ? '💹 Lower price today — great value'
+                      : rec.tag === 'Seasonal Fish'
+                      ? `🌊 In season now — ${rec.season_name ?? 'Seasonal'}`
+                      : rec.isFavorite
+                      ? '❤️ Your favourite fish'
+                      : '⭐ Popular fish — fair price'}
+                  </Text>
+
+                  <View style={styles.recActionRow}>
+                    <TouchableOpacity
+                      style={styles.recDetailsBtn}
+                      onPress={() => router.push(`/(root)/(tabs)/fish/${rec.fish_id}` as any)}
+                    >
+                      <Text style={styles.recDetailsText}>Details</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.recBuyBtn}>
+                      <Text style={styles.recBuyText}>Buy</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-                
-                <View style={styles.recTagRow}>
-                  <Ionicons name="trending-up-outline" size={14} color="#10b981" />
-                  <Text style={styles.recTagText}>{rec.tag}</Text>
-                </View>
-                
-                <Text style={styles.recDescText}>
-                  {rec.tag === 'Available at a lower price today' 
-                    ? 'Available at a lower price today - Profitable choice' 
-                    : rec.tag === 'Seasonal Fish' 
-                    ? 'Seasonal Fish - Fair price'
-                    : 'Popular Fish - Fair price'}
-                </Text>
-                
-                <View style={styles.recActionRow}>
-                  <TouchableOpacity
-                    style={styles.recDetailsBtn}
-                    onPress={() => router.push(`/(root)/(tabs)/fish/${rec.fish_id}` as any)}
-                  >
-                    <Text style={styles.recDetailsText}>Details</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.recBuyBtn}>
-                    <Text style={styles.recBuyText}>Buy</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
+              );
+            })
           ) : (
-            <Text style={styles.noRecsText}>No fish available for this budget or preference.</Text>
+            <Text style={styles.noRecsText}>
+              {preference === 'seasonal' ? 'No seasonal fish available in this budget range.' :
+               preference === 'popular' ? 'No popular / favourite fish in this budget range.' :
+               preference === 'profitable' ? 'No profitable fish available in this budget range.' :
+               'No fish available in this budget range.'}
+            </Text>
           )}
         </View>
 
@@ -890,144 +1239,316 @@ export default function PredictionsScreen() {
             {/* ═══════════ MARKET INSIGHTS TAB ═══════════ */}
             {activeTab === 'insights' && (
               <>
-                {/* Header card */}
+                {/* Header */}
                 <View style={styles.insightsHeaderCard}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                    <Ionicons name="analytics-outline" size={22} color="#2563eb" />
+                    <Ionicons name="bulb-outline" size={22} color="#2563eb" />
                     <Text style={styles.insightsHeaderTitle}>  Market Insights</Text>
                   </View>
                   <Text style={styles.insightsHeaderSub}>
                     {selectedFishName
-                      ? `${selectedFishName.sinhala_name} (${selectedFishName.common_name})`
-                      : 'Select a fish species'}
+                      ? selectedFishName.common_name
+                      : 'Please select a fish species'}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                    Useful insights for buyers, fishermen and traders
                   </Text>
                 </View>
 
                 {loadingInsights ? (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#2563eb" />
-                    <Text style={styles.loadingText}>Loading market insights...</Text>
+                    <Text style={styles.loadingText}>Loading insights...</Text>
                   </View>
                 ) : insightsError ? (
                   <View style={[styles.emptyState, { padding: 24 }]}>
                     <Ionicons name="cloud-offline-outline" size={48} color="#ef4444" />
-                    <Text style={[styles.emptyText, { marginTop: 12, color: '#ef4444', fontWeight: '600' }]}>Data Unavailable</Text>
+                    <Text style={[styles.emptyText, { marginTop: 12, color: '#ef4444', fontWeight: '600' }]}>No Connection</Text>
                     <Text style={{ fontSize: 13, color: '#6b7280', textAlign: 'center', marginTop: 6, lineHeight: 20 }}>
-                      {insightsError}
+                      Could not connect to server. Check WiFi/network.
                     </Text>
                     <TouchableOpacity
                       style={{ marginTop: 16, backgroundColor: '#2563eb', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 }}
                       onPress={() => { setInsightsError(null); setInsightsRetryKey(k => k + 1); }}
                     >
-                      <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+                      <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
                     </TouchableOpacity>
                   </View>
                 ) : insightsData ? (
                   <>
-                    {/* ── 1. Fuel Lag Correlation Card ── */}
+                    {/* ── Quick Summary Strip ── */}
+                    {(() => {
+                      const e = insightsData.insights.current_elasticity;
+                      const isHoliday = insightsData.insights.is_holiday_period;
+                      const fuelHigh = insightsData.insights.current_lk_price > 200;
+                      const priceTomorrow = insightsData.prediction_7_days[1] ?? insightsData.prediction_7_days[0];
+                      const priceToday = insightsData.prediction_7_days[0];
+                      const priceUp = priceTomorrow > priceToday;
+                      return (
+                        <View style={{ backgroundColor: '#eff6ff', borderRadius: 16, padding: 14, marginBottom: 12, gap: 8 }}>
+                          <Text style={{ fontWeight: '700', color: '#1d4ed8', fontSize: 14, marginBottom: 2 }}>📋 Quick Summary</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                            <Text style={{ fontSize: 18 }}>{priceUp ? '📈' : '📉'}</Text>
+                            <Text style={{ flex: 1, color: '#1f2937', fontSize: 13, lineHeight: 20 }}>
+                              {"Tomorrow's"} price is expected to <Text style={{ fontWeight: '700', color: priceUp ? '#dc2626' : '#059669' }}>{priceUp ? 'rise' : 'fall'}</Text> — {priceUp ? 'buying today is more cost-effective' : 'waiting until tomorrow may save you money'}
+                            </Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                            <Text style={{ fontSize: 18 }}>⛽</Text>
+                            <Text style={{ flex: 1, color: '#1f2937', fontSize: 13, lineHeight: 20 }}>
+                              Fuel price is currently <Text style={{ fontWeight: '700' }}>{fuelHigh ? 'HIGH' : 'normal'}</Text> — may affect fish prices within {insightsData.insights.fuel_lag_weeks} weeks
+                            </Text>
+                          </View>
+                          {isHoliday && (
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                              <Text style={{ fontSize: 18 }}>🎉</Text>
+                              <Text style={{ flex: 1, color: '#1f2937', fontSize: 13, lineHeight: 20 }}>
+                                Holiday period — high demand may push prices <Text style={{ fontWeight: '700', color: '#dc2626' }}>+{insightsData.insights.holiday_lift}% higher</Text>
+                              </Text>
+                            </View>
+                          )}
+                          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                            <Text style={{ fontSize: 18 }}>{e <= -2 ? '🔴' : e <= -1.4 ? '🟡' : '🟢'}</Text>
+                            <Text style={{ flex: 1, color: '#1f2937', fontSize: 13, lineHeight: 20 }}>
+                              {e <= -2
+                                ? 'Even a small price increase may cause buyers to switch to alternatives'
+                                : e <= -1.4
+                                ? 'Demand drops slightly when prices rise'
+                                : 'Demand stays fairly stable even when prices rise — popular fish'}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })()}
+
+                    {/* ── 0. Market Demand Meter ── */}
+                    {insightsData.demand_sentiment_7_days?.length > 0 && (
+                      <MarketDemandMeter
+                        days={insightsData.demand_sentiment_7_days}
+                        spikeWarning={insightsData.price_spike_warning ?? false}
+                        spikeDay={insightsData.price_spike_day ?? ''}
+                      />
+                    )}
+
+                    {/* ── 1. Fuel Price Card (plain language) ── */}
                     <View style={styles.insightCard}>
                       <View style={styles.insightCardRow}>
                         <View style={[styles.insightIconWrap, { backgroundColor: '#fef3c7' }]}>
-                          <Ionicons name="flame-outline" size={22} color="#d97706" />
+                          <Ionicons name="flame-outline" size={24} color="#d97706" />
                         </View>
                         <View style={{ flex: 1, marginLeft: 12 }}>
-                          <Text style={styles.insightCardTitle}>Fuel Price Impact</Text>
-                          <Text style={styles.insightCardSub}>Kerosene price with 6-week lag</Text>
-                        </View>
-                        <View style={styles.correlationBadge}>
-                          <Text style={styles.correlationBadgeText}>r = {insightsData.insights.correlation_score.toFixed(3)}</Text>
+                          <Text style={styles.insightCardTitle}>⛽ Fuel Price Impact on Fish</Text>
+                          <Text style={styles.insightCardSub}>How fuel costs affect fish prices</Text>
                         </View>
                       </View>
-                      <View style={styles.fuelRow}>
-                        <View style={styles.fuelStat}>
-                          <Text style={styles.fuelStatLabel}>Lag</Text>
-                          <Text style={styles.fuelStatValue}>{insightsData.insights.fuel_lag_weeks} weeks</Text>
-                        </View>
-                        <View style={styles.fuelDivider} />
-                        <View style={styles.fuelStat}>
-                          <Text style={styles.fuelStatLabel}>Kerosene (LKR/L)</Text>
-                          <Text style={styles.fuelStatValue}>{formatLKR(insightsData.insights.current_lk_price)}</Text>
-                        </View>
-                        <View style={styles.fuelDivider} />
-                        <View style={styles.fuelStat}>
-                          <Text style={styles.fuelStatLabel}>Correlation</Text>
-                          <Text style={[styles.fuelStatValue, { color: '#d97706' }]}>✓ Positive</Text>
-                        </View>
-                      </View>
-                    </View>
 
-                    {/* ── 2. Price Elasticity Badge ── */}
-                    <View style={styles.insightCard}>
-                      <View style={styles.insightCardRow}>
-                        <View style={[styles.insightIconWrap, { backgroundColor: insightsData.insights.current_elasticity <= -2 ? '#fee2e2' : insightsData.insights.current_elasticity <= -1.4 ? '#fef3c7' : '#d1fae5' }]}>
-                          <Ionicons name="pulse-outline" size={22} color={insightsData.insights.current_elasticity <= -2 ? '#dc2626' : insightsData.insights.current_elasticity <= -1.4 ? '#d97706' : '#10b981'} />
+                      {/* Plain stat row */}
+                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                        <View style={{ flex: 1, backgroundColor: '#fffbeb', borderRadius: 12, padding: 10, alignItems: 'center' }}>
+                          <Text style={{ fontSize: 22, fontWeight: '800', color: '#d97706' }}>
+                            {formatLKR(insightsData.insights.current_lk_price)}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: '#92400e', textAlign: 'center', marginTop: 2 }}>
+                            Current Kerosene{'\n'}Price per Litre
+                          </Text>
                         </View>
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                          <Text style={styles.insightCardTitle}>Price Sensitivity</Text>
-                          <Text style={styles.insightCardSub}>{insightsData.fish.sinhala_name} ({insightsData.fish.common_name})</Text>
-                        </View>
-                        <View style={[
-                          styles.elasticityBadge,
-                          {
-                            backgroundColor: insightsData.insights.current_elasticity <= -2 ? '#fecaca' :
-                              insightsData.insights.current_elasticity <= -1.4 ? '#fef3c7' : '#d1fae5'
-                          }
-                        ]}>
-                          <Text style={[
-                            styles.elasticityBadgeText,
-                            {
-                              color: insightsData.insights.current_elasticity <= -2 ? '#991b1b' :
-                                insightsData.insights.current_elasticity <= -1.4 ? '#92400e' : '#065f46'
-                            }
-                          ]}>
-                            e = {insightsData.insights.current_elasticity.toFixed(2)}
+                        <View style={{ flex: 1, backgroundColor: '#fffbeb', borderRadius: 12, padding: 10, alignItems: 'center' }}>
+                          <Text style={{ fontSize: 22, fontWeight: '800', color: '#d97706' }}>
+                            {insightsData.insights.fuel_lag_weeks} wks
+                          </Text>
+                          <Text style={{ fontSize: 11, color: '#92400e', textAlign: 'center', marginTop: 2 }}>
+                            Lead Time
                           </Text>
                         </View>
                       </View>
-                      <View style={styles.elasticityBar}>
-                        <Text style={styles.elasticityLabel}>{insightsData.insights.elasticity_label}</Text>
-                        <Text style={styles.elasticityHint}>
-                          {insightsData.insights.current_elasticity <= -2
-                            ? 'A 1% price rise reduces demand by 2%+'
-                            : insightsData.insights.current_elasticity <= -1.4
-                            ? 'A 1% price rise reduces demand by ~1.5%'
-                            : 'Demand is relatively stable versus price changes'}
+
+                      {/* Explanation */}
+                      <View style={{ backgroundColor: '#fef9c3', borderRadius: 10, padding: 10, marginTop: 10 }}>
+                        <Text style={{ fontSize: 13, color: '#713f12', lineHeight: 20 }}>
+                          💡 <Text style={{ fontWeight: '600' }}>What this means:</Text> When fuel prices rise today, fish prices may also rise within {insightsData.insights.fuel_lag_weeks} weeks. If fuel is cheap, expect lower fish prices ahead.
                         </Text>
                       </View>
+
+                      {/* Audience tips */}
+                      <View style={{ marginTop: 10, gap: 6 }}>
+                        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
+                          <Text style={{ fontSize: 13 }}>🧑‍🍳</Text>
+                          <Text style={{ flex: 1, fontSize: 12, color: '#374151', lineHeight: 18 }}><Text style={{ fontWeight: '700' }}>Buyer:</Text> If fuel prices are rising, consider stocking up for the next {insightsData.insights.fuel_lag_weeks} weeks.</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
+                          <Text style={{ fontSize: 13 }}>🎣</Text>
+                          <Text style={{ flex: 1, fontSize: 12, color: '#374151', lineHeight: 18 }}><Text style={{ fontWeight: '700' }}>Fisherman:</Text> Higher fuel costs justify raising your fishing fees.</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
+                          <Text style={{ fontSize: 13 }}>🏪</Text>
+                          <Text style={{ flex: 1, fontSize: 12, color: '#374151', lineHeight: 18 }}><Text style={{ fontWeight: '700' }}>Trader:</Text> When fuel prices rise, expect your purchase cost to increase within {insightsData.insights.fuel_lag_weeks} weeks.</Text>
+                        </View>
+                      </View>
                     </View>
 
-                    {/* ── 3. Season / Holiday Alert ── */}
-                    <View style={[styles.insightCard, { borderLeftWidth: 4, borderLeftColor: insightsData.insights.is_holiday_period ? '#f59e0b' : '#3b82f6' }]}>
-                      <View style={styles.insightCardRow}>
-                        <View style={[styles.insightIconWrap, { backgroundColor: insightsData.insights.is_holiday_period ? '#fef3c7' : '#dbeafe' }]}>
-                          <Ionicons name={insightsData.insights.is_holiday_period ? 'calendar-outline' : 'partly-sunny-outline'} size={22} color={insightsData.insights.is_holiday_period ? '#d97706' : '#3b82f6'} />
-                        </View>
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                          <Text style={styles.insightCardTitle}>{insightsData.insights.current_season}</Text>
-                          <Text style={styles.insightCardSub}>{insightsData.insights.season_price_impact} price impact</Text>
-                        </View>
-                        {insightsData.insights.is_holiday_period && (
-                          <View style={styles.holidayBadge}>
-                            <Text style={styles.holidayBadgeText}>+{insightsData.insights.holiday_lift}% Holiday</Text>
+                    {/* ── 2. Demand Sensitivity (plain) ── */}
+                    {(() => {
+                      const e = insightsData.insights.current_elasticity;
+                      const level = e <= -2 ? 'high' : e <= -1.4 ? 'medium' : 'low';
+                      const colors = {
+                        high:   { bg: '#fee2e2', text: '#991b1b', badge: '#fca5a5', icon: '#dc2626' },
+                        medium: { bg: '#fef3c7', text: '#92400e', badge: '#fcd34d', icon: '#d97706' },
+                        low:    { bg: '#d1fae5', text: '#065f46', badge: '#6ee7b7', icon: '#10b981' },
+                      }[level];
+                      const sinhalaLabel = level === 'high' ? 'High Sensitivity 🔴' : level === 'medium' ? 'Medium Sensitivity 🟡' : 'Low Sensitivity 🟢';
+                      const buyerTip =
+                        level === 'high'
+                          ? 'When prices rise, buyers tend to switch to cheaper alternatives. Look for stable prices.'
+                          : level === 'medium'
+                          ? 'Demand drops slightly when prices rise. Buying on special occasions is a good strategy.'
+                          : 'Demand remains steady even when prices rise. This is a popular fish species.';
+                      const sellerTip =
+                        level === 'high'
+                          ? 'Offering discounted deals can attract buyers. Keep fishing fees stable.'
+                          : level === 'medium'
+                          ? 'Targeted promotions can boost sales and improve margins.'
+                          : 'Keeping prices stable will ensure steady reliable income.';
+                      return (
+                        <View style={[styles.insightCard, { borderLeftWidth: 4, borderLeftColor: colors.icon }]}>
+                          <View style={styles.insightCardRow}>
+                            <View style={[styles.insightIconWrap, { backgroundColor: colors.bg }]}>
+                              <Ionicons name="people-outline" size={24} color={colors.icon} />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                              <Text style={styles.insightCardTitle}>👥 Demand Sensitivity</Text>
+                              <Text style={styles.insightCardSub}>{insightsData.fish.common_name}</Text>
+                            </View>
+                            <View style={{ backgroundColor: colors.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                              <Text style={{ color: colors.text, fontWeight: '700', fontSize: 12 }}>{sinhalaLabel}</Text>
+                            </View>
                           </View>
-                        )}
-                      </View>
-                      {insightsData.insights.season_alert !== '' && (
-                        <View style={styles.alertRow}>
-                          <Ionicons name="information-circle-outline" size={16} color="#d97706" />
-                          <Text style={styles.alertRowText}> {insightsData.insights.season_alert}</Text>
-                        </View>
-                      )}
-                      <View style={styles.alertRow}>
-                        <Ionicons name={insightsData.insights.weather_factor > 1.05 ? 'thunderstorm-outline' : 'cloud-outline'} size={16} color="#6b7280" />
-                        <Text style={styles.alertRowText}> Weather: {insightsData.insights.weather_label}</Text>
-                      </View>
-                    </View>
 
-                    {/* ── 4. KNN vs ML Prediction Chart ── */}
+                          {/* Visual scale */}
+                          <View style={{ marginTop: 12, marginBottom: 6 }}>
+                            <View style={{ flexDirection: 'row', height: 8, borderRadius: 4, overflow: 'hidden' }}>
+                              <View style={{ flex: level === 'low' ? 1 : level === 'medium' ? 2 : 3, backgroundColor: colors.icon }} />
+                              <View style={{ flex: level === 'low' ? 2 : level === 'medium' ? 1 : 0, backgroundColor: '#e5e7eb' }} />
+                            </View>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                              <Text style={{ fontSize: 10, color: '#6b7280' }}>Stable demand</Text>
+                              <Text style={{ fontSize: 10, color: '#6b7280' }}>Very sensitive</Text>
+                            </View>
+                          </View>
+
+                          <View style={{ backgroundColor: colors.bg, borderRadius: 10, padding: 10, marginTop: 4 }}>
+                            <Text style={{ fontSize: 13, color: colors.text, lineHeight: 20 }}>
+                              💡 <Text style={{ fontWeight: '600' }}>In plain terms:</Text>{' '}
+                              {level === 'high'
+                                ? 'When this fish becomes more expensive, buyers quickly look for cheaper options.'
+                                : level === 'medium'
+                                ? 'A slight price increase causes a moderate drop in demand.'
+                                : 'People keep buying this fish even when prices go up.'}
+                            </Text>
+                          </View>
+
+                          <View style={{ marginTop: 10, gap: 6 }}>
+                            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
+                              <Text style={{ fontSize: 13 }}>🧑‍🍳</Text>
+                              <Text style={{ flex: 1, fontSize: 12, color: '#374151', lineHeight: 18 }}><Text style={{ fontWeight: '700' }}>Buyer:</Text> {buyerTip}</Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
+                              <Text style={{ fontSize: 13 }}>🏪</Text>
+                              <Text style={{ flex: 1, fontSize: 12, color: '#374151', lineHeight: 18 }}><Text style={{ fontWeight: '700' }}>Trader / Fisherman:</Text> {sellerTip}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })()}
+
+                    {/* ── 2b. Elasticity Comparison Chart ── */}
+                    {elasticityItems.length > 0 && (
+                      <ElasticityChart
+                        items={elasticityItems}
+                        highlighted={elasticityHighlight}
+                      />
+                    )}
+
+                    {/* ── 3. Season / Holiday / Weather ── */}
+                    {(() => {
+                      const isHoliday = insightsData.insights.is_holiday_period;
+                      const weatherBad = insightsData.insights.weather_factor > 1.05;
+                      const accentColor = isHoliday ? '#f59e0b' : weatherBad ? '#3b82f6' : '#10b981';
+                      const bgColor    = isHoliday ? '#fffbeb' : weatherBad ? '#eff6ff' : '#f0fdf4';
+                      const icon       = isHoliday ? '🎉' : weatherBad ? '⛈️' : '☀️';
+                      return (
+                        <View style={[styles.insightCard, { borderLeftWidth: 4, borderLeftColor: accentColor }]}>
+                          <View style={styles.insightCardRow}>
+                            <View style={[styles.insightIconWrap, { backgroundColor: bgColor }]}>
+                              <Ionicons
+                                name={isHoliday ? 'calendar-outline' : weatherBad ? 'thunderstorm-outline' : 'sunny-outline'}
+                                size={24}
+                                color={accentColor}
+                              />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                              <Text style={styles.insightCardTitle}>{icon} Season & Weather Impact</Text>
+                              <Text style={styles.insightCardSub}>{insightsData.insights.current_season}</Text>
+                            </View>
+                            {isHoliday && (
+                              <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10 }}>
+                                <Text style={{ color: '#92400e', fontWeight: '700', fontSize: 12 }}>+{insightsData.insights.holiday_lift}% holiday</Text>
+                              </View>
+                            )}
+                          </View>
+
+                          <View style={{ gap: 8, marginTop: 12 }}>
+                            {isHoliday && (
+                              <View style={{ flexDirection: 'row', backgroundColor: '#fef3c7', borderRadius: 10, padding: 10, gap: 8, alignItems: 'flex-start' }}>
+                                <Ionicons name="information-circle-outline" size={18} color="#d97706" />
+                                <Text style={{ flex: 1, fontSize: 13, color: '#78350f', lineHeight: 20 }}>
+                                  <Text style={{ fontWeight: '700' }}>Holiday period!</Text> Increased demand may push prices up by {insightsData.insights.holiday_lift}%. {insightsData.insights.season_alert}
+                                </Text>
+                              </View>
+                            )}
+                            <View style={{ flexDirection: 'row', backgroundColor: bgColor, borderRadius: 10, padding: 10, gap: 8, alignItems: 'flex-start' }}>
+                              <Ionicons name={weatherBad ? 'thunderstorm-outline' : 'cloud-outline'} size={18} color={accentColor} />
+                              <Text style={{ flex: 1, fontSize: 13, color: '#374151', lineHeight: 20 }}>
+                                <Text style={{ fontWeight: '700' }}>Weather: </Text>{insightsData.insights.weather_label}
+                                {weatherBad
+                                  ? ' — Poor weather may reduce fishing activity, making fish harder to obtain cheaply.'
+                                  : ' — Good weather; fishing operations are running normally.'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={{ marginTop: 10, gap: 6 }}>
+                            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
+                              <Text style={{ fontSize: 13 }}>🎣</Text>
+                              <Text style={{ flex: 1, fontSize: 12, color: '#374151', lineHeight: 18 }}>
+                                <Text style={{ fontWeight: '700' }}>Fisherman:</Text>{' '}
+                                {weatherBad ? 'Avoid going out in bad weather. Safety first.'
+                                  : isHoliday ? 'Demand is high during holidays — landing early can be more profitable.'
+                                  : 'Good weather — normal fishing operations expected.'}
+                              </Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
+                              <Text style={{ fontSize: 13 }}>🧑‍🍳</Text>
+                              <Text style={{ flex: 1, fontSize: 12, color: '#374151', lineHeight: 18 }}>
+                                <Text style={{ fontWeight: '700' }}>Buyer:</Text>{' '}
+                                {isHoliday ? 'Prices are higher during holidays — buy early to save money.'
+                                  : weatherBad ? 'Poor weather may reduce supply — consider locking in a stable price.'
+                                  : 'Normal demand. Prices should be at their standard level.'}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })()}
+
+                    {/* ── 4. Price Forecast Chart (plain) ── */}
                     <View style={styles.insightCard}>
-                      <Text style={styles.insightCardTitle}>ML Prediction vs KNN Baseline</Text>
-                      <Text style={[styles.insightCardSub, { marginBottom: 12 }]}>Compared with similar-weather historical average</Text>
+                      <Text style={styles.insightCardTitle}>📊 7-Day Price Forecast</Text>
+                      <Text style={[styles.insightCardSub, { marginBottom: 4 }]}>Next 7 Days Price Forecast</Text>
+                      <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 12, lineHeight: 18 }}>
+                        🔵 Blue line — AI (computer) prediction{'\n'}
+                        🟠 Orange line — Historical average price
+                      </Text>
+
                       {insightsData.prediction_7_days.length > 0 && (
                         <View style={styles.chartWrapper}>
                           <LineChart
@@ -1047,7 +1568,7 @@ export default function PredictionsScreen() {
                                   strokeWidth: 2,
                                 },
                               ],
-                              legend: ['ML Prediction', 'KNN Baseline'],
+                              legend: ['AI Forecast', 'Historical Avg'],
                             }}
                             width={screenWidth - 64}
                             height={220}
@@ -1073,25 +1594,52 @@ export default function PredictionsScreen() {
                           />
                         </View>
                       )}
-                      {/* Chart legend */}
+
                       <View style={styles.legendContainer}>
                         <View style={styles.legendItem}>
                           <View style={[styles.legendDot, { backgroundColor: '#2563eb' }]} />
-                          <Text style={styles.legendText}>ML Prediction</Text>
+                          <Text style={styles.legendText}>AI Forecast</Text>
                         </View>
                         <View style={styles.legendItem}>
                           <View style={[styles.legendDot, { backgroundColor: '#d97706' }]} />
-                          <Text style={styles.legendText}>KNN Baseline</Text>
+                          <Text style={styles.legendText}>Historical Avg</Text>
                         </View>
                       </View>
+
+                      {/* Plain reading */}
+                      {(() => {
+                        const pred = insightsData.prediction_7_days;
+                        const min = Math.min(...pred);
+                        const max = Math.max(...pred);
+                        const minDay = insightsData.labels[pred.indexOf(min)];
+                        const maxDay = insightsData.labels[pred.indexOf(max)];
+                        const trend = pred[pred.length - 1] > pred[0] ? 'upward' : 'downward';
+                        const trendColor = trend === 'upward' ? '#dc2626' : '#059669';
+                        return (
+                          <View style={{ backgroundColor: '#f0f9ff', borderRadius: 12, padding: 12, marginTop: 12, gap: 6 }}>
+                            <Text style={{ fontWeight: '700', color: '#0369a1', fontSize: 13, marginBottom: 2 }}>
+                              📖 How to Read This Chart
+                            </Text>
+                            <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20 }}>
+                              • Cheapest day: <Text style={{ fontWeight: '700', color: '#059669' }}>{minDay} — {formatLKR(min)}</Text>
+                            </Text>
+                            <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20 }}>
+                              • Most expensive day: <Text style={{ fontWeight: '700', color: '#dc2626' }}>{maxDay} — {formatLKR(max)}</Text>
+                            </Text>
+                            <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20 }}>
+                              • Weekly trend: <Text style={{ fontWeight: '700', color: trendColor }}>{trend}</Text>
+                            </Text>
+                          </View>
+                        );
+                      })()}
                     </View>
                   </>
                 ) : (
                   <View style={styles.emptyState}>
                     <Ionicons name="analytics-outline" size={48} color="#d1d5db" />
-                    <Text style={[styles.emptyText, { marginTop: 12 }]}>No Data Available</Text>
+                    <Text style={[styles.emptyText, { marginTop: 12 }]}>No data found</Text>
                     <Text style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', marginTop: 4 }}>
-                      Select a fish species to load market insights.
+                      Please select a fish species above.
                     </Text>
                   </View>
                 )}
@@ -1600,9 +2148,10 @@ const styles = StyleSheet.create({
     color: '#1e40af',
   },
   insightsHeaderSub: {
-    fontSize: 14,
+    fontSize: 20,
+    fontWeight: '700',
     color: '#3b82f6',
-    marginTop: 4,
+    marginTop: 9,
   },
   insightCard: {
     backgroundColor: '#ffffff',

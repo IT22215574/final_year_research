@@ -342,59 +342,124 @@ def recommend(req: RecommendRequest):
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format, expected YYYY-MM-DD")
 
+    month = target_date.month
+
+    # ── Sri Lanka seasonal fish calendar (NARA data) ─────────────────────────
+    # Peak months per fish_id based on Sri Lanka fishing seasons:
+    #   NE Monsoon (Dec-Feb): Herrings, Sardinella, Anchovies, Needle fish
+    #   1st Inter-Monsoon (Mar-May): Tuna species, Sailfish, Barracuda, Trevally
+    #   SW Monsoon (May-Sep): Mackerel, Prawns, Crabs, Squid
+    #   2nd Inter-Monsoon (Oct-Nov): Tuna returns, Barracuda, Rock fish
+    SEASONAL_PEAK_MONTHS: dict[int, list[int]] = {
+        2:  [3, 4, 5, 10, 11],        # පරව් (ලොකු) – Trevally (L) – inter-monsoon
+        3:  [10, 11, 3, 4],            # ගල්මාළු – Rock fish – inter-monsoon
+        4:  [3, 4, 10, 11],            # තලපත් – Sail fish – inter-monsoon
+        5:  [3, 4, 5, 9, 10, 11],     # බලයා – Skipjack tuna – inter-monsoon peaks
+        6:  [3, 4, 10, 11],            # කෙළවල්ලා – Yellowfin tuna – inter-monsoon
+        7:  [11, 12, 1, 2, 3],         # සාලයා – Sardinella – NE monsoon
+        8:  [5, 6, 7, 8, 9],           # මෝරා – Sharks – SW monsoon
+        9:  [11, 12, 1, 2, 3],         # හුරුල්ලා – Herrings – NE monsoon
+        10: [5, 6, 7, 8, 9],           # කුම්බලා – Indian Mackerel – SW monsoon
+        11: [12, 1, 2, 3, 4],          # කාරල්ලා – Pony fish – NE/early monsoon
+        12: [3, 4, 5, 10, 11],         # කටුවල්ලා – inter-monsoon
+        13: [11, 12, 1, 2, 3],         # හාල්මැස්සා – Anchovy – NE monsoon
+        14: [4, 5, 6, 7, 8],           # ඉස්සා – Prawns – SW monsoon
+        15: [3, 4, 10, 11],            # කොප්පරා – Marlins – inter-monsoon
+        16: [3, 4, 9, 10, 11],         # අලගොඩුවා – Frigate tuna – inter-monsoon
+        17: [5, 6, 7, 8],              # ඇටවල්ලා – SW monsoon
+        18: [10, 11, 12, 1, 2],        # ඇටිස්සා – Red Bream – NE monsoon
+        19: [5, 6, 7, 8, 9],           # බෝල්ලා – Big eye scade – SW monsoon
+        20: [3, 4, 5, 10, 11],         # ගින්නටි පරව් – inter-monsoon
+        21: [12, 1, 2, 11],            # හබරලි – Needle fish – NE monsoon
+        22: [11, 12, 1, 2, 3],         # හැඩැල්ලා – Indian Anchovies – NE monsoon
+        23: [3, 4, 10, 11],            # ජීලාවා – Barracuda – inter-monsoon
+        24: [3, 4, 9, 10, 11],         # ලින්නා – Indian Scad – inter-monsoon
+        25: [3, 4, 10, 11],            # ලේන පරව් – Rainbow Runner – inter-monsoon
+        26: [5, 6, 7, 8],              # සුද්දා – SW monsoon
+        27: [11, 12, 1, 2, 3],         # සූඩයා – White Sardinella – NE monsoon
+        28: [4, 5, 6, 7, 8, 9],        # දැල්ලා – Squid/Cuttlefish – SW monsoon
+        29: [4, 5, 6, 7, 8],           # කකුළුවා – Sea Crabs – SW monsoon
+        30: [1, 2, 3, 10, 11, 12],     # තිලාපියා – year-round, slight peak dry season
+        31: [4, 5, 6, 7, 8],           # කකුළුවා(L) – Sea Crabs(L) – SW monsoon
+        32: [1, 2, 3, 10, 11, 12],     # තිලාපියා – year-round
+    }
+
+    def get_season_name(m: int) -> str:
+        """Return a Sinhala season label for the given month number."""
+        if m in (12, 1, 2):
+            return "ඊශාන් මෝසම"       # NE Monsoon  Dec-Feb
+        elif m in (3, 4):
+            return "1 වන අන්තර් මෝසම" # 1st Inter-Monsoon  Mar-Apr
+        elif m in (5, 6, 7, 8, 9):
+            return "නිරිත දිග් මෝසම"  # SW Monsoon  May-Sep
+        else:  # 10, 11
+            return "2 වන අන්තර් මෝසම" # 2nd Inter-Monsoon  Oct-Nov
+
     recommendations = []
-    
-    # Predict price for all fish
+
     for _, row in fish_df.iterrows():
-        fish_encoded = _encode_fish(row["sinhala_name"])
-        
-        # Get prediction for today and yesterday to calculate trend
-        current_price = _predict_single_day(target_date, fish_encoded)
-        yesterday_price = _predict_single_day(target_date - timedelta(days=1), fish_encoded)
-        
-        # Filter by budget range
-        lower_bound = req.budget - 500 if req.budget > 500 else 0
-        if lower_bound < current_price <= req.budget:
-            trend = "down" if current_price < yesterday_price else "up"
-            diff = current_price - yesterday_price
-            
-            # Determine tag based on preference
-            tag = "Fair Price" # Fair price
-            if trend == "down" and diff < -50:
-                tag = "Available at a lower price today" # Available at a lower price today
-            elif req.preference == "seasonal":
-                tag = "Seasonal Fish" # Seasonal fish
-            elif req.preference == "popular":
-                tag = "Popular Fish" # Popular fish
-                
-            recommendations.append({
-                "fish_id": row["fish_id"],
-                "sinhala_name": row["sinhala_name"],
-                "common_name": row["common_name"],
-                "predicted_price": current_price,
-                "trend": trend,
-                "tag": tag
-            })
-            
-    # Filter and Sort recommendations based on preference
-    if req.preference == "popular":
-        # Filter only favorite fish
+        fish_id  = int(row["fish_id"])
+        fish_enc = _encode_fish(row["sinhala_name"])
+
+        current_price   = _predict_single_day(target_date, fish_enc)
+        yesterday_price = _predict_single_day(target_date - timedelta(days=1), fish_enc)
+
+        trend = "down" if current_price < yesterday_price else "up"
+        diff  = current_price - yesterday_price
+
+        # Budget filter:
+        #   budget=99999 → show fish priced > 2000 (Rs.2000+ button from mobile)
+        #   otherwise    → lower_bound..budget window as before
+        if req.budget >= 99999:
+            if current_price <= 2000:
+                continue
+        else:
+            lower_bound = req.budget - 500 if req.budget > 500 else 0
+            if not (lower_bound < current_price <= req.budget):
+                continue
+
+        is_seasonal_now = month in SEASONAL_PEAK_MONTHS.get(fish_id, [])
+
+        # Assign tag
+        if trend == "down" and diff < -50:
+            tag = "Available at a lower price today"
+        elif is_seasonal_now:
+            tag = "Seasonal Fish"
+        elif req.preference == "popular":
+            tag = "Popular Fish"
+        else:
+            tag = "Fair Price"
+
+        recommendations.append({
+            "fish_id":        fish_id,
+            "sinhala_name":   row["sinhala_name"],
+            "common_name":    row["common_name"],
+            "predicted_price":current_price,
+            "trend":          trend,
+            "tag":            tag,
+            "is_seasonal":    is_seasonal_now,
+            "season_name":    get_season_name(month) if is_seasonal_now else None,
+        })
+
+    # ── Apply preference filter ───────────────────────────────────────────────
+    if req.preference == "seasonal":
+        # Only fish that are genuinely in season right now
+        recommendations = [r for r in recommendations if r["is_seasonal"]]
+        recommendations.sort(key=lambda x: x["predicted_price"])
+
+    elif req.preference == "popular":
         if req.favorite_fish_ids:
             recommendations = [r for r in recommendations if r["fish_id"] in req.favorite_fish_ids]
         else:
-            recommendations = [] # If no favorites, return empty
-    elif req.preference == "seasonal":
-        # Filter fish that are seasonal (for now, just a placeholder logic, you can improve this based on actual seasonal data)
-        # Assuming some fish are seasonal, we can filter them here. For now, we just sort them.
-        recommendations.sort(key=lambda x: x["predicted_price"])
+            recommendations = []
+
     elif req.preference == "profitable":
-        # Sort by cheapest first
+        # Cheapest first (best value in budget)
         recommendations.sort(key=lambda x: x["predicted_price"])
+
     else:
-        # Default sort
         recommendations.sort(key=lambda x: x["predicted_price"])
-        
-    # Return top 5 recommendations
+
     return {"recommendations": recommendations[:5]}
 
 import json
@@ -472,6 +537,116 @@ def get_trend(req: PredictRequest):
     }
 
 # ── /insights endpoint ────────────────────────────────────────────────────────
+
+# ── Demand Sentiment helpers ─────────────────────────────────────────────────
+
+def _high_demand_period(date: datetime) -> tuple[float, str]:
+    """Return (demand_boost 0‑0.45, event_name) for known high-demand calendar windows."""
+    m, d = date.month, date.day
+    # Sinhala New Year  (April 10–20 — single biggest demand spike)
+    if m == 4 and 10 <= d <= 20:
+        return 0.40, "Sinhala New Year 🎊"
+    # Easter / school holiday buffer (April 1–9)
+    if m == 4 and 1 <= d <= 9:
+        return 0.18, "April Holiday"
+    # Christmas week
+    if m == 12 and 23 <= d <= 27:
+        return 0.28, "Christmas 🎄"
+    # New Year countdown
+    if (m == 12 and d >= 29) or (m == 1 and d <= 3):
+        return 0.22, "New Year 🎆"
+    # Vesak (full‑moon May — fishing halts, supply drops → prices up)
+    if m == 5 and 13 <= d <= 17:
+        return 0.15, "Vesak Full Moon 🪔"
+    # Deepavali (October/November)
+    if m in (10, 11) and 1 <= d <= 7:
+        return 0.14, "Deepavali 🪔"
+    return 0.0, ""
+
+
+def _is_pre_poya(date: datetime) -> bool:
+    """True if the next calendar day is a Poya (full‑moon) day per the festivals CSV."""
+    if fest_df is not None and not fest_df.empty:
+        tomorrow = (date + timedelta(days=1)).date()
+        hit = fest_df[fest_df["date"] == tomorrow]
+        if not hit.empty and "poya" in str(hit.iloc[0].get("festival_name", "")).lower():
+            return True
+    return False
+
+
+def _nearby_festival(date: datetime) -> str:
+    """Return festival name if one falls within the next 3 days (per festivals CSV)."""
+    if fest_df is None or fest_df.empty:
+        return ""
+    f_date = date.date()
+    window = fest_df[
+        (fest_df["date"] >= f_date) &
+        (fest_df["date"] <= (date + timedelta(days=3)).date())
+    ]
+    return str(window.iloc[0].get("festival_name", "")) if not window.empty else ""
+
+
+def calculate_demand_sentiment(date: datetime, elasticity: float,
+                               weather_factor: float = 1.0) -> dict:
+    """
+    Derive a Demand Sentiment Index (0–1) from proxy variables:
+      • Calendar events (festivals / poya)
+      • Price elasticity (high sensitivity → more volatile demand)
+      • Bad weather  (supply shock pushes apparent demand urgency up)
+
+    Returns a dict with: score, label, color, festival, spike_risk (bool).
+    """
+    score = 0.50  # neutral base
+
+    # 1. Festival / holiday boost
+    boost, event = _high_demand_period(date)
+    score += boost
+
+    # 2. Day‑before Poya: buyers stock up early (demand spike)
+    if _is_pre_poya(date):
+        score += 0.18
+        event = event or "Pre‑Poya day"
+
+    # 3. Check festivals CSV for any nearby event not covered above
+    if boost == 0:
+        nearby = _nearby_festival(date)
+        if nearby:
+            score += 0.12
+            event = nearby
+
+    # 4. Elasticity dampener — high‑sensitivity fish: demand collapses faster at high prices
+    #    elasticity is negative; abs value 0.8–3.0
+    score -= (max(abs(elasticity) - 0.8, 0)) * 0.04
+
+    # 5. Supply‑side shock: bad weather → reduced supply → urgent buying
+    if weather_factor >= 1.08:
+        score += 0.12   # severe weather → supply crunch
+    elif weather_factor >= 1.03:
+        score += 0.06
+
+    score = round(min(max(score, 0.0), 1.0), 3)
+
+    # Label + colour
+    if score >= 0.75:
+        label, color = "Very High", "#dc2626"
+    elif score >= 0.60:
+        label, color = "High",      "#f59e0b"
+    elif score >= 0.40:
+        label, color = "Normal",    "#10b981"
+    else:
+        label, color = "Low",       "#6b7280"
+
+    # Price‑spike risk: bad weather AND high demand
+    spike_risk = weather_factor >= 1.03 and score >= 0.60
+
+    return {
+        "score": score,
+        "label": label,
+        "color": color,
+        "festival": event,
+        "spike_risk": spike_risk,
+    }
+
 
 # Price-elasticity estimates per fish group (from regression analysis).
 # Negative = reduction in demand when price rises.
@@ -626,11 +801,34 @@ def get_insights(fish_id: int, date: str = None):
         weather_label = "Normal conditions"
         weather_factor = 1.0
 
+    # Demand Sentiment for next 7 days
+    demand_7 = []
+    has_spike = False
+    spike_day = ""
+    for i, d in enumerate(dates_next7):
+        day_weather = _get_weather_row(d)
+        day_wind = day_weather["wind_speed_max"]
+        day_rain = day_weather["rainfall_sum"]
+        if day_wind > 30 or day_rain > 30:
+            day_wf = 1.08
+        elif day_wind > 20 or day_rain > 10:
+            day_wf = 1.03
+        else:
+            day_wf = 1.0
+        ds = calculate_demand_sentiment(d, elasticity, day_wf)
+        demand_7.append({**ds, "date": labels[i]})
+        if ds["spike_risk"] and not has_spike:
+            has_spike = True
+            spike_day = labels[i]
+
     return {
         "fish": fish_row.to_dict(),
         "labels": labels,
         "prediction_7_days": prediction_7_days,
         "knn_baseline": knn_baseline,
+        "demand_sentiment_7_days": demand_7,
+        "price_spike_warning": has_spike,
+        "price_spike_day": spike_day,
         "insights": {
             "fuel_lag_weeks": 6,
             "correlation_score": 0.351,
@@ -646,6 +844,51 @@ def get_insights(fish_id: int, date: str = None):
             "weather_label": weather_label,
         },
     }
+
+
+@app.get("/elasticity")
+def get_elasticity_chart(fish_id: Optional[int] = None):
+    """
+    Returns a sorted list of representative fish species with their price-elasticity
+    values, used to render the Elasticity Comparison chart in the mobile app.
+    An optional fish_id parameter marks the current fish for highlighting.
+    """
+    # Representative deduplicated categories (sorted most → least sensitive)
+    chart_items = [
+        {"name": "Squid / Cuttlefish", "elasticity": -2.98},
+        {"name": "Sardinella",          "elasticity": -2.54},
+        {"name": "Herrings",            "elasticity": -2.10},
+        {"name": "Indian Mackerel",     "elasticity": -1.87},
+        {"name": "Shrimp / Prawn",      "elasticity": -1.75},
+        {"name": "Trevally",            "elasticity": -1.35},
+        {"name": "Snapper",             "elasticity": -1.20},
+        {"name": "Grouper",             "elasticity": -1.15},
+        {"name": "Tuna",                "elasticity": -0.95},
+        {"name": "Yellowfin Tuna",      "elasticity": -0.92},
+        {"name": "Seer Fish",           "elasticity": -0.88},
+        {"name": "Swordfish",           "elasticity": -0.80},
+    ]
+
+    highlighted_name: Optional[str] = None
+    if fish_id is not None:
+        matches = fish_df[fish_df["fish_id"] == fish_id]
+        if not matches.empty:
+            common = str(matches.iloc[0].get("common_name", "")).lower()
+            for item in chart_items:
+                # Check each token in the item name
+                for token in item["name"].lower().replace(" /", "").split():
+                    if token in common or common in token:
+                        highlighted_name = item["name"]
+                        break
+                if highlighted_name:
+                    break
+            # Fall back: partial match via _get_elasticity
+            if not highlighted_name:
+                e_val, _ = _get_elasticity(common)
+                closest = min(chart_items, key=lambda x: abs(x["elasticity"] - e_val))
+                highlighted_name = closest["name"]
+
+    return {"items": chart_items, "highlighted": highlighted_name}
 
 
 if __name__ == "__main__":
