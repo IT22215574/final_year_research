@@ -72,6 +72,16 @@ interface MarketAlert {
   age: string;           // human readable time label
 }
 
+interface FeatureImportanceItem {
+  feature: string;
+  label: string;
+  category: string;
+  color: string;
+  rf: number;    // Random Forest importance % (0–100)
+  gb: number;    // Gradient Boost importance % (0–100)
+  avg: number;   // average of both
+}
+
 interface InsightsData {
   fish: { fish_id: number; sinhala_name: string; common_name: string };
   labels: string[];
@@ -365,6 +375,107 @@ function ElasticityChart({ items, highlighted }: {
   );
 }
 
+// ── Feature Importance Chart ─────────────────────────────────────────────────
+function FeatureImportanceChart({ items }: { items: FeatureImportanceItem[] }) {
+  if (items.length === 0) return null;
+  const maxVal = Math.max(...items.map(f => f.rf), 1);
+  const CATEGORY_NAMES: Record<string, string> = {
+    fuel: 'Fuel / Cost', weather: 'Weather', demand: 'Demand / Calendar',
+    season: 'Season', time: 'Time', fish: 'Fish Species',
+  };
+
+  // Derive unique categories present in visible items
+  const visibleCats = Array.from(new Set(items.map(i => i.category)));
+
+  return (
+    <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 12 }}>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+        <View style={{ backgroundColor: '#ecfdf5', borderRadius: 10, padding: 8, marginRight: 10 }}>
+          <Ionicons name="bar-chart-outline" size={22} color="#059669" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontWeight: '700', fontSize: 15, color: '#1f2937' }}>Feature Importance</Text>
+          <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>What drives fish price predictions</Text>
+        </View>
+      </View>
+
+      {/* Model badge row */}
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14, marginTop: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff',
+                       borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, gap: 5 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#2563eb' }} />
+          <Text style={{ fontSize: 11, color: '#1d4ed8', fontWeight: '600' }}>Random Forest</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff7ed',
+                       borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, gap: 5 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#ea580c' }} />
+          <Text style={{ fontSize: 11, color: '#c2410c', fontWeight: '600' }}>Gradient Boost</Text>
+        </View>
+      </View>
+
+      {/* Bars */}
+      {items.map((feat, i) => {
+        const rfBar  = (feat.rf  / maxVal) * 100;
+        const gbBar  = (feat.gb  / maxVal) * 100;
+        return (
+          <View key={feat.feature} style={{ marginBottom: i < items.length - 1 ? 10 : 0 }}>
+            {/* Label row */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between',
+                           alignItems: 'center', marginBottom: 3 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: feat.color }} />
+                <Text style={{ fontSize: 12, color: '#374151', fontWeight: '500', flexShrink: 1 }}
+                      numberOfLines={1}>
+                  {feat.label}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 11, color: '#6b7280', marginLeft: 6 }}>
+                RF {feat.rf.toFixed(1)}%
+              </Text>
+            </View>
+            {/* RF bar */}
+            <View style={{ height: 9, backgroundColor: '#f1f5f9', borderRadius: 6, overflow: 'hidden', marginBottom: 2 }}>
+              <View style={{ width: `${rfBar}%`, height: '100%',
+                             backgroundColor: feat.color, borderRadius: 6, opacity: 0.9 }} />
+            </View>
+            {/* GB bar (thinner, slightly transparent) */}
+            <View style={{ height: 5, backgroundColor: '#f1f5f9', borderRadius: 6, overflow: 'hidden' }}>
+              <View style={{ width: `${gbBar}%`, height: '100%',
+                             backgroundColor: '#ea580c', borderRadius: 6, opacity: 0.55 }} />
+            </View>
+          </View>
+        );
+      })}
+
+      {/* Category colour legend */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14,
+                     borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 10 }}>
+        {visibleCats.map(cat => {
+          const colour = items.find(i => i.category === cat)?.color ?? '#6b7280';
+          return (
+            <View key={cat} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: colour }} />
+              <Text style={{ fontSize: 10, color: '#6b7280' }}>
+                {CATEGORY_NAMES[cat] ?? cat}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Thesis reading tip */}
+      <View style={{ backgroundColor: '#f0fdf4', borderRadius: 10, padding: 10, marginTop: 10 }}>
+        <Text style={{ fontSize: 12, color: '#065f46', lineHeight: 18 }}>
+          💡 <Text style={{ fontWeight: '700' }}>Thesis note:</Text> A longer bar indicates a
+          higher contribution to the model prediction. Fuel price lags, wind speed, and
+          festival signals are typically the strongest price drivers in Sri Lankan fish markets.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 // ── Market Demand Meter ─────────────────────────────────────────────────────
 function MarketDemandMeter({ days, spikeWarning, spikeDay }: {
   days: DemandDay[];
@@ -534,6 +645,7 @@ export default function PredictionsScreen() {
 
   const [marketAlerts, setMarketAlerts] = useState<MarketAlert[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [featureImportance, setFeatureImportance] = useState<FeatureImportanceItem[]>([]);
 
   const fetchAccuracy = async () => {
     try {
@@ -567,6 +679,22 @@ export default function PredictionsScreen() {
       }
     };
     fetchAlerts();
+  }, []);
+
+  useEffect(() => {
+    const loadFeatureImportance = async () => {
+      try {
+        const data = await predictionRequest<{ features: FeatureImportanceItem[] }>(
+          '/feature-importance',
+          { method: 'GET' },
+          8000,
+        );
+        setFeatureImportance(data.features ?? []);
+      } catch (err) {
+        console.error('Feature importance fetch failed', err);
+      }
+    };
+    loadFeatureImportance();
   }, []);
 
   useEffect(() => {
@@ -1721,6 +1849,13 @@ export default function PredictionsScreen() {
                         );
                       })()}
                     </View>
+
+                    {/* ── 5. Feature Importance ── */}
+                    {featureImportance.length > 0 && (
+                      <View style={styles.insightCard}>
+                        <FeatureImportanceChart items={featureImportance} />
+                      </View>
+                    )}
                   </>
                 ) : (
                   <View style={styles.emptyState}>

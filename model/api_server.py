@@ -1028,6 +1028,102 @@ def get_elasticity_chart(fish_id: Optional[int] = None):
     return {"items": chart_items, "highlighted": highlighted_name}
 
 
+# ── Feature Importance endpoint ──────────────────────────────────────────────
+_FEATURE_LABELS: dict[str, dict] = {
+    # Fuel / Cost
+    "lk_price":            {"label": "Fuel Price (Rs/L)",       "category": "fuel"},
+    "lk_price_lag1":       {"label": "Fuel Price (1-wk lag)",   "category": "fuel"},
+    "lk_price_lag2":       {"label": "Fuel Price (2-wk lag)",   "category": "fuel"},
+    "lk_price_change":     {"label": "Fuel Price Change",       "category": "fuel"},
+    "lk_price_pct_change": {"label": "Fuel % Change",           "category": "fuel"},
+    "lk_price_rose":       {"label": "Fuel Price Rose",         "category": "fuel"},
+    # Weather
+    "wind_speed_max":      {"label": "Wind Speed (max)",        "category": "weather"},
+    "rainfall_sum":        {"label": "Rainfall (mm)",           "category": "weather"},
+    "temp_c_mean":         {"label": "Temperature (°C)",        "category": "weather"},
+    "humidity_mean":       {"label": "Humidity (%)",            "category": "weather"},
+    "bad_weather_any":     {"label": "Bad Weather Flag",        "category": "weather"},
+    "weather_effect":      {"label": "Weather Effect",          "category": "weather"},
+    # Demand / Calendar
+    "is_festival_day":     {"label": "Festival Day",            "category": "demand"},
+    "is_poya":             {"label": "Poya Day",                "category": "demand"},
+    "is_holiday":          {"label": "Public Holiday",          "category": "demand"},
+    "before_festival_window": {"label": "Pre-Festival Window",  "category": "demand"},
+    "days_to_festival":    {"label": "Days to Festival",        "category": "demand"},
+    "poya_effect":         {"label": "Poya Effect",             "category": "demand"},
+    "festival_effect":     {"label": "Festival Effect",         "category": "demand"},
+    # Season / Fishing
+    "fishing_season":      {"label": "Fishing Season",          "category": "season"},
+    "is_waragam_west":     {"label": "SW Monsoon Season",       "category": "season"},
+    "is_waragam_east":     {"label": "NE Monsoon Season",       "category": "season"},
+    "is_awaragam":         {"label": "Inter-Monsoon Season",    "category": "season"},
+    "is_rough_sea_season": {"label": "Rough Sea Season",        "category": "season"},
+    "season":              {"label": "Season (generic)",        "category": "season"},
+    # Time
+    "month":               {"label": "Month",                   "category": "time"},
+    "month_sin":           {"label": "Month (sin)",             "category": "time"},
+    "month_cos":           {"label": "Month (cos)",             "category": "time"},
+    "week_of_year":        {"label": "Week of Year",            "category": "time"},
+    "day_of_week":         {"label": "Day of Week",             "category": "time"},
+    "year":                {"label": "Year",                    "category": "time"},
+    "is_weekend":          {"label": "Weekend",                 "category": "time"},
+    # Fish
+    "fish_encoded":        {"label": "Fish Species",            "category": "fish"},
+}
+_CATEGORY_COLORS: dict[str, str] = {
+    "fuel":    "#f59e0b",
+    "weather": "#3b82f6",
+    "demand":  "#8b5cf6",
+    "season":  "#10b981",
+    "time":    "#6b7280",
+    "fish":    "#ec4899",
+}
+
+@app.get("/feature-importance")
+def get_feature_importance():
+    """
+    Return the feature importance scores extracted directly from the trained
+    Random Forest (rf_model) and Gradient Boosting (gb_model) models.
+    Each feature is mapped to a human-readable label and colour-coded category.
+    Returns top-15 features sorted by RF importance descending.
+    """
+    rf_imp  = list(rf_model.feature_importances_)
+    gb_imp  = list(gb_model.feature_importances_)
+    names   = list(feature_names)
+
+    combined = []
+    for i, name in enumerate(names):
+        rf_val = float(rf_imp[i]) if i < len(rf_imp) else 0.0
+        gb_val = float(gb_imp[i]) if i < len(gb_imp) else 0.0
+        meta   = _FEATURE_LABELS.get(name, {"label": name.replace("_", " ").title(), "category": "time"})
+        combined.append({
+            "feature":  name,
+            "label":    meta["label"],
+            "category": meta["category"],
+            "color":    _CATEGORY_COLORS.get(meta["category"], "#6b7280"),
+            "rf":       round(rf_val * 100, 2),   # percentage
+            "gb":       round(gb_val * 100, 2),
+            "avg":      round((rf_val + gb_val) / 2 * 100, 2),
+        })
+
+    # Sort by RF importance descending, take top 15
+    combined.sort(key=lambda x: x["rf"], reverse=True)
+    top = combined[:15]
+
+    # Category summary (sum of RF importance per category)
+    cat_summary: dict[str, float] = {}
+    for item in combined:
+        cat_summary[item["category"]] = round(
+            cat_summary.get(item["category"], 0.0) + item["rf"], 2
+        )
+    cat_list = sorted(
+        [{"category": k, "color": _CATEGORY_COLORS.get(k, "#6b7280"),
+          "total_rf": v} for k, v in cat_summary.items()],
+        key=lambda x: x["total_rf"], reverse=True,
+    )
+    return {"features": top, "category_summary": cat_list}
+
+
 # ── Market Alerts endpoint ───────────────────────────────────────────────────
 @app.get("/alerts")
 def get_market_alerts(date: Optional[str] = None):
