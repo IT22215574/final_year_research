@@ -471,6 +471,183 @@ def get_trend(req: PredictRequest):
         "trend": trend_data
     }
 
+# ── /insights endpoint ────────────────────────────────────────────────────────
+
+# Price-elasticity estimates per fish group (from regression analysis).
+# Negative = reduction in demand when price rises.
+_ELASTICITY_MAP: dict = {
+    "squid": -2.98, "cuttlefish": -2.98, "octopus": -2.98,
+    "sardinella": -2.54, "sardine": -2.54, "herrings": -2.10, "herring": -2.10,
+    "mackerel": -1.87, "shrimp": -1.75, "prawn": -1.75,
+    "trevally": -1.35, "snapper": -1.20, "grouper": -1.15,
+    "tuna": -0.95, "yellowfin": -0.92, "seer": -0.88, "swordfish": -0.80,
+}
+
+def _get_elasticity(common_name: str) -> tuple[float, str]:
+    """Return (elasticity, label) for a fish by common name."""
+    cn = (common_name or "").lower()
+    for keyword, e in _ELASTICITY_MAP.items():
+        if keyword in cn:
+            label = "Very High Sensitivity" if e <= -2.5 else "High Sensitivity" if e <= -1.8 else "Medium Sensitivity" if e <= -1.2 else "Low Sensitivity"
+            return e, label
+    return -1.25, "Medium Sensitivity"
+
+def _get_season_info(month: int) -> dict:
+    """Return current Sri Lankan fishing season details."""
+    if month in [5, 6, 7, 8, 9]:
+        return {
+            "current_season": "SW Monsoon (Waragam)",
+            "season_en": "SW Monsoon",
+            "season_price_impact": "+12%",
+            "season_alert": "Rough seas expected — Prices may rise",
+        }
+    elif month in [10, 11, 12, 1]:
+        return {
+            "current_season": "NE Monsoon (Waragam)",
+            "season_en": "NE Monsoon",
+            "season_price_impact": "+8%",
+            "season_alert": "Active fishing season — Higher demand",
+        }
+    elif month in [2, 3, 4]:
+        return {
+            "current_season": "Inter-Monsoon (Awaragam)",
+            "season_en": "Inter-Monsoon",
+            "season_price_impact": "+8.5% (Holiday)",
+            "season_alert": "Holiday season — Prices may increase",
+        }
+    return {
+        "current_season": "Normal Season",
+        "season_en": "Normal",
+        "season_price_impact": "0%",
+        "season_alert": "",
+    }
+
+def _knn_baseline_prices(
+    target_dates: list,
+    fish_encoded: int,
+    k: int = 5,
+) -> list:
+    """
+    For each date in target_dates, find the k most weather-similar historical
+    days (by wind_speed_max + rainfall_sum) and return their average
+    model-predicted price as the KNN baseline.
+    """
+    baselines: list = []
+
+    # Build historical lookup: list of (date, wind_speed_max, rainfall_sum)
+    hist_rows: list = []
+    if weather_hist_agg is not None and not weather_hist_agg.empty:
+        for ts, row in weather_hist_agg.iterrows():
+            hist_rows.append({
+                "date": ts.to_pydatetime(),
+                "wind": float(row.get("wind_speed_max", 15) or 15),
+                "rain": float(row.get("rainfall_sum", 0) or 0),
+            })
+
+    for target_date in target_dates:
+        target_weather = _get_weather_row(target_date)
+        w_target = target_weather["wind_speed_max"]
+        r_target = target_weather["rainfall_sum"]
+
+        if len(hist_rows) >= k:
+            # Euclidean distance in (wind, rain) space
+            distances = sorted(
+                hist_rows,
+                key=lambda h: ((h["wind"] - w_target) ** 2 + (h["rain"] - r_target) ** 2) ** 0.5,
+            )
+            neighbors = distances[:k]
+            neighbor_prices = [_predict_single_day(n["date"], fish_encoded) for n in neighbors]
+            baselines.append(round(sum(neighbor_prices) / len(neighbor_prices), 2))
+        else:
+            # Not enough history — fall back to simple model prediction
+            baselines.append(round(_predict_single_day(target_date, fish_encoded), 2))
+
+    return baselines
+
+
+@app.get("/insights")
+def get_insights(fish_id: int, date: str = None):
+    """
+    Returns 7-day ML price predictions, KNN weather-based baseline, and
+    market insight metadata for the given fish species.
+    """
+    matches = fish_df[fish_df["fish_id"] == fish_id]
+    if matches.empty:
+        raise HTTPException(status_code=404, detail="Fish not found")
+    fish_row = matches.iloc[0]
+
+    try:
+        center = datetime.fromisoformat(date) if date else datetime.now()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format, expected YYYY-MM-DD")
+
+    fish_encoded = _encode_fish(fish_row["sinhala_name"])
+
+    # Next 7 days: today through today+6
+    dates_next7 = [center + timedelta(days=i) for i in range(7)]
+    labels = [d.strftime("%m/%d") for d in dates_next7]
+
+    prediction_7_days = [round(_predict_single_day(d, fish_encoded), 2) for d in dates_next7]
+    knn_baseline = _knn_baseline_prices(dates_next7, fish_encoded)
+
+    # Season & holiday info
+    month = center.month
+    season_info = _get_season_info(month)
+
+    # Is today/tomorrow a holiday?
+    today_only = center.date()
+    is_holiday_period = False
+    holiday_lift = 8.5  # historical average inter-monsoon holiday lift %
+    if not fest_df.empty:
+        upcoming = fest_df[
+            (fest_df["date"] >= today_only) &
+            (fest_df["date"] <= (center + timedelta(days=7)).date())
+        ]
+        is_holiday_period = not upcoming.empty
+
+    # Fuel lag
+    fuel_row = _get_fuel_row(center)
+    lk_price = fuel_row.get("lk_price", 0)
+
+    # Elasticity
+    elasticity, elasticity_label = _get_elasticity(fish_row.get("common_name", ""))
+
+    # Weather summary for today
+    today_weather = _get_weather_row(center)
+    wind = today_weather["wind_speed_max"]
+    rain = today_weather["rainfall_sum"]
+    if wind > 30 or rain > 30:
+        weather_label = "Severe weather ⚠️"
+        weather_factor = 1.08
+    elif wind > 20 or rain > 10:
+        weather_label = "Above-average wind / rain"
+        weather_factor = 1.03
+    else:
+        weather_label = "Normal conditions"
+        weather_factor = 1.0
+
+    return {
+        "fish": fish_row.to_dict(),
+        "labels": labels,
+        "prediction_7_days": prediction_7_days,
+        "knn_baseline": knn_baseline,
+        "insights": {
+            "fuel_lag_weeks": 6,
+            "correlation_score": 0.351,
+            "current_lk_price": round(lk_price, 2),
+            "current_elasticity": elasticity,
+            "elasticity_label": elasticity_label,
+            "holiday_lift": holiday_lift,
+            "is_holiday_period": is_holiday_period,
+            "current_season": season_info["current_season"],
+            "season_price_impact": season_info["season_price_impact"],
+            "season_alert": season_info["season_alert"],
+            "weather_factor": weather_factor,
+            "weather_label": weather_label,
+        },
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
 

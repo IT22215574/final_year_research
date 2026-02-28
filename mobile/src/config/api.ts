@@ -42,62 +42,43 @@ const tryGetHostname = (url: string) => {
   }
 };
 
-const isLikelyLanHost = (host: string) => {
-  // RFC1918 ranges + localhost
-  if (host === 'localhost' || host === '127.0.0.1') return true;
-  if (/^10\./.test(host)) return true;
-  if (/^192\.168\./.test(host)) return true;
-  const m = host.match(/^172\.(\d+)\./);
-  if (m) {
-    const second = Number(m[1]);
-    return second >= 16 && second <= 31;
-  }
-  return false;
-};
-
-export const getAuthApiBaseUrls = () => {
-  const env = process.env.EXPO_PUBLIC_AUTH_URL || process.env.EXPO_PUBLIC_API_KEY;
+/**
+ * Build an ordered list of base URLs to try for a given service port.
+ *
+ * Priority (highest → lowest):
+ *  1. Expo dev-server auto-detected LAN host  (changes automatically on new WiFi)
+ *  2. Value from .env / EXPO_PUBLIC_* variable (manual override / fallback)
+ *  3. Android-emulator gateway              (10.0.2.2)
+ *  4. localhost
+ *
+ * Because Expo's hostUri always reflects the *current* WiFi IP, the app
+ * connects correctly on any network without touching .env.
+ */
+const buildUrlList = (port: number, envValue?: string | null): string[] => {
   const expoHost = getExpoDevHost();
-
-  const envHost = env ? tryGetHostname(env) : null;
-  const preferExpoOverEnv =
-    !!expoHost &&
-    !!env &&
-    !!envHost &&
-    isLikelyLanHost(envHost) &&
-    envHost !== expoHost;
+  // Pull just the hostname out of the .env URL so we can rebuild it with the
+  // correct port (in case someone put a wrong port in .env).
+  const envHostOnly = envValue ? tryGetHostname(envValue) : null;
 
   return uniq([
-    preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 3000) : null,
-    preferExpoOverEnv ? env : null,
-    !preferExpoOverEnv ? env : null,
-    !preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 3000) : null,
-    Platform.OS === 'android' ? buildHttpBaseUrl('10.0.2.2', 3000) : null,
-    buildHttpBaseUrl('localhost', 3000),
+    // 1️⃣  Always try Expo auto-detected host first
+    expoHost ? buildHttpBaseUrl(expoHost, port) : null,
+    // 2️⃣  .env value as-is (useful when Expo detection is unavailable, e.g. prod build)
+    envValue ?? null,
+    // 2b) also rebuild .env host with the target port in case the URL had a different port
+    envHostOnly && envHostOnly !== expoHost ? buildHttpBaseUrl(envHostOnly, port) : null,
+    // 3️⃣  Android emulator gateway
+    Platform.OS === 'android' ? buildHttpBaseUrl('10.0.2.2', port) : null,
+    // 4️⃣  localhost last resort
+    buildHttpBaseUrl('localhost', port),
   ]);
 };
 
-export const getPredictionApiBaseUrls = () => {
-  const env = process.env.EXPO_PUBLIC_PREDICTION_API_URL || process.env.EXPO_PUBLIC_API_URL;
-  const expoHost = getExpoDevHost();
+export const getAuthApiBaseUrls = () =>
+  buildUrlList(3000, process.env.EXPO_PUBLIC_AUTH_URL || process.env.EXPO_PUBLIC_API_KEY);
 
-  const envHost = env ? tryGetHostname(env) : null;
-  const preferExpoOverEnv =
-    !!expoHost &&
-    !!env &&
-    !!envHost &&
-    isLikelyLanHost(envHost) &&
-    envHost !== expoHost;
-
-  return uniq([
-    preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 8000) : null,
-    preferExpoOverEnv ? env : null,
-    !preferExpoOverEnv ? env : null,
-    !preferExpoOverEnv && expoHost ? buildHttpBaseUrl(expoHost, 8000) : null,
-    Platform.OS === 'android' ? buildHttpBaseUrl('10.0.2.2', 8000) : null,
-    buildHttpBaseUrl('localhost', 8000),
-  ]);
-};
+export const getPredictionApiBaseUrls = () =>
+  buildUrlList(8000, process.env.EXPO_PUBLIC_PREDICTION_API_URL || process.env.EXPO_PUBLIC_API_URL);
 
 export const API_CONFIG = {
   // Fish Price Prediction API (Python/FastAPI)
