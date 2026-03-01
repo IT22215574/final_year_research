@@ -86,6 +86,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="predictions" options={{ href: null }} />
         <Tabs.Screen name="fish/[id]" options={{ href: null }} />
         <Tabs.Screen name="market-alerts" options={{ href: null }} />
+        <Tabs.Screen name="fish-map" options={{ href: null }} />
       </Tabs>
 
       <Sidebar isVisible={sidebarVisible} onClose={() => setSidebarVisible(false)} />

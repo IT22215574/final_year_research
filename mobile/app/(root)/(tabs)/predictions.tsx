@@ -7,6 +7,7 @@ import { LineChart } from 'react-native-chart-kit';
 import Svg, { Path, Line as SvgLine, Text as SvgText, Circle } from 'react-native-svg';
 import * as Notifications from 'expo-notifications';
 import { getPredictionApiBaseUrls } from '@/src/config/api';
+import useAuthStore from '@/stores/authStore';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -14,6 +15,25 @@ const screenWidth = Dimensions.get('window').width;
 const formatLKR = (amount: number | null | undefined): string => {
   if (amount == null || isNaN(amount)) return 'Rs. --';
   return `Rs. ${Math.round(amount).toLocaleString('en-LK')}`;
+};
+
+/** Normalise district field (can be string or object) */
+const getDistrictName = (district: { name?: string } | string | undefined): string => {
+  if (!district) return '';
+  if (typeof district === 'string') return district;
+  return district.name ?? '';
+};
+
+/**
+ * Adjust a Peliyagoda base price to the user's local zone.
+ * Coastal  (near ports)  → -10%
+ * Inland   (transport)   → +12%
+ * Main Hub (Colombo)     →   0%
+ */
+const calculateLocalPrice = (basePrice: number, zone: string | undefined): number => {
+  if (zone === 'Coastal') return Math.round(basePrice * 0.90);
+  if (zone === 'Inland')  return Math.round(basePrice * 1.12);
+  return Math.round(basePrice);
 };
 
 interface FishOption {
@@ -598,6 +618,11 @@ export default function PredictionsScreen() {
   const [trendData, setTrendData] = useState<any[]>([]);
   const [loadingTrend, setLoadingTrend] = useState(false);
 
+  // Current user — needed early for per-account favorites storage key
+  const currentUser = useAuthStore(s => s.currentUser);
+  // Each account gets its own favorites list (key = favoriteItems_<userId>)
+  const favStorageKey = `favoriteItems_${currentUser?.id ?? 'guest'}`;
+
   // Recommendations state
   const [budget, setBudget] = useState<number>(1000);
   const [preference, setPreference] = useState<string>('profitable');
@@ -605,17 +630,19 @@ export default function PredictionsScreen() {
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
 
-  // Load favorites from storage on mount
+  // Load favorites from storage — re-runs when user account changes
   useEffect(() => {
-    AsyncStorage.getItem('favoriteItems').then(stored => {
+    setFavoriteItems([]); // clear previous user's favorites immediately
+    AsyncStorage.getItem(favStorageKey).then(stored => {
       if (stored) { try { setFavoriteItems(JSON.parse(stored)); } catch {} }
     });
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
-  // Persist favorites whenever they change
+  // Persist favorites under the current user's key whenever they change
   useEffect(() => {
-    AsyncStorage.setItem('favoriteItems', JSON.stringify(favoriteItems));
-  }, [favoriteItems]);
+    AsyncStorage.setItem(favStorageKey, JSON.stringify(favoriteItems));
+  }, [favStorageKey, favoriteItems]);
 
   // Feedback state
   const [feedbackGiven, setFeedbackGiven] = useState(false);
@@ -761,9 +788,9 @@ export default function PredictionsScreen() {
           const diff = (todayPrice - tomorrowPrice).toFixed(2);
           
           // Request permissions if not already granted
-          const { status } = await Notifications.getPermissionsAsync();
+          const { status } = await Notifications.getPermissionsAsync().catch(() => ({ status: 'denied' }));
           if (status !== 'granted') {
-            await Notifications.requestPermissionsAsync();
+            await Notifications.requestPermissionsAsync().catch(() => null);
           }
           
           // Schedule notification
@@ -812,9 +839,21 @@ export default function PredictionsScreen() {
 
   const selectedFishName = fishList.find(f => f.fish_id === selectedFishId);
   const predictedFishName = fishList.find(f => f.fish_id === predictedFishId);
-  
+
+  // ── Location-aware pricing ─────────────────────────────────────────────────
+  const userZone      = currentUser?.zone ?? 'Main Hub';
+  const userDistrict  = getDistrictName(currentUser?.district);
+  const locationLabel = userDistrict
+    ? `Price adjusted for ${userDistrict} (${userZone} zone)`
+    : 'Price at Peliyagoda Base Market';
+
   // Get 7 days of data starting from today (index 15 in the 31-day series)
   const weekData = priceHistory.length > 15 ? priceHistory.slice(15, 22) : [];
+  // Apply zone multiplier to chart data too
+  const adjustedWeekData: PriceHistory[] = weekData.map(d => ({
+    ...d,
+    price: calculateLocalPrice(d.price, userZone),
+  }));
   
   // Calculate percentage change from yesterday (index 14)
   let percentageChange = 0;
@@ -1093,23 +1132,28 @@ export default function PredictionsScreen() {
             <View style={styles.cardHeader}>
               <Text style={styles.fishName}>{predictedFishName.common_name}</Text>
               <View style={styles.priceContainer}>
-                <Text style={styles.priceText}>{formatLKR(predictedPrice)}</Text>
+                <Text style={styles.priceText}>{formatLKR(calculateLocalPrice(predictedPrice, userZone))}</Text>
                 <View style={[styles.badge, isPositive ? styles.badgePositive : styles.badgeNegative]}>
                   <Text style={styles.badgeText}>{changeText}</Text>
                 </View>
               </View>
             </View>
+            {/* Location note */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 10, marginTop: -4 }}>
+              <Ionicons name="location-outline" size={13} color="#6b7280" />
+              <Text style={{ fontSize: 11, color: '#6b7280' }}>{locationLabel}</Text>
+            </View>
 
             {/* Chart with confidence-interval bands */}
             <View style={styles.chartWrapper}>
-              <PriceFluctuationChart weekData={weekData} chartWidth={screenWidth - 64} />
+              <PriceFluctuationChart weekData={adjustedWeekData} chartWidth={screenWidth - 64} />
             </View>
 
             {/* Confidence Interval label (numerical) */}
             <View style={styles.confidenceBox}>
               <Text style={styles.confidenceTitle}>90% Confidence Interval</Text>
               <Text style={styles.confidenceValue}>
-                {formatLKR(minPrice)} — {formatLKR(maxPrice)}
+                {formatLKR(calculateLocalPrice(minPrice ?? 0, userZone))} — {formatLKR(calculateLocalPrice(maxPrice ?? 0, userZone))}
               </Text>
             </View>
 
@@ -1354,8 +1398,13 @@ export default function PredictionsScreen() {
                       )}
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <View style={styles.recPriceBadge}>
-                        <Text style={styles.recPriceText}>{formatLKR(rec.predicted_price)}</Text>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <View style={styles.recPriceBadge}>
+                          <Text style={styles.recPriceText}>{formatLKR(calculateLocalPrice(rec.predicted_price, userZone))}</Text>
+                        </View>
+                        {userDistrict ? (
+                          <Text style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{userDistrict}</Text>
+                        ) : null}
                       </View>
                       <TouchableOpacity onPress={() => toggleFavorite(rec)}>
                         <Ionicons
@@ -1389,8 +1438,17 @@ export default function PredictionsScreen() {
                     >
                       <Text style={styles.recDetailsText}>Details</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.recBuyBtn}>
-                      <Text style={styles.recBuyText}>Buy</Text>
+                    <TouchableOpacity
+                      style={[styles.recBuyBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 }]}
+                      onPress={() => {
+                        router.push({
+                          pathname: '/(root)/(tabs)/fish-map' as any,
+                          params: { district: userDistrict || 'Colombo', zone: userZone },
+                        });
+                      }}
+                    >
+                      <Ionicons name="location-outline" size={14} color="#ffffff" />
+                      <Text style={styles.recBuyText}>Find Near Me</Text>
                     </TouchableOpacity>
                   </View>
                 </View>

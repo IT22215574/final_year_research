@@ -443,10 +443,15 @@ def _build_prediction_reasons(
     season_impact = season_info.get("season_price_impact", "0%")
     alert = season_info.get("season_alert", "")
     if alert:
+        try:
+            import re as _re
+            _num = float(_re.search(r'[-+]?\d+(?:\.\d+)?', season_impact).group())
+        except Exception:
+            _num = 0.0
         reasons.append({
             "icon":   "leaf-outline",
             "text":   f"{season_info['current_season']}: {alert}",
-            "impact": "+" in season_impact and int(season_impact.replace("+","").replace("%","")) > 0 and "up" or "neutral",
+            "impact": "up" if "+" in season_impact and _num > 0 else "neutral",
         })
 
     # 7. Elasticity (demand sensitivity)
