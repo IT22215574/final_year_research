@@ -31,7 +31,8 @@ const TripPlanner = () => {
   const [selectedBoatName, setSelectedBoatName] = useState<string>("");
   const [showBoatModal, setShowBoatModal] = useState(false);
   const [useEngineHPDropdown, setUseEngineHPDropdown] = useState(true);
-  const [selectedEngineHPFromDropdown, setSelectedEngineHPFromDropdown] = useState<string>("");
+  const [selectedEngineHPFromDropdown, setSelectedEngineHPFromDropdown] =
+    useState<string>("");
 
   // Use Zustand store instead of local state
   const { selectedZones, clearZones, keepLastZone } = useFishingZoneStore();
@@ -55,7 +56,7 @@ const TripPlanner = () => {
         }
         return sum + zoneDist;
       }, 0);
-      
+
       setDistance(totalDist.toFixed(2));
     } else {
       setDistance("");
@@ -76,15 +77,20 @@ const TripPlanner = () => {
   };
 
   // Handle boat selection from modal
-  const handleBoatSelect = (boatId: number, boatName: string, defaultEngineHP: number, customEngineHP?: string) => {
+  const handleBoatSelect = (
+    boatId: number,
+    boatName: string,
+    defaultEngineHP: number,
+    customEngineHP?: string,
+  ) => {
     setSelectedBoatId(boatId);
     setSelectedBoatName(boatName);
-    
+
     // If custom engine HP is provided, use it and switch to manual mode
-    if (customEngineHP && customEngineHP.trim() !== '') {
+    if (customEngineHP && customEngineHP.trim() !== "") {
       setEngineHP(customEngineHP);
       setUseEngineHPDropdown(false);
-      setSelectedEngineHPFromDropdown('');
+      setSelectedEngineHPFromDropdown("");
     } else {
       // Otherwise use the default HP from the boat type
       setSelectedEngineHPFromDropdown(defaultEngineHP.toString());
@@ -100,7 +106,7 @@ const TripPlanner = () => {
 
   const handlePredict = async () => {
     const finalEngineHP = getFinalEngineHP();
-    
+
     if (
       !distance ||
       !finalEngineHP ||
@@ -115,7 +121,7 @@ const TripPlanner = () => {
 
     try {
       setLoading(true);
-      
+
       const finalEngineHP = getFinalEngineHP();
 
       const fuelPrediction = await predictFuelCost({
@@ -264,7 +270,7 @@ const TripPlanner = () => {
               </View>
             </View>
           ))}
-          
+
           {/* Action Buttons */}
           <View className="flex-row justify-between mt-3">
             <TouchableOpacity
@@ -335,7 +341,8 @@ const TripPlanner = () => {
                           {selectedBoatName}
                         </Text>
                         <Text className="text-xs text-blue-600">
-                          {getCurrentBoat()?.engineModel} • {getCurrentBoat()?.fuelType}
+                          {getCurrentBoat()?.engineModel} •{" "}
+                          {getCurrentBoat()?.fuelType}
                         </Text>
                         <Text className="text-xs text-slate-500 mt-0.5">
                           Tap to change boat type
@@ -362,7 +369,8 @@ const TripPlanner = () => {
               <View>
                 <View className="flex-row justify-between items-center mb-1 ml-1">
                   <Text className="text-xs font-medium text-slate-500">
-                    Engine HP {getFinalEngineHP() && (
+                    Engine HP{" "}
+                    {getFinalEngineHP() && (
                       <Text className="text-blue-600 font-bold">
                         (Current: {getFinalEngineHP()} HP)
                       </Text>
@@ -396,15 +404,15 @@ const TripPlanner = () => {
                             }}
                             className={`px-4 py-2 rounded-lg ${
                               selectedEngineHPFromDropdown === hp.toString()
-                                ? 'bg-blue-500'
-                                : 'bg-white border border-slate-300'
+                                ? "bg-blue-500"
+                                : "bg-white border border-slate-300"
                             }`}
                           >
                             <Text
                               className={`font-medium ${
                                 selectedEngineHPFromDropdown === hp.toString()
-                                  ? 'text-white'
-                                  : 'text-slate-700'
+                                  ? "text-white"
+                                  : "text-slate-700"
                               }`}
                             >
                               {hp} HP
@@ -438,7 +446,8 @@ const TripPlanner = () => {
                         Select a Boat Type First
                       </Text>
                       <Text className="text-xs text-amber-700">
-                        Choose your boat from 5 options: 55-59.5 FT, 42 FT, 30 FT, 18-19.5 FT Flat, or Canoes/Wallam
+                        Choose your boat from 5 options: 55-59.5 FT, 42 FT, 30
+                        FT, 18-19.5 FT Flat, or Canoes/Wallam
                       </Text>
                     </View>
                   </View>

@@ -1,11 +1,20 @@
 // mobile/app/(root)/(tabs)/fishtripcost/mapview.tsx
-import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, TouchableOpacity, SafeAreaView, ActivityIndicator, FlatList, Image } from 'react-native';
-import MapView, { Marker, Circle, Polygon } from 'react-native-maps';
-import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import useFishingZoneStore from '@/stores/fishingZoneStore';
-import { images } from '@/constants';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  Modal,
+  TouchableOpacity,
+  SafeAreaView,
+  ActivityIndicator,
+  FlatList,
+  Image,
+} from "react-native";
+import MapView, { Marker, Circle, Polygon } from "react-native-maps";
+import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import useFishingZoneStore from "@/stores/fishingZoneStore";
+import { images } from "@/constants";
 
 const HARBOR_LOCATION = {
   latitude: 6.9347,
@@ -15,15 +24,15 @@ const HARBOR_LOCATION = {
 
 /**
  * FISH ZONES - Can be loaded from external API
- * 
+ *
  * To integrate with external API:
  * 1. Import: import { generateSriLankaDemoZones } from '@/utils/fishZoneDemo';
  * 2. Use useState to store dynamic zones
  * 3. Call API on component mount or button click
- * 
+ *
  * Example:
  * const [fishZones, setFishZones] = useState(FISH_ZONES);
- * 
+ *
  * useEffect(() => {
  *   const demoZones = generateSriLankaDemoZones({
  *     sstC: 28.5,
@@ -37,127 +46,135 @@ const HARBOR_LOCATION = {
 
 // Real fishing zones based on NARA data and research
 const FISH_ZONES = [
-  { 
-    id: 1, 
-    name: "South-West Tuna Ground", 
-    latitude: 5.8000, 
-    longitude: 80.0000, 
-    fishType: "Yellowfin Tuna", 
-    estimatedCatch: "High", 
+  {
+    id: 1,
+    name: "South-West Tuna Ground",
+    latitude: 5.8,
+    longitude: 80.0,
+    fishType: "Yellowfin Tuna",
+    estimatedCatch: "High",
     distance: 85,
     depth: "Deep",
     season: "NE Monsoon",
     color: "#22c55e",
-    density: "High 🐟🐟🐟"
+    density: "High 🐟🐟🐟",
   },
-  { 
-    id: 2, 
-    name: "East-Central Arabian", 
-    latitude: 7.5000, 
-    longitude: 77.5000, 
-    fishType: "Skipjack Tuna", 
-    estimatedCatch: "High", 
+  {
+    id: 2,
+    name: "East-Central Arabian",
+    latitude: 7.5,
+    longitude: 77.5,
+    fishType: "Skipjack Tuna",
+    estimatedCatch: "High",
     distance: 120,
     depth: "Deep",
     season: "Year-round",
     color: "#22c55e",
-    density: "High 🐟🐟🐟"
+    density: "High 🐟🐟🐟",
   },
-  { 
-    id: 3, 
-    name: "Bay of Bengal Ground", 
-    latitude: 8.5000, 
-    longitude: 81.5000, 
-    fishType: "Swordfish", 
-    estimatedCatch: "Medium", 
+  {
+    id: 3,
+    name: "Bay of Bengal Ground",
+    latitude: 8.5,
+    longitude: 81.5,
+    fishType: "Swordfish",
+    estimatedCatch: "Medium",
     distance: 95,
     depth: "Very Deep",
     season: "SW Monsoon",
     color: "#eab308",
-    density: "Medium 🐟🐟"
+    density: "Medium 🐟🐟",
   },
-  { 
-    id: 4, 
-    name: "Maldives Western Margin", 
-    latitude: 6.2000, 
-    longitude: 78.8000, 
-    fishType: "Bigeye Tuna", 
-    estimatedCatch: "Medium", 
+  {
+    id: 4,
+    name: "Maldives Western Margin",
+    latitude: 6.2,
+    longitude: 78.8,
+    fishType: "Bigeye Tuna",
+    estimatedCatch: "Medium",
     distance: 110,
     depth: "Deep",
     season: "NE Monsoon",
     color: "#eab308",
-    density: "Medium 🐟🐟"
+    density: "Medium 🐟🐟",
   },
-  { 
-    id: 5, 
-    name: "Trincomalee Offshore", 
-    latitude: 8.9000, 
-    longitude: 81.9000, 
-    fishType: "Mackerel", 
-    estimatedCatch: "Medium", 
+  {
+    id: 5,
+    name: "Trincomalee Offshore",
+    latitude: 8.9,
+    longitude: 81.9,
+    fishType: "Mackerel",
+    estimatedCatch: "Medium",
     distance: 45,
     depth: "Moderate",
     season: "Year-round",
     color: "#eab308",
-    density: "Medium 🐟🐟"
+    density: "Medium 🐟🐟",
   },
-  { 
-    id: 6, 
-    name: "Galle Deep Sea", 
-    latitude: 5.7000, 
-    longitude: 80.2000, 
-    fishType: "Yellowfin Tuna", 
-    estimatedCatch: "High", 
+  {
+    id: 6,
+    name: "Galle Deep Sea",
+    latitude: 5.7,
+    longitude: 80.2,
+    fishType: "Yellowfin Tuna",
+    estimatedCatch: "High",
     distance: 75,
     depth: "Deep",
     season: "SW Monsoon",
     color: "#22c55e",
-    density: "High 🐟🐟🐟"
+    density: "High 🐟🐟🐟",
   },
-  { 
-    id: 7, 
-    name: "Mannar Ridge", 
-    latitude: 8.8000, 
-    longitude: 78.5000, 
-    fishType: "Snapper", 
-    estimatedCatch: "Low", 
+  {
+    id: 7,
+    name: "Mannar Ridge",
+    latitude: 8.8,
+    longitude: 78.5,
+    fishType: "Snapper",
+    estimatedCatch: "Low",
     distance: 60,
     depth: "Shallow",
     season: "NE Monsoon",
     color: "#ef4444",
-    density: "Low 🐟"
+    density: "Low 🐟",
   },
-  { 
-    id: 8, 
-    name: "Eastern EEZ Margin", 
-    latitude: 7.8000, 
-    longitude: 82.5000, 
-    fishType: "Bigeye Tuna", 
-    estimatedCatch: "Medium", 
+  {
+    id: 8,
+    name: "Eastern EEZ Margin",
+    latitude: 7.8,
+    longitude: 82.5,
+    fishType: "Bigeye Tuna",
+    estimatedCatch: "Medium",
     distance: 130,
     depth: "Very Deep",
     season: "Year-round",
     color: "#eab308",
-    density: "Medium 🐟🐟"
+    density: "Medium 🐟🐟",
   },
 ];
 
 const getCatchColor = (catch_: string) => {
-  switch(catch_) {
-    case "High": return "#22c55e";
-    case "Medium": return "#eab308";
-    case "Low": return "#ef4444";
-    default: return "#6b7280";
+  switch (catch_) {
+    case "High":
+      return "#22c55e";
+    case "Medium":
+      return "#eab308";
+    case "Low":
+      return "#ef4444";
+    default:
+      return "#6b7280";
   }
 };
 
 const getSeasonBadge = (season: string) => {
-  switch(season) {
-    case "NE Monsoon": return "bg-blue-100 text-blue-700";
-    case "SW Monsoon": return "bg-indigo-100 text-indigo-700";
-    case "Year-round": return "bg-green-100 text-green-700";
-    default: return "bg-gray-100 text-gray-700";
+  switch (season) {
+    case "NE Monsoon":
+      return "bg-blue-100 text-blue-700";
+    case "SW Monsoon":
+      return "bg-indigo-100 text-indigo-700";
+    case "Year-round":
+      return "bg-green-100 text-green-700";
+    default:
+      return "bg-gray-100 text-gray-700";
   }
 };
 
@@ -168,7 +185,8 @@ const MapViewScreen = () => {
   const [loading, setLoading] = useState(false);
 
   // Use Zustand store
-  const { selectedZones, addZone, removeZone, clearZones } = useFishingZoneStore();
+  const { selectedZones, addZone, removeZone, clearZones } =
+    useFishingZoneStore();
 
   const handleZonePress = (zone: any) => {
     setSelectedZone(zone);
@@ -187,7 +205,7 @@ const MapViewScreen = () => {
 
   const handlePlanTrip = () => {
     if (selectedZones.length > 0) {
-      router.push('/(root)/(tabs)/fishtripcost/components/TripPlanner');
+      router.push("/(root)/(tabs)/fishtripcost/components/TripPlanner");
     }
   };
 
@@ -214,7 +232,7 @@ const MapViewScreen = () => {
       {/* Back Button */}
       <SafeAreaView className="absolute top-0 left-0 right-0 z-10 px-4 pt-2">
         <View className="flex-row justify-between items-center">
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => router.back()}
             className="bg-white/90 backdrop-blur rounded-full p-3 w-12 h-12 items-center justify-center shadow-lg"
           >
@@ -222,13 +240,15 @@ const MapViewScreen = () => {
           </TouchableOpacity>
 
           {/* View All Zones Dropdown Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={handleToggleZoneDropdown}
             className="bg-blue-500/90 backdrop-blur rounded-full px-4 py-3 flex-row items-center shadow-lg"
           >
             <Text className="text-white mr-2">🗺️</Text>
             <Text className="text-white font-semibold">View Zones</Text>
-            <Text className="text-white ml-2">{showZoneDropdown ? '▲' : '▼'}</Text>
+            <Text className="text-white ml-2">
+              {showZoneDropdown ? "▲" : "▼"}
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -255,9 +275,12 @@ const MapViewScreen = () => {
                   className="border-b border-gray-100"
                 >
                   <View className="flex-row items-center p-4">
-                    <View 
+                    <View
                       className="w-12 h-12 rounded-full items-center justify-center mr-3"
-                      style={{ backgroundColor: getCatchColor(item.estimatedCatch) + '20' }}
+                      style={{
+                        backgroundColor:
+                          getCatchColor(item.estimatedCatch) + "20",
+                      }}
                     >
                       <Text className="text-2xl">🐟</Text>
                     </View>
@@ -273,12 +296,15 @@ const MapViewScreen = () => {
                           {item.fishType}
                         </Text>
                         <Text className="text-xs">
-                          {item.estimatedCatch === "High" ? "🐟🐟🐟" : 
-                           item.estimatedCatch === "Medium" ? "🐟🐟" : "🐟"}
+                          {item.estimatedCatch === "High"
+                            ? "🐟🐟🐟"
+                            : item.estimatedCatch === "Medium"
+                              ? "🐟🐟"
+                              : "🐟"}
                         </Text>
                       </View>
                     </View>
-                    {selectedZones.find(z => z.id === item.id) && (
+                    {selectedZones.find((z) => z.id === item.id) && (
                       <View className="bg-green-100 rounded-full p-2">
                         <Text className="text-green-600">✓</Text>
                       </View>
@@ -294,21 +320,21 @@ const MapViewScreen = () => {
       {/* Selected Zones Counter and Clear Button */}
       {selectedZones.length > 0 && (
         <SafeAreaView className="absolute top-0 right-0 z-10 px-4 pt-2 flex-row">
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={handleClearAllZones}
             className="bg-red-500 rounded-full px-4 py-2 flex-row items-center shadow-lg mr-2"
           >
             <Text className="text-white mr-2">🗑️</Text>
             <Text className="text-white font-semibold">Clear</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             onPress={handleViewZones}
             className="bg-blue-500 rounded-full px-4 py-2 flex-row items-center shadow-lg"
           >
             <Text className="text-white mr-2">📍</Text>
             <Text className="text-white font-semibold">
-              {selectedZones.length} Zone{selectedZones.length > 1 ? 's' : ''}
+              {selectedZones.length} Zone{selectedZones.length > 1 ? "s" : ""}
             </Text>
           </TouchableOpacity>
         </SafeAreaView>
@@ -316,7 +342,9 @@ const MapViewScreen = () => {
 
       {/* Map Legend */}
       <View className="absolute top-24 right-4 z-10 bg-white/90 backdrop-blur rounded-xl p-3 shadow-lg">
-        <Text className="text-xs font-semibold text-gray-500 mb-2">CATCH DENSITY</Text>
+        <Text className="text-xs font-semibold text-gray-500 mb-2">
+          CATCH DENSITY
+        </Text>
         <View className="flex-col gap-1">
           <View className="flex-row items-center">
             <View className="w-3 h-3 rounded-full bg-green-500 mr-2" />
@@ -342,7 +370,8 @@ const MapViewScreen = () => {
             activeOpacity={0.7}
           >
             <Text className="text-white text-center font-semibold text-lg">
-              Plan Trip to {selectedZones.length} Zone{selectedZones.length > 1 ? 's' : ''} →
+              Plan Trip to {selectedZones.length} Zone
+              {selectedZones.length > 1 ? "s" : ""} →
             </Text>
           </TouchableOpacity>
         </View>
@@ -352,7 +381,8 @@ const MapViewScreen = () => {
       <View className="absolute bottom-4 left-4 right-4 z-10">
         <View className="bg-blue-500/90 backdrop-blur rounded-lg px-3 py-2">
           <Text className="text-white text-xs text-center">
-            Tap on zones to select multiple fishing locations • Based on NARA data
+            Tap on zones to select multiple fishing locations • Based on NARA
+            data
           </Text>
         </View>
       </View>
@@ -375,10 +405,10 @@ const MapViewScreen = () => {
           showsCompass
         >
           {/* Harbor Marker - Boat Icon */}
-          <Marker 
-            coordinate={{ 
-              latitude: HARBOR_LOCATION.latitude, 
-              longitude: HARBOR_LOCATION.longitude 
+          <Marker
+            coordinate={{
+              latitude: HARBOR_LOCATION.latitude,
+              longitude: HARBOR_LOCATION.longitude,
             }}
             title={HARBOR_LOCATION.name}
             description="Starting Point"
@@ -395,76 +425,108 @@ const MapViewScreen = () => {
           </Marker>
 
           {/* Fish Zone Markers with Enhanced Visuals */}
-          {FISH_ZONES.map(zone => (
+          {FISH_ZONES.map((zone) => (
             <React.Fragment key={zone.id}>
               {/* Colored Circle around zone - shows zone area */}
               <Circle
                 center={{ latitude: zone.latitude, longitude: zone.longitude }}
-                radius={zone.depth === "Very Deep" ? 5000 : zone.depth === "Deep" ? 3500 : 2000}
+                radius={
+                  zone.depth === "Very Deep"
+                    ? 5000
+                    : zone.depth === "Deep"
+                      ? 3500
+                      : 2000
+                }
                 strokeColor={getCatchColor(zone.estimatedCatch)}
-                strokeWidth={selectedZones.find(z => z.id === zone.id) ? 4 : 2}
-                fillColor={selectedZones.find(z => z.id === zone.id) 
-                  ? getCatchColor(zone.estimatedCatch) + '40'
-                  : getCatchColor(zone.estimatedCatch) + '15'
+                strokeWidth={
+                  selectedZones.find((z) => z.id === zone.id) ? 4 : 2
+                }
+                fillColor={
+                  selectedZones.find((z) => z.id === zone.id)
+                    ? getCatchColor(zone.estimatedCatch) + "40"
+                    : getCatchColor(zone.estimatedCatch) + "15"
                 }
               />
-              
+
               {/* Fish Schools Pattern - Multiple small fish icons to show density */}
               {zone.estimatedCatch === "High" && (
                 <>
                   <Circle
-                    center={{ latitude: zone.latitude + 0.01, longitude: zone.longitude + 0.01 }}
+                    center={{
+                      latitude: zone.latitude + 0.01,
+                      longitude: zone.longitude + 0.01,
+                    }}
                     radius={800}
-                    fillColor={getCatchColor(zone.estimatedCatch) + '30'}
+                    fillColor={getCatchColor(zone.estimatedCatch) + "30"}
                     strokeColor="transparent"
                   />
                   <Circle
-                    center={{ latitude: zone.latitude - 0.01, longitude: zone.longitude - 0.01 }}
+                    center={{
+                      latitude: zone.latitude - 0.01,
+                      longitude: zone.longitude - 0.01,
+                    }}
                     radius={800}
-                    fillColor={getCatchColor(zone.estimatedCatch) + '30'}
+                    fillColor={getCatchColor(zone.estimatedCatch) + "30"}
                     strokeColor="transparent"
                   />
                 </>
               )}
-              
+
               {/* Zone Marker - Enhanced Fish Icon */}
               <Marker
-                coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
+                coordinate={{
+                  latitude: zone.latitude,
+                  longitude: zone.longitude,
+                }}
                 onPress={() => handleZonePress(zone)}
                 title={zone.name}
                 description={`${zone.fishType} • ${zone.estimatedCatch} density`}
               >
                 <View className="items-center">
                   {/* Main Fish Icon with animation effect */}
-                  <View 
+                  <View
                     className={`rounded-full p-3 border-3 shadow-xl ${
-                      selectedZones.find(z => z.id === zone.id) ? 'border-blue-400' : 'border-white'
+                      selectedZones.find((z) => z.id === zone.id)
+                        ? "border-blue-400"
+                        : "border-white"
                     }`}
-                    style={{ 
+                    style={{
                       backgroundColor: getCatchColor(zone.estimatedCatch),
-                      transform: selectedZones.find(z => z.id === zone.id) ? [{ scale: 1.2 }] : [{ scale: 1 }]
+                      transform: selectedZones.find((z) => z.id === zone.id)
+                        ? [{ scale: 1.2 }]
+                        : [{ scale: 1 }],
                     }}
                   >
                     <Text className="text-3xl">
-                      {selectedZones.find(z => z.id === zone.id) ? '✅' : '🐟'}
+                      {selectedZones.find((z) => z.id === zone.id)
+                        ? "✅"
+                        : "🐟"}
                     </Text>
                   </View>
-                  
+
                   {/* Zone Name Label */}
-                  <View 
+                  <View
                     className="mt-1 px-2 py-1 rounded-md"
-                    style={{ backgroundColor: getCatchColor(zone.estimatedCatch) }}
+                    style={{
+                      backgroundColor: getCatchColor(zone.estimatedCatch),
+                    }}
                   >
-                    <Text className="text-white text-xs font-bold" numberOfLines={1}>
-                      {zone.name.split(' ')[0]}
+                    <Text
+                      className="text-white text-xs font-bold"
+                      numberOfLines={1}
+                    >
+                      {zone.name.split(" ")[0]}
                     </Text>
                   </View>
-                  
+
                   {/* Density Indicator */}
                   <View className="bg-white/90 px-1 rounded-full mt-0.5">
                     <Text className="text-xs">
-                      {zone.estimatedCatch === "High" ? "🐟🐟🐟" : 
-                       zone.estimatedCatch === "Medium" ? "🐟🐟" : "🐟"}
+                      {zone.estimatedCatch === "High"
+                        ? "🐟🐟🐟"
+                        : zone.estimatedCatch === "Medium"
+                          ? "🐟🐟"
+                          : "🐟"}
                     </Text>
                   </View>
                 </View>
@@ -476,7 +538,7 @@ const MapViewScreen = () => {
 
       {/* Zone Detail Modal */}
       <Modal visible={!!selectedZone} transparent animationType="slide">
-        <TouchableOpacity 
+        <TouchableOpacity
           className="flex-1 bg-black/50"
           activeOpacity={1}
           onPress={() => setSelectedZone(null)}
@@ -484,7 +546,7 @@ const MapViewScreen = () => {
           <View className="flex-1 justify-end">
             <TouchableOpacity activeOpacity={1}>
               <LinearGradient
-                colors={['#ffffff', '#f8fafc']}
+                colors={["#ffffff", "#f8fafc"]}
                 className="rounded-t-3xl p-6 shadow-2xl"
               >
                 {selectedZone && (
@@ -492,9 +554,12 @@ const MapViewScreen = () => {
                     {/* Header */}
                     <View className="flex-row justify-between items-center mb-4">
                       <View className="flex-row items-center flex-1">
-                        <View 
+                        <View
                           className="w-12 h-12 rounded-full items-center justify-center mr-3"
-                          style={{ backgroundColor: getCatchColor(selectedZone.estimatedCatch) + '20' }}
+                          style={{
+                            backgroundColor:
+                              getCatchColor(selectedZone.estimatedCatch) + "20",
+                          }}
                         >
                           <Text className="text-2xl">🐟</Text>
                         </View>
@@ -507,7 +572,7 @@ const MapViewScreen = () => {
                           </Text>
                         </View>
                       </View>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={() => setSelectedZone(null)}
                         className="bg-gray-100 rounded-full p-2"
                       >
@@ -517,8 +582,12 @@ const MapViewScreen = () => {
 
                     {/* Season Badge */}
                     <View className="mb-3">
-                      <View className={`${getSeasonBadge(selectedZone.season)} px-3 py-1 rounded-full self-start`}>
-                        <Text className="text-xs font-medium">Best in {selectedZone.season}</Text>
+                      <View
+                        className={`${getSeasonBadge(selectedZone.season)} px-3 py-1 rounded-full self-start`}
+                      >
+                        <Text className="text-xs font-medium">
+                          Best in {selectedZone.season}
+                        </Text>
                       </View>
                     </View>
 
@@ -531,34 +600,45 @@ const MapViewScreen = () => {
                         </Text>
                       </View>
                       <View className="w-1/2 p-2">
-                        <Text className="text-xs text-gray-500">Water Depth</Text>
+                        <Text className="text-xs text-gray-500">
+                          Water Depth
+                        </Text>
                         <Text className="text-lg font-semibold text-gray-800">
                           {selectedZone.depth}
                         </Text>
                       </View>
                       <View className="w-1/2 p-2">
-                        <Text className="text-xs text-gray-500">Est. Catch</Text>
+                        <Text className="text-xs text-gray-500">
+                          Est. Catch
+                        </Text>
                         <View className="flex-row items-center">
                           <Text className="text-lg font-semibold text-gray-800 mr-2">
                             {selectedZone.estimatedCatch}
                           </Text>
-                          <View 
+                          <View
                             className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: getCatchColor(selectedZone.estimatedCatch) }}
+                            style={{
+                              backgroundColor: getCatchColor(
+                                selectedZone.estimatedCatch,
+                              ),
+                            }}
                           />
                         </View>
                       </View>
                       <View className="w-1/2 p-2">
                         <Text className="text-xs text-gray-500">Density</Text>
                         <Text className="text-lg">
-                          {selectedZone.estimatedCatch === "High" ? "🐟🐟🐟" : 
-                           selectedZone.estimatedCatch === "Medium" ? "🐟🐟" : "🐟"}
+                          {selectedZone.estimatedCatch === "High"
+                            ? "🐟🐟🐟"
+                            : selectedZone.estimatedCatch === "Medium"
+                              ? "🐟🐟"
+                              : "🐟"}
                         </Text>
                       </View>
                     </View>
 
                     {/* Selection Status */}
-                    {selectedZones.find(z => z.id === selectedZone.id) ? (
+                    {selectedZones.find((z) => z.id === selectedZone.id) ? (
                       <View className="bg-green-50 rounded-xl p-3 mb-4">
                         <Text className="text-green-700 text-center font-medium">
                           ✓ Already added to your trip
@@ -577,7 +657,7 @@ const MapViewScreen = () => {
 
                     {/* Action Buttons */}
                     <View className="flex-row gap-3">
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={() => setSelectedZone(null)}
                         className="flex-1 bg-gray-100 rounded-xl py-4"
                       >
@@ -604,13 +684,13 @@ const MapViewScreen = () => {
                   Selected Zones ({selectedZones.length})
                 </Text>
                 <View className="flex-row">
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={handleClearAllZones}
                     className="bg-red-100 rounded-full p-2 mr-2"
                   >
                     <Text className="text-red-500">🗑️</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => setShowZoneList(false)}
                     className="bg-gray-100 rounded-full p-2"
                   >
@@ -625,14 +705,19 @@ const MapViewScreen = () => {
                 showsVerticalScrollIndicator={false}
                 renderItem={({ item }) => (
                   <View className="flex-row items-center bg-gray-50 rounded-xl p-3 mb-2">
-                    <View 
+                    <View
                       className="w-10 h-10 rounded-full items-center justify-center mr-3"
-                      style={{ backgroundColor: getCatchColor(item.estimatedCatch) + '20' }}
+                      style={{
+                        backgroundColor:
+                          getCatchColor(item.estimatedCatch) + "20",
+                      }}
                     >
                       <Text className="text-lg">🐟</Text>
                     </View>
                     <View className="flex-1">
-                      <Text className="font-semibold text-gray-800">{item.name}</Text>
+                      <Text className="font-semibold text-gray-800">
+                        {item.name}
+                      </Text>
                       <Text className="text-sm text-gray-500">
                         {item.fishType} • {item.distance} km
                       </Text>

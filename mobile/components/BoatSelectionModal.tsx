@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,15 +8,20 @@ import {
   Image,
   Dimensions,
   TextInput,
-} from 'react-native';
-import { boatTypes } from '@/constants';
+} from "react-native";
+import { boatTypes } from "@/constants";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 interface BoatSelectionModalProps {
   visible: boolean;
   onClose: () => void;
-  onSelectBoat: (boatId: number, boatName: string, defaultEngineHP: number, customEngineHP?: string) => void;
+  onSelectBoat: (
+    boatId: number,
+    boatName: string,
+    defaultEngineHP: number,
+    customEngineHP?: string,
+  ) => void;
   selectedBoatId?: number;
 }
 
@@ -27,7 +32,7 @@ const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
   selectedBoatId,
 }) => {
   const [currentBoatIndex, setCurrentBoatIndex] = useState(0);
-  const [customEngineHP, setCustomEngineHP] = useState('');
+  const [customEngineHP, setCustomEngineHP] = useState("");
   const [useCustomHP, setUseCustomHP] = useState(false);
 
   const handleSelectBoat = () => {
@@ -36,9 +41,9 @@ const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
       selectedBoat.id,
       selectedBoat.name,
       selectedBoat.defaultEngineHP,
-      useCustomHP && customEngineHP ? customEngineHP : undefined
+      useCustomHP && customEngineHP ? customEngineHP : undefined,
     );
-    setCustomEngineHP('');
+    setCustomEngineHP("");
     setUseCustomHP(false);
     onClose();
   };
@@ -65,10 +70,12 @@ const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
       onRequestClose={onClose}
     >
       <View className="flex-1 bg-black/50 justify-end">
-        <View className="bg-white rounded-t-3xl" style={{ maxHeight: '90%' }}>
+        <View className="bg-white rounded-t-3xl" style={{ maxHeight: "90%" }}>
           {/* Header */}
           <View className="flex-row justify-between items-center p-4 border-b border-slate-200">
-            <Text className="text-xl font-bold text-slate-800">Select Boat Type</Text>
+            <Text className="text-xl font-bold text-slate-800">
+              Select Boat Type
+            </Text>
             <TouchableOpacity
               onPress={onClose}
               className="w-8 h-8 items-center justify-center bg-slate-100 rounded-full"
@@ -94,10 +101,14 @@ const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
                   onPress={handlePrevious}
                   disabled={currentBoatIndex === 0}
                   className={`w-10 h-10 rounded-full items-center justify-center ${
-                    currentBoatIndex === 0 ? 'bg-slate-200' : 'bg-blue-500'
+                    currentBoatIndex === 0 ? "bg-slate-200" : "bg-blue-500"
                   }`}
                 >
-                  <Text className={currentBoatIndex === 0 ? 'text-slate-400' : 'text-white'}>
+                  <Text
+                    className={
+                      currentBoatIndex === 0 ? "text-slate-400" : "text-white"
+                    }
+                  >
                     ‹
                   </Text>
                 </TouchableOpacity>
@@ -105,12 +116,16 @@ const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
                   onPress={handleNext}
                   disabled={currentBoatIndex === boatTypes.length - 1}
                   className={`w-10 h-10 rounded-full items-center justify-center ${
-                    currentBoatIndex === boatTypes.length - 1 ? 'bg-slate-200' : 'bg-blue-500'
+                    currentBoatIndex === boatTypes.length - 1
+                      ? "bg-slate-200"
+                      : "bg-blue-500"
                   }`}
                 >
                   <Text
                     className={
-                      currentBoatIndex === boatTypes.length - 1 ? 'text-slate-400' : 'text-white'
+                      currentBoatIndex === boatTypes.length - 1
+                        ? "text-slate-400"
+                        : "text-white"
                     }
                   >
                     ›
@@ -126,8 +141,8 @@ const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
                     onPress={() => setCurrentBoatIndex(index)}
                     className={`h-2 rounded-full ${
                       index === currentBoatIndex
-                        ? 'bg-blue-500 w-8'
-                        : 'bg-slate-300 w-2'
+                        ? "bg-blue-500 w-8"
+                        : "bg-slate-300 w-2"
                     }`}
                   />
                 ))}
@@ -206,13 +221,17 @@ const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
                   </Text>
                 </View>
                 <View className="flex-1 bg-emerald-50 rounded-xl p-3 mr-2">
-                  <Text className="text-xs text-emerald-600 mb-1">Fuel Efficiency</Text>
+                  <Text className="text-xs text-emerald-600 mb-1">
+                    Fuel Efficiency
+                  </Text>
                   <Text className="text-sm font-bold text-emerald-800">
                     {currentBoat.fuelEfficiency}
                   </Text>
                 </View>
                 <View className="flex-1 bg-amber-50 rounded-xl p-3">
-                  <Text className="text-xs text-amber-600 mb-1">Default HP</Text>
+                  <Text className="text-xs text-amber-600 mb-1">
+                    Default HP
+                  </Text>
                   <Text className="text-sm font-bold text-amber-800">
                     {currentBoat.defaultEngineHP}
                   </Text>
@@ -239,7 +258,9 @@ const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
                 <Text className="text-xs font-semibold text-slate-500 mb-1">
                   IDEAL FOR
                 </Text>
-                <Text className="text-slate-700 text-sm">{currentBoat.idealFor}</Text>
+                <Text className="text-slate-700 text-sm">
+                  {currentBoat.idealFor}
+                </Text>
               </View>
 
               {/* Available Engine HP Options */}
@@ -253,19 +274,19 @@ const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
                       key={index}
                       className={`px-3 py-2 rounded-lg ${
                         hp === currentBoat.defaultEngineHP
-                          ? 'bg-blue-100 border border-blue-300'
-                          : 'bg-slate-100'
+                          ? "bg-blue-100 border border-blue-300"
+                          : "bg-slate-100"
                       }`}
                     >
                       <Text
                         className={`text-sm font-medium ${
                           hp === currentBoat.defaultEngineHP
-                            ? 'text-blue-800'
-                            : 'text-slate-600'
+                            ? "text-blue-800"
+                            : "text-slate-600"
                         }`}
                       >
                         {hp} HP
-                        {hp === currentBoat.defaultEngineHP && ' ⭐'}
+                        {hp === currentBoat.defaultEngineHP && " ⭐"}
                       </Text>
                     </View>
                   ))}
@@ -284,22 +305,22 @@ const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
                   <TouchableOpacity
                     onPress={() => {
                       setUseCustomHP(!useCustomHP);
-                      if (useCustomHP) setCustomEngineHP('');
+                      if (useCustomHP) setCustomEngineHP("");
                     }}
                     className={`px-3 py-1.5 rounded-full ${
-                      useCustomHP ? 'bg-amber-500' : 'bg-amber-200'
+                      useCustomHP ? "bg-amber-500" : "bg-amber-200"
                     }`}
                   >
                     <Text
                       className={`text-xs font-medium ${
-                        useCustomHP ? 'text-white' : 'text-amber-700'
+                        useCustomHP ? "text-white" : "text-amber-700"
                       }`}
                     >
-                      {useCustomHP ? 'Enabled' : 'Disabled'}
+                      {useCustomHP ? "Enabled" : "Disabled"}
                     </Text>
                   </TouchableOpacity>
                 </View>
-                
+
                 {useCustomHP && (
                   <View>
                     <Text className="text-xs text-amber-700 mb-2">
@@ -315,7 +336,7 @@ const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
                     />
                   </View>
                 )}
-                
+
                 {!useCustomHP && (
                   <Text className="text-xs text-amber-700">
                     Enable to enter a custom engine HP value not listed above
