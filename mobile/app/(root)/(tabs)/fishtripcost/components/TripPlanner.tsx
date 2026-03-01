@@ -15,6 +15,8 @@ import {
 } from "@/services/tripService";
 import { router } from "expo-router";
 import useFishingZoneStore from "@/stores/fishingZoneStore";
+import BoatSelectionModal from "@/components/BoatSelectionModal";
+import { boatTypes } from "@/constants";
 
 const TripPlanner = () => {
   const [distance, setDistance] = useState("");
@@ -23,6 +25,13 @@ const TripPlanner = () => {
   const [windSpeed, setWindSpeed] = useState("");
   const [waveHeight, setWaveHeight] = useState("");
   const [fuelPrice, setFuelPrice] = useState("350");
+
+  // Boat selection states
+  const [selectedBoatId, setSelectedBoatId] = useState<number | null>(null);
+  const [selectedBoatName, setSelectedBoatName] = useState<string>("");
+  const [showBoatModal, setShowBoatModal] = useState(false);
+  const [useEngineHPDropdown, setUseEngineHPDropdown] = useState(true);
+  const [selectedEngineHPFromDropdown, setSelectedEngineHPFromDropdown] = useState<string>("");
 
   // Use Zustand store instead of local state
   const { selectedZones, clearZones, keepLastZone } = useFishingZoneStore();
@@ -53,10 +62,48 @@ const TripPlanner = () => {
     }
   }, [selectedZones]);
 
+  // Get current boat's engine HP options
+  const getCurrentBoatEngineOptions = () => {
+    if (!selectedBoatId) return [];
+    const boat = boatTypes.find((b) => b.id === selectedBoatId);
+    return boat?.engineHPOptions || [];
+  };
+
+  // Get current boat details
+  const getCurrentBoat = () => {
+    if (!selectedBoatId) return null;
+    return boatTypes.find((b) => b.id === selectedBoatId);
+  };
+
+  // Handle boat selection from modal
+  const handleBoatSelect = (boatId: number, boatName: string, defaultEngineHP: number, customEngineHP?: string) => {
+    setSelectedBoatId(boatId);
+    setSelectedBoatName(boatName);
+    
+    // If custom engine HP is provided, use it and switch to manual mode
+    if (customEngineHP && customEngineHP.trim() !== '') {
+      setEngineHP(customEngineHP);
+      setUseEngineHPDropdown(false);
+      setSelectedEngineHPFromDropdown('');
+    } else {
+      // Otherwise use the default HP from the boat type
+      setSelectedEngineHPFromDropdown(defaultEngineHP.toString());
+      setEngineHP(defaultEngineHP.toString());
+      setUseEngineHPDropdown(true);
+    }
+  };
+
+  // Get final engine HP value
+  const getFinalEngineHP = () => {
+    return useEngineHPDropdown ? selectedEngineHPFromDropdown : engineHP;
+  };
+
   const handlePredict = async () => {
+    const finalEngineHP = getFinalEngineHP();
+    
     if (
       !distance ||
-      !engineHP ||
+      !finalEngineHP ||
       !duration ||
       !windSpeed ||
       !waveHeight ||
@@ -68,10 +115,12 @@ const TripPlanner = () => {
 
     try {
       setLoading(true);
+      
+      const finalEngineHP = getFinalEngineHP();
 
       const fuelPrediction = await predictFuelCost({
         distanceKm: parseFloat(distance),
-        engineHorsePower: parseFloat(engineHP),
+        engineHorsePower: parseFloat(finalEngineHP),
         windSpeed: parseFloat(windSpeed),
         waveHeight: parseFloat(waveHeight),
         tripDurationHours: parseFloat(duration),
@@ -79,7 +128,7 @@ const TripPlanner = () => {
 
       const costPrediction = await predictTripCost({
         distanceKm: parseFloat(distance),
-        engineHorsePower: parseFloat(engineHP),
+        engineHorsePower: parseFloat(finalEngineHP),
         windSpeed: parseFloat(windSpeed),
         waveHeight: parseFloat(waveHeight),
         tripDurationHours: parseFloat(duration),
@@ -267,6 +316,149 @@ const TripPlanner = () => {
 
           {/* Input Fields */}
           <View className="space-y-3">
+            {/* Boat Type Selection */}
+            <View>
+              <Text className="text-xs font-medium text-slate-500 mb-1 ml-1">
+                Boat Type
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowBoatModal(true)}
+                className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex-row justify-between items-center"
+                activeOpacity={0.7}
+              >
+                <View className="flex-row items-center flex-1">
+                  <Text className="text-2xl mr-2">🚢</Text>
+                  <View className="flex-1">
+                    {selectedBoatName ? (
+                      <>
+                        <Text className="text-slate-800 font-semibold">
+                          {selectedBoatName}
+                        </Text>
+                        <Text className="text-xs text-blue-600">
+                          {getCurrentBoat()?.engineModel} • {getCurrentBoat()?.fuelType}
+                        </Text>
+                        <Text className="text-xs text-slate-500 mt-0.5">
+                          Tap to change boat type
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Text className="text-slate-800 font-medium">
+                          Select your boat type
+                        </Text>
+                        <Text className="text-xs text-slate-500">
+                          Choose from 5 boat options
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                </View>
+                <Text className="text-slate-400 text-xl">›</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Engine HP Section */}
+            {selectedBoatId && (
+              <View>
+                <View className="flex-row justify-between items-center mb-1 ml-1">
+                  <Text className="text-xs font-medium text-slate-500">
+                    Engine HP {getFinalEngineHP() && (
+                      <Text className="text-blue-600 font-bold">
+                        (Current: {getFinalEngineHP()} HP)
+                      </Text>
+                    )}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setUseEngineHPDropdown(!useEngineHPDropdown)}
+                    className="bg-blue-100 rounded-full px-2 py-1"
+                  >
+                    <Text className="text-xs text-blue-700 font-medium">
+                      {useEngineHPDropdown ? "✏️ Manual" : "📋 Dropdown"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {useEngineHPDropdown ? (
+                  // Dropdown for Engine HP
+                  <View className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      className="p-2"
+                    >
+                      <View className="flex-row gap-2">
+                        {getCurrentBoatEngineOptions().map((hp) => (
+                          <TouchableOpacity
+                            key={hp}
+                            onPress={() => {
+                              setSelectedEngineHPFromDropdown(hp.toString());
+                              setEngineHP(hp.toString());
+                            }}
+                            className={`px-4 py-2 rounded-lg ${
+                              selectedEngineHPFromDropdown === hp.toString()
+                                ? 'bg-blue-500'
+                                : 'bg-white border border-slate-300'
+                            }`}
+                          >
+                            <Text
+                              className={`font-medium ${
+                                selectedEngineHPFromDropdown === hp.toString()
+                                  ? 'text-white'
+                                  : 'text-slate-700'
+                              }`}
+                            >
+                              {hp} HP
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+                ) : (
+                  // Manual Input for Engine HP
+                  <TextInput
+                    placeholder="Enter Engine HP"
+                    keyboardType="numeric"
+                    value={engineHP}
+                    onChangeText={setEngineHP}
+                    className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 placeholder:text-slate-400"
+                  />
+                )}
+              </View>
+            )}
+
+            {/* Show manual engine HP if no boat selected */}
+            {!selectedBoatId && (
+              <View>
+                <View className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-2">
+                  <View className="flex-row items-start">
+                    <Text className="text-lg mr-2">ℹ️</Text>
+                    <View className="flex-1">
+                      <Text className="text-xs font-semibold text-amber-800 mb-1">
+                        Select a Boat Type First
+                      </Text>
+                      <Text className="text-xs text-amber-700">
+                        Choose your boat from 5 options: 55-59.5 FT, 42 FT, 30 FT, 18-19.5 FT Flat, or Canoes/Wallam
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs font-medium text-slate-500 mb-1 ml-1">
+                    Engine HP
+                  </Text>
+                  <TextInput
+                    placeholder="Select a boat type first"
+                    keyboardType="numeric"
+                    value={engineHP}
+                    onChangeText={setEngineHP}
+                    editable={false}
+                    className="bg-slate-100 border border-slate-200 rounded-xl p-3 text-slate-400"
+                  />
+                </View>
+              </View>
+            )}
+
             {/* Row 1 */}
             <View className="flex-row gap-3">
               <View className="flex-1">
@@ -284,22 +476,6 @@ const TripPlanner = () => {
               </View>
               <View className="flex-1">
                 <Text className="text-xs font-medium text-slate-500 mb-1 ml-1">
-                  Engine HP
-                </Text>
-                <TextInput
-                  placeholder="0"
-                  keyboardType="numeric"
-                  value={engineHP}
-                  onChangeText={setEngineHP}
-                  className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 placeholder:text-slate-400"
-                />
-              </View>
-            </View>
-
-            {/* Row 2 */}
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <Text className="text-xs font-medium text-slate-500 mb-1 ml-1">
                   Duration (hrs)
                 </Text>
                 <TextInput
@@ -310,6 +486,10 @@ const TripPlanner = () => {
                   className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 placeholder:text-slate-400"
                 />
               </View>
+            </View>
+
+            {/* Row 2 */}
+            <View className="flex-row gap-3">
               <View className="flex-1">
                 <Text className="text-xs font-medium text-slate-500 mb-1 ml-1">
                   Fuel Price (Rs/L)
@@ -322,10 +502,6 @@ const TripPlanner = () => {
                   className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 placeholder:text-slate-400"
                 />
               </View>
-            </View>
-
-            {/* Row 3 */}
-            <View className="flex-row gap-3">
               <View className="flex-1">
                 <Text className="text-xs font-medium text-slate-500 mb-1 ml-1">
                   Wind Speed (km/h)
@@ -338,18 +514,20 @@ const TripPlanner = () => {
                   className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 placeholder:text-slate-400"
                 />
               </View>
-              <View className="flex-1">
-                <Text className="text-xs font-medium text-slate-500 mb-1 ml-1">
-                  Wave Height (m)
-                </Text>
-                <TextInput
-                  placeholder="0"
-                  keyboardType="numeric"
-                  value={waveHeight}
-                  onChangeText={setWaveHeight}
-                  className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 placeholder:text-slate-400"
-                />
-              </View>
+            </View>
+
+            {/* Row 3 - Wave Height */}
+            <View>
+              <Text className="text-xs font-medium text-slate-500 mb-1 ml-1">
+                Wave Height (m)
+              </Text>
+              <TextInput
+                placeholder="0"
+                keyboardType="numeric"
+                value={waveHeight}
+                onChangeText={setWaveHeight}
+                className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-slate-800 placeholder:text-slate-400"
+              />
             </View>
           </View>
 
@@ -479,6 +657,14 @@ const TripPlanner = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* Boat Selection Modal */}
+      <BoatSelectionModal
+        visible={showBoatModal}
+        onClose={() => setShowBoatModal(false)}
+        onSelectBoat={handleBoatSelect}
+        selectedBoatId={selectedBoatId || undefined}
+      />
     </SafeAreaView>
   );
 };

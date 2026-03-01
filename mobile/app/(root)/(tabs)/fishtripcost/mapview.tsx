@@ -1,16 +1,39 @@
 // mobile/app/(root)/(tabs)/fishtripcost/mapview.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, TouchableOpacity, SafeAreaView, ActivityIndicator, FlatList } from 'react-native';
-import MapView, { Marker, Circle } from 'react-native-maps';
+import { View, Text, Modal, TouchableOpacity, SafeAreaView, ActivityIndicator, FlatList, Image } from 'react-native';
+import MapView, { Marker, Circle, Polygon } from 'react-native-maps';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import useFishingZoneStore from '@/stores/fishingZoneStore';
+import { images } from '@/constants';
 
 const HARBOR_LOCATION = {
   latitude: 6.9347,
   longitude: 79.8429,
   name: "Colombo Harbor",
 };
+
+/**
+ * FISH ZONES - Can be loaded from external API
+ * 
+ * To integrate with external API:
+ * 1. Import: import { generateSriLankaDemoZones } from '@/utils/fishZoneDemo';
+ * 2. Use useState to store dynamic zones
+ * 3. Call API on component mount or button click
+ * 
+ * Example:
+ * const [fishZones, setFishZones] = useState(FISH_ZONES);
+ * 
+ * useEffect(() => {
+ *   const demoZones = generateSriLankaDemoZones({
+ *     sstC: 28.5,
+ *     chlorophyllMgM3: 0.3,
+ *     currentSpeedMS: 0.5,
+ *     currentDirectionDeg: 90
+ *   });
+ *   // Convert demoZones to FISH_ZONES format and setFishZones(...)
+ * }, []);
+ */
 
 // Real fishing zones based on NARA data and research
 const FISH_ZONES = [
@@ -141,6 +164,7 @@ const getSeasonBadge = (season: string) => {
 const MapViewScreen = () => {
   const [selectedZone, setSelectedZone] = useState<any>(null);
   const [showZoneList, setShowZoneList] = useState(false);
+  const [showZoneDropdown, setShowZoneDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Use Zustand store
@@ -176,17 +200,96 @@ const MapViewScreen = () => {
     setShowZoneList(false);
   };
 
+  const handleToggleZoneDropdown = () => {
+    setShowZoneDropdown(!showZoneDropdown);
+  };
+
+  const handleSelectFromDropdown = (zone: any) => {
+    setSelectedZone(zone);
+    setShowZoneDropdown(false);
+  };
+
   return (
     <View className="flex-1">
       {/* Back Button */}
       <SafeAreaView className="absolute top-0 left-0 right-0 z-10 px-4 pt-2">
-        <TouchableOpacity 
-          onPress={() => router.back()}
-          className="bg-white/90 backdrop-blur rounded-full p-3 w-12 h-12 items-center justify-center shadow-lg"
-        >
-          <Text className="text-xl">←</Text>
-        </TouchableOpacity>
+        <View className="flex-row justify-between items-center">
+          <TouchableOpacity 
+            onPress={() => router.back()}
+            className="bg-white/90 backdrop-blur rounded-full p-3 w-12 h-12 items-center justify-center shadow-lg"
+          >
+            <Text className="text-xl">←</Text>
+          </TouchableOpacity>
+
+          {/* View All Zones Dropdown Button */}
+          <TouchableOpacity 
+            onPress={handleToggleZoneDropdown}
+            className="bg-blue-500/90 backdrop-blur rounded-full px-4 py-3 flex-row items-center shadow-lg"
+          >
+            <Text className="text-white mr-2">🗺️</Text>
+            <Text className="text-white font-semibold">View Zones</Text>
+            <Text className="text-white ml-2">{showZoneDropdown ? '▲' : '▼'}</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
+
+      {/* Zone Dropdown List */}
+      {showZoneDropdown && (
+        <SafeAreaView className="absolute top-16 left-4 right-4 z-10">
+          <View className="bg-white/95 backdrop-blur rounded-2xl shadow-2xl max-h-96">
+            <View className="flex-row justify-between items-center p-4 border-b border-gray-200">
+              <Text className="text-lg font-bold text-gray-800">
+                Available Fishing Zones
+              </Text>
+              <TouchableOpacity onPress={handleToggleZoneDropdown}>
+                <Text className="text-2xl text-gray-500">×</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={FISH_ZONES}
+              keyExtractor={(item) => item.id.toString()}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => handleSelectFromDropdown(item)}
+                  className="border-b border-gray-100"
+                >
+                  <View className="flex-row items-center p-4">
+                    <View 
+                      className="w-12 h-12 rounded-full items-center justify-center mr-3"
+                      style={{ backgroundColor: getCatchColor(item.estimatedCatch) + '20' }}
+                    >
+                      <Text className="text-2xl">🐟</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="font-semibold text-gray-800 mb-1">
+                        {item.name}
+                      </Text>
+                      <View className="flex-row items-center">
+                        <Text className="text-xs text-gray-500 mr-3">
+                          📍 {item.distance} km
+                        </Text>
+                        <Text className="text-xs text-gray-500 mr-3">
+                          {item.fishType}
+                        </Text>
+                        <Text className="text-xs">
+                          {item.estimatedCatch === "High" ? "🐟🐟🐟" : 
+                           item.estimatedCatch === "Medium" ? "🐟🐟" : "🐟"}
+                        </Text>
+                      </View>
+                    </View>
+                    {selectedZones.find(z => z.id === item.id) && (
+                      <View className="bg-green-100 rounded-full p-2">
+                        <Text className="text-green-600">✓</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </SafeAreaView>
+      )}
 
       {/* Selected Zones Counter and Clear Button */}
       {selectedZones.length > 0 && (
@@ -271,22 +374,30 @@ const MapViewScreen = () => {
           showsUserLocation
           showsCompass
         >
-          {/* Harbor Marker */}
+          {/* Harbor Marker - Boat Icon */}
           <Marker 
             coordinate={{ 
               latitude: HARBOR_LOCATION.latitude, 
               longitude: HARBOR_LOCATION.longitude 
             }}
+            title={HARBOR_LOCATION.name}
+            description="Starting Point"
           >
-            <View className="bg-blue-500 rounded-full p-2 border-2 border-white shadow-lg">
-              <Text className="text-xl">⚓</Text>
+            <View className="items-center">
+              {/* Boat Image or Emoji */}
+              <View className="bg-blue-600 rounded-full p-3 border-3 border-white shadow-lg">
+                <Text className="text-3xl">🚢</Text>
+              </View>
+              <View className="bg-blue-600 px-2 py-1 rounded-md mt-1">
+                <Text className="text-white text-xs font-bold">Harbor</Text>
+              </View>
             </View>
           </Marker>
 
-          {/* Fish Zone Markers with Circles */}
+          {/* Fish Zone Markers with Enhanced Visuals */}
           {FISH_ZONES.map(zone => (
             <React.Fragment key={zone.id}>
-              {/* Colored Circle around zone */}
+              {/* Colored Circle around zone - shows zone area */}
               <Circle
                 center={{ latitude: zone.latitude, longitude: zone.longitude }}
                 radius={zone.depth === "Very Deep" ? 5000 : zone.depth === "Deep" ? 3500 : 2000}
@@ -298,20 +409,64 @@ const MapViewScreen = () => {
                 }
               />
               
-              {/* Zone Marker */}
+              {/* Fish Schools Pattern - Multiple small fish icons to show density */}
+              {zone.estimatedCatch === "High" && (
+                <>
+                  <Circle
+                    center={{ latitude: zone.latitude + 0.01, longitude: zone.longitude + 0.01 }}
+                    radius={800}
+                    fillColor={getCatchColor(zone.estimatedCatch) + '30'}
+                    strokeColor="transparent"
+                  />
+                  <Circle
+                    center={{ latitude: zone.latitude - 0.01, longitude: zone.longitude - 0.01 }}
+                    radius={800}
+                    fillColor={getCatchColor(zone.estimatedCatch) + '30'}
+                    strokeColor="transparent"
+                  />
+                </>
+              )}
+              
+              {/* Zone Marker - Enhanced Fish Icon */}
               <Marker
                 coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
                 onPress={() => handleZonePress(zone)}
+                title={zone.name}
+                description={`${zone.fishType} • ${zone.estimatedCatch} density`}
               >
-                <View 
-                  className={`rounded-full p-2 border-2 shadow-lg ${
-                    selectedZones.find(z => z.id === zone.id) ? 'border-blue-500 scale-110' : 'border-white'
-                  }`}
-                  style={{ backgroundColor: getCatchColor(zone.estimatedCatch) }}
-                >
-                  <Text className="text-xl">
-                    {selectedZones.find(z => z.id === zone.id) ? '✅' : '🐟'}
-                  </Text>
+                <View className="items-center">
+                  {/* Main Fish Icon with animation effect */}
+                  <View 
+                    className={`rounded-full p-3 border-3 shadow-xl ${
+                      selectedZones.find(z => z.id === zone.id) ? 'border-blue-400' : 'border-white'
+                    }`}
+                    style={{ 
+                      backgroundColor: getCatchColor(zone.estimatedCatch),
+                      transform: selectedZones.find(z => z.id === zone.id) ? [{ scale: 1.2 }] : [{ scale: 1 }]
+                    }}
+                  >
+                    <Text className="text-3xl">
+                      {selectedZones.find(z => z.id === zone.id) ? '✅' : '🐟'}
+                    </Text>
+                  </View>
+                  
+                  {/* Zone Name Label */}
+                  <View 
+                    className="mt-1 px-2 py-1 rounded-md"
+                    style={{ backgroundColor: getCatchColor(zone.estimatedCatch) }}
+                  >
+                    <Text className="text-white text-xs font-bold" numberOfLines={1}>
+                      {zone.name.split(' ')[0]}
+                    </Text>
+                  </View>
+                  
+                  {/* Density Indicator */}
+                  <View className="bg-white/90 px-1 rounded-full mt-0.5">
+                    <Text className="text-xs">
+                      {zone.estimatedCatch === "High" ? "🐟🐟🐟" : 
+                       zone.estimatedCatch === "Medium" ? "🐟🐟" : "🐟"}
+                    </Text>
+                  </View>
                 </View>
               </Marker>
             </React.Fragment>
