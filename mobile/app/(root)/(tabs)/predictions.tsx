@@ -110,10 +110,13 @@ interface InsightsData {
   demand_sentiment_7_days: DemandDay[];
   price_spike_warning: boolean;
   price_spike_day: string;
+  data_as_of?: string;  // ISO datetime when data was computed server-side
   insights: {
     fuel_lag_weeks: number;
     correlation_score: number;
     current_lk_price: number;
+    fuel_avg_90d: number;         // 90-day average — baseline for HIGH/NORMAL/LOW
+    fuel_level: 'HIGH' | 'NORMAL' | 'LOW';  // compared to 90-day avg ± 0.5σ
     current_elasticity: number;
     elasticity_label: string;
     holiday_lift: number;
@@ -628,6 +631,7 @@ export default function PredictionsScreen() {
   const [preference, setPreference] = useState<string>('profitable');
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
+  const [recsLastUpdated, setRecsLastUpdated] = useState<string | null>(null);  // HH:MM of last successful fetch
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
 
   // Load favorites from storage — re-runs when user account changes
@@ -976,6 +980,11 @@ export default function PredictionsScreen() {
           12000,
         );
         setRecommendations(data.recommendations || []);
+        // Record the time this data was last successfully loaded
+        const now = new Date();
+        setRecsLastUpdated(
+          `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+        );
       } catch (err: any) {
         console.error('Failed to fetch recommendations', err);
         setRecsError(String(err?.message ?? 'Unable to reach the prediction server. Check your network connection.'));
@@ -1368,7 +1377,9 @@ export default function PredictionsScreen() {
 
           <View style={styles.recListHeader}>
             <Text style={styles.sectionLabel}>Recommendations for Today</Text>
-            <Text style={styles.timeText}>Last Updated: 14:00</Text>
+            <Text style={styles.timeText}>
+                {recsLastUpdated ? `Last Updated: ${recsLastUpdated}` : 'Loading...'}
+            </Text>
           </View>
 
           {loadingRecs ? (
@@ -1526,6 +1537,7 @@ export default function PredictionsScreen() {
                   </Text>
                   <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
                     Useful insights for buyers, fishermen and traders
+                    {insightsData?.data_as_of ? ` · Data as of ${insightsData.data_as_of}` : ''}
                   </Text>
                 </View>
 
@@ -1554,7 +1566,8 @@ export default function PredictionsScreen() {
                     {(() => {
                       const e = insightsData.insights.current_elasticity;
                       const isHoliday = insightsData.insights.is_holiday_period;
-                      const fuelHigh = insightsData.insights.current_lk_price > 200;
+                      // Use API-computed level (HIGH if > 90d avg + 0.5σ, LOW if < 90d avg − 0.5σ)
+                      const fuelHigh = insightsData.insights.fuel_level === 'HIGH';
                       const priceTomorrow = insightsData.prediction_7_days[1] ?? insightsData.prediction_7_days[0];
                       const priceToday = insightsData.prediction_7_days[0];
                       const priceUp = priceTomorrow > priceToday;

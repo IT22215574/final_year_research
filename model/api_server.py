@@ -49,6 +49,46 @@ try:
         _latest_lk = _latest_lk_lag1 = _latest_lk_lag2 = 0.0
         _latest_lk_change = _latest_lk_pct = 0.0
 
+    # ── Compute dynamic fuel statistics (replaces hardcoded 6/0.351) ─────────
+    _fuel_90d_avg      = 180.0   # fallback: historical Sri Lanka kerosene avg
+    _fuel_90d_std      = 20.0    # fallback
+    _computed_lag_weeks  = 6     # fallback weeks
+    _computed_corr       = 0.35  # fallback correlation
+
+    if fuel_df is not None:
+        # 90-day rolling stats to classify current price as HIGH/NORMAL/LOW
+        recent_prices = fuel_df["lk_price"].dropna().tail(90)
+        if len(recent_prices) >= 10:
+            _fuel_90d_avg = float(recent_prices.mean())
+            _fuel_90d_std = float(recent_prices.std()) if len(recent_prices) > 1 else 20.0
+
+        # Compute optimal lag (in weeks) between fuel % change → fish price % change
+        merged_path = DATA_DIR / "final_merged_dataset.csv"
+        if merged_path.exists():
+            try:
+                mg = pd.read_csv(merged_path, parse_dates=["date"]).sort_values("date")
+                # Average fish price per date across all species
+                if "price" in mg.columns and "lk_price" in mg.columns:
+                    daily = mg.groupby("date").agg(
+                        fish_price=("price", "mean"),
+                        lk_price=("lk_price", "first"),
+                    ).dropna()
+                    fuel_chg = daily["lk_price"].pct_change().fillna(0)
+                    fish_chg = daily["fish_price"].pct_change().fillna(0)
+                    best_corr, best_lag_days = 0.0, 42  # default 6 weeks
+                    for lag_d in range(7, 57):           # 1–8 week lags
+                        shifted = fuel_chg.shift(lag_d)
+                        valid = pd.concat([shifted, fish_chg], axis=1).dropna()
+                        if len(valid) >= 30:
+                            c = float(valid.corr().iloc[0, 1])
+                            if abs(c) > abs(best_corr):
+                                best_corr = c
+                                best_lag_days = lag_d
+                    _computed_lag_weeks = max(1, round(best_lag_days / 7))
+                    _computed_corr      = round(abs(best_corr), 3)
+            except Exception:
+                pass  # keep fallbacks
+
     # ── Weather forecast (for upcoming dates) ────────────────────────────────
     forecast_path = DATA_DIR / "weather_forecast.csv"
     if forecast_path.exists():
@@ -971,19 +1011,26 @@ def get_insights(fish_id: int, date: str = None):
         "demand_sentiment_7_days": demand_7,
         "price_spike_warning": has_spike,
         "price_spike_day": spike_day,
+        "data_as_of": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "insights": {
-            "fuel_lag_weeks": 6,
-            "correlation_score": 0.351,
-            "current_lk_price": round(lk_price, 2),
+            "fuel_lag_weeks":     _computed_lag_weeks,
+            "correlation_score":  _computed_corr,
+            "current_lk_price":   round(lk_price, 2),
+            "fuel_avg_90d":       round(_fuel_90d_avg, 2),
+            "fuel_level":         (
+                "HIGH"   if lk_price > _fuel_90d_avg + 0.5 * _fuel_90d_std else
+                "LOW"    if lk_price < _fuel_90d_avg - 0.5 * _fuel_90d_std else
+                "NORMAL"
+            ),
             "current_elasticity": elasticity,
-            "elasticity_label": elasticity_label,
-            "holiday_lift": holiday_lift,
-            "is_holiday_period": is_holiday_period,
-            "current_season": season_info["current_season"],
-            "season_price_impact": season_info["season_price_impact"],
-            "season_alert": season_info["season_alert"],
-            "weather_factor": weather_factor,
-            "weather_label": weather_label,
+            "elasticity_label":   elasticity_label,
+            "holiday_lift":       holiday_lift,
+            "is_holiday_period":  is_holiday_period,
+            "current_season":     season_info["current_season"],
+            "season_price_impact":season_info["season_price_impact"],
+            "season_alert":       season_info["season_alert"],
+            "weather_factor":     weather_factor,
+            "weather_label":      weather_label,
         },
     }
 
