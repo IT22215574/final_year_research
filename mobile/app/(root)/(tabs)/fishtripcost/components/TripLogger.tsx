@@ -52,10 +52,7 @@ const TripLogger = () => {
 
       {/* Stats Grid */}
       <View className="flex-row flex-wrap justify-between">
-        <StatCard
-          label="Total Trips"
-          value={stats?.totalTrips ?? 0}
-        />
+        <StatCard label="Total Trips" value={stats?.totalTrips ?? 0} />
         <StatCard
           label="Total Cost (Rs)"
           value={`Rs. ${stats?.totalCost?.toFixed(2) ?? "0.00"}`}
@@ -75,15 +72,19 @@ const TripLogger = () => {
       </View>
 
       {/* Action Buttons */}
-      <View className="mt-8 space-y-3">
+      <View className="mt-8">
         <ActionButton
           title="➕ Log New Trip"
-          onPress={() => router.push("/(root)/(tabs)/fishtripcost/components/NewTrip")}
+          onPress={() =>
+            router.push("/(root)/(tabs)/fishtripcost/components/NewTrip")
+          }
         />
 
         <ActionButton
           title="📋 View All Trips"
-          onPress={() => router.push("/(root)/(tabs)/fishtripcost/components/prevTrip")}
+          onPress={() =>
+            router.push("/(root)/(tabs)/fishtripcost/components/prevTrip")
+          }
         />
 
         <ActionButton
@@ -91,6 +92,7 @@ const TripLogger = () => {
           onPress={() =>
             Alert.alert("Coming Soon", "Export feature will be added soon.")
           }
+          isLast
         />
       </View>
     </View>
@@ -105,9 +107,7 @@ const StatCard = ({ label, value }: { label: string; value: any }) => {
   return (
     <View className="bg-white w-[48%] p-4 rounded-2xl shadow-sm mb-4">
       <Text className="text-gray-500 text-xs">{label}</Text>
-      <Text className="text-xl font-bold text-slate-800 mt-2">
-        {value}
-      </Text>
+      <Text className="text-xl font-bold text-slate-800 mt-2">{value}</Text>
     </View>
   );
 };
@@ -115,14 +115,18 @@ const StatCard = ({ label, value }: { label: string; value: any }) => {
 const ActionButton = ({
   title,
   onPress,
+  isLast = false,
 }: {
   title: string;
   onPress: () => void;
+  isLast?: boolean;
 }) => {
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="bg-blue-600 p-4 rounded-2xl items-center"
+      className={`bg-blue-600 p-4 rounded-2xl items-center ${
+        !isLast ? "mb-3" : ""
+      }`}
     >
       <Text className="text-white font-bold text-base">{title}</Text>
     </TouchableOpacity>
