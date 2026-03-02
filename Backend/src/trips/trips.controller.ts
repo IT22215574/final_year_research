@@ -7,12 +7,17 @@ import {
   Param,
   Delete,
   UseGuards,
-  Request,
+  Req,
+  BadRequestException,
 } from '@nestjs/common';
+import type { Request as ExpressRequest } from 'express';
+import { Types } from 'mongoose';
+
+import { AuthTokenGuard } from '../common/guards/auth-token.guard';
 import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
-import { AuthTokenGuard } from '../common/guards/auth-token.guard';
+import { LogActualDto } from './dto/log-actual.dto';
 
 @Controller('trips')
 @UseGuards(AuthTokenGuard)
@@ -21,56 +26,71 @@ export class TripsController {
 
   // Create trip
   @Post()
-  async create(@Request() req, @Body() createTripDto: CreateTripDto) {
-    return await this.tripsService.create(req.user.id, createTripDto);
+  async create(@Req() req: ExpressRequest, @Body() createTripDto: CreateTripDto) {
+    const user = (req as any).user;
+    return await this.tripsService.create(user.id, createTripDto);
   }
 
   // Get current user's trips
   @Get('my-trips')
-  async getMyTrips(@Request() req) {
-    return await this.tripsService.findByUser(req.user.id);
+  async getMyTrips(@Req() req: ExpressRequest) {
+    const user = (req as any).user;
+    return await this.tripsService.findByUser(user.id);
   }
 
   // Get current user's statistics
   @Get('my-stats')
-  async getMyStats(@Request() req) {
-    return await this.tripsService.getUserStats(req.user.id);
+  async getMyStats(@Req() req: ExpressRequest) {
+    const user = (req as any).user;
+    return await this.tripsService.getUserStats(user.id);
   }
 
   // Get all trips (admin only)
   @Get()
-  async findAll(@Request() req) {
-    if (!req.user.isAdmin) {
-      return await this.tripsService.findByUser(req.user.id);
+  async findAll(@Req() req: ExpressRequest) {
+    const user = (req as any).user;
+    if (!user?.isAdmin) {
+      return await this.tripsService.findByUser(user.id);
     }
     return await this.tripsService.findAll();
   }
 
   // Get single trip
   @Get(':id')
-  async findOne(@Request() req, @Param('id') id: string) {
-    return await this.tripsService.findOne(id, req.user.id, req.user.isAdmin);
+  async findOne(@Req() req: ExpressRequest, @Param('id') id: string) {
+    const user = (req as any).user;
+    return await this.tripsService.findOne(id, user.id, user.isAdmin);
   }
 
   // Update trip
   @Patch(':id')
   async update(
-    @Request() req,
+    @Req() req: ExpressRequest,
     @Param('id') id: string,
     @Body() updateTripDto: UpdateTripDto,
   ) {
-    return await this.tripsService.update(
-      id,
-      req.user.id,
-      req.user.isAdmin,
-      updateTripDto,
-    );
+    const user = (req as any).user;
+    return await this.tripsService.update(id, user.id, user.isAdmin, updateTripDto);
   }
 
   // Delete trip
   @Delete(':id')
-  async remove(@Request() req, @Param('id') id: string) {
-    await this.tripsService.remove(id, req.user.id, req.user.isAdmin);
+  async remove(@Req() req: ExpressRequest, @Param('id') id: string) {
+    const user = (req as any).user;
+    await this.tripsService.remove(id, user.id, user.isAdmin);
     return { message: 'Trip deleted successfully' };
+  }
+
+  // Log actual data for a trip
+  @Post(':id/log-actual')
+  logActual(
+    @Param('id') id: string,
+    @Body() dto: LogActualDto,
+    @Req() req: ExpressRequest,
+  ) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid trip id');
+    }
+    return this.tripsService.logActualData(id, dto, req);
   }
 }
