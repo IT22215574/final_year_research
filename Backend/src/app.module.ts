@@ -10,6 +10,7 @@ import * as path from 'path';
 import { TripsModule } from './trips/trips.module';
 import { AnalyticsModule } from './trips_analytics/trips_analytics.module';
 import { MlModule } from './tripml/tripml.module';
+import { CostEngineModule } from './cost-engine/cost-engine.module';
 
 @Module({
   imports: [
@@ -38,7 +39,9 @@ import { MlModule } from './tripml/tripml.module';
     UserModule,
     TripsModule,
     AnalyticsModule,
-    MlModule
+    MlModule,
+    CostEngineModule
+
   ],
 })
 export class AppModule {}
