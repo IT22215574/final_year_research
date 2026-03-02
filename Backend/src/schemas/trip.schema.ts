@@ -19,6 +19,10 @@ export class Trip {
   tripDurationHours: number;
 
   // Travel & Engine
+
+  @Prop()
+  boatId: string;
+
   @Prop()
   distanceKm: number;
 
@@ -65,7 +69,61 @@ export class Trip {
 
   totalCost: number; // derived
 
-// timestamps
+  // =========================
+  // DATCIE - Prediction Fields
+  // =========================
+
+  @Prop()
+  predictedFuelLiters: number;
+
+  @Prop()
+  predictedTotalCost: number;
+
+  @Prop()
+  predictedDistanceKm: number;
+
+  @Prop()
+  weatherSeverityIndex: number;
+
+  @Prop()
+  economicStressIndex: number;
+
+  @Prop()
+  profitabilityProbability: number;
+
+  @Prop({ enum: ['low', 'medium', 'high'] })
+  riskCategory: string;
+
+  @Prop()
+  carbonEmissionKg: number;
+
+  @Prop()
+  carbonPerKgCatch: number;
+
+  @Prop({ type: [String], default: [] })
+  optimizationRecommendations: string[];
+
+  // =========================
+  // DATCIE - Learning Fields
+  // =========================
+
+  @Prop()
+  actualFuelLiters: number;
+
+  @Prop()
+  actualCatchKg: number;
+
+  @Prop()
+  fuelPredictionError: number;
+
+  // =========================
+  // Trip Mode
+  // =========================
+
+  @Prop({ enum: ['island', 'international'], default: 'island' })
+  mode: string;
+
+  // timestamps
   createdAt: Date;
   updatedAt: Date;
 }
