@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import useAuthStore from "@/stores/authStore";
 import { icons } from "@/constants";
 
@@ -15,21 +15,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
 
   if (!isVisible) return null;
 
-  const handleNavigation = (path: string) => {
+  const handleNavigation = (path: Href) => {
     onClose();
     router.push(path);
   };
 
   const menuItems = [
-    { name: "Home", path: "/(tabs)/home", icon: icons.nav_home },
-    { name: "Market", path: "/(tabs)/Market", icon: icons.HouseSale },
-    { name: "Quality", path: "/(tabs)/Quality", icon: icons.Digital },
+    { name: "Home", path: "/home" as const, icon: icons.nav_home },
+    { name: "Market", path: "/Market" as const, icon: icons.HouseSale },
+    { name: "Quality", path: "/Quality" as const, icon: icons.Digital },
     {
       name: "Notifications",
-      path: "/(tabs)/Notifications",
+      path: "/Notifications" as const,
       icon: icons.notification,
     },
-    { name: "Profile", path: "/(tabs)/profile", icon: icons.nav_user },
+    { name: "Profile", path: "/profile" as const, icon: icons.nav_user },
   ];
 
   // Default avatar if user doesn't have one

@@ -4,10 +4,11 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Linking,
   StyleSheet,
+  Platform,
+  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { icons } from "@/constants";
 import useAuthStore from "@/stores/authStore";
@@ -18,12 +19,15 @@ import Overlay from "@/components/Overlay";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 
-const TabsLayout = () => {
+const IS_WEB = Platform.OS === "web";
 
+const TabsLayout = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const { currentUser } = useAuthStore();
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
+  const { width } = useWindowDimensions();
+  const isDesktop = IS_WEB && width >= 768;
 
   // Fetch unread count on focus and component mount
   useFocusEffect(
@@ -32,7 +36,7 @@ const TabsLayout = () => {
         console.log("🎯 TabsLayout focused, fetching unread count...");
         fetchUnreadCount();
       }
-    }, [currentUser?.id, fetchUnreadCount])
+    }, [currentUser?.id, fetchUnreadCount]),
   );
 
   // Initial fetch
@@ -41,8 +45,6 @@ const TabsLayout = () => {
       fetchUnreadCount();
     }
   }, [currentUser?.id, fetchUnreadCount]);
-
-
 
   const handleSubmitAd = () => {
     const state = useAuthStore.getState();
@@ -73,280 +75,289 @@ const TabsLayout = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Blue Status Bar */}
+    <SafeAreaProvider style={styles.safe}>
       <StatusBar style="light" backgroundColor="#f8fafc" translucent={false} />
+      
+      <View style={isDesktop ? styles.desktopWrapper : styles.container}>
+        {/* Desktop: Persistent sidebar on the left - condition based on your auth logic */}
+        {isDesktop && currentUser && (
+          <Sidebar isVisible={true} onClose={() => {}} />
+        )}
 
-      <Tabs
-        initialRouteName="home"
-        screenOptions={{
-          headerShown: true,
-          headerBackground: () => (
-            <LinearGradient
-            
-              colors={['#0066CC', '#00A3FF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{ flex: 1 }}
-            />
-          ),
-          headerStyle: {
-            backgroundColor: 'transparent',
-            elevation: 0,
-          },
-          headerShadowVisible: false,
-          headerTintColor: "black",
-          headerTitleStyle: {
-            fontWeight: "bold",
-            color: "white",
-            fontFamily: "Inter-Bold",
-          },
-          headerLeft: () => (
-            <View>
-              <TouchableOpacity
-                style={{ marginLeft: 15 }}
-                onPress={toggleSidebar}
-              >
-                <Image
-                  source={icons.burgermenu}
-                  style={styles.menuIcon}
-                  resizeMode="contain"
+        <View style={{ flex: 1 }}>
+          <Tabs
+            initialRouteName="home"
+            screenOptions={{
+              headerShown: true,
+              headerBackground: () => (
+                <LinearGradient
+                  colors={["#0066CC", "#00A3FF"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{ flex: 1 }}
                 />
+              ),
+              headerStyle: {
+                backgroundColor: "transparent",
+                elevation: 0,
+              },
+              headerShadowVisible: false,
+              headerTintColor: "black",
+              headerTitleStyle: {
+                fontWeight: "bold",
+                color: "white",
+                fontFamily: "Inter-Bold",
+              },
+              headerLeft: () => (
+                !isDesktop ? (
+                  <View>
+                    <TouchableOpacity
+                      style={{ marginLeft: 15 }}
+                      onPress={toggleSidebar}
+                    >
+                      <Image
+                        source={icons.burgermenu}
+                        style={styles.menuIcon}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                ) : null
+              ),
+              headerRight: () => (
+                <TouchableOpacity
+                  style={{ marginRight: 20, marginTop: 4 }}
+                  onPress={() => router.push("/Notifications")}
+                >
+                  <Image
+                    source={icons.notification}
+                    style={styles.notificationIcon}
+                    resizeMode="contain"
+                  />
+                  {/* Conditionally render badge */}
+                  {unreadCount > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ),
+              tabBarShowLabel: false,
+              tabBarStyle: {
+                display: "none",
+              },
+            }}
+          >
+            <Tabs.Screen
+              name="home"
+              options={{
+                title: "",
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+              }}
+            />
+
+            <Tabs.Screen
+              name="Market"
+              options={{
+                title: "",
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+              }}
+            />
+            <Tabs.Screen
+              name="Quality"
+              options={{
+                title: "",
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+              }}
+            />
+            <Tabs.Screen
+              name="Notifications"
+              options={{
+                title: "",
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+              }}
+            />
+            <Tabs.Screen
+              name="profile"
+              options={{
+                title: "Profile",
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+              }}
+            />
+            <Tabs.Screen
+              name="Update_profile"
+              options={{
+                title: "Edit Profile",
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+              }}
+            />
+          </Tabs>
+
+          {/* Mobile overlay sidebar (only on mobile) */}
+          {!isDesktop && (
+            <>
+              <Sidebar isVisible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
+              <Overlay isVisible={sidebarVisible} onClose={() => setSidebarVisible(false)} />
+            </>
+          )}
+
+          {/* Custom Bottom Navigation */}
+          <View style={styles.customTabBar} className="rounded-t-3xl shadow-lg">
+            <View style={styles.navItemsContainer}>
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => handleTabPress("home", "/home")}
+              >
+                <View
+                  style={[
+                    styles.iconContainer,
+                    activeTab === "home" && styles.iconContainerActive,
+                  ]}
+                >
+                  <Image
+                    source={icons.nav_home}
+                    style={[
+                      styles.navIcon,
+                      activeTab === "home" && styles.navIconActive,
+                    ]}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.navText,
+                    activeTab === "home" && styles.navTextActive,
+                  ]}
+                >
+                  Home
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => handleTabPress("Market", "/Market")}
+              >
+                <View
+                  style={[
+                    styles.iconContainer,
+                    activeTab === "Market" && styles.iconContainerActive,
+                  ]}
+                >
+                  <Image
+                    source={icons.HouseSale}
+                    style={[
+                      styles.navIcon,
+                      activeTab === "Market" && styles.navIconActive,
+                    ]}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.navText,
+                    activeTab === "Market" && styles.navTextActive,
+                  ]}
+                >
+                  Market
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={() => handleTabPress("Quality", "/Quality")}
+              >
+                <View
+                  style={[
+                    styles.iconContainer,
+                    activeTab === "Quality" && styles.iconContainerActive,
+                  ]}
+                >
+                  <Image
+                    source={icons.Digital}
+                    style={[
+                      styles.navIcon,
+                      activeTab === "Quality" && styles.navIconActive,
+                    ]}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.navText,
+                    activeTab === "Quality" && styles.navTextActive,
+                  ]}
+                >
+                  Quality
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.navItem}
+                onPress={handleProfileNavigation}
+              >
+                <View
+                  style={[
+                    styles.iconContainer,
+                    activeTab === "profile" && styles.iconContainerActive,
+                  ]}
+                >
+                  <Image
+                    source={icons.nav_user}
+                    style={[
+                      styles.navIcon,
+                      activeTab === "profile" && styles.navIconActive,
+                    ]}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.navText,
+                    activeTab === "profile" && styles.navTextActive,
+                  ]}
+                >
+                  Profile
+                </Text>
               </TouchableOpacity>
             </View>
-          ),
-          headerRight: () => (
-            <TouchableOpacity
-              style={{ marginRight: 20, marginTop: 4 }}
-              onPress={() => router.push("/(root)/(tabs)/Notifications")}
-            >
-              <Image
-                source={icons.notification}
-                style={styles.notificationIcon}
-                resizeMode="contain"
-              />
-              {/* Conditionally render badge */}
-              {unreadCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ),
-          headerStyle: {
-            elevation: 0,
-            shadowOpacity: 0,
-            borderBottomWidth: 0,
-            marginBottom: 10,
-          },
-          tabBarShowLabel: false,
-          tabBarStyle: {
-            display: "none",
-          },
-        }}
-      >
-        {/* ... all your Tabs.Screen components remain the same ... */}
-        <Tabs.Screen
-          name="home"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-
-        <Tabs.Screen
-          name="Market"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="Quality"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="Notifications"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: "Profile",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-      </Tabs>
-
-      {/* Sidebar and Overlay */}
-      <Sidebar
-        isVisible={sidebarVisible}
-        onClose={() => setSidebarVisible(false)}
-      />
-      <Overlay
-        isVisible={sidebarVisible}
-        onClose={() => setSidebarVisible(false)}
-      />
-
-      {/* Custom Bottom Navigation - This remains exactly the same */}
-      <View style={styles.customTabBar} className="rounded-t-3xl shadow-lg">
-        {/* Navigation Items - This remains exactly the same */}
-        <View style={styles.navItemsContainer}>
-          {/* ... all your existing navigation items remain the same ... */}
-          
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleTabPress("home", "/(root)/(tabs)/home")}
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "home" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.nav_home}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "home" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "home" && styles.navTextActive,
-                ]}
-              >
-                Home
-              </Text>
-            </TouchableOpacity>
-          
-          
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleTabPress("Market", "/(root)/(tabs)/Market")}
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "Market" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.HouseSale}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "Market" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "Market" && styles.navTextActive,
-                ]}
-              >
-                Market
-              </Text>
-            </TouchableOpacity>
-          
-
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() =>
-                handleTabPress("Quality", "/(root)/(tabs)/Quality")
-              }
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "Quality" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.Digital}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "Quality" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "Quality" && styles.navTextActive,
-                ]}
-              >
-                Quality
-              </Text>
-            </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={handleProfileNavigation}
-          >
-            <View
-              style={[
-                styles.iconContainer,
-                activeTab === "profile" && styles.iconContainerActive,
-              ]}
-            >
-              <Image
-                source={icons.nav_user}
-                style={[
-                  styles.navIcon,
-                  activeTab === "profile" && styles.navIconActive,
-                ]}
-                resizeMode="contain"
-              />
-            </View>
-            <Text
-              style={[
-                styles.navText,
-                activeTab === "profile" && styles.navTextActive,
-              ]}
-            >
-              Profile
-            </Text>
-          </TouchableOpacity>
+          </View>
         </View>
       </View>
-    </SafeAreaView>
+    </SafeAreaProvider>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  safe: { 
+    flex: 1, 
+    backgroundColor: "#f8fafc" 
+  },
+  container: { 
+    flex: 1 
+  },
+  desktopWrapper: {
     flex: 1,
-    backgroundColor: "#f8fafc",
-    marginTop: -45,
+    flexDirection: "row",
   },
   customTabBar: {
     flexDirection: "row",
@@ -361,38 +372,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-  },
-  contactButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#3A3F47",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    flex: 1,
-    marginRight: 10,
-    justifyContent: "center",
-  },
-  whatsappButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#3A3F47",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    flex: 1,
-    marginLeft: 10,
-    justifyContent: "center",
-  },
-  buttonIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 6,
-  },
-  buttonText: {
-    color: "#FEE01C",
-    fontWeight: "500",
-    fontSize: 14,
   },
   navItemsContainer: {
     flexDirection: "row",
@@ -435,28 +414,6 @@ const styles = StyleSheet.create({
     color: "#005CFF",
     fontWeight: "bold",
   },
-  submitButton: {
-    backgroundColor: "#FEE01C",
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 8,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  submitButtonText: {
-    color: "black",
-    fontSize: 24,
-    fontWeight: "bold",
-  },
   menuIcon: {
     width: 32,
     height: 32,
@@ -479,12 +436,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: "#FFFFFF", // Changed to white for better visibility on blue header
+    borderColor: "#FFFFFF",
   },
   badgeText: {
     color: "#fff",
     fontSize: 12,
-    fontWeight: "bold", // Made bold for better visibility
+    fontWeight: "bold",
     fontFamily: "Inter-SemiBold",
   },
 });

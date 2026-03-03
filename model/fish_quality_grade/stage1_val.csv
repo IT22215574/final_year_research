@@ -1,0 +1,181 @@
+fish_id,left_image,right_image,binary_label,species_label,grade_label,sample_type,is_real_pair
+flyingfish_005_A,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_005_A_L.JPG,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_005_A_R.JPG,fish,flyingfish,A,target_fish,1
+flyingfish_014_A,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_014_A_L.JPG,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_014_A_R.JPG,fish,flyingfish,A,target_fish,1
+flyingfish_015_A,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_015_A_L.JPG,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_015_A_R.JPG,fish,flyingfish,A,target_fish,1
+flyingfish_021_A,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_021_A_L.JPG,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_021_A_R.JPG,fish,flyingfish,A,target_fish,1
+flyingfish_028_A,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_028_A_L.JPG,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_028_A_R.JPG,fish,flyingfish,A,target_fish,1
+flyingfish_036_A,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_036_A_L.JPG,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_036_A_R.JPG,fish,flyingfish,A,target_fish,1
+flyingfish_037_A,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_037_A_L.JPG,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_037_A_R.JPG,fish,flyingfish,A,target_fish,1
+flyingfish_048_A,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_048_A_L.JPG,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_048_A_R.JPG,fish,flyingfish,A,target_fish,1
+flyingfish_053_A,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_053_A_L.JPG,D:\Hirusha\fish_data\train\flyingfish\grade _A\flyingfish_053_A_R.JPG,fish,flyingfish,A,target_fish,1
+graymullet_017_A,D:\Hirusha\fish_data\train\graymullet\grade_A\graymullet_017_A_L.JPG,D:\Hirusha\fish_data\train\graymullet\grade_A\graymullet_017_A_R.JPG,fish,graymullet,A,target_fish,1
+graymullet_022_A,D:\Hirusha\fish_data\train\graymullet\grade_A\graymullet_022_A_L.JPG,D:\Hirusha\fish_data\train\graymullet\grade_A\graymullet_022_A_R.JPG,fish,graymullet,A,target_fish,1
+graymullet_024_A,D:\Hirusha\fish_data\train\graymullet\grade_A\graymullet_024_A_L.JPG,D:\Hirusha\fish_data\train\graymullet\grade_A\graymullet_024_A_R.JPG,fish,graymullet,A,target_fish,1
+makerel_002_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_002_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_002_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_006_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_006_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_006_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_014_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_014_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_014_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_017_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_017_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_017_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_033_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_033_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_033_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_056_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_056_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_056_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_060_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_060_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_060_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_068_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_068_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_068_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_069_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_069_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_069_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_073_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_073_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_073_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_076_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_076_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_076_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_082_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_082_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_082_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_091_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_091_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_091_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_107_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_107_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_107_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_118_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_118_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_118_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_127_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_127_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_127_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_142_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_142_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_142_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_146_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_146_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_146_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_149_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_149_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_149_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_153_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_153_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_153_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_156_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_156_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_156_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_158_B,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_158_B_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_B\makerel_158_B_R.JPG,fish,makerel,B,target_fish,1
+makerel_013_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_013_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_013_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_017_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_017_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_017_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_026_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_026_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_026_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_046_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_046_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_046_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_051_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_051_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_051_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_062_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_062_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_062_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_069_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_069_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_069_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_074_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_074_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_074_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_087_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_087_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_087_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_099_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_099_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_099_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_101_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_101_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_101_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_104_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_104_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_104_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_115_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_115_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_115_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_121_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_121_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_121_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_126_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_126_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_126_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_139_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_139_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_139_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_142_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_142_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_142_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_146_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_146_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_146_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_147_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_147_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_147_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_153_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_153_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_153_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_159_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_159_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_159_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_166_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_166_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_166_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_170_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_170_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_170_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_179_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_179_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_179_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_181_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_181_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_181_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_182_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_182_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_182_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_185_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_185_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_185_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_187_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_187_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_187_C_R.JPG,fish,makerel,C,target_fish,1
+makerel_188_C,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_188_C_L.JPG,D:\Hirusha\fish_data\train\makerel\grade_C\makerel_188_C_R.JPG,fish,makerel,C,target_fish,1
+tuna_008_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_008_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_008_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_009_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_009_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_009_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_020_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_020_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_020_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_035_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_035_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_035_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_038_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_038_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_038_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_039_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_039_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_039_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_040_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_040_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_040_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_050_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_050_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_050_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_054_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_054_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_054_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_061_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_061_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_061_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_063_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_063_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_063_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_066_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_066_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_066_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_074_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_074_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_074_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_075_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_075_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_075_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_082_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_082_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_082_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_083_A,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_083_A_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_A\tuna_083_A_R.JPG,fish,tuna,A,target_fish,1
+tuna_003_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_003_B_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_003_B_R.JPG,fish,tuna,B,target_fish,1
+tuna_008_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_008_B_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_008_B_R.JPG,fish,tuna,B,target_fish,1
+tuna_015_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_015_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_015_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_027_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_027_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_027_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_033_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_033_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_033_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_034_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_034_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_034_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_047_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_047_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_047_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_048_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_048_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_048_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_051_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_051_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_051_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_061_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_061_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_061_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_069_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_069_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_069_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_074_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_074_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_074_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_082_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_082_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_082_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_097_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_097_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_097_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_098_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_098_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_098_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_115_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_115_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_115_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_118_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_118_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_118_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_121_B,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_121_B_L.jpg,D:\Hirusha\fish_data\train\tuna\grade_B\tuna_121_B_R.jpg,fish,tuna,B,target_fish,1
+tuna_006_C,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_006_C_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_006_C_R.JPG,fish,tuna,C,target_fish,1
+tuna_010_C,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_010_C_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_010_C_R.JPG,fish,tuna,C,target_fish,1
+tuna_012_C,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_012_C_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_012_C_R.JPG,fish,tuna,C,target_fish,1
+tuna_013_C,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_013_C_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_013_C_R.JPG,fish,tuna,C,target_fish,1
+tuna_018_C,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_018_C_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_018_C_R.JPG,fish,tuna,C,target_fish,1
+tuna_028_C,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_028_C_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_028_C_R.JPG,fish,tuna,C,target_fish,1
+tuna_029_C,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_029_C_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_029_C_R.JPG,fish,tuna,C,target_fish,1
+tuna_030_C,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_030_C_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_030_C_R.JPG,fish,tuna,C,target_fish,1
+tuna_032_C,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_032_C_L.JPG,D:\Hirusha\fish_data\train\tuna\grade_C\tuna_032_C_R.JPG,fish,tuna,C,target_fish,1
+whitemullet_002_A,D:\Hirusha\fish_data\train\whitemullet\grade_A\whitemullet_002_A_L.JPG,D:\Hirusha\fish_data\train\whitemullet\grade_A\whitemullet_002_A_R.JPG,fish,whitemullet,A,target_fish,1
+whitemullet_005_A,D:\Hirusha\fish_data\train\whitemullet\grade_A\whitemullet_005_A_L.JPG,D:\Hirusha\fish_data\train\whitemullet\grade_A\whitemullet_005_A_R.JPG,fish,whitemullet,A,target_fish,1
+yellowfintrevally_004_A,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_004_A_L.JPG,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_004_A_R.JPG,fish,yellowfintrevally,A,target_fish,1
+yellowfintrevally_005_A,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_005_A_L.JPG,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_005_A_R.JPG,fish,yellowfintrevally,A,target_fish,1
+yellowfintrevally_008_A,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_008_A_L.JPG,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_008_A_R.JPG,fish,yellowfintrevally,A,target_fish,1
+yellowfintrevally_009_A,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_009_A_L.JPG,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_009_A_R.JPG,fish,yellowfintrevally,A,target_fish,1
+yellowfintrevally_020_A,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_020_A_L.JPG,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_020_A_R.JPG,fish,yellowfintrevally,A,target_fish,1
+yellowfintrevally_026_A,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_026_A_L.JPG,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_026_A_R.JPG,fish,yellowfintrevally,A,target_fish,1
+yellowfintrevally_027_A,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_027_A_L.JPG,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_027_A_R.JPG,fish,yellowfintrevally,A,target_fish,1
+yellowfintrevally_037_A,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_037_A_L.JPG,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_037_A_R.JPG,fish,yellowfintrevally,A,target_fish,1
+yellowfintrevally_038_A,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_038_A_L.JPG,D:\Hirusha\fish_data\train\yellowfintrevally\Grade_A\yellowfintrevally_038_A_R.JPG,fish,yellowfintrevally,A,target_fish,1
+notfish_000000,D:\Hirusha\fish_data\extras\not_fish\albacore_tuna_1772448494_5058_51ce38e6.jpg,D:\Hirusha\fish_data\extras\not_fish\albacore_tuna_1772448494_5058_51ce38e6.jpg,non_fish,none,none,not_fish,0
+notfish_000002,D:\Hirusha\fish_data\extras\not_fish\albacore_tuna_1772448505_3381_fef08d2f.jpg,D:\Hirusha\fish_data\extras\not_fish\albacore_tuna_1772448505_3381_fef08d2f.jpg,non_fish,none,none,not_fish,0
+notfish_000004,D:\Hirusha\fish_data\extras\not_fish\bicycle_1772449609_3.jpg,D:\Hirusha\fish_data\extras\not_fish\bicycle_1772449609_3.jpg,non_fish,none,none,not_fish,0
+notfish_000005,D:\Hirusha\fish_data\extras\not_fish\bicycle_1772449615_13.jpg,D:\Hirusha\fish_data\extras\not_fish\bicycle_1772449615_13.jpg,non_fish,none,none,not_fish,0
+notfish_000007,D:\Hirusha\fish_data\extras\not_fish\bicycle_1772449637_68.jpg,D:\Hirusha\fish_data\extras\not_fish\bicycle_1772449637_68.jpg,non_fish,none,none,not_fish,0
+notfish_000011,D:\Hirusha\fish_data\extras\not_fish\bookshelf_1772449753_34.jpg,D:\Hirusha\fish_data\extras\not_fish\bookshelf_1772449753_34.jpg,non_fish,none,none,not_fish,0
+notfish_000012,D:\Hirusha\fish_data\extras\not_fish\bookshelf_1772449754_35.jpg,D:\Hirusha\fish_data\extras\not_fish\bookshelf_1772449754_35.jpg,non_fish,none,none,not_fish,0
+notfish_000013,D:\Hirusha\fish_data\extras\not_fish\bookshelf_1772449756_39.jpg,D:\Hirusha\fish_data\extras\not_fish\bookshelf_1772449756_39.jpg,non_fish,none,none,not_fish,0
+notfish_000014,D:\Hirusha\fish_data\extras\not_fish\bookshelf_1772449756_40.jpg,D:\Hirusha\fish_data\extras\not_fish\bookshelf_1772449756_40.jpg,non_fish,none,none,not_fish,0
+notfish_000025,D:\Hirusha\fish_data\extras\not_fish\bookshelf_1772449781_91.jpg,D:\Hirusha\fish_data\extras\not_fish\bookshelf_1772449781_91.jpg,non_fish,none,none,not_fish,0
+notfish_000038,D:\Hirusha\fish_data\extras\not_fish\book_1772449781_90.jpg,D:\Hirusha\fish_data\extras\not_fish\book_1772449781_90.jpg,non_fish,none,none,not_fish,0
+notfish_000042,D:\Hirusha\fish_data\extras\not_fish\building_1772449701_13.jpg,D:\Hirusha\fish_data\extras\not_fish\building_1772449701_13.jpg,non_fish,none,none,not_fish,0
+notfish_000045,D:\Hirusha\fish_data\extras\not_fish\building_1772449715_49.jpg,D:\Hirusha\fish_data\extras\not_fish\building_1772449715_49.jpg,non_fish,none,none,not_fish,0
+notfish_000046,D:\Hirusha\fish_data\extras\not_fish\building_1772449717_52.jpg,D:\Hirusha\fish_data\extras\not_fish\building_1772449717_52.jpg,non_fish,none,none,not_fish,0
+notfish_000047,D:\Hirusha\fish_data\extras\not_fish\building_1772449718_56.jpg,D:\Hirusha\fish_data\extras\not_fish\building_1772449718_56.jpg,non_fish,none,none,not_fish,0
+notfish_000060,D:\Hirusha\fish_data\extras\not_fish\bus_1772449645_90.jpg,D:\Hirusha\fish_data\extras\not_fish\bus_1772449645_90.jpg,non_fish,none,none,not_fish,0
+notfish_000072,D:\Hirusha\fish_data\extras\not_fish\crowd_1772449654_12.jpg,D:\Hirusha\fish_data\extras\not_fish\crowd_1772449654_12.jpg,non_fish,none,none,not_fish,0
+notfish_000082,D:\Hirusha\fish_data\extras\not_fish\crowd_1772449682_68.jpg,D:\Hirusha\fish_data\extras\not_fish\crowd_1772449682_68.jpg,non_fish,none,none,not_fish,0
+notfish_000092,D:\Hirusha\fish_data\extras\not_fish\house_1772449714_45.jpg,D:\Hirusha\fish_data\extras\not_fish\house_1772449714_45.jpg,non_fish,none,none,not_fish,0
+notfish_000094,D:\Hirusha\fish_data\extras\not_fish\house_1772449719_58.jpg,D:\Hirusha\fish_data\extras\not_fish\house_1772449719_58.jpg,non_fish,none,none,not_fish,0
+notfish_000106,D:\Hirusha\fish_data\extras\not_fish\library_1772449751_27.jpg,D:\Hirusha\fish_data\extras\not_fish\library_1772449751_27.jpg,non_fish,none,none,not_fish,0
+notfish_000108,D:\Hirusha\fish_data\extras\not_fish\library_1772449755_38.jpg,D:\Hirusha\fish_data\extras\not_fish\library_1772449755_38.jpg,non_fish,none,none,not_fish,0
+notfish_000112,D:\Hirusha\fish_data\extras\not_fish\library_1772449760_50.jpg,D:\Hirusha\fish_data\extras\not_fish\library_1772449760_50.jpg,non_fish,none,none,not_fish,0
+notfish_000118,D:\Hirusha\fish_data\extras\not_fish\library_1772449779_87.jpg,D:\Hirusha\fish_data\extras\not_fish\library_1772449779_87.jpg,non_fish,none,none,not_fish,0
+notfish_000120,D:\Hirusha\fish_data\extras\not_fish\motorcycle_1772449613_11.jpg,D:\Hirusha\fish_data\extras\not_fish\motorcycle_1772449613_11.jpg,non_fish,none,none,not_fish,0
+notfish_000121,D:\Hirusha\fish_data\extras\not_fish\motorcycle_1772449617_20.jpg,D:\Hirusha\fish_data\extras\not_fish\motorcycle_1772449617_20.jpg,non_fish,none,none,not_fish,0
+notfish_000154,D:\Hirusha\fish_data\extras\not_fish\pencil_1772449823_95.jpg,D:\Hirusha\fish_data\extras\not_fish\pencil_1772449823_95.jpg,non_fish,none,none,not_fish,0
+notfish_000179,D:\Hirusha\fish_data\extras\not_fish\people_1772449677_58.jpg,D:\Hirusha\fish_data\extras\not_fish\people_1772449677_58.jpg,non_fish,none,none,not_fish,0
+notfish_000194,D:\Hirusha\fish_data\extras\not_fish\person_1772449691_90.jpg,D:\Hirusha\fish_data\extras\not_fish\person_1772449691_90.jpg,non_fish,none,none,not_fish,0
+notfish_000197,D:\Hirusha\fish_data\extras\not_fish\pike_1772448628_9480_d195aab4.jpg,D:\Hirusha\fish_data\extras\not_fish\pike_1772448628_9480_d195aab4.jpg,non_fish,none,none,not_fish,0
+notfish_000201,D:\Hirusha\fish_data\extras\not_fish\pompano_1772448621_7835_251ce1a9.jpg,D:\Hirusha\fish_data\extras\not_fish\pompano_1772448621_7835_251ce1a9.jpg,non_fish,none,none,not_fish,0
+notfish_000211,D:\Hirusha\fish_data\extras\not_fish\reading_1772449767_64.jpg,D:\Hirusha\fish_data\extras\not_fish\reading_1772449767_64.jpg,non_fish,none,none,not_fish,0
+notfish_000215,D:\Hirusha\fish_data\extras\not_fish\reading_1772449775_80.jpg,D:\Hirusha\fish_data\extras\not_fish\reading_1772449775_80.jpg,non_fish,none,none,not_fish,0
+notfish_000217,D:\Hirusha\fish_data\extras\not_fish\reading_1772449783_94.jpg,D:\Hirusha\fish_data\extras\not_fish\reading_1772449783_94.jpg,non_fish,none,none,not_fish,0
+notfish_000225,D:\Hirusha\fish_data\extras\not_fish\skyscraper_1772449711_38.jpg,D:\Hirusha\fish_data\extras\not_fish\skyscraper_1772449711_38.jpg,non_fish,none,none,not_fish,0
+notfish_000227,D:\Hirusha\fish_data\extras\not_fish\skyscraper_1772449712_40.jpg,D:\Hirusha\fish_data\extras\not_fish\skyscraper_1772449712_40.jpg,non_fish,none,none,not_fish,0
+notfish_000228,D:\Hirusha\fish_data\extras\not_fish\skyscraper_1772449724_67.jpg,D:\Hirusha\fish_data\extras\not_fish\skyscraper_1772449724_67.jpg,non_fish,none,none,not_fish,0
+notfish_000237,D:\Hirusha\fish_data\extras\not_fish\sole_1772448618_7637_7eff806b.jpg,D:\Hirusha\fish_data\extras\not_fish\sole_1772448618_7637_7eff806b.jpg,non_fish,none,none,not_fish,0
+notfish_000238,D:\Hirusha\fish_data\extras\not_fish\sole_1772448619_2027_c0ef81d5.jpg,D:\Hirusha\fish_data\extras\not_fish\sole_1772448619_2027_c0ef81d5.jpg,non_fish,none,none,not_fish,0
+notfish_000248,D:\Hirusha\fish_data\extras\not_fish\stationery_1772449803_41.jpg,D:\Hirusha\fish_data\extras\not_fish\stationery_1772449803_41.jpg,non_fish,none,none,not_fish,0
+notfish_000256,D:\Hirusha\fish_data\extras\not_fish\tilapia_1772448536_8503_b7c488c9.jpg,D:\Hirusha\fish_data\extras\not_fish\tilapia_1772448536_8503_b7c488c9.jpg,non_fish,none,none,not_fish,0
+notfish_000263,D:\Hirusha\fish_data\extras\not_fish\trout_1772448596_5742_24c6ff3e.jpg,D:\Hirusha\fish_data\extras\not_fish\trout_1772448596_5742_24c6ff3e.jpg,non_fish,none,none,not_fish,0
+notfish_000272,D:\Hirusha\fish_data\extras\not_fish\truck_1772449628_43.jpg,D:\Hirusha\fish_data\extras\not_fish\truck_1772449628_43.jpg,non_fish,none,none,not_fish,0
+notfish_000273,D:\Hirusha\fish_data\extras\not_fish\truck_1772449631_51.jpg,D:\Hirusha\fish_data\extras\not_fish\truck_1772449631_51.jpg,non_fish,none,none,not_fish,0
+otherfish_000010,D:\Hirusha\fish_data\extras\other_fish\amberjack_1772448697_3354_7391d8d3 - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\amberjack_1772448697_3354_7391d8d3 - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000012,D:\Hirusha\fish_data\extras\other_fish\amberjack_1772448699_1605_b3436386 - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\amberjack_1772448699_1605_b3436386 - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000019,D:\Hirusha\fish_data\extras\other_fish\amberjack_1772448705_9188_30ecf347 - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\amberjack_1772448705_9188_30ecf347 - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000021,D:\Hirusha\fish_data\extras\other_fish\barracuda_1772448712_4222_4d0ac3ee - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\barracuda_1772448712_4222_4d0ac3ee - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000029,D:\Hirusha\fish_data\extras\other_fish\barracuda_1772448723_4873_0884c62e - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\barracuda_1772448723_4873_0884c62e - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000030,D:\Hirusha\fish_data\extras\other_fish\barracuda_1772448724_3557_2596c577 - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\barracuda_1772448724_3557_2596c577 - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000035,D:\Hirusha\fish_data\extras\other_fish\barracuda_1772448730_6698_8f439e25 - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\barracuda_1772448730_6698_8f439e25 - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000041,D:\Hirusha\fish_data\extras\other_fish\barramundi_1772448741_8534_3f2cd868 - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\barramundi_1772448741_8534_3f2cd868 - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000054,D:\Hirusha\fish_data\extras\other_fish\kingfish_1772448702_3937_f31d4905 - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\kingfish_1772448702_3937_f31d4905 - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000055,D:\Hirusha\fish_data\extras\other_fish\kingfish_1772448703_7248_eead1911 - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\kingfish_1772448703_7248_eead1911 - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000064,D:\Hirusha\fish_data\extras\other_fish\pike_1772448634_6012_1e3f3108 - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\pike_1772448634_6012_1e3f3108 - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000068,D:\Hirusha\fish_data\extras\other_fish\pompano_1772448610_1357_dc0ad4be - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\pompano_1772448610_1357_dc0ad4be - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000073,D:\Hirusha\fish_data\extras\other_fish\red_snapper_1772448749_4381_0457ca34 - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\red_snapper_1772448749_4381_0457ca34 - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000088,D:\Hirusha\fish_data\extras\other_fish\snapper_1772448665_5325_9efdf7cc - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\snapper_1772448665_5325_9efdf7cc - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000090,D:\Hirusha\fish_data\extras\other_fish\snapper_1772448667_2926_f89728c4 - Copy.jpg,D:\Hirusha\fish_data\extras\other_fish\snapper_1772448667_2926_f89728c4 - Copy.jpg,non_fish,none,none,other_fish,0
+otherfish_000092,D:\Hirusha\fish_data\extras\other_fish\tarpon_1772448591_5233_38271508.jpg,D:\Hirusha\fish_data\extras\other_fish\tarpon_1772448591_5233_38271508.jpg,non_fish,none,none,other_fish,0
+otherfish_000103,D:\Hirusha\fish_data\extras\other_fish\tarpon_1772448603_6714_93e49e66.jpg,D:\Hirusha\fish_data\extras\other_fish\tarpon_1772448603_6714_93e49e66.jpg,non_fish,none,none,other_fish,0
+otherfish_000106,D:\Hirusha\fish_data\extras\other_fish\tarpon_1772448606_7858_cc66be42.jpg,D:\Hirusha\fish_data\extras\other_fish\tarpon_1772448606_7858_cc66be42.jpg,non_fish,none,none,other_fish,0
+otherfish_000112,D:\Hirusha\fish_data\extras\other_fish\trout_1772448581_9639_4b654656.jpg,D:\Hirusha\fish_data\extras\other_fish\trout_1772448581_9639_4b654656.jpg,non_fish,none,none,other_fish,0
