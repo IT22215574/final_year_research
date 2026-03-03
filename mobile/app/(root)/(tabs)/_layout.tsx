@@ -199,6 +199,16 @@ const TabsLayout = () => {
             },
           }}
         />
+                <Tabs.Screen
+          name="Update_profile"
+          options={{
+            title: "Edit Profile",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
       </Tabs>
 
       {/* Sidebar and Overlay */}
