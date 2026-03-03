@@ -1,0 +1,11 @@
+# Dependencies
+**/node_modules/
+
+# Build outputs
+**/dist/
+
+# Local environment files
+Backend/.env
+
+# Android / Gradle caches
+mobile/android/.gradle/
