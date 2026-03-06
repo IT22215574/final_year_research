@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,11 @@ const TripLogger = () => {
   const loading = useTripStore((state) => state.loading);
   const setLoading = useTripStore((state) => state.setLoading);
 
+  // If you store lastSavedTripId in store (recommended)
+  const lastSavedTripId = useTripStore((state: any) => state.lastSavedTripId);
+
+  const [refreshing, setRefreshing] = useState(false);
+
   useEffect(() => {
     fetchStats();
   }, []);
@@ -35,6 +40,38 @@ const TripLogger = () => {
     }
   };
 
+  const refresh = async () => {
+    try {
+      setRefreshing(true);
+      const data = await getMyStats();
+      setStats(data);
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to refresh statistics");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // ===== DATCIE navigation =====
+  // Planner -> Predict -> Result screen -> Save -> then Log Actual screen
+
+  const goToResult = () => {
+    // your result.tsx should show prediction + a "Save Trip" button that calls predict-and-save
+    router.push("/(root)/(tabs)/fishtripcost/result");
+  };
+
+  const goToLogActual = () => {
+    // log-actual.tsx should log actual fuel/catch using the saved tripId
+    router.push("/(root)/(tabs)/fishtripcost/log-actual");
+  };
+
+  const goToPrevTrips = () => {
+    // if you have a proper prevTrip page under fishtripcost, route there
+    // (Your current path points to components, which is not a route)
+    // If you have a screen for previous trips, adjust path accordingly.
+    router.push("/(root)/(tabs)/fishtripcost"); 
+  };
+
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center">
@@ -46,9 +83,20 @@ const TripLogger = () => {
   return (
     <View className="flex-1 bg-gray-100 p-4">
       {/* Header */}
-      <Text className="text-2xl font-bold text-slate-800 mb-6">
-        My Trip Statistics
-      </Text>
+      <View className="flex-row justify-between items-center mb-6">
+        <Text className="text-2xl font-bold text-slate-800">
+          Trip Logger (DATCIE)
+        </Text>
+        <TouchableOpacity
+          onPress={refresh}
+          className="bg-white border border-slate-200 px-3 py-2 rounded-xl"
+          activeOpacity={0.7}
+        >
+          <Text className="text-slate-700 font-semibold">
+            {refreshing ? "⏳" : "↻"} Refresh
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Stats Grid */}
       <View className="flex-row flex-wrap justify-between">
@@ -71,26 +119,45 @@ const TripLogger = () => {
         />
       </View>
 
-      {/* Action Buttons */}
+      {/* DATCIE Flow Buttons */}
       <View className="mt-8">
+        <Text className="text-slate-500 text-xs mb-2">
+          Research Flow: Predict → Save → Log Actual → Learning Update
+        </Text>
+
         <ActionButton
-          title="➕ Log New Trip"
-          onPress={() =>
-            router.push("/(root)/(tabs)/fishtripcost/components/NewTrip")
-          }
+          title="⚡ Predict & View Result"
+          onPress={goToResult}
         />
 
         <ActionButton
-          title="📋 View All Trips"
-          onPress={() =>
-            router.push("/(root)/(tabs)/fishtripcost/components/prevTrip")
-          }
+          title="✅ Log Actual (Fuel & Catch)"
+          onPress={() => {
+            // If you don't have lastSavedTripId store yet, still allow navigation
+            // but warn user
+            if (!lastSavedTripId) {
+              Alert.alert(
+                "Trip not saved yet",
+                "First go to Result and Save the trip (predict-and-save). Then log actual."
+              );
+              return;
+            }
+            goToLogActual();
+          }}
         />
 
         <ActionButton
-          title="📤 Export Data"
+          title="📋 View Trips / History"
+          onPress={goToPrevTrips}
+        />
+
+        <ActionButton
+          title="📤 Export Training Data"
           onPress={() =>
-            Alert.alert("Coming Soon", "Export feature will be added soon.")
+            Alert.alert(
+              "Next Step",
+              "We will wire export endpoint (analytics/export-fuel-training-csv) after confirming your backend route name."
+            )
           }
           isLast
         />
@@ -127,6 +194,7 @@ const ActionButton = ({
       className={`bg-blue-600 p-4 rounded-2xl items-center ${
         !isLast ? "mb-3" : ""
       }`}
+      activeOpacity={0.8}
     >
       <Text className="text-white font-bold text-base">{title}</Text>
     </TouchableOpacity>

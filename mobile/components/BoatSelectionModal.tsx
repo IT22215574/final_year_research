@@ -1,368 +1,384 @@
-import React, { useState } from "react";
+// components/BoatSelectionModal.tsx
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  Modal,
   View,
   Text,
-  Modal,
   TouchableOpacity,
-  ScrollView,
-  Image,
-  Dimensions,
   TextInput,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  Image,
 } from "react-native";
-import { boatTypes } from "@/constants";
 
-const { width } = Dimensions.get("window");
+import { apiFetch } from "@/utils/api";
 
-interface BoatSelectionModalProps {
+export type Boat = {
+  _id: string;
+
+  // ✅ match your backend schema
+  boatName?: string;
+  boatType?: string;
+  engineHorsePower?: number;
+
+  boatImage?: string; // e.g. "/uploads/boats/boat-xxx.png"
+  specifications?: string;
+  boatLength?: number;
+  boatWidth?: number;
+  registrationNumber?: string;
+  mode?: "island" | "international";
+
+  // learning coefficients
+  engineDegradationFactor?: number;
+  fuelEfficiencyFactor?: number;
+  averageFuelPredictionError?: number;
+
+  createdAt?: string;
+};
+
+type Props = {
   visible: boolean;
   onClose: () => void;
+
+  /**
+   * ✅ returns REAL mongo id + display fields
+   */
   onSelectBoat: (
-    boatId: number,
+    boatMongoId: string,
     boatName: string,
     defaultEngineHP: number,
-    customEngineHP?: string,
+    boat?: Boat
   ) => void;
-  selectedBoatId?: number;
-}
 
-const BoatSelectionModal: React.FC<BoatSelectionModalProps> = ({
+  selectedBoatMongoId?: string;
+
+  /**
+   * optional: allow "Add Boat" button
+   */
+  onAddBoat?: () => void;
+};
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL; // e.g. http://192.168.1.10:5000 or http://10.0.2.2:5000
+
+const BoatSelectionModal: React.FC<Props> = ({
   visible,
   onClose,
   onSelectBoat,
-  selectedBoatId,
+  selectedBoatMongoId,
+  onAddBoat,
 }) => {
-  const [currentBoatIndex, setCurrentBoatIndex] = useState(0);
-  const [customEngineHP, setCustomEngineHP] = useState("");
-  const [useCustomHP, setUseCustomHP] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [boats, setBoats] = useState<Boat[]>([]);
+  const [query, setQuery] = useState("");
 
-  const handleSelectBoat = () => {
-    const selectedBoat = boatTypes[currentBoatIndex];
-    onSelectBoat(
-      selectedBoat.id,
-      selectedBoat.name,
-      selectedBoat.defaultEngineHP,
-      useCustomHP && customEngineHP ? customEngineHP : undefined,
+  const fetchMyBoats = async () => {
+    try {
+      setLoading(true);
+
+      // ✅ your backend: GET /api/v1/boats/my (protected)
+      const res = await apiFetch("/api/v1/boats/my", { method: "GET" });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.message || "Failed to load boats");
+      }
+
+      const data = (await res.json()) as Boat[];
+      setBoats(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      console.error("BoatSelectionModal fetch error:", e);
+      Alert.alert("Error", e?.message || "Could not load boats");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (visible) fetchMyBoats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return boats;
+
+    return boats.filter((b) => {
+      const name = (b.boatName || "").toLowerCase();
+      const type = (b.boatType || "").toLowerCase();
+      const hp = String(b.engineHorsePower ?? "");
+      const reg = (b.registrationNumber || "").toLowerCase();
+      const mode = (b.mode || "").toLowerCase();
+
+      return (
+        name.includes(q) ||
+        type.includes(q) ||
+        hp.includes(q) ||
+        reg.includes(q) ||
+        mode.includes(q) ||
+        b._id.toLowerCase().includes(q)
+      );
+    });
+  }, [boats, query]);
+
+  const renderBoatCard = (b: Boat) => {
+    const isSelected = selectedBoatMongoId === b._id;
+
+    const displayName =
+      b.boatName ||
+      (b.boatType ? `${b.boatType} Boat` : "My Boat") + ` (${b._id.slice(-4)})`;
+
+    const hp = Number(b.engineHorsePower ?? 0);
+
+    const factor = b.fuelEfficiencyFactor ?? 1;
+    const degr = b.engineDegradationFactor ?? 0;
+    const avgErr = b.averageFuelPredictionError ?? 0;
+
+    const imgUrl =
+      b.boatImage && API_URL ? `${API_URL}${b.boatImage}` : null;
+
+    return (
+      <TouchableOpacity
+        key={b._id}
+        activeOpacity={0.85}
+        onPress={() => {
+          onSelectBoat(b._id, displayName, hp || 85, b);
+          onClose();
+        }}
+        className={`rounded-2xl border p-4 mb-3 ${
+          isSelected
+            ? "bg-blue-50 border-blue-300"
+            : "bg-white border-slate-200"
+        }`}
+      >
+        <View className="flex-row justify-between items-start">
+          <View className="flex-1 pr-3">
+            {/* Top row with image + title */}
+            <View className="flex-row items-start">
+              {imgUrl ? (
+                <Image
+                  source={{ uri: imgUrl }}
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 12,
+                    marginRight: 12,
+                  }}
+                />
+              ) : (
+                <View
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 12,
+                    marginRight: 12,
+                    backgroundColor: "#f1f5f9",
+                  }}
+                />
+              )}
+
+              <View className="flex-1">
+                <Text className="text-base font-bold text-slate-900">
+                  {displayName}
+                </Text>
+
+                <Text className="text-xs text-slate-500 mt-1">
+                  ID: <Text className="text-slate-700">{b._id}</Text>
+                </Text>
+
+                {b.specifications ? (
+                  <Text className="text-xs text-slate-500 mt-1">
+                    {b.specifications}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+
+            {/* Chips */}
+            <View className="flex-row flex-wrap mt-3 gap-2">
+              <View className="bg-slate-100 px-3 py-1 rounded-full">
+                <Text className="text-xs font-semibold text-slate-700">
+                  Type: {b.boatType || "N/A"}
+                </Text>
+              </View>
+
+              <View className="bg-slate-100 px-3 py-1 rounded-full">
+                <Text className="text-xs font-semibold text-slate-700">
+                  HP: {hp || "N/A"}
+                </Text>
+              </View>
+
+              {b.mode ? (
+                <View className="bg-slate-100 px-3 py-1 rounded-full">
+                  <Text className="text-xs font-semibold text-slate-700">
+                    Mode: {b.mode}
+                  </Text>
+                </View>
+              ) : null}
+
+              {b.registrationNumber ? (
+                <View className="bg-slate-100 px-3 py-1 rounded-full">
+                  <Text className="text-xs font-semibold text-slate-700">
+                    Reg: {b.registrationNumber}
+                  </Text>
+                </View>
+              ) : null}
+
+              {typeof b.boatLength === "number" ? (
+                <View className="bg-slate-100 px-3 py-1 rounded-full">
+                  <Text className="text-xs font-semibold text-slate-700">
+                    L: {b.boatLength}
+                  </Text>
+                </View>
+              ) : null}
+
+              {typeof b.boatWidth === "number" ? (
+                <View className="bg-slate-100 px-3 py-1 rounded-full">
+                  <Text className="text-xs font-semibold text-slate-700">
+                    W: {b.boatWidth}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* learning factors */}
+              <View className="bg-slate-100 px-3 py-1 rounded-full">
+                <Text className="text-xs font-semibold text-slate-700">
+                  Factor: {factor.toFixed(2)}
+                </Text>
+              </View>
+
+              <View className="bg-slate-100 px-3 py-1 rounded-full">
+                <Text className="text-xs font-semibold text-slate-700">
+                  Degr: {(degr * 100).toFixed(0)}%
+                </Text>
+              </View>
+
+              <View className="bg-slate-100 px-3 py-1 rounded-full">
+                <Text className="text-xs font-semibold text-slate-700">
+                  AvgErr: {avgErr.toFixed(1)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Selected marker */}
+          <View
+            className={`w-7 h-7 rounded-full items-center justify-center ${
+              isSelected ? "bg-blue-600" : "bg-slate-200"
+            }`}
+          >
+            <Text className={`${isSelected ? "text-white" : "text-slate-600"}`}>
+              ✓
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
     );
-    setCustomEngineHP("");
-    setUseCustomHP(false);
-    onClose();
   };
-
-  const handleNext = () => {
-    if (currentBoatIndex < boatTypes.length - 1) {
-      setCurrentBoatIndex(currentBoatIndex + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentBoatIndex > 0) {
-      setCurrentBoatIndex(currentBoatIndex - 1);
-    }
-  };
-
-  const currentBoat = boatTypes[currentBoatIndex];
 
   return (
     <Modal
       visible={visible}
+      transparent
       animationType="slide"
-      transparent={true}
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-black/50 justify-end">
-        <View className="bg-white rounded-t-3xl" style={{ maxHeight: "90%" }}>
+      <View className="flex-1 bg-black/40 justify-end">
+        <View className="bg-white rounded-t-3xl p-5 max-h-[85%]">
           {/* Header */}
-          <View className="flex-row justify-between items-center p-4 border-b border-slate-200">
-            <Text className="text-xl font-bold text-slate-800">
-              Select Boat Type
-            </Text>
-            <TouchableOpacity
-              onPress={onClose}
-              className="w-8 h-8 items-center justify-center bg-slate-100 rounded-full"
-            >
-              <Text className="text-slate-600 font-bold">✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Boat Image Carousel */}
-            <View className="relative">
-              <View className="items-center justify-center bg-slate-50 p-6">
-                <Image
-                  source={currentBoat.image}
-                  className="w-64 h-48"
-                  resizeMode="contain"
-                />
-              </View>
-
-              {/* Navigation Arrows */}
-              <View className="absolute inset-0 flex-row justify-between items-center px-4">
-                <TouchableOpacity
-                  onPress={handlePrevious}
-                  disabled={currentBoatIndex === 0}
-                  className={`w-10 h-10 rounded-full items-center justify-center ${
-                    currentBoatIndex === 0 ? "bg-slate-200" : "bg-blue-500"
-                  }`}
-                >
-                  <Text
-                    className={
-                      currentBoatIndex === 0 ? "text-slate-400" : "text-white"
-                    }
-                  >
-                    ‹
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleNext}
-                  disabled={currentBoatIndex === boatTypes.length - 1}
-                  className={`w-10 h-10 rounded-full items-center justify-center ${
-                    currentBoatIndex === boatTypes.length - 1
-                      ? "bg-slate-200"
-                      : "bg-blue-500"
-                  }`}
-                >
-                  <Text
-                    className={
-                      currentBoatIndex === boatTypes.length - 1
-                        ? "text-slate-400"
-                        : "text-white"
-                    }
-                  >
-                    ›
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Pagination Dots */}
-              <View className="flex-row justify-center items-center py-3 gap-2">
-                {boatTypes.map((_, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => setCurrentBoatIndex(index)}
-                    className={`h-2 rounded-full ${
-                      index === currentBoatIndex
-                        ? "bg-blue-500 w-8"
-                        : "bg-slate-300 w-2"
-                    }`}
-                  />
-                ))}
-              </View>
-            </View>
-
-            {/* Boat Details */}
-            <View className="px-4 pb-6">
-              {/* Boat Name & Description */}
-              <View className="mb-4">
-                <Text className="text-2xl font-bold text-slate-800 mb-1">
-                  {currentBoat.name}
-                </Text>
-                <Text className="text-sm font-medium text-blue-600 mb-2">
-                  {currentBoat.engineModel}
-                </Text>
-                <Text className="text-slate-600 text-base">
-                  {currentBoat.description}
-                </Text>
-              </View>
-
-              {/* Specifications Card */}
-              <View className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 mb-4 border border-blue-200">
-                <Text className="text-xs font-bold text-blue-800 mb-3 tracking-wider">
-                  SPECIFICATIONS
-                </Text>
-                <View className="space-y-2">
-                  <View className="flex-row justify-between items-center">
-                    <View className="flex-row items-center">
-                      <Text className="text-lg mr-2">📏</Text>
-                      <Text className="text-sm text-slate-600">Length</Text>
-                    </View>
-                    <Text className="text-sm font-bold text-slate-800">
-                      {currentBoat.specifications.length}
-                    </Text>
-                  </View>
-                  <View className="h-px bg-blue-200" />
-                  <View className="flex-row justify-between items-center">
-                    <View className="flex-row items-center">
-                      <Text className="text-lg mr-2">⚙️</Text>
-                      <Text className="text-sm text-slate-600">Engine</Text>
-                    </View>
-                    <Text className="text-sm font-bold text-slate-800">
-                      {currentBoat.specifications.engine}
-                    </Text>
-                  </View>
-                  <View className="h-px bg-blue-200" />
-                  <View className="flex-row justify-between items-center">
-                    <View className="flex-row items-center">
-                      <Text className="text-lg mr-2">⚡</Text>
-                      <Text className="text-sm text-slate-600">Power</Text>
-                    </View>
-                    <Text className="text-sm font-bold text-blue-700">
-                      {currentBoat.specifications.power}
-                    </Text>
-                  </View>
-                  <View className="h-px bg-blue-200" />
-                  <View className="flex-row justify-between items-center">
-                    <View className="flex-row items-center">
-                      <Text className="text-lg mr-2">⛽</Text>
-                      <Text className="text-sm text-slate-600">Fuel Type</Text>
-                    </View>
-                    <Text className="text-sm font-bold text-slate-800">
-                      {currentBoat.specifications.fuel}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              {/* Quick Stats */}
-              <View className="flex-row justify-between mb-4">
-                <View className="flex-1 bg-blue-50 rounded-xl p-3 mr-2">
-                  <Text className="text-xs text-blue-600 mb-1">Capacity</Text>
-                  <Text className="text-sm font-bold text-blue-800">
-                    {currentBoat.capacity}
-                  </Text>
-                </View>
-                <View className="flex-1 bg-emerald-50 rounded-xl p-3 mr-2">
-                  <Text className="text-xs text-emerald-600 mb-1">
-                    Fuel Efficiency
-                  </Text>
-                  <Text className="text-sm font-bold text-emerald-800">
-                    {currentBoat.fuelEfficiency}
-                  </Text>
-                </View>
-                <View className="flex-1 bg-amber-50 rounded-xl p-3">
-                  <Text className="text-xs text-amber-600 mb-1">
-                    Default HP
-                  </Text>
-                  <Text className="text-sm font-bold text-amber-800">
-                    {currentBoat.defaultEngineHP}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Characteristics */}
-              <View className="mb-4">
-                <Text className="text-sm font-semibold text-slate-700 mb-2">
-                  Characteristics
-                </Text>
-                <View className="space-y-2">
-                  {currentBoat.characteristics.map((char, index) => (
-                    <View key={index} className="flex-row items-center">
-                      <View className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2" />
-                      <Text className="text-slate-600 text-sm">{char}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* Ideal For */}
-              <View className="bg-slate-50 rounded-xl p-4 mb-4">
-                <Text className="text-xs font-semibold text-slate-500 mb-1">
-                  IDEAL FOR
-                </Text>
-                <Text className="text-slate-700 text-sm">
-                  {currentBoat.idealFor}
-                </Text>
-              </View>
-
-              {/* Available Engine HP Options */}
-              <View className="mb-4">
-                <Text className="text-sm font-semibold text-slate-700 mb-2">
-                  Available Engine HP Options
-                </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {currentBoat.engineHPOptions.map((hp, index) => (
-                    <View
-                      key={index}
-                      className={`px-3 py-2 rounded-lg ${
-                        hp === currentBoat.defaultEngineHP
-                          ? "bg-blue-100 border border-blue-300"
-                          : "bg-slate-100"
-                      }`}
-                    >
-                      <Text
-                        className={`text-sm font-medium ${
-                          hp === currentBoat.defaultEngineHP
-                            ? "text-blue-800"
-                            : "text-slate-600"
-                        }`}
-                      >
-                        {hp} HP
-                        {hp === currentBoat.defaultEngineHP && " ⭐"}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* Custom Engine HP Input */}
-              <View className="bg-amber-50 rounded-xl p-4 border border-amber-200">
-                <View className="flex-row items-center justify-between mb-3">
-                  <View className="flex-row items-center">
-                    <Text className="text-lg mr-2">✏️</Text>
-                    <Text className="text-sm font-semibold text-amber-900">
-                      Custom Engine HP
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setUseCustomHP(!useCustomHP);
-                      if (useCustomHP) setCustomEngineHP("");
-                    }}
-                    className={`px-3 py-1.5 rounded-full ${
-                      useCustomHP ? "bg-amber-500" : "bg-amber-200"
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-medium ${
-                        useCustomHP ? "text-white" : "text-amber-700"
-                      }`}
-                    >
-                      {useCustomHP ? "Enabled" : "Disabled"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {useCustomHP && (
-                  <View>
-                    <Text className="text-xs text-amber-700 mb-2">
-                      Enter your boat's actual engine horsepower
-                    </Text>
-                    <TextInput
-                      placeholder="e.g., 175"
-                      keyboardType="numeric"
-                      value={customEngineHP}
-                      onChangeText={setCustomEngineHP}
-                      className="bg-white border border-amber-300 rounded-lg p-3 text-slate-800"
-                      placeholderTextColor="#92400e"
-                    />
-                  </View>
-                )}
-
-                {!useCustomHP && (
-                  <Text className="text-xs text-amber-700">
-                    Enable to enter a custom engine HP value not listed above
-                  </Text>
-                )}
-              </View>
-            </View>
-          </ScrollView>
-
-          {/* Action Buttons */}
-          <View className="p-4 border-t border-slate-200 flex-row gap-3">
-            <TouchableOpacity
-              onPress={onClose}
-              className="flex-1 bg-slate-100 rounded-xl py-4 items-center"
-            >
-              <Text className="text-slate-700 font-semibold">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleSelectBoat}
-              className="flex-[2] bg-blue-500 rounded-xl py-4 items-center"
-            >
-              <Text className="text-white font-semibold">
-                Select {currentBoat.name}
+          <View className="flex-row items-center justify-between mb-4">
+            <View>
+              <Text className="text-lg font-bold text-slate-900">
+                Select Your Boat
               </Text>
+              <Text className="text-xs text-slate-500 mt-0.5">
+                Loaded from your backend (Mongo IDs)
+              </Text>
+              {!API_URL ? (
+                <Text className="text-xs text-rose-600 mt-1">
+                  EXPO_PUBLIC_API_URL not set → images won’t load
+                </Text>
+              ) : null}
+            </View>
+
+            <TouchableOpacity
+              onPress={onClose}
+              className="bg-slate-100 rounded-full px-3 py-2"
+              activeOpacity={0.8}
+            >
+              <Text className="text-slate-700 font-semibold">Close</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Search */}
+          <View className="mb-4">
+            <TextInput
+              placeholder="Search by name, type, hp, reg, mode, or mongo id..."
+              value={query}
+              onChangeText={setQuery}
+              className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900"
+              placeholderTextColor="#94a3b8"
+              autoCapitalize="none"
+            />
+          </View>
+
+          {/* Controls */}
+          <View className="flex-row gap-2 mb-3">
+            <TouchableOpacity
+              onPress={fetchMyBoats}
+              activeOpacity={0.85}
+              className="flex-1 bg-slate-900 rounded-xl py-3 items-center"
+            >
+              <Text className="text-white font-bold">Refresh</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setQuery("")}
+              activeOpacity={0.85}
+              className="flex-1 bg-slate-100 rounded-xl py-3 items-center border border-slate-200"
+            >
+              <Text className="text-slate-700 font-bold">Clear Search</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Add Boat button (optional) */}
+          <View className="mb-3">
+            <TouchableOpacity
+              onPress={() => {
+                if (onAddBoat) onAddBoat();
+                else
+                  Alert.alert(
+                    "Add Boat",
+                    "Create an AddBoat screen and pass onAddBoat prop to navigate."
+                  );
+              }}
+              activeOpacity={0.85}
+              className="bg-blue-600 rounded-xl py-3 items-center"
+            >
+              <Text className="text-white font-bold">+ Add Boat</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* List */}
+          {loading ? (
+            <View className="py-10 items-center">
+              <ActivityIndicator />
+              <Text className="text-slate-500 mt-3">Loading your boats...</Text>
+            </View>
+          ) : filtered.length === 0 ? (
+            <View className="py-10 items-center">
+              <Text className="text-slate-700 font-semibold">No boats found</Text>
+              <Text className="text-slate-500 text-xs mt-2 text-center">
+                Create a boat first using POST /api/v1/boats
+                {"\n"}Then open this modal again.
+              </Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {filtered.map(renderBoatCard)}
+              <View className="h-6" />
+            </ScrollView>
+          )}
         </View>
       </View>
     </Modal>
