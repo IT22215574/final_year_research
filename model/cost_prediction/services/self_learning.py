@@ -1,52 +1,58 @@
 import os
 import json
 from datetime import datetime
+from .boat_coefficients import BoatCoefficientsManager
 
 class SelfLearningEngine:
     def __init__(self, model_dir: str):
-        self.history_path = os.path.join(model_dir, "coefficient_history.json")
-
-        # ensure file exists
-        if not os.path.exists(self.history_path):
-            with open(self.history_path, "w") as f:
-                json.dump([], f)
+        self.coefficients_manager = BoatCoefficientsManager(model_dir)
+        print("✅ Self-learning engine initialized with boat coefficients manager")
 
     def update(self, data: dict):
+        """
+        Enhanced learning update using boat-specific coefficient management
+        """
+        boat_id = data["boatId"]
         predicted = data["predictedFuelLiters"]
         actual = data["actualFuelLiters"]
-        current = data["currentFuelEfficiencyFactor"]
-
-        error = actual - predicted
-        denom = max(predicted, 10)
-        rel_error = error / denom
-
-        learning_rate = 0.02
-        new_factor = current * (1 + learning_rate * rel_error)
-
-        # clamp
-        new_factor = max(0.7, min(1.3, new_factor))
-
-        entry = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "boatId": data["boatId"],
-            "predictedFuelLiters": predicted,
-            "actualFuelLiters": actual,
-            "error": error,
-            "previousFuelEfficiencyFactor": current,
-            "updatedFuelEfficiencyFactor": new_factor,
+        
+        # Build context for learning
+        context = {
+            "speed": data.get("speed", 10),
+            "weatherSeverityIndex": data.get("weatherSeverityIndex", 0),
+            "distanceKm": data.get("distanceKm", 0),
+            "engineHP": data.get("engineHP", 85),
+            "fishingHours": data.get("fishingHours", 8),
+            "timestamp": datetime.utcnow().isoformat()
         }
-
-        # append history
-        with open(self.history_path, "r") as f:
-            history = json.load(f)
-
-        history.append(entry)
-
-        with open(self.history_path, "w") as f:
-            json.dump(history, f, indent=2)
-
+        
+        # Use the advanced boat coefficients manager for learning
+        update_result = self.coefficients_manager.update_coefficients(
+            boat_id, predicted, actual, context
+        )
+        
+        # Get learning insights
+        insights = self.coefficients_manager.get_learning_insights(boat_id)
+        
         return {
-            "predictionError": round(error, 4),
-            "previousFuelEfficiencyFactor": current,
-            "updatedFuelEfficiencyFactor": round(new_factor, 8)
+            "predictionError": update_result["predictionError"],
+            "relativePredictionError": update_result["relativePredictionError"],
+            "boatLearningInsights": insights,
+            "updatedCoefficients": {
+                "fuelEfficiencyFactor": update_result["updatedCoefficients"]["fuelEfficiencyFactor"],
+                "engineDegradationFactor": update_result["updatedCoefficients"]["engineDegradationFactor"],
+                "speedOptimizationFactor": update_result["updatedCoefficients"]["speedOptimizationFactor"],
+                "weatherAdaptationFactor": update_result["updatedCoefficients"]["weatherAdaptationFactor"],
+                "confidence": update_result["updatedCoefficients"]["confidence"],
+                "dataPoints": update_result["updatedCoefficients"]["dataPoints"],
+            },
+            "learningMetrics": update_result["learningMetrics"]
         }
+    
+    def get_boat_insights(self, boat_id: str):
+        """Get comprehensive learning insights for a boat"""
+        return self.coefficients_manager.get_learning_insights(boat_id)
+    
+    def get_boat_history(self, boat_id: str, days: int = 30):
+        """Get prediction history for a boat"""
+        return self.coefficients_manager.get_boat_prediction_history(boat_id, days)

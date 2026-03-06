@@ -9,6 +9,9 @@ import { Model } from 'mongoose';
 import { Boat, BoatDocument } from '../schemas/boat.schema';
 import * as fs from 'fs';
 import * as path from 'path';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
 
 import { BOAT_TYPES } from './dto/create-boat.dto';
 
@@ -17,6 +20,8 @@ export class BoatService {
   constructor(
     @InjectModel(Boat.name)
     private boatModel: Model<BoatDocument>,
+    private readonly http: HttpService,
+    private readonly config: ConfigService,
   ) {}
 
   getBoatTypes() {
@@ -119,5 +124,98 @@ export class BoatService {
 
     await this.boatModel.deleteOne({ _id: boatId });
     return { status: 'success', message: 'Boat deleted successfully' };
+  }
+
+  // Get boat learning insights from Python ML service  
+  async getBoatLearningInsights(boatId: string, userId: string) {
+    // Verify boat ownership
+    const boat = await this.boatModel.findById(boatId);
+    if (!boat) throw new NotFoundException('Boat not found');
+
+    if (String(boat.userId) !== String(userId)) {
+      throw new ForbiddenException('Access denied to this boat');
+    }
+
+    const baseUrl =
+      this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get(`${baseUrl}/boat-insights/${boatId}`),
+      );
+
+      return {
+        boatInfo: {
+          _id: boat._id,
+          boatName: boat.boatName,
+          boatType: boat.boatType,
+          engineHorsePower: boat.engineHorsePower,
+        },
+        learningInsights: response.data,
+        currentCoefficients: {
+          fuelEfficiencyFactor: boat.fuelEfficiencyFactor,
+          engineDegradationFactor: boat.engineDegradationFactor,
+          averageFuelPredictionError: boat.averageFuelPredictionError,
+        },
+      };
+    } catch (e: any) {
+      console.log('ML insights error:', e?.response?.data || e?.message);
+      
+      return {
+        boatInfo: {
+          _id: boat._id,
+          boatName: boat.boatName,
+          boatType: boat.boatType,
+          engineHorsePower: boat.engineHorsePower,
+        },
+        learningInsights: {
+          message: 'Advanced learning insights not available. ML service unavailable.',
+          basicInfo: {
+            totalTrips: 'Available in backend trip records',
+            currentFuelEfficiencyFactor: boat.fuelEfficiencyFactor || 1.0,
+            averageError: boat.averageFuelPredictionError || 0,
+          },
+        },
+        mlServiceError: true,
+      };
+    }
+  }
+
+  // Get boat prediction history from Python ML service
+  async getBoatPredictionHistory(boatId: string, userId: string, days = 30) {
+    // Verify boat ownership
+    const boat = await this.boatModel.findById(boatId);
+    if (!boat) throw new NotFoundException('Boat not found');
+
+    if (String(boat.userId) !== String(userId)) {
+      throw new ForbiddenException('Access denied to this boat');
+    }
+
+    const baseUrl =
+      this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get(`${baseUrl}/boat-history/${boatId}?days=${days}`),
+      );
+
+      return {
+        boatId,
+        days,
+        history: response.data,
+        totalEntries: Array.isArray(response.data) ? response.data.length : 0,
+      };
+    } catch (e: any) {
+      console.log('ML history error:', e?.response?.data || e?.message);
+      
+      return {
+        boatId,
+        days,
+        history: [],
+        totalEntries: 0,
+        message: 'Prediction history not available. ML service unavailable.',
+        mlServiceError: true,
+      };
+    }
   }
 }

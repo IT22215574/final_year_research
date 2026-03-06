@@ -7,6 +7,9 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type { Request as ExpressRequest } from 'express';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
 
 import { Trip, TripDocument } from '../schemas/trip.schema';
 import { CreateTripDto } from './dto/create-trip.dto';
@@ -27,6 +30,8 @@ export class TripsService {
     @InjectModel(Boat.name) private boatModel: Model<BoatDocument>,
     @InjectModel(TripCoefficient.name)
     private tripCoeffModel: Model<TripCoefficientDocument>,
+    private readonly http: HttpService,
+    private readonly config: ConfigService,
   ) {}
 
   // Create new trip
@@ -93,14 +98,14 @@ export class TripsService {
     await trip.deleteOne();
   }
 
-  // Log actual data and update boat learning coefficient
+  // Enhanced log actual data with advanced boat learning
   async logActualData(tripId: string, dto: LogActualDto, req: ExpressRequest) {
     const user = (req as any)?.user ?? {};
     const userId = user?.userId || user?.id || user?._id;
 
     if (!userId) throw new BadRequestException('Unauthorized');
 
-    // ✅ safer: fetch trip then check owner (avoids type mismatch issues)
+    // Fetch trip and validate ownership
     const trip = await this.tripModel.findById(tripId).exec();
     if (!trip) throw new NotFoundException('Trip not found');
 
@@ -117,62 +122,116 @@ export class TripsService {
     const fuelPredictionError =
       dto.actualFuelLiters - Number(trip.predictedFuelLiters);
 
-    // ✅ Update trip actuals first
+    // Update trip actuals
     trip.actualFuelLiters = dto.actualFuelLiters;
     trip.actualCatchKg = dto.actualCatchKg;
     trip.fuelPredictionError = fuelPredictionError;
     await trip.save();
 
-    // ✅ Boat learning requires boatId
+    // Boat learning requires boatId
     if (!trip.boatId) {
       return {
         trip,
         message:
-          'Actual logged. Boat learning skipped (trip.boatId missing). Add boatId to Trip schema and store it when creating trips.',
+          'Actual logged. Boat learning skipped (trip.boatId missing).',
       };
     }
 
-    // ✅ NOW boat is declared
     const boat = await this.boatModel.findById(trip.boatId).exec();
     if (!boat) throw new NotFoundException('Boat not found');
 
-    // ✅ update average prediction error (EMA)
-    boat.averageFuelPredictionError =
-      (boat.averageFuelPredictionError ?? 0) * 0.9 + fuelPredictionError * 0.1;
+    // Enhanced learning using Python ML service
+    const baseUrl =
+      this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
+    
+    let learningResult = null;
+    let mlLearningFallback = false;
 
-    const prevFactor = boat.fuelEfficiencyFactor ?? 1;
+    try {
+      // Call enhanced Python learning service with context
+      const learningResponse = await firstValueFrom(
+        this.http.post(`${baseUrl}/update-coefficients`, {
+          boatId: String(trip.boatId),
+          predictedFuelLiters: Number(trip.predictedFuelLiters),
+          actualFuelLiters: dto.actualFuelLiters,
+          speed: trip.averageSpeed || trip.speed || 10,
+          weatherSeverityIndex: trip.weatherSeverityIndex || 0,
+          distanceKm: trip.distanceKm || 0,
+          engineHP: boat.engineHorsePower || 85,
+          fishingHours: trip.fishingHours || 8,
+        }),
+      );
 
-    // Learning: small adjustment based on relative error
-    const learningRate = 0.02;
-    const relError =
-      fuelPredictionError / Math.max(Number(trip.predictedFuelLiters), 1);
+      learningResult = learningResponse.data;
+      
+      // Update boat with new coefficients from ML service
+      if (learningResult?.updatedCoefficients) {
+        boat.fuelEfficiencyFactor = learningResult.updatedCoefficients.fuelEfficiencyFactor;
+        boat.engineDegradationFactor = learningResult.updatedCoefficients.engineDegradationFactor;
+        boat.averageFuelPredictionError = Math.abs(learningResult.predictionError);
+      }
+      
+    } catch (e: any) {
+      mlLearningFallback = true;
+      console.log(
+        'ML learning service error:',
+        e?.response?.status,
+        e?.response?.data || e?.message,
+      );
+      
+      // Fallback to simple learning
+      boat.averageFuelPredictionError =
+        (boat.averageFuelPredictionError ?? 0) * 0.9 + Math.abs(fuelPredictionError) * 0.1;
 
-    let newFactor = prevFactor * (1 + learningRate * relError);
+      const prevFactor = boat.fuelEfficiencyFactor ?? 1;
+      const learningRate = 0.02;
+      const relError = fuelPredictionError / Math.max(Number(trip.predictedFuelLiters), 1);
+      
+      let newFactor = prevFactor * (1 + learningRate * relError);
+      newFactor = Math.max(0.7, Math.min(1.3, newFactor));
+      
+      boat.fuelEfficiencyFactor = newFactor;
+    }
 
-    // clamp to avoid exploding
-    newFactor = Math.max(0.7, Math.min(1.3, newFactor));
-
-    boat.fuelEfficiencyFactor = newFactor;
     await boat.save();
 
+    // Log coefficient update for tracking
     await this.tripCoeffModel.create({
       tripId: trip._id.toString(),
       boatId: boat._id.toString(),
-      previousFuelEfficiencyFactor: prevFactor,
-      updatedFuelEfficiencyFactor: newFactor,
+      previousFuelEfficiencyFactor: learningResult?.updatedCoefficients?.fuelEfficiencyFactor || boat.fuelEfficiencyFactor,
+      updatedFuelEfficiencyFactor: learningResult?.updatedCoefficients?.fuelEfficiencyFactor || boat.fuelEfficiencyFactor,
       predictionError: fuelPredictionError,
-      adjustmentApplied: newFactor - prevFactor,
+      adjustmentApplied: learningResult?.relativePredictionError || 0,
+      mlLearningUsed: !mlLearningFallback,
     });
 
-    return {
+    const response = {
       trip,
-      newCoefficients: {
-        previousFuelEfficiencyFactor: prevFactor,
-        updatedFuelEfficiencyFactor: newFactor,
+      learningCompleted: true,
+      mlLearningFallback,
+    };
+
+    if (learningResult && !mlLearningFallback) {
+      // Enhanced response with ML insights
+      response['advancedLearning'] = {
+        boatLearningInsights: learningResult.boatLearningInsights,
+        updatedCoefficients: learningResult.updatedCoefficients,
+        learningMetrics: learningResult.learningMetrics,
+        predictionError: learningResult.predictionError,
+        relativePredictionError: learningResult.relativePredictionError,
+      };
+    } else {
+      // Simple fallback response
+      response['simpleLearning'] = {
+        previousFuelEfficiencyFactor: boat.fuelEfficiencyFactor,
+        updatedFuelEfficiencyFactor: boat.fuelEfficiencyFactor,
         predictionError: fuelPredictionError,
         averageFuelPredictionError: boat.averageFuelPredictionError,
-      },
-    };
+      };
+    }
+
+    return response;
   }
   // Get trip statistics for user
   async getUserStats(userId: string) {

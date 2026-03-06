@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { HttpModule } from '@nestjs/axios';
 import { TripsService } from './trips.service';
 import { TripsController } from './trips.controller';
 import { Trip, TripSchema } from '../schemas/trip.schema';
@@ -17,8 +18,8 @@ import {
       { name: TripCoefficient.name, schema: TripCoefficientSchema },
       { name: Boat.name, schema: BoatSchema },
     ]),
-    AuthModule, // ✅ Add this so JwtService is available for AuthTokenGuard12,
-    TripsModule
+    AuthModule, // Makes JwtService available for AuthTokenGuard
+    HttpModule, // For calling Python ML service
   ],
   controllers: [TripsController],
   providers: [TripsService],

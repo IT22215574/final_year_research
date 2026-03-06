@@ -25,6 +25,11 @@ import { calculateWSI } from '../common/utils/wsi.util';
 import { calculateFESI } from '../common/utils/fesi.util';
 import { carbonMetrics } from '../common/utils/carbon.util';
 import { OptimizeTripDto } from './dto/optimize-trip.dto';
+import {
+  calculateModeAdjustments,
+  calculateInternationalAdditionalCosts,
+  getModeRecommendations,
+} from './utils/mode-calculator.util';
 
 @Injectable()
 export class CostEngineService {
@@ -132,21 +137,59 @@ export class CostEngineService {
     const clampedSpeedFactor = Math.max(0.7, Math.min(1.4, speedFactor));
 
     predictedFuelLiters = predictedFuelLiters * clampedSpeedFactor;
-    // 5) Cost
-    const fuelCost = predictedFuelLiters * dto.fuelPrice;
 
-    // simple crew cost rule (replace later with real operational breakdown)
-    const crewCost = dto.crewCount * 5000;
+    // 5) Mode-specific adjustments (Island vs International)
+    const mode = dto.mode || 'island';
+    const tripDurationHours = dto.fishingHours + (predictedDistanceKm / dto.speed);
+    
+    const modeAdjustments = calculateModeAdjustments(
+      mode,
+      predictedDistanceKm,
+      tripDurationHours,
+      dto.crewCount,
+    );
 
-    const rawTotalCost = fuelCost + crewCost;
+    // Apply mode-specific fuel adjustment
+    const adjustedFuelLiters = predictedFuelLiters * modeAdjustments.fuelMultiplier;
 
-    // risk adjust using FESI up to +15%
-    const predictedTotalCost = rawTotalCost * (1 + fesi * 0.15);
+    // 6) Enhanced Cost Calculation with Mode Logic
+    const fuelCost = adjustedFuelLiters * dto.fuelPrice;
+    
+    // Mode-adjusted crew cost
+    const baseCrew = dto.crewCount * 5000;
+    const crewCost = baseCrew * modeAdjustments.crewMultiplier;
+    
+    // Additional mode-specific costs
+    const equipmentCost = modeAdjustments.equipmentCost;
+    const permitCost = modeAdjustments.permitCost;
+    const communicationCost = modeAdjustments.communicationCost;
+    
+    // International-specific additional costs
+    let internationalCosts = 0;
+    if (mode === 'international') {
+      const additionalCosts = calculateInternationalAdditionalCosts(
+        predictedDistanceKm,
+        tripDurationHours,
+        dto.crewCount,
+      );
+      internationalCosts = Object.values(additionalCosts).reduce((sum, cost) => sum + cost, 0);
+    }
 
-    // 6) Carbon (shared util)
+    const operationalCost = fuelCost + crewCost + equipmentCost + permitCost + communicationCost + internationalCosts;
+    
+    // Apply mode-specific risk adjustment
+    const riskAdjustedCost = operationalCost * modeAdjustments.riskMultiplier;
+    
+    // Apply FESI risk adjustment (on top of mode risk)
+    const rawTotalCost = riskAdjustedCost * (1 + fesi * 0.15);
+    
+    // Apply insurance multiplier
+    const predictedTotalCost = rawTotalCost * modeAdjustments.insuranceMultiplier;
+
+    // 7) Carbon (using adjusted fuel consumption)
     const emissionFactor = 2.68; // kg CO2 per liter diesel (same as util default)
     const { carbonEmissionKg, carbonPerKgCatch } = carbonMetrics(
-      predictedFuelLiters,
+      adjustedFuelLiters,
       dto.expectedCatch,
     );
 
@@ -198,8 +241,10 @@ export class CostEngineService {
       );
     }
 
-    // 8) Recommendations (simple deterministic rules for now)
+    // 8) Enhanced Recommendations with Mode-Specific Logic
     const recommendations: string[] = [];
+    
+    // Standard weather and economic recommendations
     if (wsi > 0.65)
       recommendations.push(
         'High weather severity: consider delaying trip or reducing speed.',
@@ -212,10 +257,15 @@ export class CostEngineService {
       recommendations.push(
         'Low profitability chance: consider alternative zone/time or reduce costs.',
       );
-    if (predictedFuelLiters > 120)
+    if (adjustedFuelLiters > 120)
       recommendations.push(
         'High fuel usage predicted: optimize route and plan fuel usage carefully.',
       );
+    
+    // Add mode-specific recommendations
+    const modeRecommendations = getModeRecommendations(mode, predictedDistanceKm, wsi);
+    recommendations.push(...modeRecommendations);
+    
     if (recommendations.length === 0)
       recommendations.push(
         'Conditions look stable: proceed with standard plan and monitor weather updates.',
@@ -240,17 +290,30 @@ export class CostEngineService {
         marketPrice: dto.marketPrice,
       },
       fuel: {
-        predictedFuelLiters,
+        baseFuelLiters: predictedFuelLiters,
+        adjustedFuelLiters,
         fuelPerKmBase,
         weatherMultiplier,
         efficiencyFactor,
-        speedFactor: clampedSpeedFactor, // ✅ add this
+        speedFactor: clampedSpeedFactor,
+        modeMultiplier: modeAdjustments.fuelMultiplier,
       },
       cost: {
         fuelCost,
         crewCost,
+        equipmentCost,
+        permitCost,
+        communicationCost,
+        internationalCosts,
+        operationalCost,
+        riskAdjustedCost,
         rawTotalCost,
         predictedTotalCost,
+      },
+      mode: {
+        selectedMode: mode,
+        adjustments: modeAdjustments,
+        tripDurationHours,
       },
       carbon: {
         emissionFactor,
@@ -442,5 +505,150 @@ export class CostEngineService {
       userId,
       ...data,
     });
+  }
+
+  // ===========================
+  // COMPREHENSIVE RISK ASSESSMENT
+  // ===========================
+
+  /**
+   * Enhanced risk assessment with comprehensive analysis
+   */
+  async assessComprehensiveRisk(data: {
+    boat: any;
+    distance: number;
+    weatherData: any;
+    predictedCost: number;
+    expectedRevenue: number;
+    fuelCost: number;
+    tripDuration: number;
+  }) {
+    try {
+      const mlServiceUrl = this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:8001';
+
+      // Prepare comprehensive risk assessment data
+      const riskData = {
+        // Weather data
+        weatherSeverityIndex: data.weatherData?.wsi || 0.5,
+        windSpeed: data.weatherData?.windSpeed || 20,
+        waveHeight: data.weatherData?.waveHeight || 2.0,
+        tripDuration: data.tripDuration,
+        tripDate: new Date().toISOString(),
+
+        // Economic data
+        predictedTotalCost: data.predictedCost,
+        expectedRevenue: data.expectedRevenue,
+        fuelCost: data.fuelCost,
+        marketPrice: data.expectedRevenue / (data.boat?.expectedCatch || 100), // Derive market price
+
+        // Operational data
+        totalDistance: data.distance,
+        boatAge: this.calculateBoatAge(data.boat?.manufactured),
+        crewExperience: this.categorizeCrewExperience(data.boat?.crewExperience || 5),
+        maintenanceScore: data.boat?.maintenanceScore || 0.8,
+        boatType: this.categorizeBoatSize(data.boat?.lengthM || 15),
+
+        // Equipment data
+        engineCondition: data.boat?.engineCondition || 0.8,
+        hasGPS: data.boat?.hasGPS !== false,
+        hasRadio: data.boat?.hasRadio !== false,
+        safetyEquipmentScore: data.boat?.safetyScore || 0.7,
+
+        // Market data
+        targetSpecies: data.boat?.targetSpecies || 'general',
+        marketDemand: 0.7, // Could be enhanced with real market data
+        priceVolatility: 0.3, // Could be enhanced with market analysis
+        maxStorageTime: data.boat?.storageCapacity || 24,
+
+        // Regulatory data
+        hasValidLicense: data.boat?.hasValidLicense !== false,
+        fishingZone: this.determineFishingZone(data.distance),
+        quotaUsagePercent: 0.5, // Could be enhanced with quota tracking
+        nearRestrictedAreas: false, // Could be enhanced with zone analysis
+      };
+
+      // Call ML service for comprehensive risk assessment
+      const response = await firstValueFrom(
+        this.http.post(`${mlServiceUrl}/assess/risk`, riskData, {
+          timeout: 15000,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
+
+      return {
+        success: true,
+        riskAssessment: response.data,
+        source: 'ml_service'
+      };
+
+    } catch (error) {
+      console.error('ML risk assessment failed:', error.message);
+
+      // Fallback to simplified risk assessment
+      const fallbackRisk = this.calculateFallbackRisk(data);
+      
+      return {
+        success: false,
+        riskAssessment: fallbackRisk,
+        source: 'fallback',
+        error: error.message
+      };
+    }
+  }
+
+  private calculateBoatAge(manufacturedYear?: number): number {
+    if (!manufacturedYear) return 5; // Default age
+    return Math.max(0, new Date().getFullYear() - manufacturedYear);
+  }
+
+  private categorizeCrewExperience(experienceYears: number): string {
+    if (experienceYears < 2) return 'novice';
+    if (experienceYears < 5) return 'intermediate';
+    if (experienceYears < 10) return 'experienced';
+    return 'expert';
+  }
+
+  private categorizeBoatSize(lengthM: number): string {
+    if (lengthM < 8) return 'small';
+    if (lengthM < 15) return 'medium';
+    if (lengthM < 25) return 'large';
+    return 'commercial';
+  }
+
+  private determineFishingZone(distance: number): string {
+    if (distance < 12) return 'coastal';         // 0-12 nautical miles
+    if (distance < 50) return 'territorial';     // 12-50 nautical miles  
+    if (distance < 200) return 'eez';           // 50-200 nautical miles (EEZ)
+    return 'international';                      // Beyond 200 nautical miles
+  }
+
+  private calculateFallbackRisk(data: any): any {
+    // Simplified fallback risk calculation
+    const weatherRisk = data.weatherData?.wsi || 0.5;
+    const distanceRisk = Math.min(data.distance / 200, 1.0);
+    const economicRisk = data.predictedCost > data.expectedRevenue ? 0.8 : 0.3;
+
+    const overallRisk = (weatherRisk * 0.4 + distanceRisk * 0.3 + economicRisk * 0.3);
+    
+    let riskCategory = 'low';
+    if (overallRisk > 0.7) riskCategory = 'high';
+    else if (overallRisk > 0.4) riskCategory = 'medium';
+
+    return {
+      overallRiskScore: Math.round(overallRisk * 1000) / 1000,
+      riskCategory,
+      riskLevel: riskCategory === 'high' ? 'concerning' : 'manageable',
+      detailedAssessment: {
+        weatherRisk: { score: weatherRisk, category: weatherRisk > 0.6 ? 'high' : 'medium' },
+        economicRisk: { score: economicRisk, category: economicRisk > 0.6 ? 'high' : 'low' },
+        operationalRisk: { score: distanceRisk, category: distanceRisk > 0.5 ? 'high' : 'medium' }
+      },
+      recommendedActions: [
+        overallRisk > 0.7 ? 'Consider postponing trip due to high risk factors' :
+        overallRisk > 0.4 ? 'Proceed with enhanced monitoring and safety measures' :
+        'Acceptable risk level for proceeding with standard precautions'
+      ],
+      source: 'simplified_fallback'
+    };
   }
 }

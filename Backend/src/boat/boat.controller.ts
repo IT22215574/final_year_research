@@ -74,6 +74,30 @@ export class BoatController {
     return this.boatService.deleteBoat(id, userId);
   }
 
+  // Get boat learning insights and adaptive coefficients
+  @Get(':id/learning-insights')
+  async getLearningInsights(@Req() req: any, @Param('id') id: string) {
+    const userId = this.getUserId(req);
+
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid boat id');
+    }
+
+    return this.boatService.getBoatLearningInsights(id, userId);
+  }
+
+  // Get boat prediction history for analysis  
+  @Get(':id/prediction-history')
+  async getPredictionHistory(@Req() req: any, @Param('id') id: string) {
+    const userId = this.getUserId(req);
+
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid boat id');
+    }
+
+    return this.boatService.getBoatPredictionHistory(id, userId);
+  }
+
   private getUserId(req: any): string {
     const u = req.user;
     const userId = u?.id || u?._id || u?.userId || u?.sub;
