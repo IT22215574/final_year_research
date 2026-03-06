@@ -1,19 +1,15 @@
-import { IsNumber, IsString } from 'class-validator';
+// Backend/src/cost-engine/dto/optimize-trip.dto.ts
+import { Type } from 'class-transformer';
+import { IsNumber, IsOptional, Min } from 'class-validator';
+import { OmitType } from '@nestjs/mapped-types';
+import { PredictCostDto } from './predict-cost.dto';
 
-export class OptimizeTripDto {
-
-  @IsString()
-  boatId: string;
-
+// Take everything from PredictCostDto except speed
+export class OptimizeTripDto extends OmitType(PredictCostDto, ['speed'] as const) {
+  // Optional: optimizer can try multiple speeds
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber()
-  predictedFuel: number;
-
-  @IsNumber()
-  predictedCost: number;
-
-  @IsNumber()
-  weatherSeverityIndex: number;
-
-  @IsNumber()
-  profitabilityProbability: number;
+  @Min(0.1)
+  speed?: number;
 }

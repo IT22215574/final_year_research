@@ -1,5 +1,7 @@
 // Backend/src/cost-engine/cost-engine.service.ts
-
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+import { ConfigService } from '@nestjs/config';
 import {
   BadRequestException,
   Injectable,
@@ -21,6 +23,8 @@ import {
 } from '../common/utils/haversine.util';
 import { calculateWSI } from '../common/utils/wsi.util';
 import { calculateFESI } from '../common/utils/fesi.util';
+import { carbonMetrics } from '../common/utils/carbon.util';
+import { OptimizeTripDto } from './dto/optimize-trip.dto';
 
 @Injectable()
 export class CostEngineService {
@@ -28,6 +32,8 @@ export class CostEngineService {
     @InjectModel(Trip.name)
     private readonly tripModel: Model<TripDocument>,
     private readonly boatService: BoatService,
+    private readonly http: HttpService,
+    private readonly config: ConfigService,
   ) {}
 
   // =========================
@@ -63,18 +69,69 @@ export class CostEngineService {
       recentWSI: [],
     });
 
-    // 4) Fuel prediction (deterministic placeholder until Python adaptive model)
-    const fuelPerKmBase = 0.5; // liters per km baseline (tune later)
+    // // 4) Fuel prediction (deterministic placeholder until Python adaptive model)
+    // const fuelPerKmBase = 0.5; // liters per km baseline (tune later)
+    // const fuelBase = predictedDistanceKm * fuelPerKmBase;
+
+    // // weather 0..1 -> multiplier up to +50%
+    // const weatherMultiplier = 1 + wsi * 0.5;
+
+    // // learning coefficient from boat (default 1)
+    // const efficiencyFactor = boat.fuelEfficiencyFactor ?? 1;
+
+    // const predictedFuelLiters = fuelBase * weatherMultiplier * efficiencyFactor;
+
+    // 4) Fuel prediction (Python ML + fallback)
+    const baseUrl =
+      this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
+
+    // keep fallback fuel result ready
+    const fuelPerKmBase = 0.5;
     const fuelBase = predictedDistanceKm * fuelPerKmBase;
-
-    // weather 0..1 -> multiplier up to +50%
     const weatherMultiplier = 1 + wsi * 0.5;
-
-    // learning coefficient from boat (default 1)
     const efficiencyFactor = boat.fuelEfficiencyFactor ?? 1;
 
-    const predictedFuelLiters = fuelBase * weatherMultiplier * efficiencyFactor;
+    let mlFallback = false;
 
+    // default = deterministic fallback
+    let predictedFuelLiters = fuelBase * weatherMultiplier * efficiencyFactor;
+
+    try {
+      const fuelRes = await firstValueFrom(
+        this.http.post(`${baseUrl}/predict-fuel-adaptive`, {
+          boatId: dto.boatId,
+          distanceKm: predictedDistanceKm,
+          speed: dto.speed,
+          engineHP: boat.engineHorsePower ?? 85,
+          fishingHours: dto.fishingHours,
+          weatherSeverityIndex: wsi,
+          engineDegradation: 1 - (boat.engineDegradationFactor ?? 0),
+          fuelEfficiencyFactor: efficiencyFactor,
+        }),
+      );
+
+      const v = Number(fuelRes.data?.predictedFuelLiters);
+      if (!Number.isFinite(v)) throw new Error('Invalid ML fuel output');
+      predictedFuelLiters = v;
+    } catch (e: any) {
+      mlFallback = true;
+      console.log(
+        'ML fuel error:',
+        e?.response?.status,
+        e?.response?.data || e?.message || e,
+      );
+    }
+
+    // ✅ SPEED EFFECT (needed for optimize to work)
+    // Python model doesn't use speed yet, so we adjust here.
+    const baseSpeed = 10; // knots (your "normal" speed)
+    const speedAdjPerKnot = 0.03; // 3% fuel change per knot (tune later)
+    const speedFactor = 1 + (dto.speed - baseSpeed) * speedAdjPerKnot;
+
+    // clamp to avoid crazy values
+    const clampedSpeedFactor = Math.max(0.7, Math.min(1.4, speedFactor));
+
+    predictedFuelLiters = predictedFuelLiters * clampedSpeedFactor;
     // 5) Cost
     const fuelCost = predictedFuelLiters * dto.fuelPrice;
 
@@ -86,23 +143,60 @@ export class CostEngineService {
     // risk adjust using FESI up to +15%
     const predictedTotalCost = rawTotalCost * (1 + fesi * 0.15);
 
-    // 6) Carbon
-    const emissionFactor = 2.68; // kg CO2 per liter diesel
-    const carbonEmissionKg = predictedFuelLiters * emissionFactor;
-    const carbonPerKgCatch =
-      dto.expectedCatch > 0 ? carbonEmissionKg / dto.expectedCatch : null;
+    // 6) Carbon (shared util)
+    const emissionFactor = 2.68; // kg CO2 per liter diesel (same as util default)
+    const { carbonEmissionKg, carbonPerKgCatch } = carbonMetrics(
+      predictedFuelLiters,
+      dto.expectedCatch,
+    );
 
-    // 7) Profitability (placeholder)
+    // // 7) Profitability (placeholder)
+    // const expectedRevenue = dto.expectedCatch * dto.marketPrice;
+    // const profit = expectedRevenue - predictedTotalCost;
+    // const profitabilityProbability = profit > 0 ? 0.8 : 0.3;
+
+    // const riskCategory =
+    //   profitabilityProbability >= 0.7
+    //     ? 'low'
+    //     : profitabilityProbability >= 0.45
+    //       ? 'medium'
+    //       : 'high';
+
+    // 7) Profitability (Python ML + fallback)
     const expectedRevenue = dto.expectedCatch * dto.marketPrice;
     const profit = expectedRevenue - predictedTotalCost;
-    const profitabilityProbability = profit > 0 ? 0.8 : 0.3;
 
-    const riskCategory =
+    // fallback defaults
+    let profitabilityProbability = profit > 0 ? 0.8 : 0.3;
+    let riskCategory: 'low' | 'medium' | 'high' =
       profitabilityProbability >= 0.7
         ? 'low'
         : profitabilityProbability >= 0.45
           ? 'medium'
           : 'high';
+
+    try {
+      const profRes = await firstValueFrom(
+        this.http.post(`${baseUrl}/predict-profitability`, {
+          expectedCatchKg: dto.expectedCatch,
+          marketPrice: dto.marketPrice,
+          predictedTotalCost,
+        }),
+      );
+
+      const p = Number(profRes.data?.profitabilityProbability);
+      const r = profRes.data?.riskCategory;
+
+      if (Number.isFinite(p)) profitabilityProbability = p;
+      if (r === 'low' || r === 'medium' || r === 'high') riskCategory = r;
+    } catch (e: any) {
+      mlFallback = true;
+      console.log(
+        'ML profitability error:',
+        e?.response?.status,
+        e?.response?.data || e?.message || e,
+      );
+    }
 
     // 8) Recommendations (simple deterministic rules for now)
     const recommendations: string[] = [];
@@ -150,6 +244,7 @@ export class CostEngineService {
         fuelPerKmBase,
         weatherMultiplier,
         efficiencyFactor,
+        speedFactor: clampedSpeedFactor, // ✅ add this
       },
       cost: {
         fuelCost,
@@ -169,9 +264,11 @@ export class CostEngineService {
         riskCategory,
       },
       recommendations,
-      mlFallback: true, // not calling Python yet
+      mlFallback, // not calling Python yet
     };
   }
+
+  //
 
   // =========================
   // PREDICT + SAVE TRIP (Phase 2.5)
@@ -196,6 +293,17 @@ export class CostEngineService {
     // 1) Predict
     const prediction = await this.predictTrip(dto);
 
+    // ✅ C) Dedup: if mobile retries same request, return existing trip
+    if (dto.clientRequestId) {
+      const exists = await this.tripModel.findOne({
+        clientRequestId: dto.clientRequestId,
+      });
+
+      if (exists) {
+        return { trip: exists, prediction };
+      }
+    }
+
     // 2) Determine trip times (Trip schema requires these)
     const departureTime = dto.departureTime
       ? new Date(dto.departureTime)
@@ -211,8 +319,15 @@ export class CostEngineService {
     const tripToSave: Partial<Trip> = {
       userId,
       boatId: dto.boatId,
+      clientRequestId: dto.clientRequestId,
       departureTime,
       returnTime,
+
+      // ✅ recommended: store route inputs for research reproducibility
+      startLat: dto.startLat,
+      startLon: dto.startLon,
+      endLat: dto.endLat,
+      endLon: dto.endLon,
 
       // Base Trip fields
       distanceKm:
@@ -221,6 +336,10 @@ export class CostEngineService {
         undefined,
 
       engineHorsePower: boat.engineHorsePower,
+
+      // ✅ add this (for ML training feature name)
+      engineHP: boat.engineHorsePower,
+
       boatType: boat.boatType,
 
       windSpeed: dto.windSpeed,
@@ -228,9 +347,19 @@ export class CostEngineService {
 
       fuelPricePerLiter: dto.fuelPrice,
 
+      // ✅ NEW: store prediction inputs (for dataset)
+      speed: dto.speed,
+      crewCount: dto.crewCount,
+      fishingHours: dto.fishingHours,
+
       // DATCIE fields
       predictedFuelLiters: prediction.fuel.predictedFuelLiters,
       predictedTotalCost: prediction.cost.predictedTotalCost,
+
+      // ✅ store predicted breakdown (for dataset) ✅ KEEP THESE
+      predictedFuelCost: prediction.cost.fuelCost,
+      predictedCrewCost: prediction.cost.crewCost,
+
       predictedDistanceKm: prediction.distance.predictedDistanceKm,
 
       weatherSeverityIndex: prediction.weather.wsi,
@@ -253,6 +382,58 @@ export class CostEngineService {
 
     // 5) Return
     return { trip, prediction };
+  }
+
+  // =========================
+  // Optimize Trip (Checkpoint D)
+  // =========================
+
+  async optimizeTrip(dto: OptimizeTripDto) {
+    // speeds to test (you can change these)
+    const speedsToTry = dto.speed
+      ? [dto.speed] // if user provides speed, just evaluate that one
+      : [8, 10, 12, 14];
+
+    const results = [];
+
+    for (const speed of speedsToTry) {
+      const payload: PredictCostDto = { ...dto, speed };
+      const prediction = await this.predictTrip(payload);
+
+      const score = prediction.cost.predictedTotalCost;
+
+      results.push({
+        speed,
+        score,
+        prediction,
+      });
+    }
+
+    // sort by best score
+    results.sort((a, b) => a.score - b.score);
+
+    const best = results[0];
+
+    return {
+      best: {
+        speed: best.speed,
+        predictedTotalCost: best.prediction.cost.predictedTotalCost,
+        predictedFuelLiters: best.prediction.fuel.predictedFuelLiters,
+        riskCategory: best.prediction.profitability.riskCategory,
+        carbonEmissionKg: best.prediction.carbon.carbonEmissionKg,
+        carbonPerKgCatch: best.prediction.carbon.carbonPerKgCatch,
+        mlFallback: best.prediction.mlFallback,
+        recommendations: best.prediction.recommendations,
+      },
+      candidates: results.map((r) => ({
+        speed: r.speed,
+        predictedTotalCost: r.prediction.cost.predictedTotalCost,
+        predictedFuelLiters: r.prediction.fuel.predictedFuelLiters,
+        riskCategory: r.prediction.profitability.riskCategory,
+        carbonPerKgCatch: r.prediction.carbon.carbonPerKgCatch,
+        mlFallback: r.prediction.mlFallback,
+      })),
+    };
   }
 
   // Keep if you already use it elsewhere

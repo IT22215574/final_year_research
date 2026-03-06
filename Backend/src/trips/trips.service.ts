@@ -18,6 +18,7 @@ import {
   TripCoefficientDocument,
 } from 'src/schemas/trip-coefficient.schema';
 import { Boat, BoatDocument } from 'src/schemas/boat.schema';
+import { UpdateActualsDto } from './dto/update-actuals.dto';
 
 @Injectable()
 export class TripsService {
@@ -209,8 +210,20 @@ export class TripsService {
     };
   }
 
+  async updateActuals(id: string, dto: UpdateActualsDto) {
+    const updated = await this.tripModel.findByIdAndUpdate(
+      id,
+      { $set: { fuelUsedLiters: dto.fuelUsedLiters } },
+      { new: true },
+    );
+
+    if (!updated) throw new NotFoundException('Trip not found');
+    return updated;
+  }
+
   // Get all trips count
   async getTotalTripsCount(): Promise<number> {
     return await this.tripModel.countDocuments().exec();
   }
 }
+

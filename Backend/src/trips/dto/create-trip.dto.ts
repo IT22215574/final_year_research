@@ -7,6 +7,7 @@ import {
   Min,
   IsEnum,
   IsArray,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -102,6 +103,35 @@ export class CreateTripDto {
   @IsNumber()
   @Min(0)
   otherCost?: number;
+
+  // Route coordinates (optional but recommended)
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  startLat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  startLon?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  endLat?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  endLon?: number;
 
   // =========================
   // Trip Mode

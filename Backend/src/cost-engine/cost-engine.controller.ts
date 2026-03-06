@@ -5,6 +5,7 @@ import { CostEngineService } from './cost-engine.service';
 import { PredictAndSaveDto } from './dto/predict-and-save.dto';
 import { PredictCostDto } from './dto/predict-cost.dto';
 import { AuthTokenGuard } from '../common/guards/auth-token.guard';
+import { OptimizeTripDto } from './dto/optimize-trip.dto';
 
 @Controller('cost-engine')
 export class CostEngineController {
@@ -13,6 +14,11 @@ export class CostEngineController {
   @Post('predict')
   predict(@Body() dto: PredictCostDto) {
     return this.costService.predictTrip(dto);
+  }
+
+  @Post('optimize')
+  optimize(@Body() dto: OptimizeTripDto) {
+    return this.costService.optimizeTrip(dto);
   }
 
   @UseGuards(AuthTokenGuard)

@@ -8,6 +8,19 @@ export class Trip {
   @Prop({ required: true })
   userId: string;
 
+  // Route coordinates (for reproducibility)
+  @Prop()
+  startLat?: number;
+
+  @Prop()
+  startLon?: number;
+
+  @Prop()
+  endLat?: number;
+
+  @Prop()
+  endLon?: number;
+
   // Trip Duration
   @Prop({ required: true })
   departureTime: Date;
@@ -29,6 +42,10 @@ export class Trip {
   @Prop()
   engineHorsePower: number;
 
+  // ✅ ML-friendly alias (keep engineHorsePower too)
+  @Prop()
+  engineHP?: number;
+
   @Prop()
   boatType: string;
 
@@ -43,7 +60,7 @@ export class Trip {
   weatherCondition: string;
 
   // Fuel
-  @Prop()
+  @Prop({ default: 0 })
   fuelUsedLiters: number;
 
   @Prop()
@@ -65,6 +82,15 @@ export class Trip {
   maintenanceCost: number;
 
   @Prop()
+  speed?: number;
+
+  @Prop()
+  crewCount?: number;
+
+  @Prop()
+  fishingHours?: number;
+
+  @Prop()
   otherCost: number;
 
   totalCost: number; // derived
@@ -82,7 +108,7 @@ export class Trip {
   @Prop()
   predictedDistanceKm: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   weatherSeverityIndex: number;
 
   @Prop()
@@ -100,6 +126,13 @@ export class Trip {
   @Prop()
   carbonPerKgCatch: number;
 
+  // Predicted breakdown (store, don't mix with actual)
+  @Prop()
+  predictedFuelCost?: number;
+
+  @Prop()
+  predictedCrewCost?: number;
+
   @Prop({ type: [String], default: [] })
   optimizationRecommendations: string[];
 
@@ -107,14 +140,21 @@ export class Trip {
   // DATCIE - Learning Fields
   // =========================
 
-  @Prop()
+  // =========================
+  // DATCIE - Learning Fields
+  // =========================
+
+  @Prop({ default: 0 })
   actualFuelLiters: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   actualCatchKg: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   fuelPredictionError: number;
+
+  @Prop({ unique: true, sparse: true })
+  clientRequestId?: string;
 
   // =========================
   // Trip Mode

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsOptional } from 'class-validator';
+import { IsDate, IsOptional, IsString } from 'class-validator';
 import { PredictCostDto } from './predict-cost.dto';
 
 export class PredictAndSaveDto extends PredictCostDto {
@@ -12,4 +12,8 @@ export class PredictAndSaveDto extends PredictCostDto {
   @Type(() => Date)
   @IsDate()
   returnTime?: Date;
+
+  @IsOptional()
+  @IsString()
+  clientRequestId?: string;
 }

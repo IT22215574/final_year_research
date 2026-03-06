@@ -18,6 +18,7 @@ import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { LogActualDto } from './dto/log-actual.dto';
+import { UpdateActualsDto } from './dto/update-actuals.dto';
 
 @Controller('trips')
 @UseGuards(AuthTokenGuard)
@@ -92,5 +93,10 @@ export class TripsController {
       throw new BadRequestException('Invalid trip id');
     }
     return this.tripsService.logActualData(id, dto, req);
+  }
+
+  @Patch(':id/actuals')
+  updateActuals(@Param('id') id: string, @Body() dto: UpdateActualsDto) {
+    return this.tripsService.updateActuals(id, dto);
   }
 }

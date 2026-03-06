@@ -8,13 +8,13 @@ export class Boat {
   @Prop({ required: true })
   userId: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, trim: true })
   boatName: string;
 
-  @Prop()
+  @Prop({ required: true })
   boatType: string;
 
-  @Prop()
+  @Prop({ required: true })
   engineHorsePower: number;
 
   @Prop()
@@ -24,11 +24,32 @@ export class Boat {
   boatValue: number; // used for depreciation
 
   // =========================
+  // ✅ NEW: Image + Extra Specs
+  // =========================
+
+  // Store image path like: /uploads/boats/boat-USERID-TIME-name.png
+  @Prop()
+  boatImage?: string;
+
+  // Free text specs (optional)
+  @Prop()
+  specifications?: string;
+
+  @Prop()
+  boatLength?: number;
+
+  @Prop()
+  boatWidth?: number;
+
+  @Prop()
+  registrationNumber?: string;
+
+  // =========================
   // Learning Coefficients
   // =========================
 
   @Prop({ default: 1 })
-  fuelEfficiencyFactor: number; // updated after each trip
+  fuelEfficiencyFactor: number;
 
   @Prop({ default: 0.05 })
   engineDegradationFactor: number;
