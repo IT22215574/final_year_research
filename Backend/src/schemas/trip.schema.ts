@@ -8,7 +8,9 @@ export class Trip {
   @Prop({ required: true })
   userId: string;
 
-  // Route coordinates (for reproducibility)
+  // =========================
+  // Route coordinates
+  // =========================
   @Prop()
   startLat?: number;
 
@@ -21,65 +23,75 @@ export class Trip {
   @Prop()
   endLon?: number;
 
-  // Trip Duration
+  // =========================
+  // Trip time
+  // =========================
   @Prop({ required: true })
   departureTime: Date;
 
   @Prop({ required: true })
   returnTime: Date;
 
-  // Derived field (calculated later, not stored directly)
+  // virtual
   tripDurationHours: number;
 
-  // Travel & Engine
+  // =========================
+  // Boat / travel
+  // =========================
+  @Prop()
+  boatId?: string;
 
   @Prop()
-  boatId: string;
+  distanceKm?: number;
 
   @Prop()
-  distanceKm: number;
+  engineHorsePower?: number;
 
-  @Prop()
-  engineHorsePower: number;
-
-  // ✅ ML-friendly alias (keep engineHorsePower too)
   @Prop()
   engineHP?: number;
 
   @Prop()
-  boatType: string;
+  boatType?: string;
 
-  // Weather Factors
+  // =========================
+  // Weather
+  // =========================
   @Prop()
-  windSpeed: number;
+  windSpeed?: number;
 
   @Prop()
-  waveHeight: number;
+  waveHeight?: number;
 
   @Prop()
-  weatherCondition: string;
+  weatherCondition?: string;
 
-  // Fuel
+  // =========================
+  // Input / basic trip costs
+  // =========================
   @Prop({ default: 0 })
   fuelUsedLiters: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   fuelPricePerLiter: number;
 
-  fuelCost: number; // derived
+  @Prop({ default: 0 })
+  marketPrice?: number;
 
-  // Operational Costs
-  @Prop()
+  // legacy/manual operational fields
+  @Prop({ default: 0 })
   iceCost: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   crewCost: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   foodCost: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   maintenanceCost: number;
+
+  @Prop({ default: 0 })
+  otherCost: number;
 
   @Prop()
   speed?: number;
@@ -93,60 +105,67 @@ export class Trip {
   @Prop()
   fishingHours?: number;
 
-  @Prop()
-  otherCost: number;
-
-  totalCost: number; // derived
+  // virtuals
+  fuelCost: number;
+  totalCost: number;
 
   // =========================
   // DATCIE - Prediction Fields
   // =========================
-
-  @Prop()
+  @Prop({ default: 0 })
   predictedFuelLiters: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   predictedTotalCost: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   predictedDistanceKm: number;
 
   @Prop({ default: 0 })
   weatherSeverityIndex: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   economicStressIndex: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   profitabilityProbability: number;
 
   @Prop({ enum: ['low', 'medium', 'high'] })
-  riskCategory: string;
+  riskCategory?: string;
 
-  @Prop()
+  @Prop({ default: 0 })
   carbonEmissionKg: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   carbonPerKgCatch: number;
 
-  // Predicted breakdown (store, don't mix with actual)
-  @Prop()
+  @Prop({ default: 0 })
   predictedFuelCost?: number;
 
-  @Prop()
+  @Prop({ default: 0 })
   predictedCrewCost?: number;
+
+  @Prop({ default: 0 })
+  predictedOperationalCost?: number;
+
+  @Prop({ type: [Object], default: [] })
+  predictedExternalCosts?: Array<{
+    name: string;
+    category: string;
+    amount: number;
+    source?: 'manual' | 'preference';
+    description?: string;
+  }>;
+
+  @Prop({ default: 0 })
+  predictedExternalCostTotal?: number;
 
   @Prop({ type: [String], default: [] })
   optimizationRecommendations: string[];
 
   // =========================
-  // DATCIE - Learning Fields
+  // DATCIE - Actual / Learning Fields
   // =========================
-
-  // =========================
-  // DATCIE - Learning Fields
-  // =========================
-
   @Prop({ default: 0 })
   actualFuelLiters: number;
 
@@ -156,37 +175,86 @@ export class Trip {
   @Prop({ default: 0 })
   fuelPredictionError: number;
 
-  @Prop({ unique: true, sparse: true })
-  clientRequestId?: string;
+  @Prop({ default: 0 })
+  actualFuelCost?: number;
+
+  @Prop({ default: 0 })
+  actualOperationalCost?: number;
+
+  @Prop({ type: [Object], default: [] })
+  actualExternalCosts?: Array<{
+    name: string;
+    category: string;
+    amount: number;
+    description?: string;
+  }>;
+
+  @Prop({ default: 0 })
+  actualExternalCostTotal?: number;
+
+  @Prop({ default: 0 })
+  actualTotalCost?: number;
+
+  @Prop({ default: 0 })
+  actualRevenue?: number;
+
+  @Prop({ default: 0 })
+  actualProfit?: number;
+
+  @Prop()
+  actualLoggedAt?: Date;
+
+  @Prop()
+  actualNotes?: string;
 
   // =========================
-  // Trip Mode
+  // Comparison Fields
   // =========================
+  @Prop({ default: 0 })
+  totalCostDifference?: number;
+
+  @Prop({ default: 0 })
+  externalCostDifference?: number;
+
+  @Prop({ default: 0 })
+  profitDifference?: number;
+
+  @Prop({ default: 0 })
+  fuelDifference?: number;
+
+  // =========================
+  // Request / mode / state
+  // =========================
+  @Prop({ unique: true, sparse: true })
+  clientRequestId?: string;
 
   @Prop({ enum: ['island', 'international'], default: 'island' })
   mode: string;
 
-  // timestamps
+  @Prop({ enum: ['planned', 'completed', 'cancelled'], default: 'planned' })
+  status?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
 
 export const TripSchema = SchemaFactory.createForClass(Trip);
 
-// 🔹 Virtuals (auto-calculated fields)
+// =========================
+// Virtuals
+// =========================
 TripSchema.virtual('tripDurationHours').get(function () {
   if (this.departureTime && this.returnTime) {
     const diffMs = this.returnTime.getTime() - this.departureTime.getTime();
-    return diffMs / (1000 * 60 * 60); // convert ms → hours
+    return diffMs / (1000 * 60 * 60);
   }
   return null;
 });
 
 TripSchema.virtual('fuelCost').get(function () {
-  if (this.fuelUsedLiters && this.fuelPricePerLiter) {
-    return this.fuelUsedLiters * this.fuelPricePerLiter;
-  }
-  return 0;
+  const liters = this.fuelUsedLiters || 0;
+  const price = this.fuelPricePerLiter || 0;
+  return liters * price;
 });
 
 TripSchema.virtual('totalCost').get(function () {
@@ -200,6 +268,5 @@ TripSchema.virtual('totalCost').get(function () {
   return fuel + ice + crew + food + maintenance + other;
 });
 
-// Ensure virtuals are included when converting to JSON
 TripSchema.set('toJSON', { virtuals: true });
 TripSchema.set('toObject', { virtuals: true });

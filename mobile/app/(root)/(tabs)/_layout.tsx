@@ -62,7 +62,7 @@ const TabsLayout = () => {
 
   const handleTabPress = (tabName: string, route: string) => {
     setActiveTab(tabName);
-    router.push(route);
+    router.push(route as any);
   };
 
   const toggleSidebar = () => {
@@ -89,6 +89,9 @@ const TabsLayout = () => {
           headerStyle: {
             backgroundColor: "transparent",
             elevation: 0,
+            shadowOpacity: 0,
+            borderBottomWidth: 0,
+            marginBottom: 10,
           },
           headerShadowVisible: false,
           headerTintColor: "black",
@@ -131,12 +134,6 @@ const TabsLayout = () => {
               )}
             </TouchableOpacity>
           ),
-          headerStyle: {
-            elevation: 0,
-            shadowOpacity: 0,
-            borderBottomWidth: 0,
-            marginBottom: 10,
-          },
           tabBarShowLabel: false,
           tabBarStyle: {
             display: "none",
@@ -197,9 +194,31 @@ const TabsLayout = () => {
         />
 
         <Tabs.Screen
+          name="boats"
+          options={{
+            title: "Boats",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+
+        <Tabs.Screen
+          name="costs"
+          options={{
+            title: "Cost Preferences",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+
+        <Tabs.Screen
           name="fishtripcost"
           options={{
-            title: "", // Change this to "" if you want NO text
+            title: "Fish Trip Cost",
             headerShown: true,
             headerStyle: {
               backgroundColor: "#0057FF",
@@ -222,8 +241,7 @@ const TabsLayout = () => {
       <View style={styles.customTabBar} className="rounded-t-3xl shadow-lg">
         {/* Navigation Items - This remains exactly the same */}
         <View style={styles.navItemsContainer}>
-          {/* ... all your existing navigation items remain the same ... */}
-
+          {/* Home */}
           <TouchableOpacity
             style={styles.navItem}
             onPress={() => handleTabPress("home", "/(root)/(tabs)/home")}
@@ -253,6 +271,7 @@ const TabsLayout = () => {
             </Text>
           </TouchableOpacity>
 
+          {/* Market */}
           <TouchableOpacity
             style={styles.navItem}
             onPress={() => handleTabPress("Market", "/(root)/(tabs)/Market")}
@@ -282,6 +301,7 @@ const TabsLayout = () => {
             </Text>
           </TouchableOpacity>
 
+          {/* Quality */}
           <TouchableOpacity
             style={styles.navItem}
             onPress={() => handleTabPress("Quality", "/(root)/(tabs)/Quality")}
@@ -311,6 +331,7 @@ const TabsLayout = () => {
             </Text>
           </TouchableOpacity>
 
+          {/* Profile */}
           <TouchableOpacity
             style={styles.navItem}
             onPress={handleProfileNavigation}

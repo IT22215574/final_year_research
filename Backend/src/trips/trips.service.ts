@@ -19,8 +19,8 @@ import { LogActualDto } from './dto/log-actual.dto';
 import {
   TripCoefficient,
   TripCoefficientDocument,
-} from 'src/schemas/trip-coefficient.schema';
-import { Boat, BoatDocument } from 'src/schemas/boat.schema';
+} from '../schemas/trip-coefficient.schema';
+import { Boat, BoatDocument } from '../schemas/boat.schema';
 import { UpdateActualsDto } from './dto/update-actuals.dto';
 
 @Injectable()
@@ -34,19 +34,44 @@ export class TripsService {
     private readonly config: ConfigService,
   ) {}
 
-  // Create new trip
+  // =========================
+  // CREATE TRIP
+  // =========================
   async create(
     userId: string,
     createTripDto: CreateTripDto,
   ): Promise<TripDocument> {
+    if (createTripDto.boatId) {
+      const boat = await this.boatModel.findById(createTripDto.boatId).exec();
+
+      if (!boat) {
+        throw new NotFoundException('Boat not found');
+      }
+
+      if (String(boat.userId) !== String(userId)) {
+        throw new ForbiddenException(
+          'You are not allowed to create a trip with this boat',
+        );
+      }
+    }
+
     const newTrip = new this.tripModel({
       ...createTripDto,
       userId,
+      status: createTripDto.status || 'planned',
+      mode: createTripDto.mode || 'island',
+      predictedExternalCosts: createTripDto.predictedExternalCosts || [],
+      predictedExternalCostTotal: createTripDto.predictedExternalCostTotal || 0,
+      optimizationRecommendations:
+        createTripDto.optimizationRecommendations || [],
     });
 
     return await newTrip.save();
   }
 
+  // =========================
+  // LEARNING SUMMARY
+  // =========================
   async getLearningSummary() {
     const baseUrl =
       this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
@@ -64,7 +89,9 @@ export class TripsService {
     }
   }
 
-  // Get all trips for a specific user
+  // =========================
+  // FIND BY USER
+  // =========================
   async findByUser(userId: string): Promise<TripDocument[]> {
     return await this.tripModel
       .find({ userId })
@@ -72,12 +99,16 @@ export class TripsService {
       .exec();
   }
 
-  // Get all trips (admin only)
+  // =========================
+  // FIND ALL
+  // =========================
   async findAll(): Promise<TripDocument[]> {
     return await this.tripModel.find().sort({ departureTime: -1 }).exec();
   }
 
-  // Get single trip
+  // =========================
+  // FIND ONE
+  // =========================
   async findOne(
     id: string,
     userId: string,
@@ -89,15 +120,16 @@ export class TripsService {
       throw new NotFoundException('Trip not found');
     }
 
-    // Check authorization
-    if (!isAdmin && trip.userId !== userId) {
+    if (!isAdmin && String(trip.userId) !== String(userId)) {
       throw new ForbiddenException('Access denied');
     }
 
     return trip;
   }
 
-  // Update trip
+  // =========================
+  // UPDATE TRIP
+  // =========================
   async update(
     id: string,
     userId: string,
@@ -105,26 +137,66 @@ export class TripsService {
     updateTripDto: UpdateTripDto,
   ): Promise<TripDocument> {
     const trip = await this.findOne(id, userId, isAdmin);
-    Object.assign(trip, updateTripDto);
+
+    if (updateTripDto.boatId) {
+      const boat = await this.boatModel.findById(updateTripDto.boatId).exec();
+
+      if (!boat) {
+        throw new NotFoundException('Boat not found');
+      }
+
+      if (String(boat.userId) !== String(trip.userId)) {
+        throw new ForbiddenException(
+          'You are not allowed to assign this boat to the trip',
+        );
+      }
+    }
+
+    Object.assign(trip, {
+      ...updateTripDto,
+      ...(updateTripDto.predictedExternalCosts
+        ? { predictedExternalCosts: updateTripDto.predictedExternalCosts }
+        : {}),
+      ...(updateTripDto.optimizationRecommendations
+        ? {
+            optimizationRecommendations:
+              updateTripDto.optimizationRecommendations,
+          }
+        : {}),
+    });
+
     return await trip.save();
   }
 
-  // Delete trip
-  async remove(id: string, userId: string, isAdmin: boolean): Promise<void> {
+  // =========================
+  // DELETE TRIP
+  // =========================
+  async remove(
+    id: string,
+    userId: string,
+    isAdmin: boolean,
+  ): Promise<{ message: string }> {
     const trip = await this.findOne(id, userId, isAdmin);
     await trip.deleteOne();
+
+    return { message: 'Trip deleted successfully' };
   }
 
-  // Enhanced log actual data with advanced boat learning
+  // =========================
+  // LOG ACTUAL DATA + COMPARISON + LEARNING
+  // =========================
   async logActualData(tripId: string, dto: LogActualDto, req: ExpressRequest) {
     const user = (req as any)?.user ?? {};
-    const userId = user?.userId || user?.id || user?._id;
+    const userId = user?.userId || user?.id || user?._id || user?.sub;
 
-    if (!userId) throw new BadRequestException('Unauthorized');
+    if (!userId) {
+      throw new BadRequestException('Unauthorized');
+    }
 
-    // Fetch trip and validate ownership
     const trip = await this.tripModel.findById(tripId).exec();
-    if (!trip) throw new NotFoundException('Trip not found');
+    if (!trip) {
+      throw new NotFoundException('Trip not found');
+    }
 
     if (String(trip.userId) !== String(userId)) {
       throw new ForbiddenException('Access denied');
@@ -132,43 +204,108 @@ export class TripsService {
 
     if (trip.predictedFuelLiters == null) {
       throw new BadRequestException(
-        'Trip has no prediction data to learn from.',
+        'Trip has no prediction data to compare against.',
       );
     }
 
-    const fuelPredictionError =
-      dto.actualFuelLiters - Number(trip.predictedFuelLiters);
+    const actualFuelCost =
+      dto.actualFuelCost ??
+      Number(dto.actualFuelLiters || 0) * Number(trip.fuelPricePerLiter || 0);
 
-    // Update trip actuals
+    const actualOperationalCost =
+      dto.actualOperationalCost ?? Number(trip.predictedOperationalCost || 0);
+
+    const actualExternalCosts = dto.actualExternalCosts || [];
+    const actualExternalCostTotal = actualExternalCosts.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0,
+    );
+
+    const actualRevenue =
+      dto.actualRevenue ??
+      Number(dto.actualCatchKg || 0) * Number(trip.marketPrice || 0);
+
+    const actualTotalCost =
+      Number(actualFuelCost) +
+      Number(actualOperationalCost) +
+      Number(actualExternalCostTotal);
+
+    const actualProfit = Number(actualRevenue) - Number(actualTotalCost);
+
+    const fuelDifference =
+      Number(dto.actualFuelLiters) - Number(trip.predictedFuelLiters || 0);
+
+    const totalCostDifference =
+      Number(actualTotalCost) - Number(trip.predictedTotalCost || 0);
+
+    const externalCostDifference =
+      Number(actualExternalCostTotal) -
+      Number(trip.predictedExternalCostTotal || 0);
+
+    const predictedProfitBaseline =
+      Number(actualRevenue) - Number(trip.predictedTotalCost || 0);
+
+    const profitDifference = Number(actualProfit) - predictedProfitBaseline;
+
+    const fuelPredictionError =
+      Number(trip.predictedFuelLiters || 0) > 0
+        ? (fuelDifference / Number(trip.predictedFuelLiters || 1)) * 100
+        : 0;
+
     trip.actualFuelLiters = dto.actualFuelLiters;
     trip.actualCatchKg = dto.actualCatchKg;
+    trip.actualFuelCost = actualFuelCost;
+    trip.actualOperationalCost = actualOperationalCost;
+    trip.actualExternalCosts = actualExternalCosts;
+    trip.actualExternalCostTotal = actualExternalCostTotal;
+    trip.actualTotalCost = actualTotalCost;
+    trip.actualRevenue = actualRevenue;
+    trip.actualProfit = actualProfit;
+    trip.actualLoggedAt = new Date();
+    trip.actualNotes = dto.actualNotes;
+
     trip.fuelPredictionError = fuelPredictionError;
+    trip.fuelDifference = fuelDifference;
+    trip.totalCostDifference = totalCostDifference;
+    trip.externalCostDifference = externalCostDifference;
+    trip.profitDifference = profitDifference;
+
+    trip.status = 'completed';
+
     await trip.save();
 
-    // Boat learning requires boatId
     if (!trip.boatId) {
       return {
         trip,
+        comparison: {
+          fuelDifference,
+          totalCostDifference,
+          externalCostDifference,
+          profitDifference,
+          fuelPredictionError,
+        },
         message: 'Actual logged. Boat learning skipped (trip.boatId missing).',
       };
     }
 
     const boat = await this.boatModel.findById(trip.boatId).exec();
-    if (!boat) throw new NotFoundException('Boat not found');
+    if (!boat) {
+      throw new NotFoundException('Boat not found');
+    }
 
-    // Enhanced learning using Python ML service
     const baseUrl =
       this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
 
     let learningResult = null;
     let mlLearningFallback = false;
 
+    const previousFuelEfficiencyFactor = boat.fuelEfficiencyFactor ?? 1;
+
     try {
-      // Call enhanced Python learning service with context
       const learningResponse = await firstValueFrom(
         this.http.post(`${baseUrl}/learning/update`, {
           boatId: String(trip.boatId),
-          predictedFuelLiters: Number(trip.predictedFuelLiters),
+          predictedFuelLiters: Number(trip.predictedFuelLiters || 0),
           actualFuelLiters: dto.actualFuelLiters,
           speed: trip.averageSpeed || trip.speed || 10,
           weatherSeverityIndex: trip.weatherSeverityIndex || 0,
@@ -180,14 +317,13 @@ export class TripsService {
 
       learningResult = learningResponse.data;
 
-      // Update boat with new coefficients from ML service
       if (learningResult?.updatedCoefficients) {
         boat.fuelEfficiencyFactor =
           learningResult.updatedCoefficients.fuelEfficiencyFactor;
         boat.engineDegradationFactor =
           learningResult.updatedCoefficients.engineDegradationFactor;
         boat.averageFuelPredictionError = Math.abs(
-          learningResult.predictionError,
+          learningResult.predictionError ?? fuelPredictionError,
         );
       }
     } catch (e: any) {
@@ -198,7 +334,6 @@ export class TripsService {
         e?.response?.data || e?.message,
       );
 
-      // Fallback to simple learning
       boat.averageFuelPredictionError =
         (boat.averageFuelPredictionError ?? 0) * 0.9 +
         Math.abs(fuelPredictionError) * 0.1;
@@ -206,7 +341,7 @@ export class TripsService {
       const prevFactor = boat.fuelEfficiencyFactor ?? 1;
       const learningRate = 0.02;
       const relError =
-        fuelPredictionError / Math.max(Number(trip.predictedFuelLiters), 1);
+        fuelDifference / Math.max(Number(trip.predictedFuelLiters || 1), 1);
 
       let newFactor = prevFactor * (1 + learningRate * relError);
       newFactor = Math.max(0.7, Math.min(1.3, newFactor));
@@ -214,32 +349,35 @@ export class TripsService {
       boat.fuelEfficiencyFactor = newFactor;
     }
 
+    const updatedFuelEfficiencyFactor = boat.fuelEfficiencyFactor ?? 1;
+
     await boat.save();
 
-    // Log coefficient update for tracking
     await this.tripCoeffModel.create({
       tripId: trip._id.toString(),
       boatId: boat._id.toString(),
-      previousFuelEfficiencyFactor:
-        learningResult?.updatedCoefficients?.fuelEfficiencyFactor ||
-        boat.fuelEfficiencyFactor,
-      updatedFuelEfficiencyFactor:
-        learningResult?.updatedCoefficients?.fuelEfficiencyFactor ||
-        boat.fuelEfficiencyFactor,
+      previousFuelEfficiencyFactor,
+      updatedFuelEfficiencyFactor,
       predictionError: fuelPredictionError,
       adjustmentApplied: learningResult?.relativePredictionError || 0,
       mlLearningUsed: !mlLearningFallback,
     });
 
-    const response = {
+    const response: any = {
       trip,
       learningCompleted: true,
       mlLearningFallback,
+      comparison: {
+        fuelDifference,
+        totalCostDifference,
+        externalCostDifference,
+        profitDifference,
+        fuelPredictionError,
+      },
     };
 
     if (learningResult && !mlLearningFallback) {
-      // Enhanced response with ML insights
-      response['advancedLearning'] = {
+      response.advancedLearning = {
         boatLearningInsights: learningResult.boatLearningInsights,
         updatedCoefficients: learningResult.updatedCoefficients,
         learningMetrics: learningResult.learningMetrics,
@@ -247,10 +385,9 @@ export class TripsService {
         relativePredictionError: learningResult.relativePredictionError,
       };
     } else {
-      // Simple fallback response
-      response['simpleLearning'] = {
-        previousFuelEfficiencyFactor: boat.fuelEfficiencyFactor,
-        updatedFuelEfficiencyFactor: boat.fuelEfficiencyFactor,
+      response.simpleLearning = {
+        previousFuelEfficiencyFactor,
+        updatedFuelEfficiencyFactor,
         predictionError: fuelPredictionError,
         averageFuelPredictionError: boat.averageFuelPredictionError,
       };
@@ -258,7 +395,10 @@ export class TripsService {
 
     return response;
   }
-  // Get trip statistics for user
+
+  // =========================
+  // USER STATS
+  // =========================
   async getUserStats(userId: string) {
     const trips = await this.findByUser(userId);
 
@@ -273,15 +413,19 @@ export class TripsService {
     }
 
     const totalCost = trips.reduce(
-      (sum, trip) => sum + (trip.totalCost || 0),
+      (sum, trip) =>
+        sum + Number(trip.actualTotalCost || trip.predictedTotalCost || 0),
       0,
     );
+
     const totalFuelUsed = trips.reduce(
-      (sum, trip) => sum + (trip.fuelUsedLiters || 0),
+      (sum, trip) =>
+        sum + Number(trip.actualFuelLiters || trip.fuelUsedLiters || 0),
       0,
     );
+
     const totalDistance = trips.reduce(
-      (sum, trip) => sum + (trip.distanceKm || 0),
+      (sum, trip) => sum + Number(trip.distanceKm || 0),
       0,
     );
 
@@ -294,18 +438,25 @@ export class TripsService {
     };
   }
 
-  async updateActuals(id: string, dto: UpdateActualsDto) {
-    const updated = await this.tripModel.findByIdAndUpdate(
-      id,
-      { $set: { fuelUsedLiters: dto.fuelUsedLiters } },
-      { new: true },
-    );
+  // =========================
+  // SIMPLE ACTUAL UPDATE
+  // =========================
+  async updateActuals(
+    id: string,
+    userId: string,
+    isAdmin: boolean,
+    dto: UpdateActualsDto,
+  ) {
+    const trip = await this.findOne(id, userId, isAdmin);
 
-    if (!updated) throw new NotFoundException('Trip not found');
-    return updated;
+    trip.fuelUsedLiters = dto.fuelUsedLiters;
+
+    return await trip.save();
   }
 
-  // Get all trips count
+  // =========================
+  // TOTAL COUNT
+  // =========================
   async getTotalTripsCount(): Promise<number> {
     return await this.tripModel.countDocuments().exec();
   }

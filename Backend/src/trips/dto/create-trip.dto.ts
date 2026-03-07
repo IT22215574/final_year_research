@@ -8,13 +8,32 @@ import {
   IsEnum,
   IsArray,
   Max,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
+class PredictedExternalCostItemDto {
+  @IsString()
+  name: string;
+
+  @IsString()
+  category: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  amount: number;
+
+  @IsOptional()
+  @IsEnum(['manual', 'preference'])
+  source?: 'manual' | 'preference';
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
 export class CreateTripDto {
-  // =========================
-  // Trip Duration
-  // =========================
   @IsNotEmpty()
   @Type(() => Date)
   @IsDate()
@@ -25,36 +44,44 @@ export class CreateTripDto {
   @IsDate()
   returnTime: Date;
 
-  // =========================
-  // Travel & Engine
-  // =========================
   @IsOptional()
   @IsString()
-  boatId?: string; // ✅ IMPORTANT for learning (and linking boat)
+  clientRequestId?: string;
 
   @IsOptional()
+  @IsString()
+  boatId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   distanceKm?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   engineHorsePower?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  engineHP?: number;
+
+  @IsOptional()
   @IsString()
   boatType?: string;
 
-  // =========================
-  // Weather Factors
-  // =========================
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   windSpeed?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   waveHeight?: number;
@@ -63,48 +90,54 @@ export class CreateTripDto {
   @IsString()
   weatherCondition?: string;
 
-  // =========================
-  // Fuel
-  // =========================
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   fuelUsedLiters?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   fuelPricePerLiter?: number;
 
-  // =========================
-  // Operational Costs
-  // =========================
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  marketPrice?: number;
+
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   iceCost?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   crewCost?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   foodCost?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   maintenanceCost?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   otherCost?: number;
 
-  // Route coordinates (optional but recommended)
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
@@ -122,8 +155,8 @@ export class CreateTripDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(-180)
-  @Max(180)
+  @Min(-90)
+  @Max(90)
   endLat?: number;
 
   @IsOptional()
@@ -133,40 +166,72 @@ export class CreateTripDto {
   @Max(180)
   endLon?: number;
 
-  // =========================
-  // Trip Mode
-  // =========================
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  speed?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  averageSpeed?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  crewCount?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  fishingHours?: number;
+
   @IsOptional()
   @IsEnum(['island', 'international'])
   mode?: 'island' | 'international';
 
-  // =========================
-  // Prediction Fields (optional)
-  // Put here ONLY if you want to allow creating trips with prediction data.
-  // Otherwise keep them in UpdateTripDto only.
-  // =========================
   @IsOptional()
+  @IsEnum(['planned', 'completed', 'cancelled'])
+  status?: 'planned' | 'completed' | 'cancelled';
+
+  @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   predictedFuelLiters?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   predictedTotalCost?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   predictedDistanceKm?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   weatherSeverityIndex?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   economicStressIndex?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   profitabilityProbability?: number;
 
   @IsOptional()
@@ -174,12 +239,46 @@ export class CreateTripDto {
   riskCategory?: 'low' | 'medium' | 'high';
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   carbonEmissionKg?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
+  @Min(0)
   carbonPerKgCatch?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  predictedFuelCost?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  predictedCrewCost?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  predictedOperationalCost?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  predictedExternalCostTotal?: number;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PredictedExternalCostItemDto)
+  predictedExternalCosts?: PredictedExternalCostItemDto[];
 
   @IsOptional()
   @IsArray()

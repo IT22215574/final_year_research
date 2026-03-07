@@ -86,7 +86,7 @@ export class BoatController {
     return this.boatService.getBoatLearningInsights(id, userId);
   }
 
-  // Get boat prediction history for analysis  
+  // Get boat prediction history for analysis
   @Get(':id/prediction-history')
   async getPredictionHistory(@Req() req: any, @Param('id') id: string) {
     const userId = this.getUserId(req);

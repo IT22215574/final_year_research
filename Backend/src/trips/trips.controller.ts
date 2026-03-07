@@ -9,6 +9,7 @@ import {
   UseGuards,
   Req,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { Request as ExpressRequest } from 'express';
 import { Types } from 'mongoose';
@@ -25,37 +26,56 @@ import { UpdateActualsDto } from './dto/update-actuals.dto';
 export class TripsController {
   constructor(private readonly tripsService: TripsService) {}
 
-  // Create trip
+  private getUserFromReq(req: ExpressRequest) {
+    return (req as any).user ?? {};
+  }
+
+  private getUserId(req: ExpressRequest): string {
+    const user = this.getUserFromReq(req);
+    const userId = user?.userId || user?.id || user?.sub || user?._id;
+
+    if (!userId) {
+      throw new UnauthorizedException('User not found in token');
+    }
+
+    return String(userId);
+  }
+
+  private isAdmin(req: ExpressRequest): boolean {
+    const user = this.getUserFromReq(req);
+    return !!user?.isAdmin;
+  }
+
   @Post()
   async create(
     @Req() req: ExpressRequest,
     @Body() createTripDto: CreateTripDto,
   ) {
-    const user = (req as any).user;
-    return await this.tripsService.create(user.id, createTripDto);
+    const userId = this.getUserId(req);
+    return await this.tripsService.create(userId, createTripDto);
   }
 
-  // Get current user's trips
   @Get('my-trips')
   async getMyTrips(@Req() req: ExpressRequest) {
-    const user = (req as any).user;
-    return await this.tripsService.findByUser(user.id);
+    const userId = this.getUserId(req);
+    return await this.tripsService.findByUser(userId);
   }
 
-  // Get current user's statistics
   @Get('my-stats')
   async getMyStats(@Req() req: ExpressRequest) {
-    const user = (req as any).user;
-    return await this.tripsService.getUserStats(user.id);
+    const userId = this.getUserId(req);
+    return await this.tripsService.getUserStats(userId);
   }
 
-  // Get all trips (admin only)
   @Get()
   async findAll(@Req() req: ExpressRequest) {
-    const user = (req as any).user;
-    if (!user?.isAdmin) {
-      return await this.tripsService.findByUser(user.id);
+    const userId = this.getUserId(req);
+    const isAdmin = this.isAdmin(req);
+
+    if (!isAdmin) {
+      return await this.tripsService.findByUser(userId);
     }
+
     return await this.tripsService.findAll();
   }
 
@@ -64,38 +84,46 @@ export class TripsController {
     return this.tripsService.getLearningSummary();
   }
 
-  // Get single trip
   @Get(':id')
   async findOne(@Req() req: ExpressRequest, @Param('id') id: string) {
-    const user = (req as any).user;
-    return await this.tripsService.findOne(id, user.id, user.isAdmin);
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid trip id');
+    }
+
+    const userId = this.getUserId(req);
+    const isAdmin = this.isAdmin(req);
+
+    return await this.tripsService.findOne(id, userId, isAdmin);
   }
 
-  // Update trip
   @Patch(':id')
   async update(
     @Req() req: ExpressRequest,
     @Param('id') id: string,
     @Body() updateTripDto: UpdateTripDto,
   ) {
-    const user = (req as any).user;
-    return await this.tripsService.update(
-      id,
-      user.id,
-      user.isAdmin,
-      updateTripDto,
-    );
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid trip id');
+    }
+
+    const userId = this.getUserId(req);
+    const isAdmin = this.isAdmin(req);
+
+    return await this.tripsService.update(id, userId, isAdmin, updateTripDto);
   }
 
-  // Delete trip
   @Delete(':id')
   async remove(@Req() req: ExpressRequest, @Param('id') id: string) {
-    const user = (req as any).user;
-    await this.tripsService.remove(id, user.id, user.isAdmin);
-    return { message: 'Trip deleted successfully' };
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid trip id');
+    }
+
+    const userId = this.getUserId(req);
+    const isAdmin = this.isAdmin(req);
+
+    return await this.tripsService.remove(id, userId, isAdmin);
   }
 
-  // Log actual data for a trip
   @Post(':id/log-actual')
   logActual(
     @Param('id') id: string,
@@ -105,11 +133,23 @@ export class TripsController {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('Invalid trip id');
     }
+
     return this.tripsService.logActualData(id, dto, req);
   }
 
   @Patch(':id/actuals')
-  updateActuals(@Param('id') id: string, @Body() dto: UpdateActualsDto) {
-    return this.tripsService.updateActuals(id, dto);
+  updateActuals(
+    @Req() req: ExpressRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateActualsDto,
+  ) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid trip id');
+    }
+
+    const userId = this.getUserId(req);
+    const isAdmin = this.isAdmin(req);
+
+    return this.tripsService.updateActuals(id, userId, isAdmin, dto);
   }
 }

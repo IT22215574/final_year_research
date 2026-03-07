@@ -1,9 +1,107 @@
-import { CreateTripDto, MLPrediction, Trip, TripStats } from "@/types/type";
 import { apiFetch } from "@/utils/api";
 
-// ========================================
-// Trip CRUD Operations
-// ========================================
+export type ExternalCostItem = {
+  name: string;
+  category: string;
+  amount: number;
+  source?: "manual" | "preference";
+  description?: string;
+};
+
+export type DatciePredictBody = {
+  boatId: string;
+  startLat: number;
+  startLon: number;
+  endLat: number;
+  endLon: number;
+  windSpeed: number;
+  waveHeight: number;
+  fuelPrice: number;
+  expectedCatch: number;
+  marketPrice: number;
+  fishingHours: number;
+  crewCount: number;
+  speed?: number; // Optional: backend tests multiple speeds if not provided
+  mode?: "island" | "international";
+  manualExternalCosts?: ExternalCostItem[];
+};
+
+export type PredictAndSaveTripBody = DatciePredictBody & {
+  departureTime?: string;
+  returnTime?: string;
+  clientRequestId?: string;
+};
+
+export type DatcieLogActualBody = {
+  actualFuelLiters: number;
+  actualCatchKg: number;
+  actualFuelCost?: number;
+  actualOperationalCost?: number;
+  actualExternalCosts?: Array<{
+    name: string;
+    category: string;
+    amount: number;
+    description?: string;
+  }>;
+  actualRevenue?: number;
+  actualNotes?: string;
+};
+
+export type CreateTripDto = {
+  departureTime: string;
+  returnTime: string;
+  boatId?: string;
+  distanceKm?: number;
+  engineHorsePower?: number;
+  engineHP?: number;
+  boatType?: string;
+  windSpeed?: number;
+  waveHeight?: number;
+  weatherCondition?: string;
+  fuelUsedLiters?: number;
+  fuelPricePerLiter?: number;
+  marketPrice?: number;
+  iceCost?: number;
+  crewCost?: number;
+  foodCost?: number;
+  maintenanceCost?: number;
+  otherCost?: number;
+  startLat?: number;
+  startLon?: number;
+  endLat?: number;
+  endLon?: number;
+  speed?: number;
+  averageSpeed?: number;
+  crewCount?: number;
+  fishingHours?: number;
+  mode?: "island" | "international";
+  status?: "planned" | "completed" | "cancelled";
+  predictedFuelLiters?: number;
+  predictedTotalCost?: number;
+  predictedDistanceKm?: number;
+  weatherSeverityIndex?: number;
+  economicStressIndex?: number;
+  profitabilityProbability?: number;
+  riskCategory?: "low" | "medium" | "high";
+  carbonEmissionKg?: number;
+  carbonPerKgCatch?: number;
+  predictedFuelCost?: number;
+  predictedCrewCost?: number;
+  predictedOperationalCost?: number;
+  predictedExternalCostTotal?: number;
+  predictedExternalCosts?: ExternalCostItem[];
+  optimizationRecommendations?: string[];
+  clientRequestId?: string;
+};
+
+export type Trip = any;
+export type TripStats = {
+  totalTrips: number;
+  totalCost: number;
+  averageCost: number;
+  totalFuelUsed: number;
+  totalDistance: number;
+};
 
 export const createTrip = async (tripData: CreateTripDto): Promise<Trip> => {
   const response = await apiFetch("/api/v1/trips", {
@@ -60,7 +158,7 @@ export const getTripById = async (id: string): Promise<Trip> => {
 
 export const updateTrip = async (
   id: string,
-  tripData: Partial<CreateTripDto>
+  tripData: Partial<CreateTripDto>,
 ): Promise<Trip> => {
   const response = await apiFetch(`/api/v1/trips/${id}`, {
     method: "PATCH",
@@ -75,7 +173,7 @@ export const updateTrip = async (
   return await response.json();
 };
 
-export const deleteTrip = async (id: string): Promise<void> => {
+export const deleteTrip = async (id: string): Promise<{ message?: string }> => {
   const response = await apiFetch(`/api/v1/trips/${id}`, {
     method: "DELETE",
   });
@@ -84,106 +182,10 @@ export const deleteTrip = async (id: string): Promise<void> => {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.message || "Failed to delete trip");
   }
-};
-
-// ========================================
-// OLD ML ENDPOINTS (optional - keep if still used)
-// ========================================
-
-export const predictFuelCost = async (data: {
-  distanceKm: number;
-  engineHorsePower: number;
-  windSpeed: number;
-  waveHeight: number;
-  tripDurationHours: number;
-}): Promise<{ predictedFuelLiters: number }> => {
-  const response = await apiFetch("/api/v1/ml/predict-fuel", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "ML service unavailable");
-  }
 
   return await response.json();
 };
 
-export const predictTripCost = async (data: {
-  distanceKm: number;
-  engineHorsePower: number;
-  windSpeed: number;
-  waveHeight: number;
-  tripDurationHours: number;
-  fuelPricePerLiter: number;
-}): Promise<{ predictedCost: number }> => {
-  const response = await apiFetch("/api/v1/ml/predict-cost", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "ML service unavailable");
-  }
-
-  return await response.json();
-};
-
-export const getOptimizationRecommendations = async (
-  tripData: any
-): Promise<MLPrediction> => {
-  const response = await apiFetch("/api/v1/ml/optimize", {
-    method: "POST",
-    body: JSON.stringify(tripData),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "Optimization service unavailable");
-  }
-
-  return await response.json();
-};
-
-// ========================================
-// DATCIE Cost Engine Operations (USE THESE)
-// ========================================
-
-export type DatciePredictBody = {
-  boatId: string;
-
-  startLat: number;
-  startLon: number;
-  endLat: number;
-  endLon: number;
-
-  windSpeed: number;
-  waveHeight: number;
-
-  fuelPrice: number;
-
-  expectedCatch: number;
-  marketPrice: number;
-
-  fishingHours: number;
-  crewCount: number;
-
-  speed?: number; // optional
-  mode?: "island" | "international";
-};
-
-export type DatcieLogActualBody = {
-  // ✅ MUST match backend LogActualDto
-  actualFuelLiters: number;
-  actualCatchKg: number;
-};
-
-/**
- * POST /api/v1/cost-engine/predict
- * Public (no token)
- */
 export const predictTripDatcie = async (body: DatciePredictBody) => {
   const response = await apiFetch("/api/v1/cost-engine/predict", {
     method: "POST",
@@ -198,10 +200,6 @@ export const predictTripDatcie = async (body: DatciePredictBody) => {
   return await response.json();
 };
 
-/**
- * POST /api/v1/cost-engine/optimize
- * Public (no token)
- */
 export const optimizeTripDatcie = async (body: DatciePredictBody) => {
   const response = await apiFetch("/api/v1/cost-engine/optimize", {
     method: "POST",
@@ -216,11 +214,9 @@ export const optimizeTripDatcie = async (body: DatciePredictBody) => {
   return await response.json();
 };
 
-/**
- * POST /api/v1/cost-engine/predict-and-save
- * Protected (token required)
- */
-export const predictAndSaveTripDatcie = async (body: DatciePredictBody) => {
+export const predictAndSaveTripDatcie = async (
+  body: PredictAndSaveTripBody,
+) => {
   const response = await apiFetch("/api/v1/cost-engine/predict-and-save", {
     method: "POST",
     body: JSON.stringify(body),
@@ -234,13 +230,9 @@ export const predictAndSaveTripDatcie = async (body: DatciePredictBody) => {
   return await response.json();
 };
 
-/**
- * POST /api/v1/trips/:id/log-actual
- * Protected (token required)
- */
 export const logActualTripDatcie = async (
   tripId: string,
-  body: DatcieLogActualBody
+  body: DatcieLogActualBody,
 ) => {
   const response = await apiFetch(`/api/v1/trips/${tripId}/log-actual`, {
     method: "POST",
@@ -263,7 +255,7 @@ export const getLearningSummary = async () => {
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     throw new Error(
-      error.message || error.detail || "Failed to fetch learning summary"
+      error.message || error.detail || "Failed to fetch learning summary",
     );
   }
 

@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import useFishingZoneStore from "@/stores/fishingZoneStore";
 import useTripStore from "@/stores/tripStore";
 import BoatSelectionModal, { Boat } from "@/components/BoatSelectionModal";
+import ExternalCostForm, { ExternalCostItem } from "./ExternalCostForm";
 
 import {
   predictTripDatcie,
@@ -71,6 +72,11 @@ const TripPlanner = () => {
   const [useEngineHPDropdown, setUseEngineHPDropdown] = useState(true);
   const [selectedEngineHPFromDropdown, setSelectedEngineHPFromDropdown] =
     useState<string>("");
+
+  // Manual external costs
+  const [manualExternalCosts, setManualExternalCosts] = useState<
+    ExternalCostItem[]
+  >([]);
 
   const { selectedZones, clearZones } = useFishingZoneStore();
 
@@ -342,6 +348,8 @@ const TripPlanner = () => {
         expectedCatch: parseFloat(expectedCatch || "120"),
         marketPrice: parseFloat(marketPrice || "550"),
         mode,
+        manualExternalCosts:
+          manualExternalCosts.length > 0 ? manualExternalCosts : undefined,
       };
 
       const res: any = await predictTripDatcie(body);
@@ -1166,7 +1174,19 @@ const TripPlanner = () => {
                 : "Weather will auto-populate when you select fishing zones"}
             </Text>
           </View>
+        </View>
 
+        {/* Manual External Costs */}
+        <View className="mb-4">
+          <ExternalCostForm
+            externalCosts={manualExternalCosts}
+            onChange={setManualExternalCosts}
+            title="Manual External Costs (Optional)"
+          />
+        </View>
+
+        {/* Input Card - Actions */}
+        <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
           {/* Predict */}
           <TouchableOpacity
             onPress={handlePredict}

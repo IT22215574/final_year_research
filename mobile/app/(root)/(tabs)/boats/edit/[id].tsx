@@ -10,20 +10,23 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Picker } from "@react-native-picker/picker";
 
 import {
-  createBoat,
-  createBoatWithImage,
+  getBoatById,
   getBoatTypes,
-  type CreateBoatBody,
+  updateBoat,
+  updateBoatWithImage,
+  type UpdateBoatBody,
 } from "@/services/boatService";
 
 type BoatMode = "island" | "international";
 
-export default function AddBoatScreen() {
+export default function EditBoatScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+
   const [boatName, setBoatName] = useState("");
   const [boatType, setBoatType] = useState("");
   const [engineHorsePower, setEngineHorsePower] = useState("");
@@ -37,31 +40,73 @@ export default function AddBoatScreen() {
   const [mode, setMode] = useState<BoatMode>("island");
 
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [existingImageUri, setExistingImageUri] = useState<string | null>(null);
 
   const [boatTypes, setBoatTypes] = useState<string[]>([]);
+  const [screenLoading, setScreenLoading] = useState(true);
   const [typesLoading, setTypesLoading] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const fetchTypes = async () => {
+  const toOptionalNumber = (value: string): number | undefined => {
+    if (!value.trim()) return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
+  const loadData = async () => {
     try {
-      setTypesLoading(true);
-      const types = await getBoatTypes();
-      const safeTypes = Array.isArray(types) ? types : [];
-      setBoatTypes(safeTypes);
+      setScreenLoading(true);
 
-      if (!boatType && safeTypes.length > 0) {
-        setBoatType(safeTypes[0]);
+      const [boat, types] = await Promise.all([
+        getBoatById(String(id)),
+        getBoatTypes(),
+      ]);
+
+      setBoatName(boat.boatName || "");
+      setBoatType(boat.boatType || "");
+      setEngineHorsePower(
+        boat.engineHorsePower != null ? String(boat.engineHorsePower) : ""
+      );
+      setBoatLength(boat.boatLength != null ? String(boat.boatLength) : "");
+      setBoatWidth(boat.boatWidth != null ? String(boat.boatWidth) : "");
+      setBoatValue(boat.boatValue != null ? String(boat.boatValue) : "");
+      setFuelEfficiencyFactor(
+        boat.fuelEfficiencyFactor != null
+          ? String(boat.fuelEfficiencyFactor)
+          : ""
+      );
+      setEngineDegradationFactor(
+        boat.engineDegradationFactor != null
+          ? String(boat.engineDegradationFactor)
+          : ""
+      );
+      setAverageFuelPredictionError(
+        boat.averageFuelPredictionError != null
+          ? String(boat.averageFuelPredictionError)
+          : ""
+      );
+      setMode((boat.mode as BoatMode) || "island");
+      setBoatTypes(Array.isArray(types) ? types : []);
+
+      if (boat.boatImage) {
+        setExistingImageUri(
+          `${process.env.EXPO_PUBLIC_API_BASE_URL}${boat.boatImage}`
+        );
       }
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "Failed to load boat types");
+      Alert.alert("Error", error?.message || "Failed to load boat");
     } finally {
+      setScreenLoading(false);
       setTypesLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTypes();
-  }, []);
+    if (id) {
+      setTypesLoading(true);
+      loadData();
+    }
+  }, [id]);
 
   const pickImage = async () => {
     try {
@@ -89,16 +134,7 @@ export default function AddBoatScreen() {
     }
   };
 
-  const toOptionalNumber = (value: string): number | undefined => {
-    if (!value.trim()) return undefined;
-
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) return undefined;
-
-    return parsed;
-  };
-
-  const handleCreateBoat = async () => {
+  const handleSave = async () => {
     if (!boatName.trim()) {
       Alert.alert("Validation", "Boat name is required");
       return;
@@ -120,15 +156,10 @@ export default function AddBoatScreen() {
       return;
     }
 
-    if (boatTypes.length > 0 && !boatTypes.includes(boatType)) {
-      Alert.alert("Validation", "Please select a valid boat type");
-      return;
-    }
-
     try {
-      setLoading(true);
+      setSaving(true);
 
-      const body: CreateBoatBody = {
+      const body: UpdateBoatBody = {
         boatName: boatName.trim(),
         boatType: boatType.trim(),
         engineHorsePower: engineHP,
@@ -144,33 +175,37 @@ export default function AddBoatScreen() {
       };
 
       if (imageUri) {
-        await createBoatWithImage(body, imageUri);
+        await updateBoatWithImage(String(id), body, imageUri);
       } else {
-        await createBoat(body);
+        await updateBoat(String(id), body);
       }
 
-      Alert.alert("Success", "Boat created successfully", [
+      Alert.alert("Success", "Boat updated successfully", [
         {
           text: "OK",
-          onPress: () => router.replace("/(root)/(tabs)/boats"),
+          onPress: () => router.replace(`/(root)/(tabs)/boats/${id}`),
         },
       ]);
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "Failed to create boat");
+      Alert.alert("Error", error?.message || "Failed to update boat");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
+
+  if (screenLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-slate-50 items-center justify-center">
+        <ActivityIndicator size="large" />
+        <Text className="text-slate-500 mt-3">Loading boat...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       <View className="px-5 pt-3 pb-3 bg-white border-b border-slate-100 flex-row justify-between items-center">
-        <View>
-          <Text className="text-xl font-bold text-slate-900">Add Boat</Text>
-          <Text className="text-xs text-slate-400 mt-0.5">
-            Create a boat for DATCIE prediction and trip planning
-          </Text>
-        </View>
+        <Text className="text-xl font-bold text-slate-900">Edit Boat</Text>
 
         <TouchableOpacity
           onPress={() => router.back()}
@@ -194,13 +229,23 @@ export default function AddBoatScreen() {
             className="bg-slate-50 border border-slate-200 rounded-xl p-4 items-center"
           >
             <Text className="font-semibold text-slate-700">
-              {imageUri ? "Change Image" : "Pick Image"}
+              {imageUri ? "Change Selected Image" : "Pick New Image"}
             </Text>
           </TouchableOpacity>
 
           {imageUri ? (
             <Image
               source={{ uri: imageUri }}
+              style={{
+                width: "100%",
+                height: 180,
+                borderRadius: 14,
+                marginTop: 12,
+              }}
+            />
+          ) : existingImageUri ? (
+            <Image
+              source={{ uri: existingImageUri }}
               style={{
                 width: "100%",
                 height: 180,
@@ -220,7 +265,6 @@ export default function AddBoatScreen() {
           <TextInput
             value={boatName}
             onChangeText={setBoatName}
-            placeholder="e.g. Sea Queen"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
           />
 
@@ -254,11 +298,10 @@ export default function AddBoatScreen() {
             value={engineHorsePower}
             onChangeText={setEngineHorsePower}
             keyboardType="numeric"
-            placeholder="e.g. 150"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
           />
 
-          <Text className="text-xs text-slate-500 mb-2 font-medium">Mode</Text>
+          <Text className="text-xs text-slate-500 mb-2">Mode</Text>
           <View className="flex-row gap-2 mb-3">
             <TouchableOpacity
               onPress={() => setMode("island")}
@@ -308,7 +351,6 @@ export default function AddBoatScreen() {
                 value={boatLength}
                 onChangeText={setBoatLength}
                 keyboardType="numeric"
-                placeholder="e.g. 28"
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
               />
             </View>
@@ -319,7 +361,6 @@ export default function AddBoatScreen() {
                 value={boatWidth}
                 onChangeText={setBoatWidth}
                 keyboardType="numeric"
-                placeholder="e.g. 8"
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
               />
             </View>
@@ -330,8 +371,7 @@ export default function AddBoatScreen() {
             value={boatValue}
             onChangeText={setBoatValue}
             keyboardType="numeric"
-            placeholder="e.g. 2500000"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
+            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5"
           />
         </View>
 
@@ -347,7 +387,6 @@ export default function AddBoatScreen() {
             value={fuelEfficiencyFactor}
             onChangeText={setFuelEfficiencyFactor}
             keyboardType="numeric"
-            placeholder="e.g. 1"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
           />
 
@@ -358,7 +397,6 @@ export default function AddBoatScreen() {
             value={engineDegradationFactor}
             onChangeText={setEngineDegradationFactor}
             keyboardType="numeric"
-            placeholder="e.g. 0.05"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
           />
 
@@ -369,20 +407,19 @@ export default function AddBoatScreen() {
             value={averageFuelPredictionError}
             onChangeText={setAverageFuelPredictionError}
             keyboardType="numeric"
-            placeholder="e.g. 3.2"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5"
           />
         </View>
 
         <TouchableOpacity
-          onPress={handleCreateBoat}
-          disabled={loading}
+          onPress={handleSave}
+          disabled={saving}
           className={`rounded-xl py-4 items-center ${
-            loading ? "bg-blue-400" : "bg-blue-600"
+            saving ? "bg-blue-400" : "bg-blue-600"
           }`}
         >
           <Text className="text-white font-bold text-base">
-            {loading ? "Saving..." : "Create Boat"}
+            {saving ? "Saving..." : "Update Boat"}
           </Text>
         </TouchableOpacity>
       </ScrollView>

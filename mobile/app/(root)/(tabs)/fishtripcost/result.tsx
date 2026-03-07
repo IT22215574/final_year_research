@@ -13,6 +13,8 @@ import { useRouter } from "expo-router";
 
 import useTripStore from "@/stores/tripStore";
 import { predictAndSaveTripDatcie } from "@/services/tripService";
+import ExternalCostSummaryCard from "./components/ExternalCostSummaryCard";
+import TotalCostCard from "./components/TotalCostCard";
 
 const money = (n: any) => {
   const num = Number(n);
@@ -46,11 +48,31 @@ const ResultScreen = () => {
       prediction?.predictedFuelLiters ??
       null;
 
+    const fuelCost =
+      prediction?.cost?.predictedFuelCost ??
+      prediction?.predictedFuelCost ??
+      null;
+
+    const operationalCost =
+      prediction?.cost?.predictedOperationalCost ??
+      prediction?.predictedOperationalCost ??
+      null;
+
+    const externalCostTotal =
+      prediction?.cost?.predictedExternalCostTotal ??
+      prediction?.predictedExternalCostTotal ??
+      null;
+
     const totalCost =
       prediction?.cost?.predictedTotalCost ??
       prediction?.cost?.totalCost ??
       prediction?.predictedTotalCost ??
       null;
+
+    const externalCosts =
+      prediction?.cost?.predictedExternalCosts ??
+      prediction?.predictedExternalCosts ??
+      [];
 
     const carbonKg =
       prediction?.carbon?.carbonEmissionKg ??
@@ -69,7 +91,18 @@ const ResultScreen = () => {
 
     const recs = prediction?.recommendations ?? prediction?.tips ?? [];
 
-    return { fuelLiters, totalCost, carbonKg, profitProb, risk, recs };
+    return {
+      fuelLiters,
+      fuelCost,
+      operationalCost,
+      externalCostTotal,
+      totalCost,
+      externalCosts,
+      carbonKg,
+      profitProb,
+      risk,
+      recs,
+    };
   }, [prediction]);
 
   const onSaveTrip = async () => {
@@ -79,7 +112,12 @@ const ResultScreen = () => {
     }
     try {
       setSaving(true);
-      const res = await predictAndSaveTripDatcie(datcieBody);
+      // Ensure speed is set for save operation
+      const bodyWithSpeed = {
+        ...datcieBody,
+        speed: datcieBody.speed || 10, // Default to 10 if not set (from optimization)
+      };
+      const res = await predictAndSaveTripDatcie(bodyWithSpeed);
 
       const trip = res?.trip ?? res;
       const tripId = trip?._id ?? trip?.id ?? res?.tripId;
@@ -166,6 +204,31 @@ const ResultScreen = () => {
               }
             />
           </View>
+
+          {/* External Costs Summary */}
+          {cards.externalCosts && cards.externalCosts.length > 0 && (
+            <View className="mb-3">
+              <ExternalCostSummaryCard
+                externalCosts={cards.externalCosts}
+                title="External Costs Breakdown"
+                showBreakdown={true}
+              />
+            </View>
+          )}
+
+          {/* Total Cost Breakdown */}
+          {cards.totalCost && (
+            <View className="mb-3">
+              <TotalCostCard
+                fuelCost={cards.fuelCost}
+                operationalCost={cards.operationalCost}
+                externalCostTotal={cards.externalCostTotal}
+                totalCost={cards.totalCost}
+                title="Complete Cost Breakdown"
+                showBreakdown={true}
+              />
+            </View>
+          )}
 
           {cards.risk && (
             <View className="bg-white rounded-2xl border border-slate-100 p-4 mb-3">

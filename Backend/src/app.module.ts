@@ -11,6 +11,7 @@ import { TripsModule } from './trips/trips.module';
 import { AnalyticsModule } from './trips_analytics/trips_analytics.module';
 import { MlModule } from './tripml/tripml.module';
 import { CostEngineModule } from './cost-engine/cost-engine.module';
+import { CostPreferencesModule } from './cost-preferences/cost-preferences.module';
 
 @Module({
   imports: [
@@ -40,7 +41,8 @@ import { CostEngineModule } from './cost-engine/cost-engine.module';
     TripsModule,
     AnalyticsModule,
     MlModule,
-    CostEngineModule
+    CostEngineModule,
+    CostPreferencesModule,
 
   ],
 })

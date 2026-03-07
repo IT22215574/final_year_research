@@ -77,6 +77,9 @@ import Icon55 from "@/assets/icons/icon55.png";
 import Icon66 from "@/assets/icons/icon66.png";
 import FisherIcon from "@/assets/icons/fisherman.png";
 import BuyerIcon from "@/assets/icons/buyer.png";
+import heart from "@/assets/icons/heart.png";
+import logout from "@/assets/icons/logout.png";
+import about from "@/assets/icons/About.png";
 import SFLLogo from "@/assets/images/SFLLogo.png";
 import ship from "@/assets/images/ship.png";
 import fish_onboard from "@/assets/images/fish_onboard.png";
@@ -169,6 +172,22 @@ export const icons = {
   nav_user,
   nav_exam,
   nav_home,
+  heart,
+  logout,
+  about,
+  // Convenient aliases for better code readability
+  ship: ship,
+  boat: ship,
+  fisher: FisherIcon,
+  dollar: Pkg,
+  money: Pkg,
+  cost: Duty,
+  plus: Add,
+  list: menu,
+  star: heart,
+  check: Icon6,
+  point: Digital,
+  analytics: Digital,
 };
 
 // Boat Types with details

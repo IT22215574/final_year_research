@@ -1,23 +1,25 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { HttpModule } from '@nestjs/axios';
+
 import { Trip, TripSchema } from '../schemas/trip.schema';
 import { BoatModule } from '../boat/boat.module';
+import { AuthModule } from '../auth/auth.module';
+import { CostPreferencesModule } from '../cost-preferences/cost-preferences.module';
+
 import { CostEngineController } from './cost-engine.controller';
 import { CostEngineService } from './cost-engine.service';
-import { AuthModule } from 'src/auth/auth.module';
-import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
-    HttpModule, // import to use HttpService for ML API calls
-    MongooseModule.forFeature([
-      { name: Trip.name, schema: TripSchema }
-    ]),
-    BoatModule, // import to use BoatService,
-    AuthModule, // import to use AuthTokenGuard
-    
+    HttpModule,
+    MongooseModule.forFeature([{ name: Trip.name, schema: TripSchema }]),
+    BoatModule,
+    AuthModule,
+    CostPreferencesModule,
   ],
   controllers: [CostEngineController],
   providers: [CostEngineService],
+  exports: [CostEngineService],
 })
 export class CostEngineModule {}

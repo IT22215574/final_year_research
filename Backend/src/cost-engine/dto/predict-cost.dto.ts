@@ -6,14 +6,15 @@ import {
   IsIn,
   Min,
   Max,
+  ValidateNested,
+  IsArray,
 } from 'class-validator';
+import { ExternalCostItemDto } from './external-cost-item.dto';
 
 export class PredictCostDto {
-  // ✅ prevents: Cast to ObjectId failed...
   @IsMongoId()
   boatId: string;
 
-  // ✅ coordinate ranges + transform to number
   @Type(() => Number)
   @IsNumber()
   @Min(-90)
@@ -81,4 +82,10 @@ export class PredictCostDto {
   @IsOptional()
   @IsIn(['island', 'international'])
   mode?: 'island' | 'international';
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ExternalCostItemDto)
+  manualExternalCosts?: ExternalCostItemDto[];
 }

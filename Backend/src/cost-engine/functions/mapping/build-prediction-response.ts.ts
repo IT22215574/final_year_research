@@ -1,3 +1,11 @@
+export type PredictionExternalCostItem = {
+  name: string;
+  category: string;
+  amount: number;
+  source?: 'manual' | 'preference';
+  description?: string;
+};
+
 export type BuildPredictionResponseInput = {
   distance: {
     baseDistanceKm: number;
@@ -40,8 +48,11 @@ export type BuildPredictionResponseInput = {
     riskAdjustedCost: number;
     rawTotalCost: number;
     predictedTotalCost: number;
+    baseOperationalCost: number;
+    externalCosts: PredictionExternalCostItem[];
+    externalCostTotal: number;
   };
-  mode: {
+  mode?: {
     selectedMode: string;
     adjustments: any;
     tripDurationHours: number;

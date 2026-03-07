@@ -61,7 +61,8 @@ async function bootstrap() {
       'http://localhost:5173',
       'http://localhost:3000',
       'http://localhost:3001',
-
+      'http://192.168.8.135:8081',
+      'exp://192.168.8.135:8081',
       // ✅ Optional: add Expo dev URLs if you use them
       // 'http://localhost:19006',
       // 'exp://localhost:19000',
@@ -89,9 +90,10 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1');
 
   const port = process.env.PORT || 5000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   console.log(`Application is running on: http://localhost:${port}`);
+  console.log(`Network: http://192.168.8.135:${port}`);
   console.log(`Uploads served at: http://localhost:${port}/uploads/`);
 }
 
