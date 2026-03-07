@@ -173,7 +173,7 @@ const MapViewScreen = () => {
 
     // ✅ IMPORTANT: navigate to the real route (index.tsx)
     // your index renders TripPlanner tab inside it.
-    router.push("/(root)/(tabs)/fishtripcost");
+    router.push("/(root)/(tabs)/fishtripcost/components/TripPlanner");
   };
 
   const handleViewZones = () => setShowZoneList(true);
@@ -210,7 +210,9 @@ const MapViewScreen = () => {
           >
             <Text className="text-white mr-2">🗺️</Text>
             <Text className="text-white font-semibold">View Zones</Text>
-            <Text className="text-white ml-2">{showZoneDropdown ? "▲" : "▼"}</Text>
+            <Text className="text-white ml-2">
+              {showZoneDropdown ? "▲" : "▼"}
+            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -241,7 +243,8 @@ const MapViewScreen = () => {
                     <View
                       className="w-12 h-12 rounded-full items-center justify-center mr-3"
                       style={{
-                        backgroundColor: getCatchColor(item.estimatedCatch) + "20",
+                        backgroundColor:
+                          getCatchColor(item.estimatedCatch) + "20",
                       }}
                     >
                       <Text className="text-2xl">🐟</Text>
@@ -368,11 +371,13 @@ const MapViewScreen = () => {
                   zone.depth === "Very Deep"
                     ? 5000
                     : zone.depth === "Deep"
-                    ? 3500
-                    : 2000
+                      ? 3500
+                      : 2000
                 }
                 strokeColor={getCatchColor(zone.estimatedCatch)}
-                strokeWidth={selectedZones.find((z: any) => z.id === zone.id) ? 4 : 2}
+                strokeWidth={
+                  selectedZones.find((z: any) => z.id === zone.id) ? 4 : 2
+                }
                 fillColor={
                   selectedZones.find((z: any) => z.id === zone.id)
                     ? getCatchColor(zone.estimatedCatch) + "40"
@@ -381,7 +386,10 @@ const MapViewScreen = () => {
               />
 
               <Marker
-                coordinate={{ latitude: zone.latitude, longitude: zone.longitude }}
+                coordinate={{
+                  latitude: zone.latitude,
+                  longitude: zone.longitude,
+                }}
                 onPress={() => handleZonePress(zone)}
                 title={zone.name}
                 description={`${zone.fishType} • ${zone.estimatedCatch} density`}
@@ -395,21 +403,30 @@ const MapViewScreen = () => {
                     }`}
                     style={{
                       backgroundColor: getCatchColor(zone.estimatedCatch),
-                      transform: selectedZones.find((z: any) => z.id === zone.id)
+                      transform: selectedZones.find(
+                        (z: any) => z.id === zone.id,
+                      )
                         ? [{ scale: 1.15 }]
                         : [{ scale: 1 }],
                     }}
                   >
                     <Text className="text-3xl">
-                      {selectedZones.find((z: any) => z.id === zone.id) ? "✅" : "🐟"}
+                      {selectedZones.find((z: any) => z.id === zone.id)
+                        ? "✅"
+                        : "🐟"}
                     </Text>
                   </View>
 
                   <View
                     className="mt-1 px-2 py-1 rounded-md"
-                    style={{ backgroundColor: getCatchColor(zone.estimatedCatch) }}
+                    style={{
+                      backgroundColor: getCatchColor(zone.estimatedCatch),
+                    }}
                   >
-                    <Text className="text-white text-xs font-bold" numberOfLines={1}>
+                    <Text
+                      className="text-white text-xs font-bold"
+                      numberOfLines={1}
+                    >
                       {zone.name.split(" ")[0]}
                     </Text>
                   </View>
@@ -483,7 +500,9 @@ const MapViewScreen = () => {
                         </Text>
                       </View>
                       <View className="w-1/2 p-2">
-                        <Text className="text-xs text-gray-500">Est. Catch</Text>
+                        <Text className="text-xs text-gray-500">
+                          Est. Catch
+                        </Text>
                         <Text className="text-lg font-semibold text-gray-800">
                           {selectedZone.estimatedCatch}
                         </Text>
@@ -494,7 +513,9 @@ const MapViewScreen = () => {
                       </View>
                     </View>
 
-                    {selectedZones.find((z: any) => z.id === selectedZone.id) ? (
+                    {selectedZones.find(
+                      (z: any) => z.id === selectedZone.id,
+                    ) ? (
                       <View className="bg-green-50 rounded-xl p-3 mb-4">
                         <Text className="text-green-700 text-center font-medium">
                           ✓ Already added to your trip
@@ -561,13 +582,16 @@ const MapViewScreen = () => {
                     <View
                       className="w-10 h-10 rounded-full items-center justify-center mr-3"
                       style={{
-                        backgroundColor: getCatchColor(item.estimatedCatch) + "20",
+                        backgroundColor:
+                          getCatchColor(item.estimatedCatch) + "20",
                       }}
                     >
                       <Text className="text-lg">🐟</Text>
                     </View>
                     <View className="flex-1">
-                      <Text className="font-semibold text-gray-800">{item.name}</Text>
+                      <Text className="font-semibold text-gray-800">
+                        {item.name}
+                      </Text>
                       <Text className="text-sm text-gray-500">
                         {item.fishType} • {item.distance} km
                       </Text>

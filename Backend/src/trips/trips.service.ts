@@ -47,6 +47,23 @@ export class TripsService {
     return await newTrip.save();
   }
 
+  async getLearningSummary() {
+    const baseUrl =
+      this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get(`${baseUrl}/learning/summary`),
+      );
+
+      return response.data;
+    } catch (e: any) {
+      throw new BadRequestException(
+        e?.response?.data?.detail || 'Failed to fetch learning summary',
+      );
+    }
+  }
+
   // Get all trips for a specific user
   async findByUser(userId: string): Promise<TripDocument[]> {
     return await this.tripModel
@@ -132,8 +149,7 @@ export class TripsService {
     if (!trip.boatId) {
       return {
         trip,
-        message:
-          'Actual logged. Boat learning skipped (trip.boatId missing).',
+        message: 'Actual logged. Boat learning skipped (trip.boatId missing).',
       };
     }
 
@@ -143,14 +159,14 @@ export class TripsService {
     // Enhanced learning using Python ML service
     const baseUrl =
       this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
-    
+
     let learningResult = null;
     let mlLearningFallback = false;
 
     try {
       // Call enhanced Python learning service with context
       const learningResponse = await firstValueFrom(
-        this.http.post(`${baseUrl}/update-coefficients`, {
+        this.http.post(`${baseUrl}/learning/update`, {
           boatId: String(trip.boatId),
           predictedFuelLiters: Number(trip.predictedFuelLiters),
           actualFuelLiters: dto.actualFuelLiters,
@@ -163,14 +179,17 @@ export class TripsService {
       );
 
       learningResult = learningResponse.data;
-      
+
       // Update boat with new coefficients from ML service
       if (learningResult?.updatedCoefficients) {
-        boat.fuelEfficiencyFactor = learningResult.updatedCoefficients.fuelEfficiencyFactor;
-        boat.engineDegradationFactor = learningResult.updatedCoefficients.engineDegradationFactor;
-        boat.averageFuelPredictionError = Math.abs(learningResult.predictionError);
+        boat.fuelEfficiencyFactor =
+          learningResult.updatedCoefficients.fuelEfficiencyFactor;
+        boat.engineDegradationFactor =
+          learningResult.updatedCoefficients.engineDegradationFactor;
+        boat.averageFuelPredictionError = Math.abs(
+          learningResult.predictionError,
+        );
       }
-      
     } catch (e: any) {
       mlLearningFallback = true;
       console.log(
@@ -178,18 +197,20 @@ export class TripsService {
         e?.response?.status,
         e?.response?.data || e?.message,
       );
-      
+
       // Fallback to simple learning
       boat.averageFuelPredictionError =
-        (boat.averageFuelPredictionError ?? 0) * 0.9 + Math.abs(fuelPredictionError) * 0.1;
+        (boat.averageFuelPredictionError ?? 0) * 0.9 +
+        Math.abs(fuelPredictionError) * 0.1;
 
       const prevFactor = boat.fuelEfficiencyFactor ?? 1;
       const learningRate = 0.02;
-      const relError = fuelPredictionError / Math.max(Number(trip.predictedFuelLiters), 1);
-      
+      const relError =
+        fuelPredictionError / Math.max(Number(trip.predictedFuelLiters), 1);
+
       let newFactor = prevFactor * (1 + learningRate * relError);
       newFactor = Math.max(0.7, Math.min(1.3, newFactor));
-      
+
       boat.fuelEfficiencyFactor = newFactor;
     }
 
@@ -199,8 +220,12 @@ export class TripsService {
     await this.tripCoeffModel.create({
       tripId: trip._id.toString(),
       boatId: boat._id.toString(),
-      previousFuelEfficiencyFactor: learningResult?.updatedCoefficients?.fuelEfficiencyFactor || boat.fuelEfficiencyFactor,
-      updatedFuelEfficiencyFactor: learningResult?.updatedCoefficients?.fuelEfficiencyFactor || boat.fuelEfficiencyFactor,
+      previousFuelEfficiencyFactor:
+        learningResult?.updatedCoefficients?.fuelEfficiencyFactor ||
+        boat.fuelEfficiencyFactor,
+      updatedFuelEfficiencyFactor:
+        learningResult?.updatedCoefficients?.fuelEfficiencyFactor ||
+        boat.fuelEfficiencyFactor,
       predictionError: fuelPredictionError,
       adjustmentApplied: learningResult?.relativePredictionError || 0,
       mlLearningUsed: !mlLearningFallback,
@@ -285,4 +310,3 @@ export class TripsService {
     return await this.tripModel.countDocuments().exec();
   }
 }
-

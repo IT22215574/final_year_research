@@ -85,6 +85,9 @@ export class Trip {
   speed?: number;
 
   @Prop()
+  averageSpeed?: number;
+
+  @Prop()
   crewCount?: number;
 
   @Prop()

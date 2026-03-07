@@ -254,3 +254,18 @@ export const logActualTripDatcie = async (
 
   return await response.json();
 };
+
+export const getLearningSummary = async () => {
+  const response = await apiFetch("/api/v1/trips/learning/summary", {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      error.message || error.detail || "Failed to fetch learning summary"
+    );
+  }
+
+  return await response.json();
+};

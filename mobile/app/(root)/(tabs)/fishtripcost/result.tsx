@@ -100,7 +100,9 @@ const ResultScreen = () => {
       {/* Header */}
       <View className="px-5 pt-3 pb-3 flex-row justify-between items-center bg-white border-b border-slate-100">
         <View>
-          <Text className="text-xl font-bold text-slate-900">Prediction Result</Text>
+          <Text className="text-xl font-bold text-slate-900">
+            Prediction Result
+          </Text>
           <Text className="text-xs text-slate-400 mt-0.5">
             DATCIE • fuel • cost • carbon • profitability
           </Text>
@@ -139,15 +141,29 @@ const ResultScreen = () => {
           contentContainerStyle={{ paddingBottom: 28 }}
         >
           <View className="flex-row gap-3 mb-3">
-            <Card title="⛽ Fuel (L)" value={cards.fuelLiters ? num1(cards.fuelLiters) : "-"} />
-            <Card title="💰 Total Cost (Rs)" value={cards.totalCost ? money(cards.totalCost) : "-"} highlight />
+            <Card
+              title="⛽ Fuel (L)"
+              value={cards.fuelLiters ? num1(cards.fuelLiters) : "-"}
+            />
+            <Card
+              title="💰 Total Cost (Rs)"
+              value={cards.totalCost ? money(cards.totalCost) : "-"}
+              highlight
+            />
           </View>
 
           <View className="flex-row gap-3 mb-3">
-            <Card title="🌿 Carbon (kg)" value={cards.carbonKg ? num1(cards.carbonKg) : "-"} />
+            <Card
+              title="🌿 Carbon (kg)"
+              value={cards.carbonKg ? num1(cards.carbonKg) : "-"}
+            />
             <Card
               title="📈 Profitability"
-              value={cards.profitProb !== null ? `${Math.round(Number(cards.profitProb) * 100)}%` : "-"}
+              value={
+                cards.profitProb !== null
+                  ? `${Math.round(Number(cards.profitProb) * 100)}%`
+                  : "-"
+              }
             />
           </View>
 
@@ -191,7 +207,9 @@ const ResultScreen = () => {
               {cards.recs.map((r: string, idx: number) => (
                 <View key={idx} className="flex-row items-start mb-2.5">
                   <View className="w-5 h-5 rounded-full bg-blue-600 items-center justify-center mr-3 mt-0.5">
-                    <Text className="text-white text-xs font-bold">{idx + 1}</Text>
+                    <Text className="text-white text-xs font-bold">
+                      {idx + 1}
+                    </Text>
                   </View>
                   <Text className="flex-1 text-slate-600 text-sm leading-5">
                     {r}
@@ -225,12 +243,26 @@ const ResultScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => router.push("/(root)/(tabs)/fishtripcost/log-actual")}
+              onPress={() =>
+                router.push("/(root)/(tabs)/fishtripcost/log-actual")
+              }
               activeOpacity={0.85}
               className="rounded-xl py-4 items-center bg-slate-900 mt-3"
             >
               <Text className="text-white font-bold text-base">
                 🧾 Log Actual (Fuel & Catch)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() =>
+                router.push("/(root)/(tabs)/fishtripcost/learning-summary")
+              }
+              activeOpacity={0.85}
+              className="rounded-xl py-4 items-center bg-emerald-600 mt-3"
+            >
+              <Text className="text-white font-bold text-base">
+                🧠 View Learning Summary
               </Text>
             </TouchableOpacity>
           </View>
@@ -254,7 +286,9 @@ const Card = ({
       <Text className="text-xs text-slate-400 font-semibold uppercase mb-2">
         {title}
       </Text>
-      <Text className={`text-2xl font-bold ${highlight ? "text-emerald-600" : "text-slate-800"}`}>
+      <Text
+        className={`text-2xl font-bold ${highlight ? "text-emerald-600" : "text-slate-800"}`}
+      >
         {value}
       </Text>
     </View>

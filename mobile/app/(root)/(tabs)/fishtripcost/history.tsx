@@ -41,7 +41,6 @@ const HistoryScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
-      {/* Header */}
       <View className="px-5 pt-3 pb-3 flex-row justify-between items-center bg-white border-b border-slate-100">
         <View>
           <Text className="text-xl font-bold text-slate-900">Trip History</Text>
@@ -97,6 +96,7 @@ const HistoryScreen = () => {
           contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
           renderItem={({ item }) => {
             const id = item?._id ?? item?.id;
+
             const createdAt = item?.createdAt
               ? new Date(item.createdAt).toLocaleString()
               : "—";
@@ -107,23 +107,25 @@ const HistoryScreen = () => {
               item?.cost?.predictedTotalCost ??
               null;
 
+            const predictedFuel =
+              item?.predictedFuelLiters ??
+              item?.fuel?.predictedFuelLiters ??
+              null;
+
             const actualFuel =
               item?.actualFuelLiters ??
               item?.fuelUsedLiters ??
               item?.actuals?.fuelLiters ??
               null;
 
+            const canLearn =
+              !!id &&
+              !!item?.boatId &&
+              predictedFuel !== null &&
+              predictedFuel !== undefined;
+
             return (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => {
-                  Alert.alert(
-                    "Trip",
-                    `Trip ID: ${id}\nCreated: ${createdAt}\nPredicted Total: Rs ${money(
-                      predictedTotal
-                    )}\nActual Fuel: ${actualFuel ?? "—"}`
-                  );
-                }}
+              <View
                 className="bg-white rounded-2xl border border-slate-100 p-4 mb-3"
                 style={{
                   shadowColor: "#000",
@@ -133,24 +135,79 @@ const HistoryScreen = () => {
                   elevation: 2,
                 }}
               >
-                <View className="flex-row justify-between items-center">
-                  <Text className="text-slate-800 font-bold">
-                    Trip #{String(id).slice(-6)}
-                  </Text>
-                  <View className="bg-slate-100 rounded-full px-3 py-1">
-                    <Text className="text-slate-600 text-xs font-semibold">
-                      Saved
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    Alert.alert(
+                      "Trip",
+                      `Trip ID: ${id}\nCreated: ${createdAt}\nPredicted Total: Rs ${money(
+                        predictedTotal
+                      )}\nPredicted Fuel: ${
+                        predictedFuel ?? "—"
+                      }\nActual Fuel: ${actualFuel ?? "—"}`
+                    );
+                  }}
+                >
+                  <View className="flex-row justify-between items-center">
+                    <Text className="text-slate-800 font-bold">
+                      Trip #{String(id).slice(-6)}
                     </Text>
+                    <View className="bg-slate-100 rounded-full px-3 py-1">
+                      <Text className="text-slate-600 text-xs font-semibold">
+                        Saved
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                <Text className="text-slate-400 text-xs mt-1">{createdAt}</Text>
+                  <Text className="text-slate-400 text-xs mt-1">{createdAt}</Text>
 
-                <View className="flex-row gap-3 mt-3">
-                  <MiniStat label="Predicted Total" value={`Rs ${money(predictedTotal)}`} />
-                  <MiniStat label="Actual Fuel" value={actualFuel !== null ? `${actualFuel}` : "—"} />
+                  <View className="flex-row gap-3 mt-3">
+                    <MiniStat
+                      label="Predicted Total"
+                      value={`Rs ${money(predictedTotal)}`}
+                    />
+                    <MiniStat
+                      label="Actual Fuel"
+                      value={actualFuel !== null ? `${actualFuel}` : "—"}
+                    />
+                  </View>
+
+                  <View className="mt-3">
+                    <MiniStat
+                      label="Predicted Fuel"
+                      value={predictedFuel !== null ? `${predictedFuel}` : "—"}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                <View className="mt-4">
+                  {canLearn ? (
+                    <TouchableOpacity
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(root)/(tabs)/fishtripcost/log-actual",
+                          params: { tripId: String(id) },
+                        })
+                      }
+                      className="bg-slate-900 rounded-xl py-3 items-center"
+                      activeOpacity={0.85}
+                    >
+                      <Text className="text-white font-bold">
+                        🧾 Log Actual for This Trip
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View className="bg-slate-100 rounded-xl py-3 items-center">
+                      <Text className="text-slate-500 font-semibold text-center px-3">
+                        Learning not available for this trip
+                      </Text>
+                      <Text className="text-slate-400 text-xs mt-1">
+                        This trip has no DATCIE prediction data
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              </TouchableOpacity>
+              </View>
             );
           }}
         />

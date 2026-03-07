@@ -27,7 +27,10 @@ export class TripsController {
 
   // Create trip
   @Post()
-  async create(@Req() req: ExpressRequest, @Body() createTripDto: CreateTripDto) {
+  async create(
+    @Req() req: ExpressRequest,
+    @Body() createTripDto: CreateTripDto,
+  ) {
     const user = (req as any).user;
     return await this.tripsService.create(user.id, createTripDto);
   }
@@ -56,6 +59,11 @@ export class TripsController {
     return await this.tripsService.findAll();
   }
 
+  @Get('learning/summary')
+  getLearningSummary() {
+    return this.tripsService.getLearningSummary();
+  }
+
   // Get single trip
   @Get(':id')
   async findOne(@Req() req: ExpressRequest, @Param('id') id: string) {
@@ -71,7 +79,12 @@ export class TripsController {
     @Body() updateTripDto: UpdateTripDto,
   ) {
     const user = (req as any).user;
-    return await this.tripsService.update(id, user.id, user.isAdmin, updateTripDto);
+    return await this.tripsService.update(
+      id,
+      user.id,
+      user.isAdmin,
+      updateTripDto,
+    );
   }
 
   // Delete trip
