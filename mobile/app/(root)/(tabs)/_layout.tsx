@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { icons } from "@/constants";
+import { icons, HEADER_GRADIENT } from "@/constants";
 import useAuthStore from "@/stores/authStore";
 import useNotificationStore from "@/stores/notificationStore";
 import { useState, useEffect, useCallback } from "react";
@@ -28,7 +28,6 @@ const TabsLayout = () => {
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
   const { width } = useWindowDimensions();
   const isDesktop = IS_WEB && width >= 768;
-
   // Fetch unread count on focus and component mount
   useFocusEffect(
     useCallback(() => {
@@ -76,7 +75,7 @@ const TabsLayout = () => {
 
   return (
     <SafeAreaProvider style={styles.safe}>
-      <StatusBar style="light" backgroundColor="#f8fafc" translucent={false} />
+      <StatusBar style="light" backgroundColor={HEADER_GRADIENT[0]} translucent={false} />
       
       <View style={isDesktop ? styles.desktopWrapper : styles.container}>
         {/* Desktop: Persistent sidebar on the left - condition based on your auth logic */}
@@ -91,10 +90,10 @@ const TabsLayout = () => {
               headerShown: true,
               headerBackground: () => (
                 <LinearGradient
-                  colors={["#0066CC", "#00A3FF"]}
+                  colors={HEADER_GRADIENT}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
-                  style={{ flex: 1 }}
+                  style={StyleSheet.absoluteFill}
                 />
               ),
               headerStyle: {
@@ -102,13 +101,13 @@ const TabsLayout = () => {
                 elevation: 0,
               },
               headerShadowVisible: false,
-              headerTintColor: "black",
+              headerTintColor: "white",
               headerTitleStyle: {
                 fontWeight: "bold",
                 color: "white",
                 fontFamily: "Inter-Bold",
               },
-              headerLeft: () => (
+              headerLeft: () =>
                 !isDesktop ? (
                   <View>
                     <TouchableOpacity
@@ -122,8 +121,7 @@ const TabsLayout = () => {
                       />
                     </TouchableOpacity>
                   </View>
-                ) : null
-              ),
+                ) : null,
               headerRight: () => (
                 <TouchableOpacity
                   style={{ marginRight: 20, marginTop: 4 }}
@@ -134,7 +132,6 @@ const TabsLayout = () => {
                     style={styles.notificationIcon}
                     resizeMode="contain"
                   />
-                  {/* Conditionally render badge */}
                   {unreadCount > 0 && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>
@@ -154,10 +151,6 @@ const TabsLayout = () => {
               name="home"
               options={{
                 title: "",
-                headerShown: true,
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
               }}
             />
 
@@ -165,50 +158,30 @@ const TabsLayout = () => {
               name="Market"
               options={{
                 title: "",
-                headerShown: true,
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
               }}
             />
             <Tabs.Screen
               name="Quality"
               options={{
                 title: "",
-                headerShown: true,
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
               }}
             />
             <Tabs.Screen
               name="Notifications"
               options={{
                 title: "",
-                headerShown: true,
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
               }}
             />
             <Tabs.Screen
               name="profile"
               options={{
                 title: "Profile",
-                headerShown: true,
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
               }}
             />
             <Tabs.Screen
               name="Update_profile"
               options={{
                 title: "Edit Profile",
-                headerShown: true,
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
               }}
             />
           </Tabs>

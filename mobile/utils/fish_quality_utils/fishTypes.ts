@@ -1,21 +1,44 @@
 // utils/fishTypes.ts
+
+export interface ImageQualityInfo {
+  width: number;
+  height: number;
+  aspect_ratio: number;
+  sharpness: number;
+  brightness: number;
+  contrast: number;
+  is_screenshot: boolean;
+  quality_issues: string[];
+}
+
 export interface PredictionResult {
+  // Basic info
   isFish: boolean;
   fishLabel: string;
   fishConfidence: number;
   fishProbabilities: Record<string, number>;
+  
+  // Stage 2 (species)
   species?: string;
   speciesConfidence?: number;
   speciesProbabilities?: Record<string, number>;
+  
+  // Stage 3 (grade)
   grade?: string;
   gradeConfidence?: number;
   gradeProbabilities?: Record<string, number>;
+  
+  // Final combined result
   finalLabel?: string;
+  
+  // All probabilities for details
   allProbabilities?: {
     fish: Record<string, number>;
     species: Record<string, number>;
     grade: Record<string, number>;
   };
+  
+  // Validation if using two models
   pairValidation?: {
     matched: boolean;
     leftLabel: string;
@@ -23,6 +46,17 @@ export interface PredictionResult {
     rightLabel: string;
     rightConfidence: number;
   };
+  
+  // Image quality info
+  imageQuality?: {
+    left: ImageQualityInfo;
+    right: ImageQualityInfo;
+  };
+  
+  // Uncertainty metrics
+  uncertainty?: number;
+  
+  // Warnings
   warnings?: string[];
 }
 
@@ -54,11 +88,15 @@ export interface FishPrediction {
 
 export interface RunFishPipelineOptions {
   onProgress?: (message: string) => void;
+  useTTA?: boolean; // Test-time augmentation
+  enhancedPreprocessing?: boolean; // Apply enhancements for internet images
 }
 
-export const FISH_THRESHOLD = 0.70;
-export const SPECIES_THRESHOLD = 0.50;
-export const GRADE_THRESHOLD = 0.50;
+// LOWER THRESHOLDS for internet images
+export const FISH_THRESHOLD = 0.60; // Lowered from 0.70
+export const SPECIES_THRESHOLD = 0.45; // Lowered from 0.50
+export const GRADE_THRESHOLD = 0.45;
+export const UNKNOWN_THRESHOLD = 0.30; // Below this, mark as unknown
 
 export const BINARY_LABELS = {
   0: "fish",

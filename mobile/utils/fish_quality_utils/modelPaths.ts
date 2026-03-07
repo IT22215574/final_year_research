@@ -2,9 +2,9 @@
 
 // Model files - using require for bundling
 export const MODEL_FILES = {
-  fishDetector: require("../../assets/models/fish_detector.onnx"),
-  speciesClassifier: require("../../assets/models/species_classifier.onnx"),
-  gradeClassifier: require("../../assets/models/grade_classifier.onnx"),
+  fishDetector: require("../../assets/models/fish_detector_1.onnx"),
+  speciesClassifier: require("../../assets/models/species_classifier_1.onnx"),
+  gradeClassifier: require("../../assets/models/grade_classifier_1.onnx"),
 };
 
 // Export labels directly from our types
@@ -34,7 +34,7 @@ export const FISH_DENSITIES: Record<string, number> = {
 
 // Verify model paths exist (for development)
 export const MODEL_PATHS = {
-  fishDetector: "../../assets/models/fish_detector.onnx",
-  speciesClassifier: "../../assets/models/species_classifier.onnx",
-  gradeClassifier: "../../assets/models/grade_classifier.onnx",
+  fishDetector: "../../assets/models/fish_detector_1.onnx",
+  speciesClassifier: "../../assets/models/species_classifier_1.onnx",
+  gradeClassifier: "../../assets/models/grade_classifier_1.onnx",
 };

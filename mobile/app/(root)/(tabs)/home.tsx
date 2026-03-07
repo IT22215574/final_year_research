@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  StatusBar,
   Image,
   TextInput,
 } from "react-native";
@@ -14,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import useAuthStore from "@/stores/authStore";
-import { icons } from "@/constants";
+import { HEADER_GRADIENT, icons } from "@/constants";
 import { LinearGradient } from "expo-linear-gradient";
 
 type ZoneLevel = "HIGH" | "MEDIUM" | "LOW";
@@ -22,7 +21,6 @@ type ZoneLevel = "HIGH" | "MEDIUM" | "LOW";
 const Home = () => {
   const { currentUser, signOut } = useAuthStore();
   const router = useRouter();
-
   // NOTE: This screen previously depended on `react-native-maps` + a demo util.
   // Those dependencies are not present in `mobile/package.json`, which can crash Metro
   // and prevent any UI from rendering. Keep this screen UI-only for now.
@@ -71,18 +69,13 @@ const Home = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["right", "left"]}>
-      {/* Custom Status Bar */}
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#0057FF"
-        translucent={false}
-      />
-
-      {/* System Status Bar Area (for battery, signal, etc.) */}
-      <View style={styles.systemStatusBar} />
-
       {/* Blue Header Area with Rounded Bottom */}
-      <LinearGradient colors={["#0066CC", "#0088FF"]} style={styles.header}>
+      <LinearGradient
+        colors={HEADER_GRADIENT}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.header}
+      >
         <View>
           <View style={styles.welcomeContainer}>
             <Text style={styles.welcomeText}>Welcome Back</Text>
@@ -193,26 +186,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#0f172a",
   },
-  systemStatusBar: {
-    height: StatusBar.currentHeight,
-    backgroundColor: "#0066CC", // Blue color for system status bar area
+header: {
+  paddingHorizontal: 20,
+  paddingTop: 16,
+  paddingBottom: 24,
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  shadowColor: "#000",
+  shadowOffset: {
+    width: 0,
+    height: 2,
   },
-  header: {
-    backgroundColor: "#0066CC", // Blue background
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
+  shadowOpacity: 0.1,
+  shadowRadius: 4,
+  elevation: 5,
+},
   welcomeContainer: {
     marginBottom: 16,
   },

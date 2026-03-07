@@ -167,3 +167,5 @@ export const icons = {
   nav_home,
 };
 
+export const HEADER_GRADIENT = ["#0057FF", "#00C6FF"] as const;
+
