@@ -38,7 +38,7 @@ const Home = () => {
         acc[level] += 1;
         return acc;
       },
-      { HIGH: 0, MEDIUM: 0, LOW: 0 } as Record<ZoneLevel, number>
+      { HIGH: 0, MEDIUM: 0, LOW: 0 } as Record<ZoneLevel, number>,
     );
   }, [zoneLevels]);
 
@@ -81,7 +81,6 @@ const Home = () => {
             <Text style={styles.welcomeText}>Welcome Back</Text>
             <Text style={styles.userName}>{displayName}</Text>
           </View>
-
 
           {/* Sign Out Button
           <TouchableOpacity
@@ -186,21 +185,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#0f172a",
   },
-header: {
-  paddingHorizontal: 20,
-  paddingTop: 16,
-  paddingBottom: 24,
-  borderBottomLeftRadius: 20,
-  borderBottomRightRadius: 20,
-  shadowColor: "#000",
-  shadowOffset: {
-    width: 0,
-    height: 2,
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
-  shadowOpacity: 0.1,
-  shadowRadius: 4,
-  elevation: 5,
-},
   welcomeContainer: {
     marginBottom: 16,
   },
