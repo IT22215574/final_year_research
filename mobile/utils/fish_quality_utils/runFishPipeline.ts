@@ -188,9 +188,10 @@ export async function runFishPipeline(
   // Adjust threshold for screenshots
   let fishThreshold = FISH_THRESHOLD;
   if (isScreenshot) {
-    fishThreshold = 0.55; // Lower threshold for screenshots
+    fishThreshold = 0.40; // lowered for screenshots
   }
 
+  // Stage 1: fish vs non_fish — use adjusted threshold
   const isFish = stage1?.label === 'fish' && stage1?.confidence >= fishThreshold;
 
   // Build warnings array
@@ -245,23 +246,29 @@ export async function runFishPipeline(
   };
 
   if (isFish && stage2) {
-    result.species = stage2.label;
-    result.speciesConfidence = stage2.confidence;
-    result.speciesProbabilities = stage2.probabilities ?? {};
-    
-    // Check if species confidence is too low (unknown species)
-    if (stage2.confidence < UNKNOWN_THRESHOLD) {
-      result.species = `unknown_${stage2.label}`;
-      result.warnings?.push('Very low species confidence - may be an unknown species');
-    }
-    
-    if (stage3 && stage3.label !== 'not_applicable') {
-      result.grade = stage3.label;
-      result.gradeConfidence = stage3.confidence;
-      result.gradeProbabilities = stage3.probabilities ?? {};
-      result.finalLabel = data.final_result !== 'NOT FISH' ? data.final_result : undefined;
+    const rawLabel = stage2.label as string;
+    const conf = stage2.confidence as number;
+
+    // If confidence is very low → unknown fish (still IS a fish, just unrecognised species)
+    if (conf < UNKNOWN_THRESHOLD) {
+      result.species = "unknown";
+      result.speciesConfidence = conf;
+      result.speciesProbabilities = stage2.probabilities ?? {};
+      result.finalLabel = "Unknown Fish Species";
+      result.warnings?.push("Species not recognised — may be outside supported species list");
     } else {
-      result.finalLabel = stage2.label;
+      result.species = rawLabel;
+      result.speciesConfidence = conf;
+      result.speciesProbabilities = stage2.probabilities ?? {};
+
+      if (stage3 && stage3.label !== 'not_applicable') {
+        result.grade = stage3.label;
+        result.gradeConfidence = stage3.confidence;
+        result.gradeProbabilities = stage3.probabilities ?? {};
+        result.finalLabel = data.final_result !== 'NOT FISH' ? data.final_result : undefined;
+      } else {
+        result.finalLabel = rawLabel;
+      }
     }
   }
 

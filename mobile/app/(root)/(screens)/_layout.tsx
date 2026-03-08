@@ -57,6 +57,15 @@ const ScreenLayout = () => {
           }}
         />
 
+        <Stack.Screen
+          name="SpeciesDetection"
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="QualityGrading"
+          options={{ headerShown: false }}
+        />
          
         
 

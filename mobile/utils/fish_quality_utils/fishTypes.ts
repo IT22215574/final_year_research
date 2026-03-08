@@ -93,10 +93,10 @@ export interface RunFishPipelineOptions {
 }
 
 // LOWER THRESHOLDS for internet images
-export const FISH_THRESHOLD = 0.60; // Lowered from 0.70
-export const SPECIES_THRESHOLD = 0.45; // Lowered from 0.50
+export const FISH_THRESHOLD = 0.45; // ← lowered from 0.60, model trained on limited species
+export const SPECIES_THRESHOLD = 0.40; // ← lowered from 0.45
 export const GRADE_THRESHOLD = 0.45;
-export const UNKNOWN_THRESHOLD = 0.30; // Below this, mark as unknown
+export const UNKNOWN_THRESHOLD = 0.25; // ← lowered from 0.30
 
 export const BINARY_LABELS = {
   0: "fish",
