@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Param,
   Body,
   UseGuards,
@@ -61,6 +62,29 @@ export class BoatController {
       throw new BadRequestException('Invalid boat id');
     }
     return this.boatService.findById(id);
+  }
+
+  // ✅ Update boat (supports image upload)
+  @Patch(':id')
+  @UseInterceptors(FileInterceptor('boatImage', boatMulterOptions))
+  async update(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() body: any,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    const userId = this.getUserId(req);
+
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid boat id');
+    }
+
+    const boatImage = file ? `/uploads/boats/${file.filename}` : undefined;
+
+    return this.boatService.updateBoat(id, userId, {
+      ...body,
+      ...(boatImage && { boatImage }),
+    });
   }
 
   @Delete(':id')

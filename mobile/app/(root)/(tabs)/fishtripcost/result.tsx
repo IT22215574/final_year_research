@@ -1,5 +1,5 @@
 // mobile/app/(root)/(tabs)/fishtripcost/result.tsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,14 +7,20 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { PieChart, BarChart } from "react-native-chart-kit";
+import { Ionicons } from "@expo/vector-icons";
 
 import useTripStore from "@/stores/tripStore";
 import { predictAndSaveTripDatcie } from "@/services/tripService";
+import { getBoatLearningInsights, getBoatPredictionHistory } from "@/services/boatService";
 import ExternalCostSummaryCard from "./components/ExternalCostSummaryCard";
 import TotalCostCard from "./components/TotalCostCard";
+
+const screenWidth = Dimensions.get("window").width;
 
 const money = (n: any) => {
   const num = Number(n);
@@ -39,8 +45,31 @@ const ResultScreen = () => {
   const setLastSavedTrip = useTripStore((s) => s.setLastSavedTrip);
 
   const [saving, setSaving] = useState(false);
+  const [boatInsights, setBoatInsights] = useState<any>(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
 
   const hasPrediction = !!prediction;
+  const boatId = datcieBody?.boatId;
+
+  // Fetch boat-specific analytics for per-prediction context
+  useEffect(() => {
+    if (boatId && hasPrediction) {
+      loadBoatAnalytics();
+    }
+  }, [boatId, hasPrediction]);
+
+  const loadBoatAnalytics = async () => {
+    if (!boatId) return;
+    try {
+      setLoadingInsights(true);
+      const insights = await getBoatLearningInsights(boatId);
+      setBoatInsights(insights);
+    } catch (err) {
+      console.log("Failed to load boat insights:", err);
+    } finally {
+      setLoadingInsights(false);
+    }
+  };
 
   const cards = useMemo(() => {
     const fuelLiters =
@@ -91,6 +120,15 @@ const ResultScreen = () => {
 
     const recs = prediction?.recommendations ?? prediction?.tips ?? [];
 
+    // Profitability calculations
+    const expectedCatch = datcieBody?.expectedCatch ?? 0;
+    const marketPrice = datcieBody?.marketPrice ?? 0;
+    const expectedRevenue = expectedCatch * marketPrice;
+    const expectedProfit = totalCost ? expectedRevenue - totalCost : null;
+    const profitMargin = totalCost && expectedRevenue > 0 
+      ? ((expectedProfit ?? 0) / expectedRevenue) * 100 
+      : null;
+
     return {
       fuelLiters,
       fuelCost,
@@ -102,8 +140,13 @@ const ResultScreen = () => {
       profitProb,
       risk,
       recs,
+      expectedRevenue,
+      expectedProfit,
+      profitMargin,
+      expectedCatch,
+      marketPrice,
     };
-  }, [prediction]);
+  }, [prediction, datcieBody]);
 
   const onSaveTrip = async () => {
     if (!datcieBody) {
@@ -205,6 +248,190 @@ const ResultScreen = () => {
             />
           </View>
 
+          {/* 🎯 PER-PREDICTION ANALYTICS - Boat Historical Context */}
+          {boatInsights?.hasData && (
+            <View className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100 p-5 mb-4">
+              <View className="flex-row items-center mb-3">
+                <Ionicons name="analytics" size={20} color="#6366f1" />
+                <Text className="text-base font-bold text-indigo-900 ml-2">
+                  Per-Prediction Analytics
+                </Text>
+              </View>
+              
+              <View className="bg-white/80 rounded-xl p-3 mb-2">
+                <Text className="text-xs text-indigo-600 font-semibold mb-2">
+                  THIS PREDICTION vs BOAT'S HISTORY
+                </Text>
+                
+                <View className="flex-row justify-between mb-1.5">
+                  <Text className="text-slate-600 text-sm">Boat's Avg Accuracy</Text>
+                  <Text className="text-indigo-700 font-bold">
+                    {boatInsights.avgAccuracy ? `${(boatInsights.avgAccuracy * 100).toFixed(1)}%` : 'N/A'}
+                  </Text>
+                </View>
+
+                <View className="flex-row justify-between mb-1.5">
+                  <Text className="text-slate-600 text-sm">Boat's Avg Error</Text>
+                  <Text className="text-slate-700 font-semibold">
+                    {boatInsights.avgPredictionError ? `${boatInsights.avgPredictionError.toFixed(1)} L` : 'N/A'}
+                  </Text>
+                </View>
+
+                <View className="flex-row justify-between mb-1.5">
+                  <Text className="text-slate-600 text-sm">Total Trips Learned</Text>
+                  <Text className="text-emerald-700 font-bold">
+                    {boatInsights.totalTrips ?? 0} trips
+                  </Text>
+                </View>
+
+                <View className="flex-row justify-between">
+                  <Text className="text-slate-600 text-sm">Model Confidence</Text>
+                  <Text className="text-purple-700 font-bold">
+                    {boatInsights.confidence ? `${(boatInsights.confidence * 100).toFixed(0)}%` : 'N/A'}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="bg-indigo-100 rounded-lg p-2.5 mt-2">
+                <Text className="text-indigo-800 text-xs font-medium text-center">
+                  ℹ️ This prediction uses {boatInsights.totalTrips ?? 0} historical trips from this boat
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* 📊 COST BREAKDOWN PIE CHART */}
+          {cards.fuelCost && cards.totalCost && (
+            <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
+              <Text className="text-base font-semibold text-slate-800 mb-4">
+                💰 Cost Breakdown (Research Visualization)
+              </Text>
+              
+              <PieChart
+                data={[
+                  {
+                    name: 'Fuel',
+                    value: cards.fuelCost || 0,
+                    color: '#3b82f6',
+                    legendFontColor: '#64748b',
+                    legendFontSize: 13,
+                  },
+                  {
+                    name: 'Operational',
+                    value: cards.operationalCost || 0,
+                    color: '#10b981',
+                    legendFontColor: '#64748b',
+                    legendFontSize: 13,
+                  },
+                  {
+                    name: 'External',
+                    value: cards.externalCostTotal || 0,
+                    color: '#f59e0b',
+                    legendFontColor: '#64748b',
+                    legendFontSize: 13,
+                  },
+                ]}
+                width={screenWidth - 72}
+                height={200}
+                chartConfig={{
+                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                }}
+                accessor="value"
+                backgroundColor="transparent"
+                paddingLeft="15"
+                absolute
+              />
+
+              <View className="mt-3 bg-slate-50 rounded-xl p-3">
+                <View className="flex-row justify-between mb-1.5">
+                  <View className="flex-row items-center">
+                    <View className="w-3 h-3 rounded-full bg-blue-500 mr-2" />
+                    <Text className="text-slate-600 text-sm">Fuel Cost</Text>
+                  </View>
+                  <Text className="text-slate-900 font-bold">Rs {money(cards.fuelCost)}</Text>
+                </View>
+
+                <View className="flex-row justify-between mb-1.5">
+                  <View className="flex-row items-center">
+                    <View className="w-3 h-3 rounded-full bg-emerald-500 mr-2" />
+                    <Text className="text-slate-600 text-sm">Operational</Text>
+                  </View>
+                  <Text className="text-slate-900 font-bold">Rs {money(cards.operationalCost)}</Text>
+                </View>
+
+                <View className="flex-row justify-between">
+                  <View className="flex-row items-center">
+                    <View className="w-3 h-3 rounded-full bg-amber-500 mr-2" />
+                    <Text className="text-slate-600 text-sm">External Costs</Text>
+                  </View>
+                  <Text className="text-slate-900 font-bold">Rs {money(cards.externalCostTotal)}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* 💵 PROFITABILITY CARD - Research Economic Analysis */}
+          {cards.expectedRevenue > 0 && cards.totalCost && (
+            <View className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-5 mb-4">
+              <View className="flex-row items-center mb-4">
+                <Ionicons name="trending-up" size={22} color="#10b981" />
+                <Text className="text-lg font-bold text-emerald-900 ml-2">
+                  Economic Analysis
+                </Text>
+              </View>
+
+              <View className="bg-white rounded-xl p-4 mb-3">
+                <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-slate-100">
+                  <Text className="text-slate-600">Expected Catch</Text>
+                  <Text className="text-slate-900 font-bold text-lg">
+                    {cards.expectedCatch} kg
+                  </Text>
+                </View>
+
+                <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-slate-100">
+                  <Text className="text-slate-600">Market Price/kg</Text>
+                  <Text className="text-slate-900 font-bold text-lg">
+                    Rs {money(cards.marketPrice)}
+                  </Text>
+                </View>
+
+                <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-emerald-100 bg-emerald-50 -mx-4 px-4 py-3">
+                  <Text className="text-emerald-700 font-semibold">💰 Expected Revenue</Text>
+                  <Text className="text-emerald-900 font-bold text-xl">
+                    Rs {money(cards.expectedRevenue)}
+                  </Text>
+                </View>
+
+                <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-rose-100 bg-rose-50 -mx-4 px-4 py-3">
+                  <Text className="text-rose-700 font-semibold">💸 Total Cost</Text>
+                  <Text className="text-rose-900 font-bold text-xl">
+                    Rs {money(cards.totalCost)}
+                  </Text>
+                </View>
+
+                <View className={`flex-row justify-between items-center ${(cards.expectedProfit ?? 0) >= 0 ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'} -mx-4 px-4 py-4 border rounded-xl`}>
+                  <View>
+                    <Text className={`${(cards.expectedProfit ?? 0) >= 0 ? 'text-green-700' : 'text-red-700'} font-bold text-base`}>
+                      {(cards.expectedProfit ?? 0) >= 0 ? '✅ Expected Profit' : '⚠️ Expected Loss'}
+                    </Text>
+                    <Text className="text-slate-500 text-xs mt-0.5">
+                      Margin: {cards.profitMargin !== null ? `${cards.profitMargin.toFixed(1)}%` : 'N/A'}
+                    </Text>
+                  </View>
+                  <Text className={`${(cards.expectedProfit ?? 0) >= 0 ? 'text-green-900' : 'text-red-900'} font-bold text-2xl`}>
+                    Rs {money(Math.abs(cards.expectedProfit ?? 0))}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="bg-teal-100 rounded-lg p-3">
+                <Text className="text-teal-800 text-xs font-medium text-center">
+                  📊 Complete economic forecast including external costs & profitability
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* External Costs Summary */}
           {cards.externalCosts && cards.externalCosts.length > 0 && (
             <View className="mb-3">
@@ -231,19 +458,57 @@ const ResultScreen = () => {
           )}
 
           {cards.risk && (
-            <View className="bg-white rounded-2xl border border-slate-100 p-4 mb-3">
-              <Text className="text-xs text-slate-400 font-semibold uppercase mb-2">
-                Risk Category
-              </Text>
-              <View className="flex-row items-center justify-between">
-                <Text className="text-lg font-bold text-slate-800 capitalize">
-                  {String(cards.risk)}
+            <View className={`rounded-2xl border-2 p-5 mb-4 ${
+              cards.risk === 'low' ? 'bg-green-50 border-green-300' : 
+              cards.risk === 'medium' ? 'bg-amber-50 border-amber-300' : 
+              'bg-rose-50 border-rose-300'
+            }`}>
+              <View className="flex-row items-center mb-3">
+                <Ionicons 
+                  name={cards.risk === 'low' ? 'shield-checkmark' : cards.risk === 'medium' ? 'warning' : 'alert-circle'} 
+                  size={24} 
+                  color={cards.risk === 'low' ? '#15803d' : cards.risk === 'medium' ? '#d97706' : '#dc2626'} 
+                />
+                <Text className="text-lg font-bold text-slate-900 ml-2">
+                  Risk Assessment
                 </Text>
-                <View className="bg-slate-100 px-3 py-1 rounded-full">
-                  <Text className="text-slate-700 font-semibold text-xs">
-                    ML Analysis
-                  </Text>
+              </View>
+
+              <View className={`rounded-xl p-4 ${
+                cards.risk === 'low' ? 'bg-green-100' : 
+                cards.risk === 'medium' ? 'bg-amber-100' : 
+                'bg-rose-100'
+              }`}>
+                <View className="flex-row items-center justify-between mb-2">
+                  <Text className="text-slate-700 font-semibold">Risk Level</Text>
+                  <View className={`px-4 py-2 rounded-full ${
+                    cards.risk === 'low' ? 'bg-green-600' : 
+                    cards.risk === 'medium' ? 'bg-amber-600' : 
+                    'bg-rose-600'
+                  }`}>
+                    <Text className="text-white font-bold text-base uppercase">
+                      {String(cards.risk)}
+                    </Text>
+                  </View>
                 </View>
+
+                <Text className={`text-sm mt-2 ${
+                  cards.risk === 'low' ? 'text-green-800' : 
+                  cards.risk === 'medium' ? 'text-amber-800' : 
+                  'text-rose-800'
+                }`}>
+                  {cards.risk === 'low' 
+                    ? '✅ Favorable conditions. High probability of successful trip with expected profitability.' 
+                    : cards.risk === 'medium'
+                    ? '⚠️ Moderate risk. Monitor weather and fuel consumption. Profitability may vary.'
+                    : '🚨 High risk detected. Consider postponing or adjusting route. Profitability uncertain.'}
+                </Text>
+              </View>
+
+              <View className="bg-white rounded-lg p-3 mt-3">
+                <Text className="text-slate-600 text-xs font-medium text-center">
+                  🤖 ML-powered risk analysis based on weather, economics & historical patterns
+                </Text>
               </View>
             </View>
           )}

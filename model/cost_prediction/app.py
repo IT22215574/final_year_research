@@ -200,9 +200,129 @@ def get_learning_summary():
 @app.get("/boats/{boat_id}/coefficients")
 def get_boat_coefficients(boat_id: str):
     try:
-        return fuel_engine.get_boat_coefficients(boat_id)
+        return fuel_engine.coefficients_manager.get_boat_coefficients(boat_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/boat-insights/{boat_id}")
+def get_boat_insights(boat_id: str):
+    """Get learning insights for a specific boat"""
+    try:
+        coefficients = fuel_engine.coefficients_manager.get_boat_coefficients(boat_id)
+        insights = learning_engine.get_boat_insights(boat_id)
+        summary = learning_engine.get_learning_summary()
+        
+        # Filter summary for this specific boat if available
+        boat_data = summary.get("boat_specific_data", {}).get(boat_id, {})
+        
+        # Calculate accuracy trend if we have history
+        history = learning_engine.get_boat_history(boat_id, 30)
+        accuracy_trend = []
+        if history:
+            for entry in history[-10:]:  # Last 10 predictions
+                predicted = entry.get("predictedFuel", 0)
+                actual = entry.get("actualFuel", 0)
+                if actual > 0:
+                    accuracy = 1 - abs(predicted - actual) / actual
+                    accuracy_trend.append({
+                        "timestamp": entry.get("timestamp"),
+                        "accuracy": max(0, min(1, accuracy))  # Clamp to 0-1
+                    })
+        
+        return {
+            "boatId": boat_id,
+            "coefficients": coefficients,
+            "learningInsights": insights,
+            "learningStats": boat_data,
+            "totalLearningUpdates": summary.get("total_learning_updates", 0),
+            "lastUpdated": summary.get("last_updated", None),
+            "accuracyTrend": accuracy_trend,
+            "hasData": len(history) > 0 if history else False,
+        }
+    except Exception as e:
+        # Return empty data structure instead of error for boats with no learning data
+        return {
+            "boatId": boat_id,
+            "coefficients": {
+                "fuelEfficiencyFactor": 1.0,
+                "engineDegradationFactor": 1.0,
+                "averageFuelPredictionError": 0,
+                "confidence": 0,
+                "dataPoints": 0
+            },
+            "learningInsights": {},
+            "learningStats": {
+                "updateCount": 0,
+                "averageAccuracy": 0
+            },
+            "totalLearningUpdates": 0,
+            "lastUpdated": None,
+            "accuracyTrend": [],
+            "hasData": False,
+            "error": str(e)
+        }
+
+
+@app.get("/boat-history/{boat_id}")
+def get_boat_prediction_history(boat_id: str, days: int = 30):
+    """Get prediction history for a specific boat"""
+    try:
+        # Get boat coefficients and learning data
+        coefficients = fuel_engine.coefficients_manager.get_boat_coefficients(boat_id)
+        history = learning_engine.get_boat_history(boat_id, days)
+        insights = learning_engine.get_boat_insights(boat_id)
+        summary = learning_engine.get_learning_summary()
+        
+        boat_data = summary.get("boat_specific_data", {}).get(boat_id, {})
+        
+        # Calculate improvement metrics
+        improvement_over_time = []
+        if history and len(history) > 1:
+            # Split history into chunks to show improvement trend
+            chunk_size = max(1, len(history) // 5)  # 5 chunks
+            for i in range(0, len(history), chunk_size):
+                chunk = history[i:i+chunk_size]
+                if chunk:
+                    chunk_errors = [abs(e.get("predictionError", 0)) for e in chunk]
+                    avg_error = sum(chunk_errors) / len(chunk_errors)
+                    improvement_over_time.append({
+                        "period": f"Period {i//chunk_size + 1}",
+                        "averageError": avg_error,
+                        "tripCount": len(chunk)
+                    })
+        
+        return {
+            "boatId": boat_id,
+            "days": days,
+            "predictionCount": boat_data.get("updateCount", 0),
+            "averageAccuracy": boat_data.get("averageAccuracy", 0),
+            "fuelEfficiencyFactor": coefficients.get("fuelEfficiencyFactor", 1.0),
+            "engineDegradationFactor": coefficients.get("engineDegradationFactor", 1.0),
+            "averagePredictionError": coefficients.get("averageFuelPredictionError", 0),
+            "coefficientHistory": history,
+            "learningInsights": insights,
+            "lastPrediction": boat_data.get("lastPrediction", None),
+            "improvementOverTime": improvement_over_time,
+            "hasData": len(history) > 0 if history else False,
+        }
+    except Exception as e:
+        # Return empty data structure instead of error
+        return {
+            "boatId": boat_id,
+            "days": days,
+            "predictionCount": 0,
+            "averageAccuracy": 0,
+            "fuelEfficiencyFactor": 1.0,
+            "engineDegradationFactor": 1.0,
+            "averagePredictionError": 0,
+            "coefficientHistory": [],
+            "learningInsights": {},
+            "lastPrediction": None,
+            "improvementOverTime": [],
+            "hasData": False,
+            "error": str(e)
+        }
 
 
 # -----------------------------

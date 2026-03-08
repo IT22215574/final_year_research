@@ -152,6 +152,7 @@ class SelfLearningEngine:
             return {
                 "totalBoats": total_boats,
                 "totalTripsLearned": total_trips,
+                "total_learning_updates": total_trips,  # Add alias for compatibility
                 "averageConfidence": round(avg_confidence, 4),
                 "averagePredictionError": round(avg_prediction_error, 4),
                 "improvementStatus": improvement_status,
@@ -178,6 +179,17 @@ class SelfLearningEngine:
                     for item in needs_attention
                 ],
                 "lastUpdated": latest_update,
+                "last_updated": latest_update,  # Add alias for compatibility
+                "boat_specific_data": {
+                    item.get("boatId"): {
+                        "updateCount": item.get("totalTrips", 0),
+                        "averageAccuracy": round(100 - abs(item.get("avgPredictionError", 0)), 2),
+                        "history": [],  # Can be expanded later with actual history
+                        "lastPrediction": item.get("lastUpdated"),
+                    }
+                    for item in insights_list
+                    if item.get("boatId")
+                },
             }
 
         except Exception as e:

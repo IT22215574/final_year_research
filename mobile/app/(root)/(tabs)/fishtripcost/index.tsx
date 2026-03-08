@@ -38,6 +38,17 @@ export default function FishTripCostDashboard() {
     }
   }, [savedTrips]);
 
+  // Handle navigation for boats and costs views
+  useEffect(() => {
+    if (activeView === "boats") {
+      router.push("/(root)/(tabs)/boats" as any);
+      setActiveView("dashboard");
+    } else if (activeView === "costs") {
+      router.push("/(root)/(tabs)/costs" as any);
+      setActiveView("dashboard");
+    }
+  }, [activeView]);
+
   const topNavItems = [
     { id: "dashboard", label: "Dashboard", icon: icons.nav_home },
     { id: "planner", label: "New Trip", icon: icons.plus },
@@ -100,12 +111,8 @@ export default function FishTripCostDashboard() {
       case "planner":
         return <TripPlanner />;
       case "boats":
-        router.push("/(root)/(tabs)/boats" as any);
-        setActiveView("dashboard");
-        return null;
       case "costs":
-        router.push("/(root)/(tabs)/costs" as any);
-        setActiveView("dashboard");
+        // Navigation handled by useEffect
         return null;
       case "dashboard":
       default:
