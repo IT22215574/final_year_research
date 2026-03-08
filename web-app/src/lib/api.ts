@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 export type ApiError = {
   status: number;
   message: string;
+  field?: string;
   details?: unknown;
 };
 
@@ -38,8 +39,21 @@ export async function apiFetch<T>(
         ? ((payload as Record<string, unknown>).message as string)
         : null;
 
+    const fieldFromPayload =
+      payload &&
+      typeof payload === "object" &&
+      "field" in payload &&
+      typeof (payload as Record<string, unknown>).field === "string"
+        ? ((payload as Record<string, unknown>).field as string)
+        : undefined;
+
     const message = messageFromPayload || res.statusText || "Request failed";
-    const err: ApiError = { status: res.status, message, details: payload };
+    const err: ApiError = {
+      status: res.status,
+      message,
+      field: fieldFromPayload,
+      details: payload,
+    };
     throw err;
   }
 

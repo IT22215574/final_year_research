@@ -6,10 +6,10 @@ import {
   ScrollView, 
   TouchableOpacity, 
   Dimensions,
-  SafeAreaView,
   RefreshControl,
   ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   LineChart, 
   BarChart

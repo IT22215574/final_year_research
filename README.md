@@ -1,326 +1,164 @@
 # SMART FISHER LANKA
 
+Monorepo containing:
+- `Backend/` — NestJS + MongoDB API
+- `web-app/` — Next.js admin/web frontend
+- `mobile/` — Expo React Native mobile app
+- `model/` — Python scripts for fish-zone prediction model training/inference
 
-🚀 Quick Start
-Local Development Setup
-Continue to Installation for detailed setup instructions.
+## Prerequisites
 
-📥 Installation
-Step 1: Clone the Repository
-git clone https://github.com/FAITE-TECH/learnup-platform.git
-cd learnup-platform
-Step 2: Install Dependencies
-The project uses pnpm workspaces. Install all dependencies from the root:
+### Required
+- Node.js 18+ (recommended)
+- `pnpm` (recommended, because this repo includes `pnpm-lock.yaml` files)
+- MongoDB (Atlas or local)
 
-pnpm install
-Note: If prompted to approve build scripts, select "Yes, approve all" (especially for @prisma/client, @nestjs/core, electron).
+### Mobile development (only if running the Expo app)
+- Expo Go app (quickest) OR Android Studio / Xcode for emulators
 
-Step 3: Database Setup
-Choose one of the following methods:
+### Model scripts (only if running ML scripts)
+- Python 3.10+ and `pip`
 
-Method A: Local PostgreSQL
-Create Database:
+## Install dependencies
 
-# Connect to PostgreSQL
-psql -U postgres
+This repo has separate apps, so install dependencies per folder.
 
-# In psql:
-CREATE DATABASE learnup_db;
-CREATE USER learnup_user WITH PASSWORD 'your_secure_password';
-GRANT ALL PRIVILEGES ON DATABASE learnup_db TO learnup_user;
-\q
-Configure Connection: Create .env file in apps/backend/:
+```bash
+# Backend (NestJS)
+pnpm -C Backend install
 
-cd apps/backend
-cp .env.example .env
-Update DATABASE_URL in .env:
+# Web app (Next.js)
+pnpm -C web-app install
 
-DATABASE_URL="postgresql://learnup_user:your_secure_password@localhost:5432/learnup_db?schema=public"
-Method B: Docker PostgreSQL
-# Start only PostgreSQL and Redis
-docker-compose up -d postgres redis
+# Mobile app (Expo)
+pnpm -C mobile install
+```
 
-# Wait for containers to be ready (5-10 seconds)
-The database URL is already configured in apps/backend/.env.example for Docker.
+## Environment variables
 
-Step 4: Configure Environment Variables
-cd apps/backend
+### Backend (`Backend/.env`)
 
-# Copy example environment file
-cp .env.example .env
+Create `Backend/.env`:
 
-# Edit .env and update the following CRITICAL variables:
-Required Environment Variables:
+```env
+# MongoDB connection string
+MONGO=mongodb+srv://<user>:<pass>@<cluster>/<db>?retryWrites=true&w=majority
 
-# Database (update if using local PostgreSQL)
-DATABASE_URL="postgresql://learnup_user:password@localhost:5432/learnup_db?schema=public"
+# JWT secret used to sign tokens
+JWT_SECRET=change-me
 
-# JWT Secrets (MUST CHANGE IN PRODUCTION)
-JWT_SECRET="your-super-secure-jwt-secret-key-minimum-32-characters-long"
-JWT_REFRESH_SECRET="your-super-secure-refresh-secret-key-minimum-32-characters"
-
-# Application
-NODE_ENV=development
+# Optional (defaults to 5000)
 PORT=5000
+```
 
-# CORS (add your frontend URLs)
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:19006
-Step 5: Initialize Database
-# From apps/backend directory
-cd apps/backend
+Notes:
+- The backend sets a global prefix: `/api/v1`.
+- By default it runs at `http://localhost:5000`.
+- CORS is enabled for local dev origins (see `Backend/src/main.ts`).
 
-# Generate Prisma client
-pnpm prisma generate
+### Web app (`web-app/.env.local`)
 
-# Run migrations
-pnpm prisma migrate dev
+Create `web-app/.env.local`:
 
-# Seed database with test data (optional but recommended)
-pnpm run db:seed
-After seeding, you'll have test accounts for all roles (details in Default Users section).
+```env
+# Base URL of the backend INCLUDING the /api/v1 prefix
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5000/api/v1
+```
 
-⚙️ Configuration
-Backend Configuration
-File: apps/backend/.env
+If you do not set this, the app falls back to `http://localhost:5000/api/v1`.
 
-# ==============================================
-# DATABASE
-# ==============================================
-DATABASE_URL="postgresql://learnup_user:password@localhost:5432/learnup_db?schema=public"
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=learnup_user
-DB_PASSWORD=your_password
-DB_NAME=learnup_db
+### Mobile app (`mobile/.env`)
 
-# ==============================================
-# APPLICATION
-# ==============================================
-NODE_ENV=development
-PORT=5000
-API_URL=http://localhost:5000
-WEB_URL=http://localhost:3000
+The mobile app reads the API base URL from `EXPO_PUBLIC_API_KEY` (name is a bit misleading, but that’s what the code uses).
 
-# ==============================================
-# JWT AUTHENTICATION (REQUIRED)
-# ==============================================
-JWT_SECRET="generate-a-secure-random-string-min-32-chars"
-JWT_EXPIRES_IN=1h
-JWT_REFRESH_SECRET="generate-another-secure-random-string-min-32-chars"
-JWT_REFRESH_EXPIRES_IN=7d
+Create `mobile/.env`:
 
-# ==============================================
-# REDIS (Optional in development)
-# ==============================================
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
+```env
+# For iOS simulator / Android emulator you can often use localhost.
+# For a real device, use your computer's LAN IP (e.g. http://192.168.1.20:5000/api/v1)
+EXPO_PUBLIC_API_KEY=http://localhost:5000/api/v1
+```
 
-# ==============================================
-# CORS (Add your frontend URLs)
-# ==============================================
-ALLOWED_ORIGINS=http://localhost:3000,http://localhost:19006,capacitor://localhost
+## Run the applications
 
-# ==============================================
-# SECURITY
-# ==============================================
-BCRYPT_SALT_ROUNDS=12
-SESSION_SECRET=your-session-secret-key
+### 1) Start the backend API
 
-# ==============================================
-# FILE UPLOADS
-# ==============================================
-MAX_FILE_SIZE=10485760
-UPLOAD_PATH=./uploads
+```bash
+pnpm -C Backend start:dev
+```
 
-# ==============================================
-# EMAIL (Notification System)
-# ==============================================
-# Set EMAIL_ENABLED=true to enable email notifications
-EMAIL_ENABLED=false
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-app-password
-EMAIL_SECURE=false
-EMAIL_FROM=noreply@learnup.com
-EMAIL_FROM_NAME=LearnUp Platform
+Backend will log the URL (default `http://localhost:5000`).
 
-# See docs/EMAIL_SETUP.md for detailed configuration guide
-Frontend Configuration
-File: apps/frontend/.env.local
+Quick check:
+- `GET http://localhost:5000/api/v1` (may 404 depending on routes, but the server should be reachable)
 
-NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
-NEXT_PUBLIC_WS_URL=http://localhost:5000
-NEXT_PUBLIC_APP_NAME=LearnApp
-Mobile Configuration
-File: apps/mobile/application/app.config.ts
+### 2) Start the web app
 
-Update the apiUrl in the extra section:
+```bash
+pnpm -C web-app dev
+```
 
-export default {
-  expo: {
-    // ... other config
-    extra: {
-      apiUrl: process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000/api/v1",
-    },
-  },
-};
-Desktop Configuration
-File: apps/mobile-desktop/src/lib/api-client.ts
+Open the URL printed by Next.js (usually `http://localhost:3000`).
 
-Update the BASE_URL:
+### 3) Start the mobile app
 
-const BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5000/api/v1";
-🏃 Running Applications
-Backend API
-cd apps/backend
+```bash
+pnpm -C mobile start
+```
 
-# Development mode (with hot reload)
-pnpm run start:dev
+Then:
+- press `i` for iOS simulator, `a` for Android emulator, or
+- scan the QR code in Expo Go (make sure `EXPO_PUBLIC_API_KEY` points to a reachable IP from your phone).
 
-# Debug mode
-pnpm run start:debug
+## Model (Python) — training & prediction
 
-# Production mode
-pnpm run build
-pnpm run start:prod
-Backend will be available at: http://localhost:5000
-API Documentation: http://localhost:5000/api/docs
+The ML scripts live under `model/finding fish location/train/`.
 
-Frontend (Next.js)
-cd apps/frontend
+### Install Python dependencies
 
-# Development mode
-pnpm run dev
+There is no `requirements.txt` currently; a typical setup is:
 
-# Production build
-pnpm run build
-pnpm run start
-Frontend will be available at: http://localhost:3000
+```bash
+python -m pip install -U pip
+python -m pip install pandas numpy scikit-learn joblib global-land-mask
+```
 
-🔔 Notification System
-The platform includes a comprehensive real-time notification system with multiple delivery channels.
+`global-land-mask` is used to filter land points in Sri Lanka (see `land_mask.py`).
 
-Features
-✅ Real-Time WebSocket Notifications: Instant delivery to online users
-✅ Email Notifications: Beautiful HTML emails with responsive design
-✅ Database Persistence: All notifications stored and retrievable
-✅ Multiple Notification Types: Exams, classes, system updates, announcements
-✅ Unread Tracking: Badge counts and status management
-✅ Mark as Read: Individual or bulk operations
-🔄 Push Notifications: Coming soon (FCM/APNS)
-🔄 Daily Digest Emails: Coming soon
-Quick Setup
-1. Enable Email Notifications (Optional)
-# Edit apps/backend/.env
-EMAIL_ENABLED=true
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASSWORD=your-16-char-app-password
-EMAIL_FROM=your-email@gmail.com
-EMAIL_FROM_NAME=LearnUp Platform
-For detailed email setup instructions, see docs/EMAIL_SETUP.md
+### Train the model
 
-2. Test Notifications
-Start the backend: cd apps/backend && pnpm start:dev
-Start the frontend: cd apps/frontend && pnpm dev
-Login and trigger a notification event (e.g., approve a teacher)
-Check:
-Real-time notification appears in bell icon
-Toast popup shows new notification
-Email sent (if enabled)
-Architecture
-Event → NotificationsService → [Database + WebSocket + Email]
-                                       ↓           ↓         ↓
-                                   Prisma    Gateway  EmailService
-                                       ↓           ↓         ↓
-                                   Storage   Online Users  SMTP
-Documentation
-Email Configuration Guide - Complete SMTP setup
-Implementation Summary - Technical details
-Next Steps - Roadmap and future enhancements
-🧪 Testing
-Backend Tests
-cd apps/backend
+```bash
+python "model/finding fish location/train/train_random_forest.py" \
+	--data "model/finding fish location/train/final_dataset_no_bathymetry.csv"
+```
 
-# Run all unit tests
-pnpm test
+This writes a model artifact under:
+- `model/finding fish location/train/models/rf_fish_zone_model.pkl`
 
-# Run tests in watch mode
-pnpm test:watch
+### Predict fish presence (0/1)
 
-# Run tests with coverage
-pnpm test:cov
+```bash
+python "model/finding fish location/train/predict_fish_zone.py" \
+	--lat 7.2 --lon 80.6 --sst 28.0 --chlorophyll 0.3 --u 0.2 --v 0.1
+```
 
-# Run E2E tests
-pnpm test:e2e
-Test Coverage: 51 test cases covering authentication, notifications, and exam management.
+## Useful scripts
 
-Frontend Tests
-cd apps/frontend
+### Backend
+- Dev server: `pnpm -C Backend start:dev`
+- Build: `pnpm -C Backend build`
 
-# Run all tests
-pnpm test
+### Web
+- Dev server: `pnpm -C web-app dev`
+- Production build: `pnpm -C web-app build`
 
-# Run tests in watch mode
-pnpm test:watch
+### Mobile
+- Expo dev server: `pnpm -C mobile start`
+- Android: `pnpm -C mobile android`
+- iOS: `pnpm -C mobile ios`
 
-# Run tests with coverage
-pnpm test -- --coverage
-Mobile (Expo)
-cd apps/mobile/
+## Troubleshooting
 
-# Start Expo dev server
-pnpm start
-
-# Run on Android
-pnpm run android
-
-# Run on iOS (macOS only)
-pnpm run ios
-
-# Run in web browser
-pnpm run web
-Desktop (Electron)
-cd apps/mobile-desktop
-
-# Development mode
-pnpm run dev
-
-# Build for production
-pnpm run build:win      # Windows
-pnpm run build:mac      # macOS
-pnpm run build:linux    # Linux
-🐳 Docker Deployment
-Quick Start with Docker
-The easiest way to get the LearnApp Platform running is with Docker:
-
-# Clone the repository
-git clone https://github.com/FAITE-TECH/learnup-platform.git
-cd learnup-platform
-
-# Start all services (first time setup)
-docker-compose up -d
-
-# Wait for services to initialize (30-60 seconds)
-# Check logs
-docker-compose logs -f backend
-
-# Access the application
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:5000
-# API Docs: http://localhost:5000/api/docs
-Services Started
-Service	Port	URL	Description
-frontend	3000	http://localhost:3000	Next.js Web Application
-backend	5000	http://localhost:5000	NestJS API Server
-postgres	5432	localhost:5432	PostgreSQL Database
-redis	6379	localhost:6379	Redis Cache
-Database Initialization
-The database is automatically initialized on first run:
-
-✅ Migrations applied automatically
-✅ Seed data loaded (test users and sample data)
+- **Web/mobile can’t reach the backend**: confirm `NEXT_PUBLIC_API_BASE_URL` / `EXPO_PUBLIC_API_KEY` is correct and includes `/api/v1`.
+- **Running on a real phone**: do not use `localhost`; use your computer’s LAN IP (same Wi‑Fi).
+- **MongoDB connection errors**: verify `Backend/.env` has a valid `MONGO` connection string and that your IP is allowed in Atlas.

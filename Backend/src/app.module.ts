@@ -7,6 +7,11 @@ import { AuthModule } from './auth/auth.module';
 import { GradingModule } from './grading/grading.module';
 import { UserModule } from './user/user.module';
 import * as path from 'path';
+import { TripsModule } from './trips/trips.module';
+import { AnalyticsModule } from './trips_analytics/trips_analytics.module';
+import { MlModule } from './tripml/tripml.module';
+import { CostEngineModule } from './cost-engine/cost-engine.module';
+import { CostPreferencesModule } from './cost-preferences/cost-preferences.module';
 
 @Module({
   imports: [
@@ -33,6 +38,12 @@ import * as path from 'path';
     AuthModule,
     GradingModule,
     UserModule,
+    TripsModule,
+    AnalyticsModule,
+    MlModule,
+    CostEngineModule,
+    CostPreferencesModule,
+
   ],
 })
 export class AppModule {}

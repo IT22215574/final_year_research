@@ -21,15 +21,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
   };
 
   const menuItems = [
-    { name: "Home", path: "/home" as const, icon: icons.nav_home },
-    { name: "Market", path: "/Market" as const, icon: icons.HouseSale },
-    { name: "Quality", path: "/Quality" as const, icon: icons.Digital },
+    { name: "Home", path: "/(tabs)/home", icon: icons.nav_home },
+    { name: "Market", path: "/(tabs)/Market", icon: icons.HouseSale },
+    { name: "Quality", path: "/(tabs)/Quality", icon: icons.Digital },
     {
       name: "Notifications",
-      path: "/Notifications" as const,
+      path: "/(tabs)/Notifications",
       icon: icons.notification,
     },
-    { name: "Profile", path: "/profile" as const, icon: icons.nav_user },
+    { name: "Profile", path: "/(tabs)/profile", icon: icons.nav_user },
+    { name: "Trip Cost", path: "/(tabs)/fishtripcost", icon: icons.BackArrow },
   ];
 
   // Default avatar if user doesn't have one
@@ -139,3 +140,4 @@ const styles = StyleSheet.create({
 });
 
 export default Sidebar;
+

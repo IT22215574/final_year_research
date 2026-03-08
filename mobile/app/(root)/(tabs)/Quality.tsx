@@ -1,4 +1,4 @@
-﻿// screens/Quality.tsx  — Hub screen
+﻿﻿// screens/Quality.tsx  — Hub screen
 
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";

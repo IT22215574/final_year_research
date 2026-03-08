@@ -4,6 +4,16 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+
+# ======================
+# Python ML
+# ======================
+model/cost_prediction/venv/
+model/cost_prediction/__pycache__/
+model/cost_prediction/models/*.pkl
+
+
+
 # Production builds
 dist/
 build/

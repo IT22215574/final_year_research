@@ -175,7 +175,7 @@ export default function Profile() {
             title="Edit Profile"
             icon="create-outline"
             color={["#10B981", "#34D399"]}
-            onPress={() => router.push("/update_profile")}
+            onPress={() => router.push("/Update_profile")}
           />
           <ActionCard
             title="Documents"

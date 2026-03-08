@@ -903,3 +903,4 @@ const styles = StyleSheet.create({
 });
 
 export default OnBoard2;
+
