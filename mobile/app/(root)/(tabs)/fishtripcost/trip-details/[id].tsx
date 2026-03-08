@@ -12,6 +12,7 @@ import { useFocusEffect, useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { deleteTrip, getTripById } from "@/services/tripService";
+import FishTripNavBar from "../components/FishTripNavBar";
 
 type ExternalCostItem = {
   name: string;
@@ -51,6 +52,7 @@ type Trip = {
   averageSpeed?: number;
   crewCount?: number;
   fishingHours?: number;
+  numberOfDays?: number;
   fuelCost?: number;
   totalCost?: number;
   predictedFuelLiters?: number;
@@ -332,6 +334,7 @@ export default function TripDetailsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f9fafb" }}>
+      <FishTripNavBar />
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 }}
         showsVerticalScrollIndicator={false}
@@ -446,6 +449,10 @@ export default function TripDetailsScreen() {
           <Row
             label="Fishing Hours"
             value={trip.fishingHours != null ? `${formatNumber(trip.fishingHours)} hrs` : "N/A"}
+          />
+          <Row
+            label="Number of Days"
+            value={trip.numberOfDays != null ? `${trip.numberOfDays} day${trip.numberOfDays > 1 ? 's' : ''}` : "N/A"}
           />
           <Row label="Crew Count" value={trip.crewCount != null ? String(trip.crewCount) : "N/A"} />
         </Section>

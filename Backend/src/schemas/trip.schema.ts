@@ -105,6 +105,9 @@ export class Trip {
   @Prop()
   fishingHours?: number;
 
+  @Prop()
+  numberOfDays?: number;
+
   // virtuals
   fuelCost: number;
   totalCost: number;

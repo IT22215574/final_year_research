@@ -130,6 +130,7 @@ export class CostEngineService {
           speed: dto.speed,
           engineHP: boat.engineHorsePower ?? 85,
           fishingHours: dto.fishingHours,
+          numberOfDays: dto.numberOfDays,
           weatherSeverityIndex: wsi,
           engineDegradation: 1 - (boat.engineDegradationFactor ?? 0),
           fuelEfficiencyFactor: efficiencyFactor,
@@ -426,6 +427,7 @@ async predictAndSave(dto: PredictAndSaveDto, req: Request) {
     speed: dto.speed,
     crewCount: dto.crewCount,
     fishingHours: dto.fishingHours,
+    numberOfDays: dto.numberOfDays,
 
     predictedFuelLiters: prediction.fuel.adjustedFuelLiters,
     predictedTotalCost: prediction.cost.predictedTotalCost,
@@ -507,9 +509,9 @@ async optimizeTrip(dto: OptimizeTripDto, userId?: string) {
         'http://localhost:5001';
 
       const riskData = {
-        weatherSeverityIndex: data.weatherData?.wsi || 0.5,
-        windSpeed: data.weatherData?.windSpeed || 20,
-        waveHeight: data.weatherData?.waveHeight || 2.0,
+        weatherSeverityIndex: data.weatherData?.wsi || 0.25,
+        windSpeed: data.weatherData?.windSpeed || 15,
+        waveHeight: data.weatherData?.waveHeight || 1.5,
         tripDuration: data.tripDuration,
         tripDate: new Date().toISOString(),
 
@@ -544,7 +546,7 @@ async optimizeTrip(dto: OptimizeTripDto, userId?: string) {
 
       const response = await firstValueFrom(
         this.http.post(`${mlServiceUrl}/assess/risk`, riskData, {
-          timeout: 15000,
+          timeout: 30000,
           headers: { 'Content-Type': 'application/json' },
         }),
       );

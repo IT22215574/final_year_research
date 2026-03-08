@@ -52,6 +52,11 @@ export class PredictCostDto {
   @Type(() => Number)
   @IsNumber()
   @Min(1)
+  numberOfDays: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
   crewCount: number;
 
   @Type(() => Number)

@@ -76,7 +76,7 @@ export default function AddBoatScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         quality: 0.8,
         allowsEditing: true,
       });
@@ -253,7 +253,7 @@ export default function AddBoatScreen() {
           <TextInput
             value={engineHorsePower}
             onChangeText={setEngineHorsePower}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             placeholder="e.g. 150"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
           />
@@ -307,7 +307,7 @@ export default function AddBoatScreen() {
               <TextInput
                 value={boatLength}
                 onChangeText={setBoatLength}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 placeholder="e.g. 28"
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
               />
@@ -318,7 +318,7 @@ export default function AddBoatScreen() {
               <TextInput
                 value={boatWidth}
                 onChangeText={setBoatWidth}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 placeholder="e.g. 8"
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
               />
@@ -329,7 +329,7 @@ export default function AddBoatScreen() {
           <TextInput
             value={boatValue}
             onChangeText={setBoatValue}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             placeholder="e.g. 2500000"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
           />
@@ -346,7 +346,7 @@ export default function AddBoatScreen() {
           <TextInput
             value={fuelEfficiencyFactor}
             onChangeText={setFuelEfficiencyFactor}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             placeholder="e.g. 1"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
           />
@@ -357,7 +357,7 @@ export default function AddBoatScreen() {
           <TextInput
             value={engineDegradationFactor}
             onChangeText={setEngineDegradationFactor}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             placeholder="e.g. 0.05"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
           />
@@ -368,7 +368,7 @@ export default function AddBoatScreen() {
           <TextInput
             value={averageFuelPredictionError}
             onChangeText={setAverageFuelPredictionError}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             placeholder="e.g. 3.2"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5"
           />

@@ -19,6 +19,7 @@ import { predictAndSaveTripDatcie } from "@/services/tripService";
 import { getBoatLearningInsights, getBoatPredictionHistory } from "@/services/boatService";
 import ExternalCostSummaryCard from "./components/ExternalCostSummaryCard";
 import TotalCostCard from "./components/TotalCostCard";
+import FishTripNavBar from "./components/FishTripNavBar";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -72,6 +73,9 @@ const ResultScreen = () => {
   };
 
   const cards = useMemo(() => {
+    // Debug: Log the prediction structure
+    console.log('🔍 Prediction Data:', JSON.stringify(prediction, null, 2));
+
     const fuelLiters =
       prediction?.fuel?.predictedFuelLiters ??
       prediction?.predictedFuelLiters ??
@@ -97,6 +101,15 @@ const ResultScreen = () => {
       prediction?.cost?.totalCost ??
       prediction?.predictedTotalCost ??
       null;
+
+    // Debug: Log extracted cost values
+    console.log('💰 Extracted Cost Values:', {
+      fuelCost,
+      operationalCost,
+      externalCostTotal,
+      totalCost,
+      hasValidTotalCost: typeof totalCost === 'number'
+    });
 
     const externalCosts =
       prediction?.cost?.predictedExternalCosts ??
@@ -178,6 +191,7 @@ const ResultScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
+      <FishTripNavBar />
       {/* Header */}
       <View className="px-5 pt-3 pb-3 flex-row justify-between items-center bg-white border-b border-slate-100">
         <View>
@@ -224,11 +238,11 @@ const ResultScreen = () => {
           <View className="flex-row gap-3 mb-3">
             <Card
               title="⛽ Fuel (L)"
-              value={cards.fuelLiters ? num1(cards.fuelLiters) : "-"}
+              value={typeof cards.fuelLiters === 'number' ? num1(cards.fuelLiters) : "-"}
             />
             <Card
               title="💰 Total Cost (Rs)"
-              value={cards.totalCost ? money(cards.totalCost) : "-"}
+              value={typeof cards.totalCost === 'number' ? money(cards.totalCost) : "-"}
               highlight
             />
           </View>
@@ -236,7 +250,7 @@ const ResultScreen = () => {
           <View className="flex-row gap-3 mb-3">
             <Card
               title="🌿 Carbon (kg)"
-              value={cards.carbonKg ? num1(cards.carbonKg) : "-"}
+              value={typeof cards.carbonKg === 'number' ? num1(cards.carbonKg) : "-"}
             />
             <Card
               title="📈 Profitability"
@@ -301,7 +315,7 @@ const ResultScreen = () => {
           )}
 
           {/* 📊 COST BREAKDOWN PIE CHART */}
-          {cards.fuelCost && cards.totalCost && (
+          {typeof cards.fuelCost === 'number' && typeof cards.totalCost === 'number' && (
             <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
               <Text className="text-base font-semibold text-slate-800 mb-4">
                 💰 Cost Breakdown (Research Visualization)
@@ -444,7 +458,7 @@ const ResultScreen = () => {
           )}
 
           {/* Total Cost Breakdown */}
-          {cards.totalCost && (
+          {typeof cards.totalCost === 'number' && (
             <View className="mb-3">
               <TotalCostCard
                 fuelCost={cards.fuelCost}
@@ -624,3 +638,4 @@ const Card = ({
 };
 
 export default ResultScreen;
+

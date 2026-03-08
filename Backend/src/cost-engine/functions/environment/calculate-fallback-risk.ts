@@ -25,42 +25,77 @@ export function determineFishingZone(distance: number): string {
 }
 
 export function calculateFallbackRisk(data: any): any {
-  const weatherRisk = data.weatherData?.wsi || 0.5;
-  const distanceRisk = Math.min(data.distance / 200, 1.0);
-  const economicRisk =
-    data.predictedCost > data.expectedRevenue ? 0.8 : 0.3;
+  const weatherRisk = data.weatherData?.wsi || 0.3;
+  
+  // More realistic distance risk - only long distances are risky
+  const distanceRisk = Math.min(data.distance / 300, 1.0) * 0.6;
+  
+  // Improved economic risk - consider profit margin not just loss
+  const profitMargin = (data.expectedRevenue - data.predictedCost) / data.expectedRevenue;
+  let economicRisk = 0.3; // Default moderate risk
+  
+  if (profitMargin < -0.2) {
+    economicRisk = 0.85; // Significant loss expected
+  } else if (profitMargin < 0) {
+    economicRisk = 0.65; // Small loss expected
+  } else if (profitMargin < 0.1) {
+    economicRisk = 0.5; // Low margin
+  } else if (profitMargin < 0.25) {
+    economicRisk = 0.35; // Moderate margin
+  } else {
+    economicRisk = 0.2; // Good margin
+  }
 
+  // Weighted combination - prioritize weather and economic factors
   const overallRisk =
-    weatherRisk * 0.4 + distanceRisk * 0.3 + economicRisk * 0.3;
+    weatherRisk * 0.45 + economicRisk * 0.35 + distanceRisk * 0.20;
 
+  // More realistic risk category thresholds
   let riskCategory = 'low';
-  if (overallRisk > 0.7) riskCategory = 'high';
-  else if (overallRisk > 0.4) riskCategory = 'medium';
+  let riskLevel = 'acceptable';
+  
+  if (overallRisk > 0.75) {
+    riskCategory = 'critical';
+    riskLevel = 'dangerous';
+  } else if (overallRisk > 0.6) {
+    riskCategory = 'high';
+    riskLevel = 'concerning';
+  } else if (overallRisk > 0.4) {
+    riskCategory = 'medium';
+    riskLevel = 'manageable';
+  } else {
+    riskCategory = 'low';
+    riskLevel = 'acceptable';
+  }
 
   return {
     overallRiskScore: Math.round(overallRisk * 1000) / 1000,
     riskCategory,
-    riskLevel: riskCategory === 'high' ? 'concerning' : 'manageable',
+    riskLevel,
+    confidenceScore: 0.65, // Moderate confidence for fallback
     detailedAssessment: {
       weatherRisk: {
-        score: weatherRisk,
-        category: weatherRisk > 0.6 ? 'high' : 'medium',
+        score: Math.round(weatherRisk * 1000) / 1000,
+        category: weatherRisk > 0.7 ? 'high' : weatherRisk > 0.5 ? 'medium' : 'low',
       },
       economicRisk: {
-        score: economicRisk,
-        category: economicRisk > 0.6 ? 'high' : 'low',
+        score: Math.round(economicRisk * 1000) / 1000,
+        category: economicRisk > 0.65 ? 'high' : economicRisk > 0.45 ? 'medium' : 'low',
+        profitMargin: Math.round(profitMargin * 1000) / 1000,
       },
       operationalRisk: {
-        score: distanceRisk,
-        category: distanceRisk > 0.5 ? 'high' : 'medium',
+        score: Math.round(distanceRisk * 1000) / 1000,
+        category: distanceRisk > 0.5 ? 'high' : distanceRisk > 0.3 ? 'medium' : 'low',
       },
     },
     recommendedActions: [
-      overallRisk > 0.7
-        ? 'Consider postponing trip due to high risk factors'
-        : overallRisk > 0.4
-          ? 'Proceed with enhanced monitoring and safety measures'
-          : 'Acceptable risk level for proceeding with standard precautions',
+      overallRisk > 0.75
+        ? 'High risk detected - carefully review weather and economic factors before proceeding'
+        : overallRisk > 0.6
+          ? 'Moderate-high risk - proceed with enhanced monitoring and contingency plans'
+          : overallRisk > 0.4
+            ? 'Moderate risk - standard safety measures and monitoring recommended'
+            : 'Low risk level - proceed with normal precautions',
     ],
     source: 'simplified_fallback',
   };

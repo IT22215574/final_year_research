@@ -38,6 +38,7 @@ const TripPlanner = () => {
   const [distance, setDistance] = useState("");
   const [engineHP, setEngineHP] = useState("");
   const [duration, setDuration] = useState("");
+  const [numberOfDays, setNumberOfDays] = useState("1");
   const [windSpeed, setWindSpeed] = useState("");
   const [waveHeight, setWaveHeight] = useState("");
   const [fuelPrice, setFuelPrice] = useState("350");
@@ -325,7 +326,7 @@ const TripPlanner = () => {
     if (!duration || !windSpeed || !waveHeight || !fuelPrice) {
       Alert.alert(
         "Missing Fields",
-        "Fill fishing hours, wind, wave, fuel price.",
+        "Fill fishing hours, number of days, wind, wave, fuel price.",
       );
       return;
     }
@@ -339,6 +340,7 @@ const TripPlanner = () => {
 
         speed: parseFloat(speed || "10"),
         fishingHours: parseFloat(duration),
+        numberOfDays: parseInt(numberOfDays || "1", 10),
         crewCount: parseInt(crewCount || "3", 10),
 
         windSpeed: parseFloat(windSpeed),
@@ -402,6 +404,7 @@ const TripPlanner = () => {
 
         // optional speed not passed here so backend will test [8,10,12,14]
         fishingHours: parseFloat(duration || "8"),
+        numberOfDays: parseInt(numberOfDays || "1", 10),
         crewCount: parseInt(crewCount || "3", 10),
 
         windSpeed: parseFloat(windSpeed || "10"),
@@ -862,7 +865,7 @@ const TripPlanner = () => {
             ) : (
               <TextInput
                 placeholder="Enter engine HP"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={engineHP}
                 onChangeText={(v) => {
                   setEngineHP(v);
@@ -890,7 +893,7 @@ const TripPlanner = () => {
               </Text>
               <TextInput
                 placeholder="10"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={speed}
                 onChangeText={setSpeed}
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
@@ -903,7 +906,7 @@ const TripPlanner = () => {
               </Text>
               <TextInput
                 placeholder="3"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={crewCount}
                 onChangeText={setCrewCount}
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
@@ -918,7 +921,7 @@ const TripPlanner = () => {
               </Text>
               <TextInput
                 placeholder="120"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={expectedCatch}
                 onChangeText={setExpectedCatch}
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
@@ -931,7 +934,7 @@ const TripPlanner = () => {
               </Text>
               <TextInput
                 placeholder="550"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={marketPrice}
                 onChangeText={setMarketPrice}
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
@@ -993,7 +996,7 @@ const TripPlanner = () => {
               </Text>
               <TextInput
                 placeholder="0"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={distance}
                 onChangeText={setDistance}
                 editable={selectedZones.length === 0}
@@ -1011,9 +1014,22 @@ const TripPlanner = () => {
               </Text>
               <TextInput
                 placeholder="8"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={duration}
                 onChangeText={setDuration}
+                className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
+              />
+            </View>
+
+            <View className="flex-1">
+              <Text className="text-xs text-slate-500 mb-1.5 font-medium">
+                Number of Days
+              </Text>
+              <TextInput
+                placeholder="1"
+                keyboardType="decimal-pad"
+                value={numberOfDays}
+                onChangeText={setNumberOfDays}
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
               />
             </View>
@@ -1028,7 +1044,7 @@ const TripPlanner = () => {
               </View>
               <TextInput
                 placeholder="350"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={fuelPrice}
                 onChangeText={setFuelPrice}
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
@@ -1051,7 +1067,7 @@ const TripPlanner = () => {
               </View>
               <TextInput
                 placeholder="10"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={windSpeed}
                 onChangeText={(text) => {
                   setWindSpeed(text);
@@ -1086,7 +1102,7 @@ const TripPlanner = () => {
               </View>
               <TextInput
                 placeholder="1.0"
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 value={waveHeight}
                 onChangeText={(text) => {
                   setWaveHeight(text);
@@ -1251,3 +1267,5 @@ const TripPlanner = () => {
 };
 
 export default TripPlanner;
+
+

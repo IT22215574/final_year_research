@@ -58,6 +58,11 @@ uploads/
 *.tmp
 *.temp
 
+# Documentation files (excluding README.md)
+*.md
+!README.md
+!**/README.md
+
 
 
 # ===============================

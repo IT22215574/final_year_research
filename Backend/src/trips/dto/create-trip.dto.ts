@@ -191,6 +191,12 @@ export class CreateTripDto {
   fishingHours?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  numberOfDays?: number;
+
+  @IsOptional()
   @IsEnum(['island', 'international'])
   mode?: 'island' | 'international';
 

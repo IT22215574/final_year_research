@@ -121,7 +121,7 @@ export default function EditBoatScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         quality: 0.8,
         allowsEditing: true,
       });
@@ -297,7 +297,7 @@ export default function EditBoatScreen() {
           <TextInput
             value={engineHorsePower}
             onChangeText={setEngineHorsePower}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
           />
 
@@ -350,7 +350,7 @@ export default function EditBoatScreen() {
               <TextInput
                 value={boatLength}
                 onChangeText={setBoatLength}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
               />
             </View>
@@ -360,7 +360,7 @@ export default function EditBoatScreen() {
               <TextInput
                 value={boatWidth}
                 onChangeText={setBoatWidth}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
                 className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
               />
             </View>
@@ -370,7 +370,7 @@ export default function EditBoatScreen() {
           <TextInput
             value={boatValue}
             onChangeText={setBoatValue}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5"
           />
         </View>
@@ -386,7 +386,7 @@ export default function EditBoatScreen() {
           <TextInput
             value={fuelEfficiencyFactor}
             onChangeText={setFuelEfficiencyFactor}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
           />
 
@@ -396,7 +396,7 @@ export default function EditBoatScreen() {
           <TextInput
             value={engineDegradationFactor}
             onChangeText={setEngineDegradationFactor}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
           />
 
@@ -406,7 +406,7 @@ export default function EditBoatScreen() {
           <TextInput
             value={averageFuelPredictionError}
             onChangeText={setAverageFuelPredictionError}
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             className="bg-slate-50 border border-slate-200 rounded-xl p-3.5"
           />
         </View>

@@ -250,3 +250,223 @@ class BoatCoefficientsManager:
         }
         
         return insights
+    
+    # ========================
+    # MODEL MANAGEMENT METHODS
+    # ========================
+    
+    def _backup_coefficients(self, boat_id: str, coeffs: Dict, reason: str = "") -> str:
+        """
+        Create timestamped backup of boat coefficients
+        Essential for research reproducibility and safety
+        """
+        backup_dir = os.path.join(os.path.dirname(self.coefficients_path), "coefficient_backups")
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        backup_file = os.path.join(backup_dir, f"{boat_id}_{timestamp}.json")
+        
+        backup_data = {
+            "boatId": boat_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "reason": reason,
+            "coefficients": coeffs
+        }
+        
+        with open(backup_file, "w") as f:
+            json.dump(backup_data, f, indent=2)
+        
+        return backup_file
+    
+    def reset_boat_coefficients(self, boat_id: str) -> Dict:
+        """
+        Reset boat coefficients to defaults - supports research experiments
+        
+        Use cases:
+        - Boat engine replaced (coefficients no longer valid)
+        - Bad data corrupted model (need fresh start)
+        - Research comparison (cold-start vs learned model)
+        
+        Returns:
+            Dict with reset confirmation and backup info
+        """
+        # Get current coefficients for backup
+        old_coeffs = self.get_boat_coefficients(boat_id) if boat_id in self.coefficients else {}
+        
+        # Create backup before reset
+        backup_file = ""
+        if old_coeffs.get("dataPoints", 0) > 0:
+            backup_file = self._backup_coefficients(boat_id, old_coeffs, reason="manual_reset")
+        
+        # Reset to default coefficients
+        default_coeffs = {
+            "fuelEfficiencyFactor": 1.0,
+            "engineDegradationFactor": 0.0,
+            "speedOptimizationFactor": 1.0,
+            "weatherAdaptationFactor": 1.0,
+            "loadCapacityFactor": 1.0,
+            "learningRate": 0.05,
+            "confidence": 0.0,  # Zero confidence after reset
+            "dataPoints": 0,
+            "lastUpdated": datetime.utcnow().isoformat(),
+            "avgPredictionError": 0.0,
+            "errorTrend": 0.0,
+            "seasonalAdjustments": {
+                "monsoon": 1.1,
+                "dry": 0.95,
+                "inter_monsoon": 1.0
+            }
+        }
+        
+        # Update and save
+        self.coefficients[boat_id] = default_coeffs
+        self._save_coefficients()
+        
+        return {
+            "success": True,
+            "message": f"Boat {boat_id} coefficients reset to defaults",
+            "resetCoefficients": default_coeffs,
+            "previousDataPoints": old_coeffs.get("dataPoints", 0),
+            "previousConfidence": old_coeffs.get("confidence", 0),
+            "backupCreated": backup_file != "",
+            "backupFile": backup_file
+        }
+    
+    def reset_all_coefficients(self) -> Dict:
+        """
+        Reset ALL boat coefficients - use for system-wide experiments
+        WARNING: Dangerous operation - creates full backup first
+        """
+        # Create system-wide backup
+        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        backup_path = self.coefficients_path + f".backup_{timestamp}"
+        
+        with open(backup_path, "w") as f:
+            json.dump(self.coefficients, f, indent=2)
+        
+        boats_reset = list(self.coefficients.keys())
+        total_data_points = sum(c.get("dataPoints", 0) for c in self.coefficients.values())
+        
+        # Clear all coefficients
+        self.coefficients = {}
+        self._save_coefficients()
+        
+        return {
+            "success": True,
+            "message": "All boat coefficients reset to defaults",
+            "boatsReset": len(boats_reset),
+            "boatIds": boats_reset,
+            "totalDataPointsLost": total_data_points,
+            "backupFile": backup_path
+        }
+    
+    def retrain_from_history(self, boat_id: str, 
+                            error_threshold: Optional[float] = None,
+                            max_days: Optional[int] = None) -> Dict:
+        """
+        Retrain boat model from historical trip data
+        
+        Research value: Demonstrates adaptive learning can rebuild from data
+        
+        Args:
+            boat_id: Boat to retrain
+            error_threshold: Only use trips with |error| < threshold (filter outliers)
+            max_days: Only use trips from last N days
+        
+        Returns:
+            Retrain results with before/after comparison
+        """
+        # Get historical trips
+        history = self.get_boat_prediction_history(boat_id, days=max_days or 365)
+        
+        if not history:
+            return {
+                "success": False,
+                "message": f"No historical data available for boat {boat_id}",
+                "tripsUsed": 0
+            }
+        
+        # Backup current state
+        old_coeffs = self.get_boat_coefficients(boat_id)
+        self._backup_coefficients(boat_id, old_coeffs, reason="pre_retrain")
+        
+        # Reset to defaults
+        self.reset_boat_coefficients(boat_id)
+        
+        # Filter trips if error threshold specified
+        filtered_history = history
+        if error_threshold is not None:
+            filtered_history = [
+                entry for entry in history 
+                if abs(entry.get("relativePredictionError", 0)) < error_threshold
+            ]
+        
+        # Retrain by replaying trips in chronological order
+        retrain_count = 0
+        for entry in sorted(filtered_history, key=lambda x: x.get("timestamp", "")):
+            try:
+                # Update coefficients with historical trip
+                self.update_coefficients(
+                    boat_id=boat_id,
+                    predicted_fuel=entry["predictedFuel"],
+                    actual_fuel=entry["actualFuel"],
+                    context=entry.get("context", {})
+                )
+                retrain_count += 1
+            except Exception as e:
+                print(f"Error retraining trip: {e}")
+                continue
+        
+        # Get new coefficients after retraining
+        new_coeffs = self.get_boat_coefficients(boat_id)
+        
+        return {
+            "success": True,
+            "message": f"Successfully retrained boat {boat_id}",
+            "tripsUsed": retrain_count,
+            "tripsFiltered": len(history) - len(filtered_history),
+            "tripsAvailable": len(history),
+            "oldCoefficients": {
+                "confidence": old_coeffs.get("confidence", 0),
+                "dataPoints": old_coeffs.get("dataPoints", 0),
+                "avgPredictionError": old_coeffs.get("avgPredictionError", 0)
+            },
+            "newCoefficients": {
+                "confidence": new_coeffs.get("confidence", 0),
+                "dataPoints": new_coeffs.get("dataPoints", 0),
+                "avgPredictionError": new_coeffs.get("avgPredictionError", 0),
+                "fuelEfficiencyFactor": new_coeffs.get("fuelEfficiencyFactor", 1.0),
+                "engineDegradationFactor": new_coeffs.get("engineDegradationFactor", 0.0)
+            },
+            "improvement": {
+                "errorReduction": old_coeffs.get("avgPredictionError", 0) - new_coeffs.get("avgPredictionError", 0),
+                "confidenceChange": new_coeffs.get("confidence", 0) - old_coeffs.get("confidence", 0),
+                "dataPointsChange": new_coeffs.get("dataPoints", 0) - old_coeffs.get("dataPoints", 0)
+            }
+        }
+    
+    def get_backups_list(self, boat_id: str) -> List[Dict]:
+        """Get list of available backups for a boat"""
+        backup_dir = os.path.join(os.path.dirname(self.coefficients_path), "coefficient_backups")
+        
+        if not os.path.exists(backup_dir):
+            return []
+        
+        backups = []
+        for filename in os.listdir(backup_dir):
+            if filename.startswith(boat_id) and filename.endswith(".json"):
+                filepath = os.path.join(backup_dir, filename)
+                try:
+                    with open(filepath, "r") as f:
+                        backup_data = json.load(f)
+                        backups.append({
+                            "filename": filename,
+                            "timestamp": backup_data.get("timestamp"),
+                            "reason": backup_data.get("reason"),
+                            "dataPoints": backup_data.get("coefficients", {}).get("dataPoints", 0),
+                            "confidence": backup_data.get("coefficients", {}).get("confidence", 0)
+                        })
+                except:
+                    continue
+        
+        return sorted(backups, key=lambda x: x.get("timestamp", ""), reverse=True)

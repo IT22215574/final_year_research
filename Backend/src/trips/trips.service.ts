@@ -313,6 +313,7 @@ export class TripsService {
           distanceKm: trip.distanceKm || 0,
           engineHP: boat.engineHorsePower || 85,
           fishingHours: trip.fishingHours || 8,
+          numberOfDays: trip.numberOfDays || 1,
         }),
       );
 
@@ -448,6 +449,7 @@ export class TripsService {
         distanceKm: trip.distanceKm || 0,
         engineHP: boat.engineHorsePower || 85,
         fishingHours: trip.fishingHours || 8,
+        numberOfDays: trip.numberOfDays || 1,
         tripId: String(trip._id),
       });
     }
@@ -590,5 +592,149 @@ export class TripsService {
   // =========================
   async getTotalTripsCount(): Promise<number> {
     return await this.tripModel.countDocuments().exec();
+  }
+
+  // =========================
+  // MODEL MANAGEMENT
+  // (Research lifecycle: reset, retrain, backups)
+  // =========================
+
+  async resetBoatModel(userId: string, boatId: string) {
+    // Verify user owns this boat
+    const boat = await this.boatModel.findById(boatId).exec();
+
+    if (!boat) {
+      throw new NotFoundException('Boat not found');
+    }
+
+    if (String(boat.userId) !== String(userId)) {
+      throw new ForbiddenException('You do not own this boat');
+    }
+
+    const baseUrl =
+      this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
+
+    try {
+      const response = await firstValueFrom(
+        this.http.post(`${baseUrl}/boats/${boatId}/reset`, {}),
+      );
+
+      // Update boat in database to reflect reset
+      boat.fuelEfficiencyFactor = 1.0;
+      boat.engineDegradationFactor = 0.0;
+      boat.averageFuelPredictionError = 0.0;
+      await boat.save();
+
+      return response.data;
+    } catch (e: any) {
+      throw new BadRequestException(
+        e?.response?.data?.detail || 'Failed to reset boat model',
+      );
+    }
+  }
+
+  async retrainBoatModel(
+    userId: string,
+    boatId: string,
+    options: { errorThreshold?: number; maxDays?: number },
+  ) {
+    // Verify ownership
+    const boat = await this.boatModel.findById(boatId).exec();
+
+    if (!boat) {
+      throw new NotFoundException('Boat not found');
+    }
+
+    if (String(boat.userId) !== String(userId)) {
+      throw new ForbiddenException('You do not own this boat');
+    }
+
+    const baseUrl =
+      this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
+
+    try {
+      const response = await firstValueFrom(
+        this.http.post(`${baseUrl}/boats/${boatId}/retrain`, null, {
+          params: {
+            error_threshold: options.errorThreshold,
+            max_days: options.maxDays,
+          },
+        }),
+      );
+
+      const result = response.data;
+
+      // Update boat coefficients after retrain
+      if (result.newCoefficients) {
+        boat.fuelEfficiencyFactor =
+          result.newCoefficients.fuelEfficiencyFactor || 1.0;
+        boat.engineDegradationFactor =
+          result.newCoefficients.engineDegradationFactor || 0.0;
+        boat.averageFuelPredictionError =
+          result.newCoefficients.avgPredictionError || 0.0;
+        await boat.save();
+      }
+
+      return result;
+    } catch (e: any) {
+      throw new BadRequestException(
+        e?.response?.data?.detail || 'Failed to retrain boat model',
+      );
+    }
+  }
+
+  async resetAllModels() {
+    const baseUrl =
+      this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
+
+    try {
+      const response = await firstValueFrom(
+        this.http.post(`${baseUrl}/boats/reset-all`, {}),
+      );
+
+      // Optionally reset all boats in database
+      await this.boatModel.updateMany(
+        {},
+        {
+          fuelEfficiencyFactor: 1.0,
+          engineDegradationFactor: 0.0,
+          averageFuelPredictionError: 0.0,
+        },
+      );
+
+      return response.data;
+    } catch (e: any) {
+      throw new BadRequestException(
+        e?.response?.data?.detail || 'Failed to reset all models',
+      );
+    }
+  }
+
+  async getBoatBackups(userId: string, boatId: string) {
+    // Verify ownership
+    const boat = await this.boatModel.findById(boatId).exec();
+
+    if (!boat) {
+      throw new NotFoundException('Boat not found');
+    }
+
+    if (String(boat.userId) !== String(userId)) {
+      throw new ForbiddenException('You do not own this boat');
+    }
+
+    const baseUrl =
+      this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get(`${baseUrl}/boats/${boatId}/backups`),
+      );
+
+      return response.data;
+    } catch (e: any) {
+      throw new BadRequestException(
+        e?.response?.data?.detail || 'Failed to fetch backups',
+      );
+    }
   }
 }

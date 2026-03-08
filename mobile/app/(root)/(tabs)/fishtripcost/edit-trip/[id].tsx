@@ -27,6 +27,7 @@ type FormState = {
   marketPrice: string;
   speed: string;
   fishingHours: string;
+  numberOfDays: string;
   crewCount: string;
   mode: "island" | "international";
   status: "planned" | "completed" | "cancelled";
@@ -96,6 +97,7 @@ export default function EditTripScreen() {
     marketPrice: "",
     speed: "",
     fishingHours: "",
+    numberOfDays: "1",
     crewCount: "",
     mode: "island",
     status: "planned",
@@ -129,6 +131,7 @@ export default function EditTripScreen() {
         marketPrice: toInput(trip.marketPrice),
         speed: toInput(trip.speed),
         fishingHours: toInput(trip.fishingHours),
+        numberOfDays: toInput(trip.numberOfDays),
         crewCount: toInput(trip.crewCount),
         mode: trip.mode || "island",
         status: trip.status || "planned",
@@ -180,6 +183,7 @@ export default function EditTripScreen() {
         marketPrice: parseOptionalNumber(form.marketPrice),
         speed: parseOptionalNumber(form.speed),
         fishingHours: parseOptionalNumber(form.fishingHours),
+        numberOfDays: parseOptionalNumber(form.numberOfDays),
         crewCount: parseOptionalNumber(form.crewCount),
         mode: form.mode,
         status: form.status,
@@ -369,6 +373,17 @@ export default function EditTripScreen() {
             value={form.fishingHours}
             onChangeText={(text) => updateField("fishingHours", text)}
             placeholder="32"
+            style={inputStyle}
+            keyboardType="numeric"
+          />
+        </View>
+
+        <View style={{ marginBottom: 16 }}>
+          <Text style={labelStyle}>Number of Days</Text>
+          <TextInput
+            value={form.numberOfDays}
+            onChangeText={(text) => updateField("numberOfDays", text)}
+            placeholder="1"
             style={inputStyle}
             keyboardType="numeric"
           />

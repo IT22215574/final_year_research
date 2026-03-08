@@ -200,8 +200,8 @@ const NewTrip = () => {
 
         {/* Boat & Travel */}
         <Text style={styles.sectionTitle}>Boat & Travel</Text>
-        <TextInput placeholder="Distance (km)" keyboardType="numeric" value={distanceKm} onChangeText={setDistanceKm} style={styles.inputBox} />
-        <TextInput placeholder="Engine Horse Power" keyboardType="numeric" value={engineHorsePower} onChangeText={setEngineHorsePower} style={styles.inputBox} />
+        <TextInput placeholder="Distance (km)" keyboardType="decimal-pad" value={distanceKm} onChangeText={setDistanceKm} style={styles.inputBox} />
+        <TextInput placeholder="Engine Horse Power" keyboardType="decimal-pad" value={engineHorsePower} onChangeText={setEngineHorsePower} style={styles.inputBox} />
         <View style={styles.pickerBox}>
           <Picker selectedValue={boatType} onValueChange={setBoatType}>
             <Picker.Item label="Trawler" value="Trawler" />
@@ -212,8 +212,8 @@ const NewTrip = () => {
 
         {/* Weather */}
         <Text style={styles.sectionTitle}>Weather</Text>
-        <TextInput placeholder="Wind Speed (km/h)" keyboardType="numeric" value={windSpeed} onChangeText={setWindSpeed} style={styles.inputBox} />
-        <TextInput placeholder="Wave Height (m)" keyboardType="numeric" value={waveHeight} onChangeText={setWaveHeight} style={styles.inputBox} />
+        <TextInput placeholder="Wind Speed (km/h)" keyboardType="decimal-pad" value={windSpeed} onChangeText={setWindSpeed} style={styles.inputBox} />
+        <TextInput placeholder="Wave Height (m)" keyboardType="decimal-pad" value={waveHeight} onChangeText={setWaveHeight} style={styles.inputBox} />
         <View style={styles.pickerBox}>
           <Picker selectedValue={weatherCondition} onValueChange={setWeatherCondition}>
             <Picker.Item label="Clear" value="Clear" />
@@ -225,16 +225,16 @@ const NewTrip = () => {
 
         {/* Fuel */}
         <Text style={styles.sectionTitle}>Fuel</Text>
-        <TextInput placeholder="Fuel Used (Liters)" keyboardType="numeric" value={fuelUsedLiters} onChangeText={setFuelUsedLiters} style={styles.inputBox} />
-        <TextInput placeholder="Fuel Price per Liter" keyboardType="numeric" value={fuelPricePerLiter} onChangeText={setFuelPricePerLiter} style={styles.inputBox} />
+        <TextInput placeholder="Fuel Used (Liters)" keyboardType="decimal-pad" value={fuelUsedLiters} onChangeText={setFuelUsedLiters} style={styles.inputBox} />
+        <TextInput placeholder="Fuel Price per Liter" keyboardType="decimal-pad" value={fuelPricePerLiter} onChangeText={setFuelPricePerLiter} style={styles.inputBox} />
 
         {/* Operational Costs */}
         <Text style={styles.sectionTitle}>Operational Costs</Text>
-        <TextInput placeholder="Ice Cost" keyboardType="numeric" value={iceCost} onChangeText={setIceCost} style={styles.inputBox} />
-        <TextInput placeholder="Crew Cost" keyboardType="numeric" value={crewCost} onChangeText={setCrewCost} style={styles.inputBox} />
-        <TextInput placeholder="Food Cost" keyboardType="numeric" value={foodCost} onChangeText={setFoodCost} style={styles.inputBox} />
-        <TextInput placeholder="Maintenance Cost" keyboardType="numeric" value={maintenanceCost} onChangeText={setMaintenanceCost} style={styles.inputBox} />
-        <TextInput placeholder="Other Cost" keyboardType="numeric" value={otherCost} onChangeText={setOtherCost} style={styles.inputBox} />
+        <TextInput placeholder="Ice Cost" keyboardType="decimal-pad" value={iceCost} onChangeText={setIceCost} style={styles.inputBox} />
+        <TextInput placeholder="Crew Cost" keyboardType="decimal-pad" value={crewCost} onChangeText={setCrewCost} style={styles.inputBox} />
+        <TextInput placeholder="Food Cost" keyboardType="decimal-pad" value={foodCost} onChangeText={setFoodCost} style={styles.inputBox} />
+        <TextInput placeholder="Maintenance Cost" keyboardType="decimal-pad" value={maintenanceCost} onChangeText={setMaintenanceCost} style={styles.inputBox} />
+        <TextInput placeholder="Other Cost" keyboardType="decimal-pad" value={otherCost} onChangeText={setOtherCost} style={styles.inputBox} />
 
         {/* Submit */}
         <TouchableOpacity onPress={handleSubmit} disabled={loading} style={styles.submitButton}>
@@ -257,3 +257,4 @@ const styles = StyleSheet.create({
   submitButton: { backgroundColor: "#2563eb", padding: 16, borderRadius: 20, alignItems: "center", marginTop: 20 },
   submitText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });
+

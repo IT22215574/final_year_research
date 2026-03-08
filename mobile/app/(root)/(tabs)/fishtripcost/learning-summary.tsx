@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import { LineChart, BarChart, ProgressChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
 import { getLearningSummary } from "@/services/tripService";
+import FishTripNavBar from "./components/FishTripNavBar";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -83,6 +84,7 @@ const LearningSummaryScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
+      <FishTripNavBar />
       <View className="px-5 pt-3 pb-3 flex-row justify-between items-center bg-white border-b border-slate-100">
         <View>
           <Text className="text-xl font-bold text-slate-900">Learning Summary</Text>

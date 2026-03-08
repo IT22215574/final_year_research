@@ -394,6 +394,142 @@ def get_boat_prediction_history(boat_id: str, days: int = 30):
 
 
 # -----------------------------
+# Model Management Endpoints
+# (Supports research experiments and production model lifecycle)
+# -----------------------------
+
+@app.post("/boats/{boat_id}/reset")
+def reset_boat_model(boat_id: str):
+    """
+    Reset boat's learned coefficients to defaults
+    
+    Research use cases:
+    - Demonstrate cold-start learning vs mature model
+    - Reset after boat engine replacement
+    - Clear corrupted learning data
+    
+    WARNING: This erases all learning for this boat!
+    Automatic backup is created before reset.
+    """
+    try:
+        result = fuel_engine.coefficients_manager.reset_boat_coefficients(boat_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
+
+
+@app.post("/boats/reset-all")
+def reset_all_boat_models():
+    """
+    Reset ALL boat models to defaults
+    
+    Research use cases:
+    - System-wide experiment reset
+    - Algorithm update requiring fresh learning
+    
+    DANGER: This erases ALL learning data!
+    Full backup is created automatically.
+    """
+    try:
+        result = fuel_engine.coefficients_manager.reset_all_coefficients()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"System reset failed: {str(e)}")
+
+
+@app.post("/boats/{boat_id}/retrain")
+def retrain_boat_model(boat_id: str, error_threshold: Optional[float] = None, max_days: Optional[int] = None):
+    """
+    Retrain boat model from historical trip data
+    
+    Research value: Demonstrates adaptive learning algorithm can rebuild from data
+    
+    Args:
+        boat_id: Boat to retrain
+        error_threshold: Filter trips with |error| > threshold (optional)
+        max_days: Only use trips from last N days (optional)
+    
+    This reprocesses all historical trips to rebuild the learning model.
+    Useful after algorithm improvements or to remove outlier data.
+    """
+    try:
+        result = fuel_engine.coefficients_manager.retrain_from_history(
+            boat_id=boat_id,
+            error_threshold=error_threshold,
+            max_days=max_days
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Retrain failed: {str(e)}")
+
+
+@app.post("/learning/retrain-from-trips")
+def retrain_from_trip_list(request: BatchLearningRequest):
+    """
+    Selective retrain using specific trips provided
+    
+    Research value: Train only with high-quality data (exclude outliers)
+    
+    Use case: User manually selects "good" trips for retraining
+    """
+    try:
+        boat_id = request.boatId
+        if not boat_id:
+            raise HTTPException(status_code=400, detail="boatId required for selective retrain")
+        
+        if not request.trips:
+            raise HTTPException(status_code=400, detail="No trips provided for training")
+        
+        # Backup and reset boat first
+        old_coeffs = fuel_engine.coefficients_manager.get_boat_coefficients(boat_id)
+        fuel_engine.coefficients_manager._backup_coefficients(boat_id, old_coeffs, reason="selective_retrain")
+        fuel_engine.coefficients_manager.reset_boat_coefficients(boat_id)
+        
+        # Train with provided trips
+        results = []
+        for trip in request.trips:
+            try:
+                result = learning_engine.update(trip)
+                results.append(result)
+            except Exception as e:
+                print(f"Error training with trip: {e}")
+                continue
+        
+        new_coeffs = fuel_engine.coefficients_manager.get_boat_coefficients(boat_id)
+        
+        return {
+            "success": True,
+            "message": f"Retrained with {len(results)} selected trips",
+            "tripsProcessed": len(results),
+            "newCoefficients": new_coeffs,
+            "confidence": new_coeffs.get("confidence", 0),
+            "avgPredictionError": new_coeffs.get("avgPredictionError", 0)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Selective retrain failed: {str(e)}")
+
+
+@app.get("/boats/{boat_id}/backups")
+def get_boat_backups(boat_id: str):
+    """
+    List all available coefficient backups for a boat
+    
+    Supports research reproducibility - can view backup history
+    """
+    try:
+        backups = fuel_engine.coefficients_manager.get_backups_list(boat_id)
+        return {
+            "boatId": boat_id,
+            "backups": backups,
+            "totalBackups": len(backups)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# -----------------------------
 # Risk / Carbon / Data Endpoints
 # -----------------------------
 

@@ -13,6 +13,7 @@ import MapView, { Marker, Circle } from "react-native-maps";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import useFishingZoneStore from "@/stores/fishingZoneStore";
+import FishTripNavBar from "./components/FishTripNavBar";
 
 const HARBOR_LOCATION = {
   latitude: 6.9347,
@@ -20,8 +21,9 @@ const HARBOR_LOCATION = {
   name: "Colombo Harbor",
 };
 
-// ✅ Real fishing zones
+// ✅ Comprehensive Sri Lankan Fishing Zones
 const FISH_ZONES = [
+  // Western Coast Zones
   {
     id: 1,
     name: "South-West Tuna Ground",
@@ -36,54 +38,42 @@ const FISH_ZONES = [
   },
   {
     id: 2,
-    name: "East-Central Arabian",
-    latitude: 7.5,
-    longitude: 77.5,
-    fishType: "Skipjack Tuna",
-    estimatedCatch: "High",
-    distance: 120,
-    depth: "Deep",
-    season: "Year-round",
-    density: "High 🐟🐟🐟",
-  },
-  {
-    id: 3,
-    name: "Bay of Bengal Ground",
-    latitude: 8.5,
-    longitude: 81.5,
-    fishType: "Swordfish",
+    name: "Negombo Offshore Bank",
+    latitude: 7.2,
+    longitude: 79.6,
+    fishType: "Barracuda, Kingfish",
     estimatedCatch: "Medium",
-    distance: 95,
-    depth: "Very Deep",
-    season: "SW Monsoon",
-    density: "Medium 🐟🐟",
-  },
-  {
-    id: 4,
-    name: "Maldives Western Margin",
-    latitude: 6.2,
-    longitude: 78.8,
-    fishType: "Bigeye Tuna",
-    estimatedCatch: "Medium",
-    distance: 110,
-    depth: "Deep",
-    season: "NE Monsoon",
-    density: "Medium 🐟🐟",
-  },
-  {
-    id: 5,
-    name: "Trincomalee Offshore",
-    latitude: 8.9,
-    longitude: 81.9,
-    fishType: "Mackerel",
-    estimatedCatch: "Medium",
-    distance: 45,
+    distance: 35,
     depth: "Moderate",
     season: "Year-round",
     density: "Medium 🐟🐟",
   },
   {
-    id: 6,
+    id: 3,
+    name: "Kalpitiya Deep Sea",
+    latitude: 8.3,
+    longitude: 79.5,
+    fishType: "Sailfish, Marlin",
+    estimatedCatch: "High",
+    distance: 55,
+    depth: "Deep",
+    season: "NE Monsoon",
+    density: "High 🐟🐟🐟",
+  },
+  {
+    id: 4,
+    name: "Chilaw Coastal Zone",
+    latitude: 7.6,
+    longitude: 79.7,
+    fishType: "Mackerel, Sardines",
+    estimatedCatch: "Medium",
+    distance: 25,
+    depth: "Shallow",
+    season: "Year-round",
+    density: "Medium 🐟🐟",
+  },
+  {
+    id: 5,
     name: "Galle Deep Sea",
     latitude: 5.7,
     longitude: 80.2,
@@ -95,19 +85,119 @@ const FISH_ZONES = [
     density: "High 🐟🐟🐟",
   },
   {
+    id: 6,
+    name: "Hikkaduwa Reef Zone",
+    latitude: 6.1,
+    longitude: 80.0,
+    fishType: "Snapper, Grouper",
+    estimatedCatch: "Medium",
+    distance: 40,
+    depth: "Moderate",
+    season: "Year-round",
+    density: "Medium 🐟🐟",
+  },
+  
+  // Southern Coast Zones
+  {
     id: 7,
-    name: "Mannar Ridge",
-    latitude: 8.8,
-    longitude: 78.5,
-    fishType: "Snapper",
-    estimatedCatch: "Low",
-    distance: 60,
-    depth: "Shallow",
-    season: "NE Monsoon",
-    density: "Low 🐟",
+    name: "Matara Deep Water",
+    latitude: 5.5,
+    longitude: 80.5,
+    fishType: "Swordfish, Tuna",
+    estimatedCatch: "High",
+    distance: 90,
+    depth: "Very Deep",
+    season: "SW Monsoon",
+    density: "High 🐟🐟🐟",
   },
   {
     id: 8,
+    name: "Hambantota Offshore",
+    latitude: 6.0,
+    longitude: 81.2,
+    fishType: "Skipjack Tuna",
+    estimatedCatch: "High",
+    distance: 65,
+    depth: "Deep",
+    season: "Year-round",
+    density: "High 🐟🐟🐟",
+  },
+  {
+    id: 9,
+    name: "Great Basses Reef",
+    latitude: 6.2,
+    longitude: 81.5,
+    fishType: "Barracuda, Travelly",
+    estimatedCatch: "Medium",
+    distance: 70,
+    depth: "Moderate",
+    season: "NE Monsoon",
+    density: "Medium 🐟🐟",
+  },
+  {
+    id: 10,
+    name: "Little Basses Bank",
+    latitude: 6.4,
+    longitude: 81.6,
+    fishType: "Grouper, Snapper",
+    estimatedCatch: "Medium",
+    distance: 75,
+    depth: "Moderate",
+    season: "Year-round",
+    density: "Medium 🐟🐟",
+  },
+  
+  // Eastern Coast Zones
+  {
+    id: 11,
+    name: "Trincomalee Offshore",
+    latitude: 8.9,
+    longitude: 81.9,
+    fishType: "Mackerel, Sardines",
+    estimatedCatch: "Medium",
+    distance: 45,
+    depth: "Moderate",
+    season: "Year-round",
+    density: "Medium 🐟🐟",
+  },
+  {
+    id: 12,
+    name: "Batticaloa Deep Ground",
+    latitude: 7.7,
+    longitude: 82.0,
+    fishType: "Yellowfin Tuna",
+    estimatedCatch: "High",
+    distance: 80,
+    depth: "Deep",
+    season: "SW Monsoon",
+    density: "High 🐟🐟🐟",
+  },
+  {
+    id: 13,
+    name: "Mullaitivu Deep Water",
+    latitude: 9.3,
+    longitude: 81.0,
+    fishType: "Seerfish, Kingfish",
+    estimatedCatch: "Medium",
+    distance: 50,
+    depth: "Deep",
+    season: "NE Monsoon",
+    density: "Medium 🐟🐟",
+  },
+  {
+    id: 14,
+    name: "Bay of Bengal Ground",
+    latitude: 8.5,
+    longitude: 81.5,
+    fishType: "Swordfish",
+    estimatedCatch: "Medium",
+    distance: 95,
+    depth: "Very Deep",
+    season: "SW Monsoon",
+    density: "Medium 🐟🐟",
+  },
+  {
+    id: 15,
     name: "Eastern EEZ Margin",
     latitude: 7.8,
     longitude: 82.5,
@@ -117,6 +207,118 @@ const FISH_ZONES = [
     depth: "Very Deep",
     season: "Year-round",
     density: "Medium 🐟🐟",
+  },
+  
+  // Northern Zones
+  {
+    id: 16,
+    name: "Jaffna Peninsula Bank",
+    latitude: 9.8,
+    longitude: 80.2,
+    fishType: "Pomfret, Seer",
+    estimatedCatch: "High",
+    distance: 85,
+    depth: "Moderate",
+    season: "NE Monsoon",
+    density: "High 🐟🐟🐟",
+  },
+  {
+    id: 17,
+    name: "Kankesanthurai Offshore",
+    latitude: 9.9,
+    longitude: 80.0,
+    fishType: "Sailfish, Marlin",
+    estimatedCatch: "High",
+    distance: 95,
+    depth: "Deep",
+    season: "Year-round",
+    density: "High 🐟🐟🐟",
+  },
+  {
+    id: 18,
+    name: "Mannar Ridge",
+    latitude: 8.8,
+    longitude: 78.5,
+    fishType: "Snapper, Grouper",
+    estimatedCatch: "Low",
+    distance: 60,
+    depth: "Shallow",
+    season: "NE Monsoon",
+    density: "Low 🐟",
+  },
+  {
+    id: 19,
+    name: "Palk Bay Channel",
+    latitude: 9.5,
+    longitude: 79.8,
+    fishType: "Prawns, Cuttlefish",
+    estimatedCatch: "Medium",
+    distance: 40,
+    depth: "Shallow",
+    season: "Year-round",
+    density: "Medium 🐟🐟",
+  },
+  
+  // Deep Sea International Zones
+  {
+    id: 20,
+    name: "Nara Deep Sea Zone",
+    latitude: 6.5,
+    longitude: 77.8,
+    fishType: "Bigeye Tuna, Marlin",
+    estimatedCatch: "High",
+    distance: 145,
+    depth: "Very Deep",
+    season: "NE Monsoon",
+    density: "High 🐟🐟🐟",
+  },
+  {
+    id: 21,
+    name: "East-Central Arabian",
+    latitude: 7.5,
+    longitude: 77.5,
+    fishType: "Skipjack Tuna",
+    estimatedCatch: "High",
+    distance: 120,
+    depth: "Deep",
+    season: "Year-round",
+    density: "High 🐟🐟🐟",
+  },
+  {
+    id: 22,
+    name: "Maldives Western Margin",
+    latitude: 6.2,
+    longitude: 78.8,
+    fishType: "Bigeye Tuna",
+    estimatedCatch: "Medium",
+    distance: 110,
+    depth: "Deep",
+    season: "NE Monsoon",
+    density: "Medium 🐟🐟",
+  },
+  {
+    id: 23,
+    name: "Chagos Bank Approach",
+    latitude: 5.0,
+    longitude: 79.5,
+    fishType: "Yellowfin Tuna",
+    estimatedCatch: "High",
+    distance: 155,
+    depth: "Very Deep",
+    season: "SW Monsoon",
+    density: "High 🐟🐟🐟",
+  },
+  {
+    id: 24,
+    name: "Laccadive Sea Ground",
+    latitude: 7.0,
+    longitude: 78.0,
+    fishType: "Skipjack, Yellowfin",
+    estimatedCatch: "High",
+    distance: 135,
+    depth: "Deep",
+    season: "Year-round",
+    density: "High 🐟🐟🐟",
   },
 ];
 
@@ -194,8 +396,13 @@ const MapViewScreen = () => {
 
   return (
     <View className="flex-1">
+      {/* Navigation Bar */}
+      <View className="absolute top-0 left-0 right-0 z-20">
+        <FishTripNavBar />
+      </View>
+      
       {/* Top bar */}
-      <SafeAreaView className="absolute top-0 left-0 right-0 z-10 px-4 pt-2">
+      <SafeAreaView className="absolute top-0 left-0 right-0 z-10 px-4 pt-2" style={{ marginTop: 60 }}>
         <View className="flex-row justify-between items-center">
           <TouchableOpacity
             onPress={() => router.back()}
@@ -623,3 +830,4 @@ const MapViewScreen = () => {
 };
 
 export default MapViewScreen;
+

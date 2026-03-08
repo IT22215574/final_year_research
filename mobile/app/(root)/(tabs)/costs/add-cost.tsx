@@ -139,7 +139,7 @@ export default function AddCostPreferenceScreen() {
             value={amount}
             onChangeText={setAmount}
             placeholder="e.g., 5000"
-            keyboardType="numeric"
+            keyboardType="decimal-pad"
             className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900"
             placeholderTextColor="#94A3B8"
           />
@@ -242,3 +242,5 @@ export default function AddCostPreferenceScreen() {
     </SafeAreaView>
   );
 }
+
+

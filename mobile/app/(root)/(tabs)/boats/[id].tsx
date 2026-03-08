@@ -300,7 +300,7 @@ function LearningInsightsView({ data }: { data: any }) {
   const lastUpdate = data.lastUpdated || learningStats.lastUpdate;
 
   return (
-    <View className="mt-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-4 border border-indigo-200">
+    <View className="mt-4 bg-indigo-50 rounded-2xl p-4 border border-indigo-200">
       <View className="flex-row items-center mb-4">
         <Ionicons name="analytics" size={24} color="#6366F1" />
         <Text className="font-bold text-lg text-slate-900 ml-2">
@@ -504,7 +504,7 @@ function PredictionHistoryView({ data }: { data: any }) {
   };
 
   return (
-    <View className="mt-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-4 border border-emerald-200">
+    <View className="mt-4 bg-emerald-50 rounded-2xl p-4 border border-emerald-200">
       <View className="flex-row items-center mb-4">
         <Ionicons name="bar-chart" size={24} color="#10B981" />
         <Text className="font-bold text-lg text-slate-900 ml-2">

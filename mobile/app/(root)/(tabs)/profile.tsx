@@ -365,3 +365,4 @@ const styles = StyleSheet.create({
 
   logoutText: { color: "#EF4444", fontWeight: "600" },
 });
+

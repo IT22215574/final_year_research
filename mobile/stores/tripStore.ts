@@ -25,6 +25,7 @@ export type DatciePredictBody = {
   marketPrice: number;
 
   fishingHours: number;
+  numberOfDays: number;
   crewCount: number;
 
   speed?: number;

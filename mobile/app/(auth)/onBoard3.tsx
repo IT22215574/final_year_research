@@ -858,3 +858,4 @@ const styles = StyleSheet.create({
 });
 
 export default OnBoard3;
+

@@ -10,6 +10,7 @@ import {
   Req,
   BadRequestException,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import type { Request as ExpressRequest } from 'express';
 import { Types } from 'mongoose';
@@ -161,5 +162,49 @@ export class TripsController {
     const isAdmin = this.isAdmin(req);
 
     return this.tripsService.updateActuals(id, userId, isAdmin, dto);
+  }
+
+  // =========================
+  // MODEL MANAGEMENT
+  // (Research lifecycle: reset, retrain, backups)
+  // =========================
+
+  @Post('boats/:boatId/reset-model')
+  async resetBoatModel(
+    @Req() req: ExpressRequest,
+    @Param('boatId') boatId: string,
+  ) {
+    const userId = this.getUserId(req);
+    return await this.tripsService.resetBoatModel(userId, boatId);
+  }
+
+  @Post('boats/:boatId/retrain')
+  async retrainBoatModel(
+    @Req() req: ExpressRequest,
+    @Param('boatId') boatId: string,
+    @Body() dto: { errorThreshold?: number; maxDays?: number },
+  ) {
+    const userId = this.getUserId(req);
+    return await this.tripsService.retrainBoatModel(userId, boatId, dto);
+  }
+
+  @Post('boats/reset-all')
+  async resetAllModels(@Req() req: ExpressRequest) {
+    const isAdmin = this.isAdmin(req);
+
+    if (!isAdmin) {
+      throw new ForbiddenException('Only admins can reset all models');
+    }
+
+    return await this.tripsService.resetAllModels();
+  }
+
+  @Get('boats/:boatId/backups')
+  async getBoatBackups(
+    @Req() req: ExpressRequest,
+    @Param('boatId') boatId: string,
+  ) {
+    const userId = this.getUserId(req);
+    return await this.tripsService.getBoatBackups(userId, boatId);
   }
 }

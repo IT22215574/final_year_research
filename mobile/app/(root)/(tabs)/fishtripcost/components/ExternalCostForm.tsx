@@ -164,7 +164,7 @@ export default function ExternalCostForm({
               placeholder="e.g., 3000"
               value={formAmount}
               onChangeText={setFormAmount}
-              keyboardType="numeric"
+              keyboardType="decimal-pad"
             />
           </View>
 
@@ -237,3 +237,5 @@ export default function ExternalCostForm({
     </View>
   );
 }
+
+

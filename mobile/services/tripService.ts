@@ -20,6 +20,7 @@ export type DatciePredictBody = {
   expectedCatch: number;
   marketPrice: number;
   fishingHours: number;
+  numberOfDays: number;
   crewCount: number;
   speed?: number; // Optional: backend tests multiple speeds if not provided
   mode?: "island" | "international";
@@ -74,6 +75,7 @@ export type CreateTripDto = {
   averageSpeed?: number;
   crewCount?: number;
   fishingHours?: number;
+  numberOfDays?: number;
   mode?: "island" | "international";
   status?: "planned" | "completed" | "cancelled";
   predictedFuelLiters?: number;

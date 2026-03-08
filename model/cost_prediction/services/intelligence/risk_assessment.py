@@ -152,11 +152,11 @@ class RiskAssessmentEngine:
         weather_risk_score = min(weather_risk_score, 1.0)
         
         # Determine category
-        if weather_risk_score <= 0.3:
+        if weather_risk_score <= 0.35:
             category = "low"
-        elif weather_risk_score <= 0.6:
+        elif weather_risk_score <= 0.55:
             category = "medium"
-        elif weather_risk_score <= 0.8:
+        elif weather_risk_score <= 0.75:
             category = "high"
         else:
             category = "extreme"
@@ -193,15 +193,19 @@ class RiskAssessmentEngine:
         
         # Base economic risk
         if profit_margin >= 0.5:
-            margin_risk = 0.1
-        elif profit_margin >= 0.25:
-            margin_risk = 0.3
-        elif profit_margin >= 0.1:
-            margin_risk = 0.6
+            margin_risk = 0.1  # Excellent margin
+        elif profit_margin >= 0.30:
+            margin_risk = 0.25  # Good margin
+        elif profit_margin >= 0.15:
+            margin_risk = 0.40  # Moderate margin
+        elif profit_margin >= 0.05:
+            margin_risk = 0.55  # Low margin
         elif profit_margin >= 0:
-            margin_risk = 0.8
+            margin_risk = 0.70  # Break-even or minimal profit
+        elif profit_margin >= -0.10:
+            margin_risk = 0.85  # Small loss
         else:
-            margin_risk = 1.0  # Loss scenario
+            margin_risk = 1.0  # Significant loss scenario
         
         # Fuel dependency risk
         fuel_risk = min(fuel_cost_ratio * 1.5, 1.0)  # High fuel dependency = higher risk
@@ -213,11 +217,11 @@ class RiskAssessmentEngine:
         economic_risk_score = (margin_risk * 0.5 + fuel_risk * 0.3 + price_volatility_risk * 0.2)
         
         # Determine category
-        if economic_risk_score <= 0.3:
+        if economic_risk_score <= 0.35:
             category = "low"
-        elif economic_risk_score <= 0.5:
+        elif economic_risk_score <= 0.55:
             category = "medium"
-        elif economic_risk_score <= 0.7:
+        elif economic_risk_score <= 0.75:
             category = "high"
         else:
             category = "critical"
@@ -588,16 +592,16 @@ class RiskAssessmentEngine:
         )
         
         # Determine overall category and level
-        if overall_score <= 0.25:
+        if overall_score <= 0.30:
             category = "low"
             level = "acceptable"
-        elif overall_score <= 0.45:
+        elif overall_score <= 0.50:
             category = "medium"
             level = "manageable"
-        elif overall_score <= 0.65:
+        elif overall_score <= 0.70:
             category = "high"
             level = "concerning"
-        elif overall_score <= 0.8:
+        elif overall_score <= 0.85:
             category = "critical"
             level = "dangerous"
         else:

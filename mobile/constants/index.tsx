@@ -330,3 +330,4 @@ export const boatTypes = [
     image: canoe,
   },
 ];
+

@@ -29,7 +29,7 @@ export default function ActualLogForm({
         <TextInput
           className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800"
           placeholder="e.g., 95"
-          keyboardType="numeric"
+          keyboardType="decimal-pad"
           value={actualFuelLiters}
           onChangeText={onFuelChange}
         />
@@ -43,7 +43,7 @@ export default function ActualLogForm({
         <TextInput
           className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800"
           placeholder="e.g., 420"
-          keyboardType="numeric"
+          keyboardType="decimal-pad"
           value={actualCatchKg}
           onChangeText={onCatchChange}
         />
@@ -51,3 +51,5 @@ export default function ActualLogForm({
     </View>
   );
 }
+
+

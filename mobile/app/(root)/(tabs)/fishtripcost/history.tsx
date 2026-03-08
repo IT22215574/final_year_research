@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { getMyTrips } from "@/services/tripService";
+import FishTripNavBar from "./components/FishTripNavBar";
 
 const money = (n: any) => {
   const num = Number(n);
@@ -41,6 +42,7 @@ const HistoryScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
+      <FishTripNavBar />
       <View className="px-5 pt-3 pb-3 flex-row justify-between items-center bg-white border-b border-slate-100">
         <View>
           <Text className="text-xl font-bold text-slate-900">Trip History</Text>
