@@ -11,8 +11,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import Checkbox from "expo-checkbox";
 
-import { getMyTrips } from "@/services/tripService";
+import { getMyTrips, batchTrainTrips } from "@/services/tripService";
 
 type ExternalCostItem = {
   name: string;
@@ -162,8 +163,19 @@ const getRiskColor = (risk?: string) => {
   }
 };
 
-const TripCard = ({ trip }: { trip: Trip }) => {
+const TripCard = ({
+  trip,
+  selectionMode,
+  isSelected,
+  onToggleSelect,
+}: {
+  trip: Trip;
+  selectionMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+}) => {
   const isCompleted = trip.status === "completed";
+  const hasActualData = trip.actualFuelLiters != null;
   const mainCost =
     isCompleted && trip.actualTotalCost != null
       ? trip.actualTotalCost
@@ -177,17 +189,25 @@ const TripCard = ({ trip }: { trip: Trip }) => {
   const distance = trip.predictedDistanceKm ?? trip.distanceKm;
   const duration = trip.tripDurationHours;
 
+  const handlePress = () => {
+    if (selectionMode) {
+      onToggleSelect(trip._id);
+    } else {
+      router.push(`/(root)/(tabs)/fishtripcost/trip-details/${trip._id}`);
+    }
+  };
+
   return (
     <TouchableOpacity
       activeOpacity={0.9}
-      onPress={() => router.push(`/(root)/(tabs)/fishtripcost/trip-details/${trip._id}`)}
+      onPress={handlePress}
       style={{
-        backgroundColor: "#ffffff",
+        backgroundColor: isSelected ? "#eff6ff" : "#ffffff",
         borderRadius: 16,
         padding: 16,
         marginBottom: 14,
-        borderWidth: 1,
-        borderColor: "#e5e7eb",
+        borderWidth: isSelected ? 2 : 1,
+        borderColor: isSelected ? "#3b82f6" : "#e5e7eb",
       }}
     >
       <View
@@ -198,6 +218,17 @@ const TripCard = ({ trip }: { trip: Trip }) => {
           marginBottom: 12,
         }}
       >
+        {selectionMode && (
+          <View style={{ marginRight: 12, paddingTop: 2 }}>
+            <Checkbox
+              value={isSelected}
+              onValueChange={() => onToggleSelect(trip._id)}
+              color={isSelected ? "#3b82f6" : undefined}
+              disabled={!hasActualData}
+            />
+          </View>
+        )}
+
         <View style={{ flex: 1, paddingRight: 12 }}>
           <Text style={{ fontSize: 17, fontWeight: "700", color: "#111827" }}>
             Trip {getShortId(trip._id)}
@@ -205,6 +236,16 @@ const TripCard = ({ trip }: { trip: Trip }) => {
           <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
             Boat ID: {trip.boatId ? getShortId(trip.boatId) : "Not assigned"}
           </Text>
+          {selectionMode && !hasActualData && (
+            <Text style={{ fontSize: 11, color: "#dc2626", marginTop: 2 }}>
+              ⚠️ No actual data - cannot train
+            </Text>
+          )}
+          {selectionMode && hasActualData && (
+            <Text style={{ fontSize: 11, color: "#15803d", marginTop: 2 }}>
+              ✓ Can be used for training
+            </Text>
+          )}
         </View>
 
         <View style={{ alignItems: "flex-end", gap: 6 }}>
@@ -395,6 +436,9 @@ export default function PastTripsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedTripIds, setSelectedTripIds] = useState<string[]>([]);
+  const [training, setTraining] = useState(false);
 
   const loadTrips = async (showLoader = true) => {
     try {
@@ -424,9 +468,92 @@ export default function PastTripsScreen() {
     await loadTrips(false);
   };
 
+  const toggleTripSelection = (tripId: string) => {
+    setSelectedTripIds((prev) =>
+      prev.includes(tripId)
+        ? prev.filter((id) => id !== tripId)
+        : [...prev, tripId]
+    );
+  };
+
+  const onBatchTrain = async () => {
+    if (selectedTripIds.length === 0) {
+      Alert.alert("No Selection", "Please select at least one trip to train on.");
+      return;
+    }
+
+    Alert.alert(
+      "Confirm Training",
+      `Train the model on ${selectedTripIds.length} selected trip${selectedTripIds.length > 1 ? "s" : ""}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Train",
+          onPress: async () => {
+            try {
+              setTraining(true);
+              const result = await batchTrainTrips(selectedTripIds);
+              
+              Alert.alert(
+                "✅ Training Complete",
+                `Successfully trained on ${result.tripsProcessed} trip${result.tripsProcessed > 1 ? "s" : ""}!\n\n` +
+                `Boats updated: ${result.boatsUpdated}\n` +
+                `Average error: ${result.learningResult?.averageError?.toFixed(2) || "N/A"}%`,
+                [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      setSelectedTripIds([]);
+                      setSelectionMode(false);
+                    },
+                  },
+                ]
+              );
+            } catch (err: any) {
+              Alert.alert(
+                "Training Failed",
+                err?.message || "Failed to train model on selected trips."
+              );
+            } finally {
+              setTraining(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const selectGoodTrips = () => {
+    const goodTrips = trips
+      .filter(
+        (trip) =>
+          trip.actualFuelLiters != null &&
+          Math.abs(trip.fuelPredictionError || 100) < 15
+      )
+      .map((trip) => trip._id);
+
+    setSelectedTripIds(goodTrips);
+    
+    if (goodTrips.length === 0) {
+      Alert.alert(
+        "No Quality Trips",
+        "No trips found with actual data and prediction error < 15%."
+      );
+    } else {
+      Alert.alert(
+        "Auto-Selected",
+        `Selected ${goodTrips.length} high-quality trip${goodTrips.length > 1 ? "s" : ""} (error < 15%)`
+      );
+    }
+  };
+
   const tripCountText = useMemo(() => {
     if (trips.length === 1) return "1 trip found";
     return `${trips.length} trips found`;
+  }, [trips]);
+
+  const trainableTripsCount = useMemo(() => {
+    return trips.filter((trip) => trip.actualFuelLiters != null).length;
   }, [trips]);
 
   if (loading) {
@@ -452,12 +579,122 @@ export default function PastTripsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f9fafb" }}>
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
-        <Text style={{ fontSize: 26, fontWeight: "700", color: "#111827" }}>
-          My Trips
-        </Text>
-        <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 6 }}>
-          {tripCountText}
-        </Text>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 26, fontWeight: "700", color: "#111827" }}>
+              My Trips
+            </Text>
+            <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 6 }}>
+              {tripCountText}
+              {trainableTripsCount > 0 && (
+                <Text style={{ color: "#15803d", fontWeight: "600" }}>
+                  {" "}• {trainableTripsCount} trainable
+                </Text>
+              )}
+            </Text>
+          </View>
+
+          {!selectionMode ? (
+            <TouchableOpacity
+              onPress={() => setSelectionMode(true)}
+              style={{
+                backgroundColor: "#3b82f6",
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Ionicons name="checkbox-outline" size={18} color="#ffffff" />
+              <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}>
+                Select
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ gap: 8 }}>
+              <TouchableOpacity
+                onPress={onBatchTrain}
+                disabled={selectedTripIds.length === 0 || training}
+                style={{
+                  backgroundColor:
+                    selectedTripIds.length === 0 || training
+                      ? "#d1d5db"
+                      : "#15803d",
+                  paddingHorizontal: 14,
+                  paddingVertical: 9,
+                  borderRadius: 10,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                {training ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Ionicons name="flash" size={16} color="#ffffff" />
+                )}
+                <Text
+                  style={{ color: "#ffffff", fontWeight: "700", fontSize: 13 }}
+                >
+                  Train ({selectedTripIds.length})
+                </Text>
+              </TouchableOpacity>
+
+              <View style={{ flexDirection: "row", gap: 6 }}>
+                <TouchableOpacity
+                  onPress={selectGoodTrips}
+                  style={{
+                    backgroundColor: "#f3f4f6",
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#3b82f6",
+                      fontWeight: "600",
+                      fontSize: 12,
+                    }}
+                  >
+                    Auto
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectionMode(false);
+                    setSelectedTripIds([]);
+                  }}
+                  style={{
+                    backgroundColor: "#f3f4f6",
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: 8,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#dc2626",
+                      fontWeight: "600",
+                      fontSize: 12,
+                    }}
+                  >
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
       </View>
 
       {error ? (
@@ -485,7 +722,14 @@ export default function PastTripsScreen() {
       <FlatList
         data={trips}
         keyExtractor={(item) => item._id}
-        renderItem={({ item }) => <TripCard trip={item} />}
+        renderItem={({ item }) => (
+          <TripCard
+            trip={item}
+            selectionMode={selectionMode}
+            isSelected={selectedTripIds.includes(item._id)}
+            onToggleSelect={toggleTripSelection}
+          />
+        )}
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingBottom: 24,

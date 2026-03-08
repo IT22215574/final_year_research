@@ -20,6 +20,7 @@ import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { LogActualDto } from './dto/log-actual.dto';
 import { UpdateActualsDto } from './dto/update-actuals.dto';
+import { BatchTrainDto } from './dto/batch-train.dto';
 
 @Controller('trips')
 @UseGuards(AuthTokenGuard)
@@ -53,6 +54,15 @@ export class TripsController {
   ) {
     const userId = this.getUserId(req);
     return await this.tripsService.create(userId, createTripDto);
+  }
+
+  @Post('batch-train')
+  async batchTrain(
+    @Req() req: ExpressRequest,
+    @Body() dto: BatchTrainDto,
+  ) {
+    const userId = this.getUserId(req);
+    return await this.tripsService.batchTrainTrips(userId, dto);
   }
 
   @Get('my-trips')

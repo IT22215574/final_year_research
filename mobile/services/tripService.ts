@@ -261,3 +261,19 @@ export const getLearningSummary = async () => {
 
   return await response.json();
 };
+
+export const batchTrainTrips = async (tripIds: string[], boatId?: string) => {
+  const response = await apiFetch("/api/v1/trips/batch-train", {
+    method: "POST",
+    body: JSON.stringify({ tripIds, boatId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      error.message || error.detail || "Failed to batch train trips",
+    );
+  }
+
+  return await response.json();
+};

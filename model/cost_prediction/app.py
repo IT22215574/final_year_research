@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from typing import Optional
 import os
 
 from services.fuel.adaptive_fuel import AdaptiveFuelEngine
@@ -58,6 +59,11 @@ class LearningRequest(BaseModel):
     distanceKm: float = Field(0, ge=0)
     engineHP: float = Field(85, ge=0)
     fishingHours: float = Field(8, ge=0)
+
+
+class BatchLearningRequest(BaseModel):
+    trips: list
+    boatId: Optional[str] = None
 
 
 class RiskAssessmentRequest(BaseModel):
@@ -188,6 +194,68 @@ def update_learning(request: LearningRequest):
         return learning_engine.update(request.model_dump())
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/learning/batch-update")
+def batch_learning_update(request: BatchLearningRequest):
+    """
+    Batch learning update for multiple trips.
+    Efficiently processes selected trips for model training.
+    """
+    try:
+        if not request.trips:
+            raise HTTPException(status_code=400, detail="No trips provided for training")
+        
+        results = []
+        boats_updated = {}
+        total_error = 0
+        
+        # Process each trip
+        for trip_data in request.trips:
+            try:
+                # Update learning for this trip
+                result = learning_engine.update(trip_data)
+                results.append(result)
+                total_error += abs(result.get("predictionError", 0))
+                
+                # Track boat updates
+                boat_id = trip_data.get("boatId")
+                if boat_id:
+                    if boat_id not in boats_updated:
+                        boats_updated[boat_id] = {
+                            "tripsProcessed": 0,
+                            "updatedCoefficients": result.get("updatedCoefficients"),
+                            "errors": [],
+                        }
+                    boats_updated[boat_id]["tripsProcessed"] += 1
+                    boats_updated[boat_id]["errors"].append(result.get("predictionError", 0))
+                    # Update with latest coefficients
+                    if result.get("updatedCoefficients"):
+                        boats_updated[boat_id]["updatedCoefficients"] = result.get("updatedCoefficients")
+            except Exception as trip_error:
+                # Log but continue with other trips
+                print(f"Error processing trip: {trip_error}")
+                continue
+        
+        # Calculate average prediction error for each boat
+        for boat_id, boat_data in boats_updated.items():
+            if boat_data["errors"]:
+                boat_data["averagePredictionError"] = sum(abs(e) for e in boat_data["errors"]) / len(boat_data["errors"])
+        
+        return {
+            "success": True,
+            "tripsProcessed": len(results),
+            "boatsUpdated": len(boats_updated),
+            "boatIds": list(boats_updated.keys()),
+            "averageError": total_error / len(results) if results else 0,
+            "boatUpdates": boats_updated,
+            "results": results,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Batch training failed: {str(e)}")
+
 
 @app.get("/learning/summary")
 def get_learning_summary():

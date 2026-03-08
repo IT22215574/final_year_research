@@ -15,6 +15,7 @@ import { Trip, TripDocument } from '../schemas/trip.schema';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { LogActualDto } from './dto/log-actual.dto';
+import { BatchTrainDto } from './dto/batch-train.dto';
 
 import {
   TripCoefficient,
@@ -394,6 +395,136 @@ export class TripsService {
     }
 
     return response;
+  }
+
+  // =========================
+  // BATCH TRAIN TRIPS
+  // =========================
+  async batchTrainTrips(userId: string, dto: BatchTrainDto) {
+    // Fetch selected trips
+    const trips = await this.tripModel
+      .find({
+        _id: { $in: dto.tripIds },
+        userId: userId, // Security: only user's trips
+        actualFuelLiters: { $exists: true }, // Only logged trips
+      })
+      .exec();
+
+    if (!trips.length) {
+      throw new BadRequestException(
+        'No valid trips found for training. Ensure trips have actual data logged.',
+      );
+    }
+
+    // Filter by boatId if specified
+    const filteredTrips = dto.boatId
+      ? trips.filter((trip) => String(trip.boatId) === String(dto.boatId))
+      : trips;
+
+    if (!filteredTrips.length) {
+      throw new BadRequestException(
+        'No trips found for the specified boat.',
+      );
+    }
+
+    // Prepare batch learning data
+    const learningData = [];
+    const boatIds = new Set<string>();
+
+    for (const trip of filteredTrips) {
+      if (!trip.boatId) continue;
+
+      const boat = await this.boatModel.findById(trip.boatId).exec();
+      if (!boat) continue;
+
+      boatIds.add(String(trip.boatId));
+
+      learningData.push({
+        boatId: String(trip.boatId),
+        predictedFuelLiters: Number(trip.predictedFuelLiters || 0),
+        actualFuelLiters: Number(trip.actualFuelLiters || 0),
+        speed: trip.averageSpeed || trip.speed || 10,
+        weatherSeverityIndex: trip.weatherSeverityIndex || 0,
+        distanceKm: trip.distanceKm || 0,
+        engineHP: boat.engineHorsePower || 85,
+        fishingHours: trip.fishingHours || 8,
+        tripId: String(trip._id),
+      });
+    }
+
+    if (!learningData.length) {
+      throw new BadRequestException(
+        'No valid trips with boat data found for training.',
+      );
+    }
+
+    // Call ML service batch endpoint
+    const baseUrl =
+      this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
+
+    try {
+      console.log(`🚀 Calling ML service at: ${baseUrl}/learning/batch-update`);
+      console.log(`📦 Sending ${learningData.length} trips for training`);
+      
+      const response = await firstValueFrom(
+        this.http.post(`${baseUrl}/learning/batch-update`, {
+          trips: learningData,
+          boatId: dto.boatId,
+        }),
+      );
+
+      const result = response.data;
+      console.log(`✅ ML service response received:`, result);
+
+      // Update boats with new coefficients
+      if (result.boatUpdates) {
+        for (const [boatId, updates] of Object.entries(
+          result.boatUpdates as Record<string, any>,
+        )) {
+          const boat = await this.boatModel.findById(boatId).exec();
+          if (boat && updates.updatedCoefficients) {
+            boat.fuelEfficiencyFactor =
+              updates.updatedCoefficients.fuelEfficiencyFactor;
+            boat.engineDegradationFactor =
+              updates.updatedCoefficients.engineDegradationFactor;
+            boat.averageFuelPredictionError =
+              updates.averagePredictionError || boat.averageFuelPredictionError;
+            await boat.save();
+          }
+        }
+      }
+
+      return {
+        success: true,
+        message: `Successfully trained on ${learningData.length} trips`,
+        tripsProcessed: learningData.length,
+        boatsUpdated: boatIds.size,
+        boatIds: Array.from(boatIds),
+        learningResult: result,
+      };
+    } catch (e: any) {
+      console.error('❌ Batch training error:', {
+        url: `${baseUrl}/learning/batch-update`,
+        status: e?.response?.status,
+        statusText: e?.response?.statusText,
+        data: e?.response?.data,
+        message: e?.message,
+        code: e?.code,
+        tripsCount: learningData.length,
+      });
+      
+      // Provide more specific error message
+      let errorMessage = 'Failed to train model';
+      if (e?.code === 'ECONNREFUSED') {
+        errorMessage = `ML service not reachable at ${baseUrl}. Make sure it's running.`;
+      } else if (e?.response?.data?.detail) {
+        errorMessage = e.response.data.detail;
+      } else if (e?.message) {
+        errorMessage = e.message;
+      }
+      
+      throw new BadRequestException(errorMessage);
+    }
   }
 
   // =========================
