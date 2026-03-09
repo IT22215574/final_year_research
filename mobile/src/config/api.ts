@@ -75,7 +75,7 @@ const buildUrlList = (port: number, envValue?: string | null): string[] => {
 };
 
 export const getAuthApiBaseUrls = () =>
-  buildUrlList(3000, process.env.EXPO_PUBLIC_AUTH_URL || process.env.EXPO_PUBLIC_API_KEY);
+  buildUrlList(5000, process.env.EXPO_PUBLIC_AUTH_URL || process.env.EXPO_PUBLIC_API_KEY);
 
 export const getPredictionApiBaseUrls = () =>
   buildUrlList(8000, process.env.EXPO_PUBLIC_PREDICTION_API_URL || process.env.EXPO_PUBLIC_API_URL);

@@ -2,6 +2,11 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
+import * as dns from 'dns';
+
+// Use Google public DNS so MongoDB Atlas SRV resolves correctly.
+dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
+
 
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
