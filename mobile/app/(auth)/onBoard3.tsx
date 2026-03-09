@@ -42,24 +42,9 @@ const OnBoard3: React.FC = () => {
   const animationRefs = useRef<Animated.CompositeAnimation[]>([]);
   const isNavigating = useRef(false); // Prevent multiple navigations
 
-  // Pick only the icons you want
-  const selectedIcons: ImageSourcePropType[] = [
-    icons.Icon1,
-    icons.Icon2,
-    icons.Icon3,
-    icons.Icon4,
-    icons.Icon5,
-    icons.Icon6,
-    icons.Icon1,
-    icons.Icon3,
-    icons.Icon2,
-    icons.Icon4,
-    icons.Icon3,
-    icons.Icon5,
-    icons.Icon1,
-    icons.Icon6,
-    icons.Icon2,
-  ];
+  // Icons are missing - using empty array to prevent errors
+  // TODO: Add icon assets or use Expo vector icons
+  const selectedIcons: ImageSourcePropType[] = [];
 
   // Create animated values for each icon
   const animatedValues = selectedIcons.map(() => new Animated.Value(0));
@@ -370,8 +355,8 @@ const OnBoard3: React.FC = () => {
       swipeLeftAnim.setValue(0);
       swipeRightAnim.setValue(0);
       contentAnim.setValue(0);
-      // Navigate to previous screen (OnBoard2) after animation completes
-      router.push("/onBoard2");
+      // Navigate to role selection screen
+      router.push("/selectSignIn");
     });
   };
 
@@ -383,8 +368,8 @@ const OnBoard3: React.FC = () => {
     isNavigating.current = true;
     stopAnimations();
 
-    // Navigate back to OnBoard2
-    router.push("/onBoard2");
+    // Navigate back to role selection
+    router.push("/selectSignIn");
 
     setTimeout(() => {
       isNavigating.current = false;

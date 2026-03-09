@@ -19,6 +19,7 @@ import * as SecureStore from "expo-secure-store";
 
 import useAuthStore from "@/stores/authStore";
 import { apiFetch } from "@/utils/api";
+import { HEADER_GRADIENT } from "@/constants";
 
 const { width } = Dimensions.get("window");
 
@@ -127,10 +128,12 @@ export default function Profile() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B3D91" />
+      <StatusBar barStyle="light-content" backgroundColor={HEADER_GRADIENT[0]} />
         {/* HEADER */}
         <LinearGradient
-          colors={["#0B3D91", "#1E90FF"]}
+          colors={HEADER_GRADIENT}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
           style={styles.header}
         >
           <View style={styles.avatar}>
@@ -172,7 +175,7 @@ export default function Profile() {
             title="Edit Profile"
             icon="create-outline"
             color={["#10B981", "#34D399"]}
-            onPress={() => router.push("/update_profile")}
+            onPress={() => router.push("/Update_profile")}
           />
           <ActionCard
             title="Documents"
@@ -365,4 +368,3 @@ const styles = StyleSheet.create({
 
   logoutText: { color: "#EF4444", fontWeight: "600" },
 });
-

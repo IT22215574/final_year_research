@@ -3,4 +3,7 @@ const { withNativeWind } = require("nativewind/metro");
 
 const config = getDefaultConfig(__dirname);
 
+// Add .onnx to asset extensions so Metro can bundle them
+config.resolver.assetExts.push("onnx");
+
 module.exports = withNativeWind(config, { input: "./global.css" });

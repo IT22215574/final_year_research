@@ -5,10 +5,10 @@ import {
   Text,
   Modal,
   TouchableOpacity,
-  SafeAreaView,
   ActivityIndicator,
   FlatList,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker, Circle } from "react-native-maps";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";

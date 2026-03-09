@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  StatusBar,
   Image,
   TextInput,
 } from "react-native";
@@ -14,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import useAuthStore from "@/stores/authStore";
-import { icons } from "@/constants";
+import { HEADER_GRADIENT, icons } from "@/constants";
 import { LinearGradient } from "expo-linear-gradient";
 
 type ZoneLevel = "HIGH" | "MEDIUM" | "LOW";
@@ -22,7 +21,6 @@ type ZoneLevel = "HIGH" | "MEDIUM" | "LOW";
 const Home = () => {
   const { currentUser, signOut } = useAuthStore();
   const router = useRouter();
-
   // NOTE: This screen previously depended on `react-native-maps` + a demo util.
   // Those dependencies are not present in `mobile/package.json`, which can crash Metro
   // and prevent any UI from rendering. Keep this screen UI-only for now.
@@ -40,7 +38,7 @@ const Home = () => {
         acc[level] += 1;
         return acc;
       },
-      { HIGH: 0, MEDIUM: 0, LOW: 0 } as Record<ZoneLevel, number>
+      { HIGH: 0, MEDIUM: 0, LOW: 0 } as Record<ZoneLevel, number>,
     );
   }, [zoneLevels]);
 
@@ -71,24 +69,18 @@ const Home = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["right", "left"]}>
-      {/* Custom Status Bar */}
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#0057FF"
-        translucent={false}
-      />
-
-      {/* System Status Bar Area (for battery, signal, etc.) */}
-      <View style={styles.systemStatusBar} />
-
       {/* Blue Header Area with Rounded Bottom */}
-      <LinearGradient colors={["#0066CC", "#0088FF"]} style={styles.header}>
+      <LinearGradient
+        colors={HEADER_GRADIENT}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.header}
+      >
         <View>
           <View style={styles.welcomeContainer}>
             <Text style={styles.welcomeText}>Welcome Back</Text>
             <Text style={styles.userName}>{displayName}</Text>
           </View>
-
 
           {/* Sign Out Button
           <TouchableOpacity
@@ -109,7 +101,7 @@ const Home = () => {
       >
         {/* Fish Zone Demo (UI-only placeholder) */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fish Zone Demo </Text>
+          <Text style={styles.sectionTitle}>Fish Zone Demo</Text>
 
           <View style={[styles.card, { marginTop: 14 }]}>
             <Text style={styles.cardTitle}>Predicted Zones</Text>
@@ -161,7 +153,7 @@ const Home = () => {
                 </Text>
                 <Text style={{ color: "#334155", textAlign: "center" }}>
                   This screen is UI-only right now because `react-native-maps`
-                  isn’t installed.
+                  isn't installed.
                 </Text>
                 <View style={{ height: 12 }} />
                 <Text style={{ color: "#334155", fontWeight: "600" }}>
@@ -193,12 +185,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#0f172a",
   },
-  systemStatusBar: {
-    height: StatusBar.currentHeight,
-    backgroundColor: "#0066CC", // Blue color for system status bar area
-  },
   header: {
-    backgroundColor: "#0066CC", // Blue background
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 24,
@@ -412,6 +399,96 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginRight: 10,
   },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0f172a",
+    marginBottom: 10,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+    gap: 12,
+  },
+  inputLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: "#334155",
+    fontWeight: "600",
+  },
+  inputBox: {
+    width: 120,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#f8fafc",
+    color: "#0f172a",
+    fontSize: 14,
+  },
+  mapContainer: {
+    height: 260,
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    position: "relative",
+  },
+  map: {
+    flex: 1,
+  },
+  zoomOutButton: {
+    position: "absolute",
+    right: 16,
+    top: 16,
+    width: 48,
+    height: 48,
+    backgroundColor: "rgba(15, 23, 42, 0.9)",
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  legendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+    flexWrap: "wrap",
+  },
+  legendDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 13,
+    color: "#334155",
+    fontWeight: "600",
+    marginRight: 10,
+  },
   scheduleCard: {
     backgroundColor: "#fff",
     padding: 20,
@@ -480,7 +557,12 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
+  headerGradient: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
 });
 
 export default Home;
-

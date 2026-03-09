@@ -4,7 +4,7 @@ Monorepo containing:
 - `Backend/` — NestJS + MongoDB API
 - `web-app/` — Next.js admin/web frontend
 - `mobile/` — Expo React Native mobile app
-- `model/` — Python scripts for fish-zone prediction model training/inference
+- `model/` — Python scripts for model training/inference
 
 ## Prerequisites
 
@@ -25,13 +25,13 @@ This repo has separate apps, so install dependencies per folder.
 
 ```bash
 # Backend (NestJS)
-pnpm -C Backend install
+pnpm install
 
 # Web app (Next.js)
-pnpm -C web-app install
+pnpm install
 
 # Mobile app (Expo)
-pnpm -C mobile install
+pnpm install
 ```
 
 ## Environment variables
@@ -49,6 +49,15 @@ JWT_SECRET=change-me
 
 # Optional (defaults to 5000)
 PORT=5000
+
+
+# ==============================================
+# JWT AUTHENTICATION (REQUIRED)
+# ==============================================
+JWT_SECRET="generate-a-secure-random-string-min-32-chars"
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_SECRET="generate-another-secure-random-string-min-32-chars"
+JWT_REFRESH_EXPIRES_IN=7d
 ```
 
 Notes:
@@ -82,10 +91,20 @@ EXPO_PUBLIC_API_KEY=http://localhost:5000/api/v1
 ## Run the applications
 
 ### 1) Start the backend API
+From the repo root:
 
 ```bash
 pnpm -C Backend start:dev
 ```
+
+Or:
+
+```bash
+cd Backend
+pnpm start:dev
+```
+
+Note: you must create `Backend/.env` (at minimum set `MONGO` and `JWT_SECRET`) or the server will fail to start.
 
 Backend will log the URL (default `http://localhost:5000`).
 
@@ -94,16 +113,20 @@ Quick check:
 
 ### 2) Start the web app
 
-```bash
-pnpm -C web-app dev
-```
+Frontend (Next.js)
+cd web-app
+
+# Development mode
+pnpm run dev
 
 Open the URL printed by Next.js (usually `http://localhost:3000`).
 
 ### 3) Start the mobile app
 
+cd mobile
+
 ```bash
-pnpm -C mobile start
+npx expo start
 ```
 
 Then:
@@ -162,3 +185,23 @@ python "model/finding fish location/train/predict_fish_zone.py" \
 - **Web/mobile can’t reach the backend**: confirm `NEXT_PUBLIC_API_BASE_URL` / `EXPO_PUBLIC_API_KEY` is correct and includes `/api/v1`.
 - **Running on a real phone**: do not use `localhost`; use your computer’s LAN IP (same Wi‑Fi).
 - **MongoDB connection errors**: verify `Backend/.env` has a valid `MONGO` connection string and that your IP is allowed in Atlas.
+
+
+# ==============================================
+# SECURITY
+# ==============================================
+BCRYPT_SALT_ROUNDS=12
+SESSION_SECRET=your-session-secret-key
+
+==============================================
+# EMAIL (Notification System)
+# ==============================================
+# Set EMAIL_ENABLED=true to enable email notifications
+EMAIL_ENABLED=false
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+EMAIL_SECURE=false
+EMAIL_FROM=noreply@Smartfisher.com
+EMAIL_FROM_NAME=Smart fisher

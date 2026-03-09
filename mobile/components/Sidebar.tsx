@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import useAuthStore from "@/stores/authStore";
 import { icons } from "@/constants";
 
@@ -15,7 +15,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
 
   if (!isVisible) return null;
 
-  const handleNavigation = (path: string) => {
+  const handleNavigation = (path: Href) => {
     onClose();
     router.push(path);
   };

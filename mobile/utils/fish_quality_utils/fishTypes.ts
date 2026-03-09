@@ -1,0 +1,119 @@
+// utils/fishTypes.ts
+
+export interface ImageQualityInfo {
+  width: number;
+  height: number;
+  aspect_ratio: number;
+  sharpness: number;
+  brightness: number;
+  contrast: number;
+  is_screenshot: boolean;
+  quality_issues: string[];
+}
+
+export interface PredictionResult {
+  // Basic info
+  isFish: boolean;
+  fishLabel: string;
+  fishConfidence: number;
+  fishProbabilities: Record<string, number>;
+  
+  // Stage 2 (species)
+  species?: string;
+  speciesConfidence?: number;
+  speciesProbabilities?: Record<string, number>;
+  
+  // Stage 3 (grade)
+  grade?: string;
+  gradeConfidence?: number;
+  gradeProbabilities?: Record<string, number>;
+  
+  // Final combined result
+  finalLabel?: string;
+  
+  // All probabilities for details
+  allProbabilities?: {
+    fish: Record<string, number>;
+    species: Record<string, number>;
+    grade: Record<string, number>;
+  };
+  
+  // Validation if using two models
+  pairValidation?: {
+    matched: boolean;
+    leftLabel: string;
+    leftConfidence: number;
+    rightLabel: string;
+    rightConfidence: number;
+  };
+  
+  // Image quality info
+  imageQuality?: {
+    left: ImageQualityInfo;
+    right: ImageQualityInfo;
+  };
+  
+  // Uncertainty metrics
+  uncertainty?: number;
+  
+  // Warnings
+  warnings?: string[];
+}
+
+export interface SpeciesPrediction {
+  label: string;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+export interface FishPairValidationResult {
+  isValid: boolean;
+  agreedLabel?: string;
+  reason?: string;
+  left: SpeciesPrediction;
+  right: SpeciesPrediction;
+}
+
+export interface GradePrediction {
+  label: string;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+export interface FishPrediction {
+  label: string;
+  confidence: number;
+  probabilities: Record<string, number>;
+}
+
+export interface RunFishPipelineOptions {
+  onProgress?: (message: string) => void;
+  useTTA?: boolean; // Test-time augmentation
+  enhancedPreprocessing?: boolean; // Apply enhancements for internet images
+}
+
+// LOWER THRESHOLDS for internet images
+export const FISH_THRESHOLD = 0.45; // ← lowered from 0.60, model trained on limited species
+export const SPECIES_THRESHOLD = 0.40; // ← lowered from 0.45
+export const GRADE_THRESHOLD = 0.45;
+export const UNKNOWN_THRESHOLD = 0.25; // ← lowered from 0.30
+
+export const BINARY_LABELS = {
+  0: "fish",
+  1: "non_fish"
+};
+
+export const SPECIES_LABELS = {
+  0: "flyingfish",
+  1: "graymullet",
+  2: "makerel",
+  3: "tuna",
+  4: "whitemullet",
+  5: "yellowfintrevally"
+};
+
+export const GRADE_LABELS = {
+  0: "A",
+  1: "B",
+  2: "C"
+};
