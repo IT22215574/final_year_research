@@ -93,8 +93,8 @@ def main() -> None:
     plt.savefig(output_file, dpi=300, bbox_inches='tight')
     print(f"\nHeatmap saved to: {output_file}")
     
-    # Display the plot
-    plt.show()
+    # Display the plot (comment out for automated runs)
+    # plt.show()
     
     # Close the dataset
     ds.close()

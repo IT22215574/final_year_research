@@ -43,24 +43,9 @@ const OnBoard3: React.FC = () => {
   const animationRefs = useRef<Animated.CompositeAnimation[]>([]);
   const isNavigating = useRef(false); // Prevent multiple navigations
 
-  // Pick only the icons you want
-  const selectedIcons: ImageSourcePropType[] = [
-    icons.Icon1,
-    icons.Icon2,
-    icons.Icon3,
-    icons.Icon4,
-    icons.Icon5,
-    icons.Icon6,
-    icons.Icon1,
-    icons.Icon3,
-    icons.Icon2,
-    icons.Icon4,
-    icons.Icon3,
-    icons.Icon5,
-    icons.Icon1,
-    icons.Icon6,
-    icons.Icon2,
-  ];
+  // Icons are missing - using empty array to prevent errors
+  // TODO: Add icon assets or use Expo vector icons
+  const selectedIcons: ImageSourcePropType[] = [];
 
   // Create animated values for each icon
   const animatedValues = selectedIcons.map(() => new Animated.Value(0));
@@ -371,8 +356,8 @@ const OnBoard3: React.FC = () => {
       swipeLeftAnim.setValue(0);
       swipeRightAnim.setValue(0);
       contentAnim.setValue(0);
-      // Navigate to previous screen (OnBoard2) after animation completes
-      router.push("/onBoard2");
+      // Navigate to role selection screen
+      router.push("/selectSignIn");
     });
   };
 
@@ -384,8 +369,8 @@ const OnBoard3: React.FC = () => {
     isNavigating.current = true;
     stopAnimations();
 
-    // Navigate back to OnBoard2
-    router.push("/onBoard2");
+    // Navigate back to role selection
+    router.push("/selectSignIn");
 
     setTimeout(() => {
       isNavigating.current = false;
@@ -547,26 +532,26 @@ const OnBoard3: React.FC = () => {
       h(
         View,
         { style: styles.bottomSection },
-        // Animated Triangle
-        h(
-          Animated.View,
-          { style: [styles.triangleContainer, triangleTransform] as any },
-          h(Image, { source: images.Traingle2, style: styles.triangle, resizeMode: "contain" })
-        ),
+        // Animated Triangle - Commented out (missing asset)
+        // h(
+        //   Animated.View,
+        //   { style: [styles.triangleContainer, triangleTransform] as any },
+        //   h(Image, { source: images.Traingle2, style: styles.triangle, resizeMode: "contain" })
+        // ),
 
-        // Animated Vector
-        h(
-          Animated.View,
-          { style: [styles.vectorContainer, vectorTransform] as any },
-          h(Image, { source: images.Eclips2, style: styles.vector, resizeMode: "contain" })
-        ),
+        // Animated Vector - Commented out (missing asset)
+        // h(
+        //   Animated.View,
+        //   { style: [styles.vectorContainer, vectorTransform] as any },
+        //   h(Image, { source: images.Eclips2, style: styles.vector, resizeMode: "contain" })
+        // ),
 
-        // Animated Eclipse
-        h(
-          Animated.View,
-          { style: [styles.eclipseContainer, eclipseTransform] as any },
-          h(Image, { source: images.Vector2, style: styles.eclipse, resizeMode: "contain" })
-        ),
+        // Animated Eclipse - Commented out (missing asset)
+        // h(
+        //   Animated.View,
+        //   { style: [styles.eclipseContainer, eclipseTransform] as any },
+        //   h(Image, { source: images.Vector2, style: styles.eclipse, resizeMode: "contain" })
+        // ),
 
         // Circle behind image
         h(
@@ -583,7 +568,7 @@ const OnBoard3: React.FC = () => {
         h(
           Animated.View,
           { style: [styles.contentWrapper, contentTransform] as any },
-          h(Image, { source: images.Onboard03, style: styles.bottomImage, resizeMode: "contain" }),
+          // h(Image, { source: images.Onboard03, style: styles.bottomImage, resizeMode: "contain" }),
 
           h(
             View,

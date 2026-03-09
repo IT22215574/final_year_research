@@ -275,12 +275,6 @@ const Profile = () => {
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
-          <Image
-            source={require("@/assets/images/passsucess.png")}
-            style={styles.wavePattern}
-            resizeMode="cover"
-          />
-          
           {/* Profile Header Content */}
           <View style={styles.profileHeader}>
             <View style={styles.avatarContainer}>

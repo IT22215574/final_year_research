@@ -239,16 +239,6 @@ const TabsLayout = () => {
             },
           }}
         />
-        <Tabs.Screen
-          name="update_profile"
-          options={{
-            title: "Edit Profile",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
       </Tabs>
 
       {/* Sidebar and Overlay */}
@@ -427,7 +417,6 @@ const TabsLayout = () => {
                 Quality
               </Text>
             </TouchableOpacity>
-          a
 
           <TouchableOpacity
             style={styles.navItem}
