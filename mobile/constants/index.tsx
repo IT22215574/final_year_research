@@ -97,3 +97,6 @@ export const icons = {
   // - Ionicons, MaterialIcons, FontAwesome, etc.
 };
 
+// Gradient colors for headers
+export const HEADER_GRADIENT = ["#005CFF", "#0080FF"];
+
