@@ -17,8 +17,14 @@ import { useFocusEffect, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Checkbox from "expo-checkbox";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { cacheDirectory, writeAsStringAsync } from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 
-import { getMyTrips, batchTrainTrips } from "@/services/tripService";
+import {
+  getMyTrips,
+  batchTrainTrips,
+  exportTripsCSV,
+} from "@/services/tripService";
 import FishTripNavBar from "./components/FishTripNavBar";
 
 type ExternalCostItem = {
@@ -565,6 +571,7 @@ export default function PastTripsScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedTripIds, setSelectedTripIds] = useState<string[]>([]);
   const [training, setTraining] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -600,6 +607,77 @@ export default function PastTripsScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadTrips(false);
+  };
+
+  const handleExport = async (dataType: "predicted" | "actual" | "mixed") => {
+    try {
+      setExporting(true);
+
+      // Fetch CSV data from backend with selected data type
+      const csvContent = await exportTripsCSV(dataType);
+
+      // Count rows for user feedback
+      const rowCount = csvContent.split("\n").length - 1; // -1 for header
+
+      if (rowCount === 0) {
+        const dataTypeLabels = {
+          predicted: "predicted",
+          actual: "actual logged",
+          mixed: "complete training",
+        };
+        Alert.alert(
+          "No Data",
+          `No trips with ${dataTypeLabels[dataType]} data found.\n\n` +
+            (dataType === "actual"
+              ? "Complete trips and log actual data to export actual data."
+              : dataType === "predicted"
+                ? "Create trip predictions to export predicted data."
+                : "Add trip predictions or actual logged data."),
+        );
+        return;
+      }
+
+      // Create file with timestamp and data type
+      const fileName = `trips_${dataType}_${Date.now()}.csv`;
+      const fileUri = `${cacheDirectory}${fileName}`;
+
+      // Save CSV to file
+      await writeAsStringAsync(fileUri, csvContent);
+
+      const dataTypeLabels = {
+        predicted: "Predicted",
+        actual: "Actual",
+        mixed: "Mixed",
+      };
+
+      // Share the file - this opens share dialog
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        // Share with system dialog - user can save to Files, Drive, etc.
+        await Sharing.shareAsync(fileUri, {
+          mimeType: "text/csv",
+          dialogTitle: `Save ${dataTypeLabels[dataType]} Training Data`,
+          UTI: "public.comma-separated-values-text",
+        });
+
+        // Don't show success alert here - let user complete the share action
+      } else {
+        // Fallback for devices without sharing capability
+        Alert.alert(
+          "✅ File Ready",
+          `${rowCount} ${dataTypeLabels[dataType].toLowerCase()} trip(s) exported!\n\n` +
+            `File: ${fileName}\n\n` +
+            "The file is ready in app cache. Use the share button to save it to your preferred location.",
+        );
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "Export Failed",
+        error?.message || "Failed to export trips as CSV",
+      );
+    } finally {
+      setExporting(false);
+    }
   };
 
   const toggleTripSelection = (tripId: string) => {
@@ -866,29 +944,89 @@ export default function PastTripsScreen() {
           </View>
 
           {!selectionMode ? (
-            <TouchableOpacity
-              onPress={() => setSelectionMode(true)}
-              style={{
-                backgroundColor: "#3b82f6",
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 12,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
-              <Ionicons
-                name="checkbox-outline"
-                size={18}
-                color="#ffffff"
-                style={{ marginRight: 6 }}
-              />
-              <Text
-                style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TouchableOpacity
+                onPress={async () => {
+                  // Show data type selection dialog
+                  Alert.alert(
+                    "Export Training Data",
+                    "Choose the type of data to export:",
+                    [
+                      {
+                        text: "Predicted Data",
+                        onPress: () => handleExport("predicted"),
+                      },
+                      {
+                        text: "Actual Data",
+                        onPress: () => handleExport("actual"),
+                      },
+                      {
+                        text: "Mixed (All)",
+                        onPress: () => handleExport("mixed"),
+                      },
+                      {
+                        text: "Cancel",
+                        style: "cancel",
+                      },
+                    ],
+                  );
+                }}
+                disabled={exporting || trips.length === 0}
+                style={{
+                  backgroundColor:
+                    exporting || trips.length === 0 ? "#d1d5db" : "#059669",
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
               >
-                Select
-              </Text>
-            </TouchableOpacity>
+                {exporting ? (
+                  <ActivityIndicator
+                    size="small"
+                    color="#ffffff"
+                    style={{ marginRight: 6 }}
+                  />
+                ) : (
+                  <Ionicons
+                    name="download-outline"
+                    size={18}
+                    color="#ffffff"
+                    style={{ marginRight: 6 }}
+                  />
+                )}
+                <Text
+                  style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}
+                >
+                  CSV
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setSelectionMode(true)}
+                style={{
+                  backgroundColor: "#3b82f6",
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <Ionicons
+                  name="checkbox-outline"
+                  size={18}
+                  color="#ffffff"
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}
+                >
+                  Select
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <View>
               <TouchableOpacity

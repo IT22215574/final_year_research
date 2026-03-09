@@ -96,7 +96,7 @@ export class CostEngineService {
       dto.startLat != null &&
       dto.startLon != null &&
       dto.endLat != null &&
-      dto.endLon != null
+      dto.endLon != null   
     ) {
       baseDistanceKm = haversineDistanceKm(
         dto.startLat,

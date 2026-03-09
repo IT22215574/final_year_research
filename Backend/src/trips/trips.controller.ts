@@ -8,11 +8,12 @@ import {
   Delete,
   UseGuards,
   Req,
+  Res,
   BadRequestException,
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
-import type { Request as ExpressRequest } from 'express';
+import type { Request as ExpressRequest, Response } from 'express';
 import { Types } from 'mongoose';
 
 import { AuthTokenGuard } from '../common/guards/auth-token.guard';
@@ -90,6 +91,26 @@ export class TripsController {
   @Get('learning/summary')
   getLearningSummary() {
     return this.tripsService.getLearningSummary();
+  }
+
+  @Get('export/csv')
+  async exportTripsCSV(@Req() req: ExpressRequest, @Res() res: Response) {
+    const userId = this.getUserId(req);
+    const isAdmin = this.isAdmin(req);
+    const dataType = (req.query.dataType as string) || 'mixed'; // 'predicted', 'actual', or 'mixed'
+
+    const trips = isAdmin
+      ? await this.tripsService.findAll()
+      : await this.tripsService.findByUser(userId);
+
+    const csv = await this.tripsService.generateCSV(trips, dataType);
+
+    res.header('Content-Type', 'text/csv');
+    res.header(
+      'Content-Disposition',
+      `attachment; filename="trips_${dataType}_${Date.now()}.csv"`,
+    );
+    res.send(csv);
   }
 
   @Get(':id')
