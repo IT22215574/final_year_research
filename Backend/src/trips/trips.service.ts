@@ -423,9 +423,7 @@ export class TripsService {
       : trips;
 
     if (!filteredTrips.length) {
-      throw new BadRequestException(
-        'No trips found for the specified boat.',
-      );
+      throw new BadRequestException('No trips found for the specified boat.');
     }
 
     // Prepare batch learning data
@@ -467,7 +465,7 @@ export class TripsService {
     try {
       console.log(`🚀 Calling ML service at: ${baseUrl}/learning/batch-update`);
       console.log(`📦 Sending ${learningData.length} trips for training`);
-      
+
       const response = await firstValueFrom(
         this.http.post(`${baseUrl}/learning/batch-update`, {
           trips: learningData,
@@ -514,7 +512,7 @@ export class TripsService {
         code: e?.code,
         tripsCount: learningData.length,
       });
-      
+
       // Provide more specific error message
       let errorMessage = 'Failed to train model';
       if (e?.code === 'ECONNREFUSED') {
@@ -524,7 +522,7 @@ export class TripsService {
       } else if (e?.message) {
         errorMessage = e.message;
       }
-      
+
       throw new BadRequestException(errorMessage);
     }
   }

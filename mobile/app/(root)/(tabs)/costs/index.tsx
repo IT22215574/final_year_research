@@ -38,7 +38,7 @@ export default function CostPreferencesScreen() {
   useFocusEffect(
     useCallback(() => {
       loadPreferences();
-    }, [])
+    }, []),
   );
 
   const handleToggleActive = async (pref: CostPreference) => {
@@ -66,35 +66,34 @@ export default function CostPreferencesScreen() {
   };
 
   const handleDelete = (pref: CostPreference) => {
-    Alert.alert(
-      "Delete Cost Preference",
-      `Delete ${pref.name}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteCostPreference(pref._id);
-              Alert.alert("Success", "Cost preference deleted");
-              await loadPreferences();
-            } catch (error: any) {
-              Alert.alert("Error", error?.message || "Failed to delete");
-            }
-          },
+    Alert.alert("Delete Cost Preference", `Delete ${pref.name}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteCostPreference(pref._id);
+            Alert.alert("Success", "Cost preference deleted");
+            await loadPreferences();
+          } catch (error: any) {
+            Alert.alert("Error", error?.message || "Failed to delete");
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   // Group by category
-  const grouped = preferences.reduce((acc, pref) => {
-    const cat = pref.category || "Other";
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(pref);
-    return acc;
-  }, {} as Record<string, CostPreference[]>);
+  const grouped = preferences.reduce(
+    (acc, pref) => {
+      const cat = pref.category || "Other";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(pref);
+      return acc;
+    },
+    {} as Record<string, CostPreference[]>,
+  );
 
   // Calculate totals
   const activeTotal = preferences
@@ -128,7 +127,9 @@ export default function CostPreferencesScreen() {
               </Text>
             </View>
             <TouchableOpacity
-              onPress={() => router.push("/(root)/(tabs)/costs/add-cost" as any)}
+              onPress={() =>
+                router.push("/(root)/(tabs)/costs/add-cost" as any)
+              }
               className="bg-blue-600 rounded-xl p-3"
             >
               <Ionicons name="add" size={24} color="white" />
@@ -142,7 +143,9 @@ export default function CostPreferencesScreen() {
             <View className="bg-white rounded-xl p-4 flex-1 mr-2 shadow-sm border border-slate-100">
               <View className="flex-row items-center mb-2">
                 <Ionicons name="wallet" size={20} color="#10B981" />
-                <Text className="text-xs text-slate-600 ml-2">Active Total</Text>
+                <Text className="text-xs text-slate-600 ml-2">
+                  Active Total
+                </Text>
               </View>
               <Text className="text-2xl font-bold text-slate-900">
                 Rs {activeTotal.toLocaleString()}
@@ -161,7 +164,8 @@ export default function CostPreferencesScreen() {
                 Rs {autoApplyTotal.toLocaleString()}
               </Text>
               <Text className="text-xs text-slate-500 mt-1">
-                {preferences.filter((p) => p.isActive && p.autoApply).length} auto costs
+                {preferences.filter((p) => p.isActive && p.autoApply).length}{" "}
+                auto costs
               </Text>
             </View>
           </View>
@@ -177,8 +181,9 @@ export default function CostPreferencesScreen() {
                   External Cost Intelligence
                 </Text>
                 <Text className="text-xs text-blue-700 mt-1">
-                  These reusable preferences automatically enhance trip predictions with
-                  realistic costs beyond fuel: harbor fees, ice, bait, permits, etc.
+                  These reusable preferences automatically enhance trip
+                  predictions with realistic costs beyond fuel: harbor fees,
+                  ice, bait, permits, etc.
                 </Text>
               </View>
             </View>
@@ -196,7 +201,9 @@ export default function CostPreferencesScreen() {
               Add external costs to make trip predictions more realistic
             </Text>
             <TouchableOpacity
-              onPress={() => router.push("/(root)/(tabs)/costs/add-cost" as any)}
+              onPress={() =>
+                router.push("/(root)/(tabs)/costs/add-cost" as any)
+              }
               className="bg-blue-600 rounded-xl px-6 py-3"
             >
               <Text className="text-white font-bold">Add First Cost</Text>
@@ -261,7 +268,9 @@ export default function CostPreferencesScreen() {
                             }`}
                           />
                         </View>
-                        <Text className="text-xs text-slate-600 ml-2">Active</Text>
+                        <Text className="text-xs text-slate-600 ml-2">
+                          Active
+                        </Text>
                       </TouchableOpacity>
 
                       {/* Auto-Apply Toggle */}
@@ -273,7 +282,11 @@ export default function CostPreferencesScreen() {
                         <Ionicons
                           name={pref.autoApply ? "flash" : "flash-outline"}
                           size={16}
-                          color={pref.autoApply && pref.isActive ? "#6366F1" : "#94A3B8"}
+                          color={
+                            pref.autoApply && pref.isActive
+                              ? "#6366F1"
+                              : "#94A3B8"
+                          }
                         />
                         <Text
                           className={`text-xs ml-1 ${
@@ -290,14 +303,24 @@ export default function CostPreferencesScreen() {
                       <View className="flex-row items-center">
                         <TouchableOpacity
                           onPress={() =>
-                            router.push(`/(root)/(tabs)/costs/edit/${pref._id}` as any)
+                            router.push(
+                              `/(root)/(tabs)/costs/edit/${pref._id}` as any,
+                            )
                           }
                           className="mr-3"
                         >
-                          <Ionicons name="create-outline" size={20} color="#64748B" />
+                          <Ionicons
+                            name="create-outline"
+                            size={20}
+                            color="#64748B"
+                          />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleDelete(pref)}>
-                          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                          <Ionicons
+                            name="trash-outline"
+                            size={20}
+                            color="#EF4444"
+                          />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -311,4 +334,3 @@ export default function CostPreferencesScreen() {
     </SafeAreaView>
   );
 }
-

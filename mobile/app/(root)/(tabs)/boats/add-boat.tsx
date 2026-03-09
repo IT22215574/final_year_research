@@ -70,13 +70,13 @@ export default function AddBoatScreen() {
       if (!perm.granted) {
         Alert.alert(
           "Permission needed",
-          "Allow gallery permission to select a boat image."
+          "Allow gallery permission to select a boat image.",
         );
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         quality: 0.8,
         allowsEditing: true,
       });
@@ -138,7 +138,7 @@ export default function AddBoatScreen() {
         fuelEfficiencyFactor: toOptionalNumber(fuelEfficiencyFactor),
         engineDegradationFactor: toOptionalNumber(engineDegradationFactor),
         averageFuelPredictionError: toOptionalNumber(
-          averageFuelPredictionError
+          averageFuelPredictionError,
         ),
         mode,
       };

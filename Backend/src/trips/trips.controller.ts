@@ -58,10 +58,7 @@ export class TripsController {
   }
 
   @Post('batch-train')
-  async batchTrain(
-    @Req() req: ExpressRequest,
-    @Body() dto: BatchTrainDto,
-  ) {
+  async batchTrain(@Req() req: ExpressRequest, @Body() dto: BatchTrainDto) {
     const userId = this.getUserId(req);
     return await this.tripsService.batchTrainTrips(userId, dto);
   }

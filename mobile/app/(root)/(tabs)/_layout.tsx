@@ -514,4 +514,3 @@ const styles = StyleSheet.create({
 });
 
 export default TabsLayout;
-

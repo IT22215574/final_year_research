@@ -65,7 +65,7 @@ export default function EditBoatScreen() {
       setBoatName(boat.boatName || "");
       setBoatType(boat.boatType || "");
       setEngineHorsePower(
-        boat.engineHorsePower != null ? String(boat.engineHorsePower) : ""
+        boat.engineHorsePower != null ? String(boat.engineHorsePower) : "",
       );
       setBoatLength(boat.boatLength != null ? String(boat.boatLength) : "");
       setBoatWidth(boat.boatWidth != null ? String(boat.boatWidth) : "");
@@ -73,24 +73,24 @@ export default function EditBoatScreen() {
       setFuelEfficiencyFactor(
         boat.fuelEfficiencyFactor != null
           ? String(boat.fuelEfficiencyFactor)
-          : ""
+          : "",
       );
       setEngineDegradationFactor(
         boat.engineDegradationFactor != null
           ? String(boat.engineDegradationFactor)
-          : ""
+          : "",
       );
       setAverageFuelPredictionError(
         boat.averageFuelPredictionError != null
           ? String(boat.averageFuelPredictionError)
-          : ""
+          : "",
       );
       setMode((boat.mode as BoatMode) || "island");
       setBoatTypes(Array.isArray(types) ? types : []);
 
       if (boat.boatImage) {
         setExistingImageUri(
-          `${process.env.EXPO_PUBLIC_API_BASE_URL}${boat.boatImage}`
+          `${process.env.EXPO_PUBLIC_API_BASE_URL}${boat.boatImage}`,
         );
       }
     } catch (error: any) {
@@ -115,13 +115,13 @@ export default function EditBoatScreen() {
       if (!perm.granted) {
         Alert.alert(
           "Permission needed",
-          "Allow gallery permission to select a boat image."
+          "Allow gallery permission to select a boat image.",
         );
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         quality: 0.8,
         allowsEditing: true,
       });
@@ -169,7 +169,7 @@ export default function EditBoatScreen() {
         fuelEfficiencyFactor: toOptionalNumber(fuelEfficiencyFactor),
         engineDegradationFactor: toOptionalNumber(engineDegradationFactor),
         averageFuelPredictionError: toOptionalNumber(
-          averageFuelPredictionError
+          averageFuelPredictionError,
         ),
         mode,
       };
