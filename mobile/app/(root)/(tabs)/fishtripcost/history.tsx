@@ -143,10 +143,10 @@ const HistoryScreen = () => {
                     Alert.alert(
                       "Trip",
                       `Trip ID: ${id}\nCreated: ${createdAt}\nPredicted Total: Rs ${money(
-                        predictedTotal
+                        predictedTotal,
                       )}\nPredicted Fuel: ${
                         predictedFuel ?? "—"
-                      }\nActual Fuel: ${actualFuel ?? "—"}`
+                      }\nActual Fuel: ${actualFuel ?? "—"}`,
                     );
                   }}
                 >
@@ -161,7 +161,9 @@ const HistoryScreen = () => {
                     </View>
                   </View>
 
-                  <Text className="text-slate-400 text-xs mt-1">{createdAt}</Text>
+                  <Text className="text-slate-400 text-xs mt-1">
+                    {createdAt}
+                  </Text>
 
                   <View className="flex-row gap-3 mt-3">
                     <MiniStat

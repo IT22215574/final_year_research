@@ -10,10 +10,13 @@ export type ExternalCostItem = {
 
 export type DatciePredictBody = {
   boatId: string;
-  startLat: number;
-  startLon: number;
-  endLat: number;
-  endLon: number;
+  // Coordinates (optional if distanceKm provided)
+  startLat?: number;
+  startLon?: number;
+  endLat?: number;
+  endLon?: number;
+  // Manual distance (optional if coordinates provided)
+  distanceKm?: number;
   windSpeed: number;
   waveHeight: number;
   fuelPrice: number;
@@ -278,4 +281,28 @@ export const batchTrainTrips = async (tripIds: string[], boatId?: string) => {
   }
 
   return await response.json();
+};
+
+/**
+ * Export trips as CSV for Google Colab training
+ * Returns CSV text content
+ */
+export const exportTripsCSV = async (
+  dataType: "predicted" | "actual" | "mixed" = "mixed",
+): Promise<string> => {
+  const response = await apiFetch(
+    `/api/v1/trips/export/csv?dataType=${dataType}`,
+    {
+      method: "GET",
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      error.message || error.detail || "Failed to export trips CSV",
+    );
+  }
+
+  return await response.text();
 };

@@ -95,7 +95,7 @@ export default function BoatDetailsScreen() {
             Alert.alert("Success", "Boat deleted successfully", [
               {
                 text: "OK",
-                onPress: () => router.replace("/(root)/(tabs)/boats"),
+                onPress: () => router.replace("/fishtripcost/boats"),
               },
             ]);
           } catch (error: any) {
@@ -149,7 +149,7 @@ export default function BoatDetailsScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => router.push(`/(root)/(tabs)/boats/edit/${boat._id}`)}
+          onPress={() => router.push(`/fishtripcost/boats/edit/${boat._id}`)}
           className="bg-blue-600 px-4 py-2 rounded-xl"
         >
           <Text className="text-white font-bold">Edit</Text>

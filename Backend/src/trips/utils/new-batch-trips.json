@@ -1,0 +1,197 @@
+[
+  {
+    "boatSpec": {
+      "boatName": "Sea Breeze Express",
+      "boatType": "Fiber Boat",
+      "engineHorsePower": 28,
+      "boatLength": 6.8,
+      "boatWidth": 2.0,
+      "boatValue": 720000,
+      "fuelEfficiencyFactor": 1.20,
+      "engineDegradationFactor": 0.92,
+      "averageFuelPredictionError": 0.04,
+      "fuelTankCapacityLiters": 120,
+      "maxCrewCapacity": 2
+    },
+    "tripParameters": {
+      "boatId": "boat_007",
+      "distanceKm": 15.6,
+      "averageSpeedKmh": 10.9,
+      "fishingHours": 4.9,
+      "crewSize": 2,
+      "fuelPricePerLiter": 276,
+      "expectedFishPricePerKg": 360,
+      "expectedCatchKg": 30,
+      "predictedCatchKg": 32
+    },
+    "weather": {
+      "windSpeedKmh": 5.8,
+      "waveHeightMeters": 0.3,
+      "rainLevel": 0.05
+    },
+    "externalCosts": {
+      "iceCost": 1400,
+      "baitCost": 900,
+      "crewFoodCost": 600,
+      "portFee": 500,
+      "gearMaintenanceCost": 600,
+      "miscellaneousCost": 300
+    }
+  },
+  {
+    "boatSpec": {
+      "boatName": "Blue Horizon 3",
+      "boatType": "Multi-day Boat",
+      "engineHorsePower": 135,
+      "boatLength": 15.1,
+      "boatWidth": 4.0,
+      "boatValue": 5100000,
+      "fuelEfficiencyFactor": 0.88,
+      "engineDegradationFactor": 1.22,
+      "averageFuelPredictionError": 0.11,
+      "fuelTankCapacityLiters": 950,
+      "maxCrewCapacity": 9
+    },
+    "tripParameters": {
+      "boatId": "boat_008",
+      "distanceKm": 95.8,
+      "averageSpeedKmh": 9.2,
+      "fishingHours": 20.4,
+      "crewSize": 7,
+      "fuelPricePerLiter": 297,
+      "expectedFishPricePerKg": 550,
+      "expectedCatchKg": 340,
+      "predictedCatchKg": 355
+    },
+    "weather": {
+      "windSpeedKmh": 18.7,
+      "waveHeightMeters": 1.5,
+      "rainLevel": 0.4
+    },
+    "externalCosts": {
+      "iceCost": 9500,
+      "baitCost": 4500,
+      "crewFoodCost": 4000,
+      "portFee": 1700,
+      "gearMaintenanceCost": 2600,
+      "miscellaneousCost": 1400
+    }
+  },
+  {
+    "boatSpec": {
+      "boatName": "Pearl Diver",
+      "boatType": "One-day Boat",
+      "engineHorsePower": 40,
+      "boatLength": 8.0,
+      "boatWidth": 2.3,
+      "boatValue": 1100000,
+      "fuelEfficiencyFactor": 1.10,
+      "engineDegradationFactor": 1.05,
+      "averageFuelPredictionError": 0.06,
+      "fuelTankCapacityLiters": 180,
+      "maxCrewCapacity": 3
+    },
+    "tripParameters": {
+      "boatId": "boat_009",
+      "distanceKm": 22.4,
+      "averageSpeedKmh": 12.0,
+      "fishingHours": 5.5,
+      "crewSize": 3,
+      "fuelPricePerLiter": 281,
+      "expectedFishPricePerKg": 420,
+      "expectedCatchKg": 34,
+      "predictedCatchKg": 36
+    },
+    "weather": {
+      "windSpeedKmh": 7.9,
+      "waveHeightMeters": 0.5,
+      "rainLevel": 0.08
+    },
+    "externalCosts": {
+      "iceCost": 2200,
+      "baitCost": 1600,
+      "crewFoodCost": 1100,
+      "portFee": 700,
+      "gearMaintenanceCost": 800,
+      "miscellaneousCost": 450
+    }
+  },
+  {
+    "boatSpec": {
+      "boatName": "Tuna Master",
+      "boatType": "Longliner",
+      "engineHorsePower": 110,
+      "boatLength": 13.6,
+      "boatWidth": 3.7,
+      "boatValue": 3800000,
+      "fuelEfficiencyFactor": 0.94,
+      "engineDegradationFactor": 1.14,
+      "averageFuelPredictionError": 0.10,
+      "fuelTankCapacityLiters": 700,
+      "maxCrewCapacity": 6
+    },
+    "tripParameters": {
+      "boatId": "boat_010",
+      "distanceKm": 72.6,
+      "averageSpeedKmh": 10.5,
+      "fishingHours": 16.2,
+      "crewSize": 5,
+      "fuelPricePerLiter": 295,
+      "expectedFishPricePerKg": 590,
+      "expectedCatchKg": 195,
+      "predictedCatchKg": 205
+    },
+    "weather": {
+      "windSpeedKmh": 14.2,
+      "waveHeightMeters": 1.1,
+      "rainLevel": 0.25
+    },
+    "externalCosts": {
+      "iceCost": 6800,
+      "baitCost": 3400,
+      "crewFoodCost": 3100,
+      "portFee": 1400,
+      "gearMaintenanceCost": 2100,
+      "miscellaneousCost": 1100
+    }
+  },
+  {
+    "boatSpec": {
+      "boatName": "Rapid Catch",
+      "boatType": "Fiber Boat",
+      "engineHorsePower": 32,
+      "boatLength": 7.4,
+      "boatWidth": 2.2,
+      "boatValue": 920000,
+      "fuelEfficiencyFactor": 1.15,
+      "engineDegradationFactor": 0.98,
+      "averageFuelPredictionError": 0.045,
+      "fuelTankCapacityLiters": 140,
+      "maxCrewCapacity": 3
+    },
+    "tripParameters": {
+      "boatId": "boat_011",
+      "distanceKm": 20.8,
+      "averageSpeedKmh": 11.5,
+      "fishingHours": 6.0,
+      "crewSize": 2,
+      "fuelPricePerLiter": 279,
+      "expectedFishPricePerKg": 390,
+      "expectedCatchKg": 32,
+      "predictedCatchKg": 34
+    },
+    "weather": {
+      "windSpeedKmh": 10.1,
+      "waveHeightMeters": 0.8,
+      "rainLevel": 0.12
+    },
+    "externalCosts": {
+      "iceCost": 1900,
+      "baitCost": 1300,
+      "crewFoodCost": 900,
+      "portFee": 650,
+      "gearMaintenanceCost": 750,
+      "miscellaneousCost": 450
+    }
+  }
+]

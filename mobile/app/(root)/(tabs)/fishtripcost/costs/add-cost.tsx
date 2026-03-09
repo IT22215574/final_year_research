@@ -78,7 +78,10 @@ export default function AddCostPreferenceScreen() {
         },
       ]);
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "Failed to create cost preference");
+      Alert.alert(
+        "Error",
+        error?.message || "Failed to create cost preference",
+      );
     } finally {
       setSaving(false);
     }
@@ -86,14 +89,17 @@ export default function AddCostPreferenceScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
-      <ScrollView className="px-5 pt-4" contentContainerStyle={{ paddingBottom: 30 }}>
+      <ScrollView
+        className="px-5 pt-4"
+        contentContainerStyle={{ paddingBottom: 30 }}
+      >
         {/* Info Card */}
         <View className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-200">
           <View className="flex-row items-start">
             <Ionicons name="bulb" size={20} color="#3B82F6" />
             <Text className="text-xs text-blue-700 ml-2 flex-1">
-              Create reusable external costs that will automatically be included in trip
-              predictions if auto-apply is enabled.
+              Create reusable external costs that will automatically be included
+              in trip predictions if auto-apply is enabled.
             </Text>
           </View>
         </View>
@@ -242,5 +248,3 @@ export default function AddCostPreferenceScreen() {
     </SafeAreaView>
   );
 }
-
-
