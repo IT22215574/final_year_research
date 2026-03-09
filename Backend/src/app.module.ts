@@ -6,6 +6,7 @@ import { diskStorage } from 'multer';
 import { AuthModule } from './auth/auth.module';
 import { GradingModule } from './grading/grading.module';
 import { UserModule } from './user/user.module';
+import { NotificationModule } from './notification/notification.module';
 import * as path from 'path';
 import { TripsModule } from './trips/trips.module';
 import { AnalyticsModule } from './trips_analytics/trips_analytics.module';
@@ -20,9 +21,20 @@ import { CostPreferencesModule } from './cost-preferences/cost-preferences.modul
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO'),
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const mongoUri =
+          configService.get<string>('MONGO') ??
+          configService.get<string>('MONGODB_URI') ??
+          configService.get<string>('MONGO_URI');
+
+        if (!mongoUri) {
+          throw new Error(
+            'Missing MongoDB connection string. Set MONGO (or MONGODB_URI) in Backend/.env',
+          );
+        }
+
+        return { uri: mongoUri };
+      },
       inject: [ConfigService],
     }),
     MulterModule.register({
@@ -44,6 +56,7 @@ import { CostPreferencesModule } from './cost-preferences/cost-preferences.modul
     CostEngineModule,
     CostPreferencesModule,
 
+    NotificationModule,
   ],
 })
 export class AppModule {}

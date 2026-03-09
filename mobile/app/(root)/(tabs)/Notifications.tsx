@@ -286,7 +286,7 @@ export default function Notifications() {
         <Ionicons name="notifications-off-outline" size={64} color="#999" />
         <Text style={styles.emptyText}>No notifications yet</Text>
         <Text style={styles.emptySubtext}>
-          You'll see notifications here when you have new updates
+          You{"'"}ll see notifications here when you have new updates
         </Text>
         <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
           <Ionicons name="refresh" size={20} color="#0057FF" />

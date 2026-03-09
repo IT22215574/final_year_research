@@ -184,7 +184,6 @@ const SelectSignIn = () => {
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.8,
             shadowRadius: 4,
-            elevation: 4,
           }}
           resizeMode="contain"
         />

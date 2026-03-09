@@ -425,7 +425,7 @@ const OnBoard3: React.FC = () => {
     return positions;
   };
 
-  const renderDistributedIcons = (): JSX.Element[] => {
+  const renderDistributedIcons = (): React.ReactElement[] => {
     const predefinedPositions = getPredefinedPositions();
 
     return selectedIcons.map((icon: ImageSourcePropType, index: number) => {

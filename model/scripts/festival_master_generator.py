@@ -1,0 +1,166 @@
+import pandas as pd
+from pathlib import Path
+from datetime import datetime
+import requests
+import os
+from dotenv import load_dotenv
+from hijridate import Hijri
+
+# ----------------------------------
+# PATHS
+# ----------------------------------
+SCRIPT_DIR = Path(__file__).parent
+BACKEND_DIR = SCRIPT_DIR.parent
+
+OUTPUT_DIR = BACKEND_DIR / "dataset" / "raw" / "festivals"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+OUTPUT_CSV = OUTPUT_DIR / "festivals_2020_2026.csv"
+
+# ----------------------------------
+# LOAD API KEY
+# ----------------------------------
+env_file = BACKEND_DIR / ".env"
+load_dotenv(env_file)
+
+API_KEY = os.getenv("CALENDARIFIC_API_KEY")
+BASE_URL = "https://calendarific.com/api/v2/holidays"
+
+# ✅ FIX: 2020 → 2026 INCLUDE
+YEARS = list(range(2020, 2027))
+rows = []
+
+# ======================================================
+# 1️⃣ FIXED DATE FESTIVALS (Same every year)
+# ======================================================
+fixed_festivals = {
+    "NewYear_Jan1": "01-01",
+    "Independence_Day": "02-04",
+    "Christmas": "12-25"
+}
+
+for y in YEARS:
+    for name, mmdd in fixed_festivals.items():
+        m, d = map(int, mmdd.split("-"))
+        rows.append({
+            "festival_name": name,
+            "festival_date": pd.Timestamp(year=y, month=m, day=d)
+        })
+
+# ======================================================
+# 2️⃣ SINHALA + TAMIL NEW YEAR (Semi-fixed)
+# ======================================================
+for y in YEARS:
+    rows.append({"festival_name": "SinhalaNewYear", "festival_date": pd.Timestamp(f"{y}-04-13")})
+    rows.append({"festival_name": "SinhalaNewYear", "festival_date": pd.Timestamp(f"{y}-04-14")})
+    rows.append({"festival_name": "TamilNewYear", "festival_date": pd.Timestamp(f"{y}-04-14")})
+
+# ======================================================
+# 3️⃣ MUSLIM FESTIVALS (CALCULATED)
+# ======================================================
+hijri_map = {
+    2020: 1441,
+    2021: 1442,
+    2022: 1443,
+    2023: 1444,
+    2024: 1445,
+    2025: 1446,
+    2026: 1447
+}
+
+for year, hijri_year in hijri_map.items():
+    eid_fitr = Hijri(hijri_year, 10, 1).to_gregorian()
+    eid_adha = Hijri(hijri_year, 12, 10).to_gregorian()
+
+    rows.append({"festival_name": "Eid_al_Fitr", "festival_date": pd.Timestamp(eid_fitr)})
+    rows.append({"festival_name": "Eid_al_Adha", "festival_date": pd.Timestamp(eid_adha)})
+
+# ======================================================
+# 4️⃣ POYA DAYS (MANUAL - Full Moon Days)
+# ======================================================
+# Poya days are on full moon - approximate dates (can be ±1 day)
+poya_dates = {
+    2024: ["01-25", "02-24", "03-25", "04-23", "05-23", "06-21", "07-21", "08-19", "09-17", "10-17", "11-15", "12-14"],
+    2025: ["01-13", "02-12", "03-14", "04-13", "05-12", "06-11", "07-10", "08-09", "09-07", "10-06", "11-05", "12-04"]
+}
+
+for year, dates in poya_dates.items():
+    for mmdd in dates:
+        m, d = map(int, mmdd.split("-"))
+        month_names = ["", "Duruthu", "Navam", "Medin", "Bak", "Vesak", "Poson", 
+                      "Esala", "Nikini", "Binara", "Vap", "Il", "Unduvap"]
+        poya_name = f"{month_names[m]} Poya"
+        rows.append({
+            "festival_name": poya_name,
+            "festival_date": pd.Timestamp(year=year, month=m, day=d)
+        })
+
+# ======================================================
+# 5️⃣ POYA, VESAK, POSON → VIA API (OPTIONAL BACKUP)
+# ======================================================
+if API_KEY and API_KEY != "GET_FREE_KEY_FROM_https://calendarific.com/" and len(API_KEY) > 10:
+    for year in YEARS:
+        params = {
+            "api_key": API_KEY,
+            "country": "LK",
+            "year": year
+        }
+
+        try:
+            r = requests.get(BASE_URL, params=params, timeout=10).json()
+
+            # Check if response is valid
+            if not isinstance(r, dict):
+                print(f"⚠ Invalid API response for {year}: expected dict, got {type(r)}")
+                continue
+            
+            if "response" not in r:
+                print(f"⚠ No 'response' key in API data for {year}")
+                continue
+            
+            if "holidays" not in r["response"]:
+                print(f"⚠ No 'holidays' in API response for {year}")
+                continue
+
+            holidays = r["response"]["holidays"]
+            if not isinstance(holidays, list):
+                print(f"⚠ Holidays is not a list for {year}")
+                continue
+
+            for h in holidays:
+                name = h.get("name", "")
+                date_info = h.get("date", {})
+                date_str = date_info.get("iso", "")[:10] if isinstance(date_info, dict) else ""
+                
+                if not date_str:
+                    continue
+                
+                date_obj = pd.to_datetime(date_str)
+
+                if any(k in name.lower() for k in ["poya", "vesak", "poson"]):
+                    rows.append({
+                        "festival_name": name.replace(" Day", "").strip(),
+                        "festival_date": date_obj
+                    })
+
+        except Exception as e:
+            print(f"⚠ API Error {year}: {e}")
+
+else:
+    print("⚠ API KEY missing or invalid → Skipping Poya / Vesak / Poson")
+    print("ℹ️  Get free API key from: https://calendarific.com/")
+    print("ℹ️  Using fallback festivals (New Year, Independence Day, Sinhala NY, Eid, Christmas)")
+
+# ======================================================
+# FINAL SAVE
+# ======================================================
+df = pd.DataFrame(rows)
+df.sort_values("festival_date", inplace=True)
+df.drop_duplicates(inplace=True)
+df.reset_index(drop=True, inplace=True)
+df.to_csv(OUTPUT_CSV, index=False)
+
+print("\n✅ FESTIVAL MASTER CSV GENERATED SUCCESSFULLY")
+print(f"📁 {OUTPUT_CSV}")
+print(df.head(15))
+print(df.tail(15))

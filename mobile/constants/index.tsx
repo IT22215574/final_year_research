@@ -115,6 +115,29 @@ export const images = {
   SFLLogo,
 };
 
+export const PORTS = [
+  'Colombo',
+  'Negombo',
+  'Galle',
+  'Trincomalee',
+  'Jaffna',
+  'Hambantota',
+  'Kalpitiya',
+];
+
+export const FISH_SPECIES: Record<number, { sinhala: string; english: string }> = {
+  2: { sinhala: 'පරව් (ලොකු)', english: 'Trevally (L)' },
+  3: { sinhala: 'ගල්මාළු (ලොකු)', english: 'Rock fish (L)' },
+  4: { sinhala: 'ඈලපත්', english: 'Sail fish' },
+  5: { sinhala: 'බලයා', english: 'Skipjack tuna' },
+  6: { sinhala: 'කෙළවල්ලා', english: 'Yellowfin tuna' },
+  7: { sinhala: 'සාලයා (මට්ට)', english: 'Sardinella' },
+  8: { sinhala: 'මාරා', english: 'Sharks' },
+  9: { sinhala: 'හිරුල්ලා', english: 'Herrings' },
+  10: { sinhala: 'කුම්බලා', english: 'Indian Mackerel' },
+  11: { sinhala: 'කාරල්ලා', english: 'Pony fish' },
+};
+
 export const icons = {
   home,
   Teacher,

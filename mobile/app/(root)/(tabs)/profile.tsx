@@ -124,7 +124,126 @@ export default function Profile() {
     ]);
   };
 
-  /* -------------------- UI -------------------- */
+  const formatDate = (dateString: string | Date) => {
+    if (!dateString) return "Not set";
+    try {
+      const date = new Date(dateString);
+      return isNaN(date.getTime())
+        ? "Invalid date"
+        : date.toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+    } catch {
+      return "Invalid date";
+    }
+  };
+
+  // Get user data with proper field mapping
+  const getUserData = () => {
+    if (!currentUser) return null;
+
+    return {
+      firstName: currentUser.firstName || "Not set",
+      lastName: currentUser.lastName || "Not set",
+      email: currentUser.email || "Not set",
+      phone: currentUser.phone || "Not set",
+      role: currentUser.role || "Not set",
+      dateOfBirth: currentUser.dateOfBirth || null,
+      joinDate: currentUser.createdAt || currentUser.joinDate || new Date(),
+      district:
+        (typeof currentUser.district === "string"
+          ? currentUser.district
+          : currentUser.district?.name) || "Not set",
+      zone: currentUser.zone ? currentUser.zone : "Not set",
+      // Additional fish industry specific fields
+      specialization: currentUser.specialization || "Fishery Professional",
+      experience: currentUser.experience || "0",
+      licenseNumber: currentUser.licenseNumber || "N/A",
+      vesselName: currentUser.vesselName || "N/A",
+    };
+  };
+
+  const userData = getUserData();
+
+  // Fish industry role icons mapping
+  const getRoleIcon = (role: string) => {
+    const roleLower = role?.toLowerCase() || "";
+    if (roleLower.includes("captain") || roleLower.includes("master")) {
+      return "boat";
+    } else if (roleLower.includes("fisher")) {
+      return "fish";
+    } else if (roleLower.includes("processor")) {
+      return "cut";
+    } else if (roleLower.includes("inspector")) {
+      return "clipboard";
+    } else if (roleLower.includes("manager")) {
+      return "business";
+    } else if (roleLower.includes("technician")) {
+      return "build";
+    }
+    return "person";
+  };
+
+  const getRoleColor = (role: string) => {
+    const roleLower = role?.toLowerCase() || "";
+    if (roleLower.includes("captain") || roleLower.includes("master")) {
+      return "#3B82F6"; // Blue
+    } else if (roleLower.includes("fisher")) {
+      return "#10B981"; // Green
+    } else if (roleLower.includes("processor")) {
+      return "#F59E0B"; // Amber
+    } else if (roleLower.includes("inspector")) {
+      return "#8B5CF6"; // Violet
+    } else if (roleLower.includes("manager")) {
+      return "#EF4444"; // Red
+    } else if (roleLower.includes("technician")) {
+      return "#06B6D4"; // Cyan
+    }
+    return "#64748B"; // Slate
+  };
+
+  if (!currentUser) {
+    return (
+      <SafeAreaView style={styles.container} edges={["right", "left"]}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="#0B3D91"
+          translucent={false}
+        />
+        <View style={styles.systemStatusBar} />
+        <LinearGradient
+          colors={["#0B3D91", "#1E90FF", "#00BFFF"]}
+          style={styles.gradientBg}
+        >
+
+          <View style={styles.errorContainer}>
+            <View style={styles.errorIconContainer}>
+              <Ionicons name="fish-outline" size={60} color="#FFF" />
+            </View>
+            <Text style={styles.errorTitle}>No Profile Found</Text>
+            <Text style={styles.errorText}>
+              Unable to load your fishery profile
+            </Text>
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={fetchUserProfile}
+            >
+              <Ionicons name="refresh" size={20} color="#FFF" />
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.homeButton}
+              onPress={() => router.replace("/home")}
+            >
+              <Text style={styles.homeButtonText}>Return to Dashboard</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -171,70 +290,177 @@ export default function Profile() {
 
         {/* QUICK ACTIONS */}
         <View style={styles.quickActions}>
-          <ActionCard
-            title="Edit Profile"
-            icon="create-outline"
-            color={["#10B981", "#34D399"]}
-            onPress={() => router.push("/Update_profile")}
-          />
-          <ActionCard
-            title="Documents"
-            icon="document-text"
-            color={["#3B82F6", "#60A5FA"]}
-            onPress={() => router.push("/documents")}
-          />
-          <ActionCard
-            title="Support"
-            icon="help-circle"
-            color={["#8B5CF6", "#A78BFA"]}
-            onPress={() => router.push("/support")}
-          />
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push("/update_profile")}
+          >
+            <LinearGradient
+              colors={["#10B981", "#34D399"]}
+              style={styles.actionIconContainer}
+            >
+              <Ionicons name="create-outline" size={24} color="#FFF" />
+            </LinearGradient>
+            <Text style={styles.actionTitle}>Edit Profile</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push("/documents" as any)}
+          >
+            <LinearGradient
+              colors={["#3B82F6", "#60A5FA"]}
+              style={styles.actionIconContainer}
+            >
+              <Ionicons name="document-text" size={24} color="#FFF" />
+            </LinearGradient>
+            <Text style={styles.actionTitle}>Documents</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push("/certifications" as any)}
+          >
+            <LinearGradient
+              colors={["#F59E0B", "#FBBF24"]}
+              style={styles.actionIconContainer}
+            >
+              <Ionicons name="ribbon" size={24} color="#FFF" />
+            </LinearGradient>
+            <Text style={styles.actionTitle}>Certifications</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* COMMON INFO */}
-        <Section title="Personal Information">
-          <Info label="Email" value={currentUser.email} />
-          <Info label="Phone" value={currentUser.phone || "Not set"} />
-          <Info label="Joined" value={formatDate(currentUser.createdAt)} />
-        </Section>
+        {/* Profile Details Section */}
+        <View style={styles.detailsSection}>
+          <Text style={styles.sectionTitle}>Profile Information</Text>
+          
+          <View style={styles.detailsGrid}>
+            {/* Personal Info Card */}
+            <LinearGradient
+              colors={["#FFF", "#F0F9FF"]}
+              style={styles.detailCard}
+            >
+              <View style={styles.cardHeader}>
+                <Ionicons name="person-circle" size={20} color="#0B3D91" />
+                <Text style={styles.cardTitle}>Personal Details</Text>
+              </View>
+              
+              <View style={styles.detailItem}>
+                <Ionicons name="mail-outline" size={16} color="#64748B" />
+                <Text style={styles.detailLabel}>Email</Text>
+                <Text style={styles.detailValue}>{userData?.email}</Text>
+              </View>
+              
+              <View style={styles.detailItem}>
+                <Ionicons name="call-outline" size={16} color="#64748B" />
+                <Text style={styles.detailLabel}>Contact</Text>
+                <Text style={styles.detailValue}>{userData?.phone}</Text>
+              </View>
+              
+              <View style={styles.detailItem}>
+                <Ionicons name="calendar-outline" size={16} color="#64748B" />
+                <Text style={styles.detailLabel}>Date of Birth</Text>
+                <Text style={styles.detailValue}>
+                  {userData?.dateOfBirth ? formatDate(userData.dateOfBirth) : "Not set"}
+                </Text>
+              </View>
+            </LinearGradient>
 
-        {/* FISHER MAN */}
-        {role === "fisherman" && (
-          <Section title="Fishing Details">
-            <Info label="Experience" value={`${currentUser.experience || 0} years`} />
-            <Info label="License" value={currentUser.licenseNumber || "N/A"} />
-          </Section>
-        )}
+            {/* Fishery Info Card */}
+            <LinearGradient
+              colors={["#FFF", "#F0FDF4"]}
+              style={styles.detailCard}
+            >
+              <View style={styles.cardHeader}>
+                <Ionicons name="boat" size={20} color="#10B981" />
+                <Text style={styles.cardTitle}>Fishery Details</Text>
+              </View>
+              
+              <View style={styles.detailItem}>
+                <Ionicons name="location" size={16} color="#64748B" />
+                <Text style={styles.detailLabel}>Zone & District</Text>
+                <Text style={styles.detailValue}>
+                  {userData?.zone && userData.zone !== "Not set"
+                    ? `${userData.zone}, ${userData.district}`
+                    : "Not set"}
+                </Text>
+              </View>
+              
+              <View style={styles.detailItem}>
+                <Ionicons name="boat-outline" size={16} color="#64748B" />
+                <Text style={styles.detailLabel}>Vessel</Text>
+                <Text style={styles.detailValue}>{userData?.vesselName}</Text>
+              </View>
+              
+              <View style={styles.detailItem}>
+                <Ionicons name="shield-checkmark" size={16} color="#64748B" />
+                <Text style={styles.detailLabel}>License No.</Text>
+                <Text style={styles.detailValue}>{userData?.licenseNumber}</Text>
+              </View>
+            </LinearGradient>
 
-        {/* BOAT OWNER */}
-        {role === "boatowner" && (
-          <Section title="Vessel Details">
-            <Info label="Vessel Name" value={currentUser.vesselName || "N/A"} />
-            <Info
-              label="Area"
-              value={`${currentUser.zone || ""} ${currentUser.district?.name || ""}`}
-            />
-          </Section>
-        )}
+            {/* Experience Card */}
+            <LinearGradient
+              colors={["#FFF", "#FFFBEB"]}
+              style={styles.detailCard}
+            >
+              <View style={styles.cardHeader}>
+                <Ionicons name="trending-up" size={20} color="#F59E0B" />
+                <Text style={styles.cardTitle}>Experience</Text>
+              </View>
+              
+              <View style={styles.experienceContainer}>
+                <View style={styles.experienceYears}>
+                  <Text style={styles.yearsNumber}>{userData?.experience}</Text>
+                  <Text style={styles.yearsLabel}>Years in Industry</Text>
+                </View>
+                <View style={styles.experienceBar}>
+                  <View 
+                    style={[
+                      styles.progressBar, 
+                      { 
+                        width: `${Math.min(Number(userData?.experience) * 10, 100)}%`,
+                        backgroundColor: getRoleColor(userData?.role || "")
+                      }
+                    ]} 
+                  />
+                </View>
+              </View>
+              
+              <View style={styles.detailItem}>
+                <Ionicons name="people" size={16} color="#64748B" />
+                <Text style={styles.detailLabel}>Member Since</Text>
+                <Text style={styles.detailValue}>
+                  {formatDate(userData?.joinDate ?? new Date())}
+                </Text>
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
 
-        {/* CUSTOMER */}
-        {role === "customer" && (
-          <Section title="Customer Info">
-            <Info label="District" value={currentUser.district?.name || "N/A"} />
-          </Section>
-        )}
-
-        {/* ACTIONS */}
-        <View style={styles.actions}>
+        {/* Action Buttons */}
+        <View style={styles.actionButtonsContainer}>
           <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={() => router.push("/change-password")}
+            style={[styles.actionButton, styles.primaryButton]}
+            onPress={() => router.push("/change-password" as any)}
           >
             <Text style={styles.primaryText}>Change Password</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-            <Text style={styles.logoutText}>Sign Out</Text>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.supportButton]}
+            onPress={() => router.push("/support" as any)}
+          >
+            <Ionicons name="help-circle" size={20} color="#0B3D91" />
+            <Text style={styles.supportButtonText}>Support Center</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.logoutButton]}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out" size={20} color="#EF4444" />
+            <Text style={styles.logoutButtonText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

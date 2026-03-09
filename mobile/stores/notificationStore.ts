@@ -43,6 +43,8 @@ const useNotificationStore = create<NotificationStore>((set, get) => ({
           count = data.unreadCount;
         } else if (data && typeof data.total === 'number') {
           count = data.total;
+        } else if (data && data.data && typeof data.data.count === 'number') {
+          count = data.data.count;
         } else {
           console.warn("⚠️ [Store] Unexpected unread count format:", data);
         }
