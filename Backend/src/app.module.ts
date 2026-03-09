@@ -1,17 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import { MulterModule } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
 import { AuthModule } from './auth/auth.module';
-import { GradingModule } from './grading/grading.module';
 import { UserModule } from './user/user.module';
-import * as path from 'path';
-import { TripsModule } from './trips/trips.module';
-import { AnalyticsModule } from './trips_analytics/trips_analytics.module';
-import { MlModule } from './tripml/tripml.module';
-import { CostEngineModule } from './cost-engine/cost-engine.module';
-import { CostPreferencesModule } from './cost-preferences/cost-preferences.module';
 
 @Module({
   imports: [
@@ -20,30 +11,13 @@ import { CostPreferencesModule } from './cost-preferences/cost-preferences.modul
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         uri: configService.get<string>('MONGO'),
       }),
       inject: [ConfigService],
     }),
-    MulterModule.register({
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = path.extname(file.originalname);
-          cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-        },
-      }),
-    }),
     AuthModule,
-    GradingModule,
     UserModule,
-    TripsModule,
-    AnalyticsModule,
-    MlModule,
-    CostEngineModule,
-    CostPreferencesModule,
-
   ],
 })
 export class AppModule {}

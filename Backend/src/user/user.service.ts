@@ -9,67 +9,55 @@ export class UserService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
-  async getAllUsers() {
-    const users = await this.userModel
-      .find()
-      .select('-password -otp -otpExpires -verifytoken')
-      .exec();
-    return users;
-  }
-
   async getUserById(id: string) {
-    const user = await this.userModel
-      .findById(id)
-      .select('-password -otp -otpExpires -verifytoken')
-      .exec();
-
+    const user = await this.userModel.findById(id).select('-password -verifytoken').lean();
     if (!user) {
       throw new NotFoundException('User not found');
     }
-
     return user;
   }
 
-  async updateUser(id: string, updateData: Partial<User>) {
-    delete updateData.password;
-    delete updateData.otp;
-    delete updateData.otpExpires;
-
-    const user = await this.userModel
-      .findByIdAndUpdate(id, updateData, { new: true })
-      .select('-password -otp -otpExpires -verifytoken')
-      .exec();
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return user;
-  }
-
-  async deleteUser(id: string) {
-    const result = await this.userModel.findByIdAndDelete(id).exec();
-
-    if (!result) {
-      throw new NotFoundException('User not found');
-    }
-
-    return { success: true, message: 'User deleted successfully' };
+  async getAllUsers() {
+    return this.userModel.find().select('-password -verifytoken').lean();
   }
 
   async searchUsers(query: string) {
-    const users = await this.userModel
+    if (!query) return this.getAllUsers();
+    return this.userModel
       .find({
         $or: [
           { firstName: { $regex: query, $options: 'i' } },
+          { lastName: { $regex: query, $options: 'i' } },
           { email: { $regex: query, $options: 'i' } },
           { username: { $regex: query, $options: 'i' } },
           { phone: { $regex: query, $options: 'i' } },
         ],
       })
-      .select('-password -otp -otpExpires -verifytoken')
-      .exec();
+      .select('-password -verifytoken')
+      .lean();
+  }
 
-    return users;
+  async updateUser(id: string, updateData: any) {
+    // Prevent password update via this method
+    delete updateData.password;
+    delete updateData.verifytoken;
+
+    const user = await this.userModel
+      .findByIdAndUpdate(id, updateData, { new: true, runValidators: true })
+      .select('-password -verifytoken')
+      .lean();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
+  }
+
+  async deleteUser(id: string) {
+    const user = await this.userModel.findByIdAndDelete(id).lean();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return { success: true, message: 'User deleted successfully' };
   }
 }

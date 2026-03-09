@@ -1,27 +1,29 @@
-import { useEffect, useState } from "react";
-import { Redirect } from "expo-router";
-import useAuthStore from "@/stores/authStore";
+import { useEffect } from "react";
+import { useRouter } from "expo-router";
+import { View, ActivityIndicator, StyleSheet } from "react-native";
 
-const Home = () => {
-  const { isSignedIn, checkAuthStatus } = useAuthStore();
-  const [loading, setLoading] = useState(true);
+export default function Index() {
+  const router = useRouter();
 
   useEffect(() => {
-    const initialize = async () => {
-      await checkAuthStatus();
-      setLoading(false);
-    };
-    initialize();
+    // Navigate directly to home without authentication
+    setTimeout(() => {
+      router.replace("/(root)/(tabs)/home");
+    }, 100);
   }, []);
 
-  if (loading) return null;
-
-  return isSignedIn ? (
-    <Redirect href="/(root)/(tabs)/home" />
-  ) : (
-    <Redirect href="/(auth)/onBoard1" />
+  return (
+    <View style={styles.container}>
+      <ActivityIndicator size="large" color="#0B3D91" />
+    </View>
   );
-};
+}
 
-export default Home;
-
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+  },
+});
