@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, ActivityIndicator, RefreshControl } from "react-native";
 import { Trip } from "@/types/type";

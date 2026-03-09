@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import Checkbox from "expo-checkbox";
+import { Checkbox } from "expo-checkbox";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { getMyTrips, batchTrainTrips } from "@/services/tripService";
@@ -139,11 +139,6 @@ const formatDateTime = (value?: string) => {
   });
 };
 
-const getShortId = (id?: string) => {
-  if (!id) return "N/A";
-  return `${id.slice(0, 6)}...${id.slice(-4)}`;
-};
-
 const getStatusColor = (status?: string) => {
   switch (status) {
     case "completed":
@@ -206,7 +201,7 @@ const TripCard = ({
   };
 
   const handleViewDetails = () => {
-    router.push(`/(root)/(tabs)/fishtripcost/trip-details/${trip._id}`);
+    router.push(`/(root)/(tabs)/fishtripcost/trip-details/${trip._id}` as any);
   };
 
   return (
@@ -1338,62 +1333,6 @@ export default function PastTripsScreen() {
           ListEmptyComponent={null}
         />
       )}
-          paddingBottom: 24,
-          flexGrow: trips.length === 0 ? 1 : 0,
-        }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={
-          <View
-            style={{
-              flex: 1,
-              alignItems: "center",
-              justifyContent: "center",
-              paddingHorizontal: 24,
-            }}
-          >
-            <Ionicons name="boat-outline" size={52} color="#9ca3af" />
-            <Text
-              style={{
-                marginTop: 12,
-                fontSize: 20,
-                fontWeight: "700",
-                color: "#111827",
-              }}
-            >
-              No trips yet
-            </Text>
-            <Text
-              style={{
-                marginTop: 8,
-                fontSize: 14,
-                lineHeight: 22,
-                color: "#6b7280",
-                textAlign: "center",
-              }}
-            >
-              Your planned and completed trips will appear here after you save them.
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => router.push("/(root)/(tabs)/fishtripcost")}
-              style={{
-                marginTop: 18,
-                backgroundColor: "#111827",
-                paddingHorizontal: 18,
-                paddingVertical: 12,
-                borderRadius: 12,
-              }}
-            >
-              <Text style={{ color: "#ffffff", fontWeight: "600" }}>
-                Go to Trip Planner
-              </Text>
-            </TouchableOpacity>
-          </View>
-        }
-      />
     </SafeAreaView>
   );
 }

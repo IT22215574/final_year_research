@@ -23,37 +23,6 @@ import { HEADER_GRADIENT } from "@/constants";
 
 const { width } = Dimensions.get("window");
 
-/* -------------------- HELPERS -------------------- */
-
-const normalizeRole = (role?: string) =>
-  role?.toLowerCase().replace(/\s+/g, "") || "";
-
-const getRoleIcon = (role: string) => {
-  const r = normalizeRole(role);
-  if (r === "fisherman") return "fish";
-  if (r === "boatowner") return "boat";
-  return "person";
-};
-
-const getRoleColor = (role: string) => {
-  const r = normalizeRole(role);
-  if (r === "fisherman") return "#10B981";
-  if (r === "boatowner") return "#3B82F6";
-  return "#8B5CF6";
-};
-
-const formatDate = (date: any) => {
-  if (!date) return "Not set";
-  const d = new Date(date);
-  return isNaN(d.getTime())
-    ? "Invalid"
-    : d.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-};
-
 /* -------------------- COMPONENT -------------------- */
 
 export default function Profile() {
@@ -84,7 +53,7 @@ export default function Profile() {
       if (json?.success) {
         userupdate(json.data);
       }
-    } catch (e) {
+    } catch {
       Alert.alert("Error", "Failed to load profile");
     } finally {
       setRefreshing(false);
@@ -93,6 +62,7 @@ export default function Profile() {
 
   useEffect(() => {
     fetchProfile();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onRefresh = () => {
@@ -103,8 +73,6 @@ export default function Profile() {
   /* -------------------- USER DATA -------------------- */
 
   if (!currentUser) return null;
-
-  const role = normalizeRole(currentUser.role);
 
   /* -------------------- LOGOUT -------------------- */
 
@@ -228,7 +196,7 @@ export default function Profile() {
             </Text>
             <TouchableOpacity
               style={styles.retryButton}
-              onPress={fetchUserProfile}
+              onPress={fetchProfile}
             >
               <Ionicons name="refresh" size={20} color="#FFF" />
               <Text style={styles.retryButtonText}>Try Again</Text>
@@ -292,7 +260,7 @@ export default function Profile() {
         <View style={styles.quickActions}>
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => router.push("/update_profile")}
+            onPress={() => router.push("/(root)/(screens)/update_profile" as any)}
           >
             <LinearGradient
               colors={["#10B981", "#34D399"]}
@@ -457,7 +425,7 @@ export default function Profile() {
 
           <TouchableOpacity
             style={[styles.actionButton, styles.logoutButton]}
-            onPress={handleLogout}
+            onPress={logout}
           >
             <Ionicons name="log-out" size={20} color="#EF4444" />
             <Text style={styles.logoutButtonText}>Sign Out</Text>
@@ -467,31 +435,6 @@ export default function Profile() {
     </SafeAreaView>
   );
 }
-
-/* -------------------- SMALL COMPONENTS -------------------- */
-
-const ActionCard = ({ title, icon, color, onPress }: any) => (
-  <TouchableOpacity style={styles.actionCard} onPress={onPress}>
-    <LinearGradient colors={color} style={styles.actionIcon}>
-      <Ionicons name={icon} size={22} color="#FFF" />
-    </LinearGradient>
-    <Text style={styles.actionText}>{title}</Text>
-  </TouchableOpacity>
-);
-
-const Section = ({ title, children }: any) => (
-  <View style={styles.section}>
-    <Text style={styles.sectionTitle}>{title}</Text>
-    {children}
-  </View>
-);
-
-const Info = ({ label, value }: any) => (
-  <View style={styles.infoRow}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue}>{value}</Text>
-  </View>
-);
 
 /* -------------------- STYLES -------------------- */
 
@@ -593,4 +536,68 @@ const styles = StyleSheet.create({
   },
 
   logoutText: { color: "#EF4444", fontWeight: "600" },
+
+  // Error state styles
+  systemStatusBar: { height: 0 },
+  gradientBg: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
+  errorContainer: { alignItems: "center", gap: 12 },
+  errorIconContainer: {
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center", alignItems: "center", marginBottom: 8,
+  },
+  errorTitle: { color: "#FFF", fontSize: 22, fontWeight: "bold" },
+  errorText: { color: "rgba(255,255,255,0.8)", fontSize: 14, textAlign: "center" },
+  retryButton: {
+    flexDirection: "row", gap: 8, alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.25)",
+    paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24, marginTop: 8,
+  },
+  retryButtonText: { color: "#FFF", fontWeight: "600", fontSize: 15 },
+  homeButton: {
+    paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.5)", marginTop: 8,
+  },
+  homeButtonText: { color: "#FFF", fontWeight: "600" },
+
+  // Quick action styles
+  actionIconContainer: {
+    width: 52, height: 52, borderRadius: 16,
+    justifyContent: "center", alignItems: "center", marginBottom: 6,
+  },
+  actionTitle: { fontSize: 12, fontWeight: "600", color: "#374151", textAlign: "center" },
+
+  // Details section
+  detailsSection: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 },
+  detailsGrid: { gap: 12 },
+  detailCard: {
+    borderRadius: 16, padding: 16, gap: 10,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+  },
+  cardHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  cardTitle: { fontSize: 15, fontWeight: "700", color: "#0F172A" },
+  detailItem: { flexDirection: "row", alignItems: "center", gap: 8 },
+  detailLabel: { fontSize: 13, color: "#64748B", flex: 1 },
+  detailValue: { fontSize: 13, fontWeight: "600", color: "#0F172A", flex: 1.5, textAlign: "right" },
+
+  // Experience card
+  experienceContainer: { gap: 8 },
+  experienceYears: { alignItems: "center" },
+  yearsNumber: { fontSize: 36, fontWeight: "bold", color: "#F59E0B" },
+  yearsLabel: { fontSize: 12, color: "#64748B" },
+  experienceBar: { height: 8, backgroundColor: "#F1F5F9", borderRadius: 4, overflow: "hidden" },
+  progressBar: { height: 8, borderRadius: 4 },
+
+  // Action buttons
+  actionButtonsContainer: { paddingHorizontal: 16, paddingBottom: 32, gap: 10 },
+  actionButton: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 8, padding: 16, borderRadius: 14,
+  },
+  primaryButton: { backgroundColor: "#0B3D91" },
+  supportButton: { backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
+  supportButtonText: { color: "#0B3D91", fontWeight: "600", fontSize: 15 },
+  logoutButton: { backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA" },
+  logoutButtonText: { color: "#EF4444", fontWeight: "600", fontSize: 15 },
 });

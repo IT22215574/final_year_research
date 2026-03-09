@@ -375,7 +375,7 @@ const MapViewScreen = () => {
 
     // ✅ IMPORTANT: navigate to the real route (index.tsx)
     // your index renders TripPlanner tab inside it.
-    router.push("/(root)/(tabs)/fishtripcost/components/TripPlanner");
+    router.push("/(root)/(tabs)/fishtripcost/components/TripPlanner" as any);
   };
 
   const handleViewZones = () => setShowZoneList(true);

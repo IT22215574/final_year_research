@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 
 import home from "@/assets/icons/home.png";
 import profile from "@/assets/icons/user.png";
@@ -21,7 +20,6 @@ import Onboard03 from "@/assets/images/OnBoard3.png";
 import whatsapp from "@/assets/icons/whatsapp.png";
 import phone from "@/assets/icons/phone.png";
 import Home from "@/assets/icons/home1.png";
-import HomeN from "@/assets/icons/home.png";
 import Digital from "@/assets/icons/digital.png";
 import BackArrow from "@/assets/icons/backArrow.png";
 import All from "@/assets/icons/all.png";
@@ -87,6 +85,8 @@ import boat55FT from "@/assets/images/fishtrip/55 FEET LONG-LINE FISHING TRAWLER
 import boat30FT from "@/assets/images/fishtrip/ONE DAY FISHING BOAT (30FT).png";
 import boatFlat from "@/assets/images/fishtrip/FLAT BOTTOM BOAT (18 12FT - 19 12FT).png";
 import canoe from "@/assets/images/fishtrip/canoe.png";
+
+const HomeN = home;
 
 export const images = {
   Onboard,

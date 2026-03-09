@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { TextInputProps, TouchableOpacityProps } from "react-native";
 
 declare interface Driver {
