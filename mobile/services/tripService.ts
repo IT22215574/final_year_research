@@ -10,10 +10,13 @@ export type ExternalCostItem = {
 
 export type DatciePredictBody = {
   boatId: string;
-  startLat: number;
-  startLon: number;
-  endLat: number;
-  endLon: number;
+  // Coordinates (optional if distanceKm provided)
+  startLat?: number;
+  startLon?: number;
+  endLat?: number;
+  endLon?: number;
+  // Manual distance (optional if coordinates provided)
+  distanceKm?: number;
   windSpeed: number;
   waveHeight: number;
   fuelPrice: number;

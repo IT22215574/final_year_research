@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,11 +8,13 @@ import {
   Alert,
   Image,
   ActivityIndicator,
+  Modal,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { Picker } from "@react-native-picker/picker";
+import { Ionicons } from "@expo/vector-icons";
 
 import {
   createBoat,
@@ -41,12 +43,19 @@ export default function AddBoatScreen() {
   const [boatTypes, setBoatTypes] = useState<string[]>([]);
   const [typesLoading, setTypesLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [boatTypeModalVisible, setBoatTypeModalVisible] = useState(false);
+
+  const selectedBoatTypeLabel = useMemo(() => {
+    if (boatType?.trim()) return boatType;
+    return boatTypes.length > 0 ? "Select boat type" : "No boat types found";
+  }, [boatType, boatTypes]);
 
   const fetchTypes = async () => {
     try {
       setTypesLoading(true);
       const types = await getBoatTypes();
       const safeTypes = Array.isArray(types) ? types : [];
+
       setBoatTypes(safeTypes);
 
       if (!boatType && safeTypes.length > 0) {
@@ -152,7 +161,7 @@ export default function AddBoatScreen() {
       Alert.alert("Success", "Boat created successfully", [
         {
           text: "OK",
-          onPress: () => router.replace("/(root)/(tabs)/boats"),
+          onPress: () => router.replace("/fishtripcost/boats"),
         },
       ]);
     } catch (error: any) {
@@ -165,7 +174,7 @@ export default function AddBoatScreen() {
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       <View className="px-5 pt-3 pb-3 bg-white border-b border-slate-100 flex-row justify-between items-center">
-        <View>
+        <View className="flex-1 pr-3">
           <Text className="text-xl font-bold text-slate-900">Add Boat</Text>
           <Text className="text-xs text-slate-400 mt-0.5">
             Create a boat for DATCIE prediction and trip planning
@@ -183,6 +192,7 @@ export default function AddBoatScreen() {
       <ScrollView
         className="px-4 pt-4"
         contentContainerStyle={{ paddingBottom: 30 }}
+        keyboardShouldPersistTaps="handled"
       >
         <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
           <Text className="text-sm font-semibold text-slate-800 mb-3">
@@ -207,6 +217,7 @@ export default function AddBoatScreen() {
                 borderRadius: 14,
                 marginTop: 12,
               }}
+              resizeMode="cover"
             />
           ) : null}
         </View>
@@ -221,48 +232,61 @@ export default function AddBoatScreen() {
             value={boatName}
             onChangeText={setBoatName}
             placeholder="e.g. Sea Queen"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
+            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3 text-slate-900"
+            placeholderTextColor="#94a3b8"
           />
 
           <Text className="text-xs text-slate-500 mb-1">Boat Type *</Text>
-          <View className="bg-slate-50 border border-slate-200 rounded-xl mb-3 overflow-hidden">
+          <TouchableOpacity
+            disabled={typesLoading || boatTypes.length === 0}
+            onPress={() => setBoatTypeModalVisible(true)}
+            activeOpacity={0.8}
+            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-4 mb-3 flex-row items-center justify-between"
+            style={{
+              opacity: typesLoading ? 0.7 : 1,
+            }}
+          >
             {typesLoading ? (
-              <View className="p-4 flex-row items-center">
-                <ActivityIndicator />
+              <View className="flex-row items-center">
+                <ActivityIndicator size="small" />
                 <Text className="ml-3 text-slate-600">
                   Loading boat types...
                 </Text>
               </View>
             ) : (
-              <Picker
-                selectedValue={boatType}
-                onValueChange={(value) => setBoatType(String(value))}
-              >
-                {boatTypes.length === 0 ? (
-                  <Picker.Item label="No boat types found" value="" />
-                ) : (
-                  boatTypes.map((type) => (
-                    <Picker.Item key={type} label={type} value={type} />
-                  ))
-                )}
-              </Picker>
+              <>
+                <Text
+                  className={`flex-1 ${
+                    boatType ? "text-slate-900" : "text-slate-400"
+                  }`}
+                >
+                  {selectedBoatTypeLabel}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color="#475569"
+                  style={{ marginLeft: 8 }}
+                />
+              </>
             )}
-          </View>
+          </TouchableOpacity>
 
           <Text className="text-xs text-slate-500 mb-1">Engine HP *</Text>
           <TextInput
             value={engineHorsePower}
             onChangeText={setEngineHorsePower}
-            keyboardType="decimal-pad"
+            keyboardType={Platform.OS === "ios" ? "decimal-pad" : "numeric"}
             placeholder="e.g. 150"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
+            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3 text-slate-900"
+            placeholderTextColor="#94a3b8"
           />
 
           <Text className="text-xs text-slate-500 mb-2 font-medium">Mode</Text>
-          <View className="flex-row gap-2 mb-3">
+          <View className="flex-row mb-3">
             <TouchableOpacity
               onPress={() => setMode("island")}
-              className={`flex-1 rounded-xl py-3 items-center border ${
+              className={`flex-1 rounded-xl py-3 items-center border mr-2 ${
                 mode === "island"
                   ? "bg-blue-600 border-blue-600"
                   : "bg-white border-slate-200"
@@ -279,7 +303,7 @@ export default function AddBoatScreen() {
 
             <TouchableOpacity
               onPress={() => setMode("international")}
-              className={`flex-1 rounded-xl py-3 items-center border ${
+              className={`flex-1 rounded-xl py-3 items-center border ml-2 ${
                 mode === "international"
                   ? "bg-blue-600 border-blue-600"
                   : "bg-white border-slate-200"
@@ -301,26 +325,28 @@ export default function AddBoatScreen() {
             Optional Specs
           </Text>
 
-          <View className="flex-row gap-3">
-            <View className="flex-1">
+          <View className="flex-row">
+            <View className="flex-1 mr-1.5">
               <Text className="text-xs text-slate-500 mb-1">Length</Text>
               <TextInput
                 value={boatLength}
                 onChangeText={setBoatLength}
-                keyboardType="decimal-pad"
+                keyboardType={Platform.OS === "ios" ? "decimal-pad" : "numeric"}
                 placeholder="e.g. 28"
-                className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
+                className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3 text-slate-900"
+                placeholderTextColor="#94a3b8"
               />
             </View>
 
-            <View className="flex-1">
+            <View className="flex-1 ml-1.5">
               <Text className="text-xs text-slate-500 mb-1">Width</Text>
               <TextInput
                 value={boatWidth}
                 onChangeText={setBoatWidth}
-                keyboardType="decimal-pad"
+                keyboardType={Platform.OS === "ios" ? "decimal-pad" : "numeric"}
                 placeholder="e.g. 8"
-                className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
+                className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3 text-slate-900"
+                placeholderTextColor="#94a3b8"
               />
             </View>
           </View>
@@ -329,9 +355,10 @@ export default function AddBoatScreen() {
           <TextInput
             value={boatValue}
             onChangeText={setBoatValue}
-            keyboardType="decimal-pad"
+            keyboardType={Platform.OS === "ios" ? "decimal-pad" : "numeric"}
             placeholder="e.g. 2500000"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
+            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3 text-slate-900"
+            placeholderTextColor="#94a3b8"
           />
         </View>
 
@@ -346,9 +373,10 @@ export default function AddBoatScreen() {
           <TextInput
             value={fuelEfficiencyFactor}
             onChangeText={setFuelEfficiencyFactor}
-            keyboardType="decimal-pad"
+            keyboardType={Platform.OS === "ios" ? "decimal-pad" : "numeric"}
             placeholder="e.g. 1"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
+            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3 text-slate-900"
+            placeholderTextColor="#94a3b8"
           />
 
           <Text className="text-xs text-slate-500 mb-1">
@@ -357,9 +385,10 @@ export default function AddBoatScreen() {
           <TextInput
             value={engineDegradationFactor}
             onChangeText={setEngineDegradationFactor}
-            keyboardType="decimal-pad"
+            keyboardType={Platform.OS === "ios" ? "decimal-pad" : "numeric"}
             placeholder="e.g. 0.05"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
+            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3 text-slate-900"
+            placeholderTextColor="#94a3b8"
           />
 
           <Text className="text-xs text-slate-500 mb-1">
@@ -368,9 +397,10 @@ export default function AddBoatScreen() {
           <TextInput
             value={averageFuelPredictionError}
             onChangeText={setAverageFuelPredictionError}
-            keyboardType="decimal-pad"
+            keyboardType={Platform.OS === "ios" ? "decimal-pad" : "numeric"}
             placeholder="e.g. 3.2"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5"
+            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-900"
+            placeholderTextColor="#94a3b8"
           />
         </View>
 
@@ -381,11 +411,136 @@ export default function AddBoatScreen() {
             loading ? "bg-blue-400" : "bg-blue-600"
           }`}
         >
-          <Text className="text-white font-bold text-base">
-            {loading ? "Saving..." : "Create Boat"}
-          </Text>
+          {loading ? (
+            <View className="flex-row items-center">
+              <ActivityIndicator color="#ffffff" />
+              <Text className="text-white font-bold text-base ml-2">
+                Saving...
+              </Text>
+            </View>
+          ) : (
+            <Text className="text-white font-bold text-base">Create Boat</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal
+        visible={boatTypeModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setBoatTypeModalVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            justifyContent: "flex-end",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#ffffff",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              maxHeight: "70%",
+              paddingBottom: 24,
+            }}
+          >
+            <View
+              style={{
+                paddingHorizontal: 20,
+                paddingTop: 16,
+                paddingBottom: 14,
+                borderBottomWidth: 1,
+                borderBottomColor: "#e2e8f0",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "700",
+                  color: "#0f172a",
+                }}
+              >
+                Select Boat Type
+              </Text>
+
+              <TouchableOpacity onPress={() => setBoatTypeModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#334155" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              contentContainerStyle={{
+                paddingHorizontal: 16,
+                paddingTop: 12,
+              }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {boatTypes.length === 0 ? (
+                <View
+                  style={{
+                    paddingVertical: 24,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#64748b", fontSize: 14 }}>
+                    No boat types available
+                  </Text>
+                </View>
+              ) : (
+                boatTypes.map((type) => {
+                  const selected = boatType === type;
+
+                  return (
+                    <TouchableOpacity
+                      key={type}
+                      onPress={() => {
+                        setBoatType(type);
+                        setBoatTypeModalVisible(false);
+                      }}
+                      activeOpacity={0.8}
+                      style={{
+                        paddingVertical: 14,
+                        paddingHorizontal: 14,
+                        borderRadius: 14,
+                        marginBottom: 10,
+                        borderWidth: 1,
+                        borderColor: selected ? "#2563eb" : "#e2e8f0",
+                        backgroundColor: selected ? "#eff6ff" : "#ffffff",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: selected ? "700" : "500",
+                          color: selected ? "#1d4ed8" : "#0f172a",
+                        }}
+                      >
+                        {type}
+                      </Text>
+
+                      {selected ? (
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={22}
+                          color="#2563eb"
+                        />
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

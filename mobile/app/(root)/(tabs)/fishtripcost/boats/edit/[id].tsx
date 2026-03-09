@@ -183,7 +183,7 @@ export default function EditBoatScreen() {
       Alert.alert("Success", "Boat updated successfully", [
         {
           text: "OK",
-          onPress: () => router.replace(`/(root)/(tabs)/boats/${id}`),
+          onPress: () => router.replace(`/fishtripcost/boats/${id}`),
         },
       ]);
     } catch (error: any) {

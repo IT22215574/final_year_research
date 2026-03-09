@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
     id: "boats",
     label: "Boats",
     icon: "boat",
-    route: "/(root)/(tabs)/boats",
+    route: "/fishtripcost/boats",
   },
   {
     id: "learning",

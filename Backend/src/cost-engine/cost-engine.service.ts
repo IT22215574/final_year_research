@@ -85,15 +85,40 @@ export class CostEngineService {
   async predictTrip(dto: PredictCostDto, userId?: string) {
     const boat = await this.getValidatedBoatForPrediction(dto.boatId, userId);
 
-    const baseDistanceKm = haversineDistanceKm(
-      dto.startLat,
-      dto.startLon,
-      dto.endLat,
-      dto.endLon,
-    );
+    // ✅ Support both coordinate-based and manual distance
+    let baseDistanceKm: number;
+    let predictedDistanceKm: number;
+    let calculatedFromCoordinates = false;
+    const drf = 0.05; // Detour/route factor
 
-    const drf = 0.05;
-    const predictedDistanceKm = effectiveDistanceKm(baseDistanceKm, drf);
+    // If coordinates provided, calculate distance
+    if (
+      dto.startLat != null &&
+      dto.startLon != null &&
+      dto.endLat != null &&
+      dto.endLon != null
+    ) {
+      baseDistanceKm = haversineDistanceKm(
+        dto.startLat,
+        dto.startLon,
+        dto.endLat,
+        dto.endLon,
+      );
+      predictedDistanceKm = effectiveDistanceKm(baseDistanceKm, drf);
+      calculatedFromCoordinates = true;
+    }
+    // Otherwise, use manual distance
+    else if (dto.distanceKm != null && dto.distanceKm > 0) {
+      baseDistanceKm = dto.distanceKm;
+      predictedDistanceKm = effectiveDistanceKm(baseDistanceKm, drf);
+      calculatedFromCoordinates = false;
+    }
+    // Neither provided - error
+    else {
+      throw new BadRequestException(
+        'Either coordinates (startLat, startLon, endLat, endLon) or manual distance (distanceKm) must be provided',
+      );
+    }
 
     const { wsi, normalized: wsiNormalized } = calculateWSI(
       dto.windSpeed,

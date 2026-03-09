@@ -194,28 +194,6 @@ const TabsLayout = () => {
         />
 
         <Tabs.Screen
-          name="boats"
-          options={{
-            title: "Boats",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-
-        <Tabs.Screen
-          name="costs"
-          options={{
-            title: "Cost Preferences",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-
-        <Tabs.Screen
           name="fishtripcost"
           options={{
             title: "Fish Trip Cost",

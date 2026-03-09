@@ -1,20 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
-  Dimensions,
+  useWindowDimensions,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { LineChart, BarChart, ProgressChart } from "react-native-chart-kit";
+import { ProgressChart } from "react-native-chart-kit";
 import { Ionicons } from "@expo/vector-icons";
 import { getLearningSummary } from "@/services/tripService";
 import FishTripNavBar from "./components/FishTripNavBar";
-
-const screenWidth = Dimensions.get("window").width;
 
 type LearningBoat = {
   boatId: string;
@@ -36,11 +35,194 @@ type LearningSummary = {
   lastUpdated: string | null;
 };
 
+const colors = {
+  bg: "#f8fafc",
+  card: "#ffffff",
+  text: "#0f172a",
+  subtext: "#64748b",
+  border: "#e2e8f0",
+  blue: "#2563eb",
+  blueSoft: "#eff6ff",
+  green: "#16a34a",
+  greenSoft: "#f0fdf4",
+  purple: "#7c3aed",
+  purpleSoft: "#f5f3ff",
+  rose: "#e11d48",
+  roseSoft: "#fff1f2",
+  amber: "#d97706",
+  amberSoft: "#fffbeb",
+  indigo: "#4f46e5",
+  indigoSoft: "#eef2ff",
+};
+
+const formatPercent = (value?: number) => {
+  if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
+  return `${(value * 100).toFixed(0)}%`;
+};
+
+const formatLiters = (value?: number) => {
+  if (typeof value !== "number" || Number.isNaN(value)) return "N/A";
+  return `${value.toFixed(1)} L`;
+};
+
+const formatDate = (value?: string | null) => {
+  if (!value) return "N/A";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "N/A";
+  return d.toLocaleDateString("en-LK", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+const getStatusColors = (status?: string) => {
+  switch (status) {
+    case "improving":
+      return {
+        bg: "#dcfce7",
+        text: "#15803d",
+        border: "#bbf7d0",
+      };
+    case "stable":
+      return {
+        bg: "#dbeafe",
+        text: "#1d4ed8",
+        border: "#bfdbfe",
+      };
+    default:
+      return {
+        bg: "#fef3c7",
+        text: "#b45309",
+        border: "#fde68a",
+      };
+  }
+};
+
+const getMaturityColors = (level?: string) => {
+  switch (level) {
+    case "expert":
+      return { bg: "#dcfce7", text: "#15803d" };
+    case "experienced":
+      return { bg: "#dbeafe", text: "#1d4ed8" };
+    default:
+      return { bg: "#fef3c7", text: "#b45309" };
+  }
+};
+
+const getTrendMeta = (trend?: string) => {
+  switch (trend) {
+    case "improving":
+      return {
+        icon: "trending-up" as const,
+        color: "#16a34a",
+        text: "Improving",
+      };
+    case "stable":
+      return {
+        icon: "remove" as const,
+        color: "#2563eb",
+        text: "Stable",
+      };
+    case "declining":
+      return {
+        icon: "trending-down" as const,
+        color: "#ef4444",
+        text: "Declining",
+      };
+    default:
+      return {
+        icon: "help-circle-outline" as const,
+        color: "#94a3b8",
+        text: trend || "-",
+      };
+  }
+};
+
+const MetricCard = ({
+  title,
+  value,
+  subtitle,
+  icon,
+  accent,
+  accentSoft,
+  width,
+}: {
+  title: string;
+  value: string;
+  subtitle: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  accent: string;
+  accentSoft: string;
+  width: number;
+}) => (
+  <View
+    style={{
+      width,
+      backgroundColor: colors.card,
+      borderRadius: 18,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: Platform.OS === "ios" ? 0.06 : 0,
+      shadowRadius: 8,
+      elevation: 2,
+      marginBottom: 12,
+    }}
+  >
+    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+      <View
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 12,
+          backgroundColor: accentSoft,
+          alignItems: "center",
+          justifyContent: "center",
+          marginRight: 10,
+        }}
+      >
+        <Ionicons name={icon} size={19} color={accent} />
+      </View>
+      <Text style={{ fontSize: 12, fontWeight: "700", color: colors.subtext, flex: 1 }}>
+        {title}
+      </Text>
+    </View>
+
+    <Text style={{ fontSize: 26, fontWeight: "800", color: colors.text }}>{value}</Text>
+    <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 6 }}>{subtitle}</Text>
+  </View>
+);
+
+const SectionTitle = ({ title }: { title: string }) => (
+  <Text
+    style={{
+      fontSize: 19,
+      fontWeight: "800",
+      color: colors.text,
+      marginBottom: 12,
+      marginTop: 4,
+    }}
+  >
+    {title}
+  </Text>
+);
+
 const LearningSummaryScreen = () => {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+
   const [data, setData] = useState<LearningSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const horizontalPadding = 16;
+  const contentWidth = width - horizontalPadding * 2;
+  const isWide = width >= 700;
+  const metricCardWidth = isWide ? (contentWidth - 12) / 2 : contentWidth;
+  const progressWidth = Math.max(220, contentWidth - 32);
 
   const loadSummary = async () => {
     try {
@@ -49,7 +231,7 @@ const LearningSummaryScreen = () => {
       const res = await getLearningSummary();
       setData(res);
     } catch (err: any) {
-      setError(err.message || "Failed to load learning summary");
+      setError(err?.message || "Failed to load learning summary");
     } finally {
       setLoading(false);
     }
@@ -59,345 +241,620 @@ const LearningSummaryScreen = () => {
     loadSummary();
   }, []);
 
+  const statusMeta = useMemo(
+    () => getStatusColors(data?.improvementStatus),
+    [data?.improvementStatus]
+  );
+
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-slate-50 justify-center items-center">
-        <ActivityIndicator size="large" />
-        <Text className="mt-3 text-slate-600">Loading learning summary...</Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 24,
+          }}
+        >
+          <ActivityIndicator size="large" color={colors.blue} />
+          <Text style={{ marginTop: 12, color: colors.subtext, fontSize: 14 }}>
+            Loading learning summary...
+          </Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-slate-50 px-4 justify-center">
-        <Text className="text-red-500 text-center mb-4">{error}</Text>
-        <TouchableOpacity
-          onPress={loadSummary}
-          className="bg-slate-900 rounded-xl py-3 items-center"
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            paddingHorizontal: 20,
+          }}
         >
-          <Text className="text-white font-semibold">Retry</Text>
-        </TouchableOpacity>
+          <View
+            style={{
+              backgroundColor: "#fef2f2",
+              borderColor: "#fecaca",
+              borderWidth: 1,
+              borderRadius: 18,
+              padding: 18,
+            }}
+          >
+            <Text
+              style={{
+                color: "#b91c1c",
+                textAlign: "center",
+                fontSize: 14,
+                fontWeight: "600",
+                marginBottom: 14,
+              }}
+            >
+              {error}
+            </Text>
+
+            <TouchableOpacity
+              onPress={loadSummary}
+              activeOpacity={0.85}
+              style={{
+                backgroundColor: colors.text,
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 15 }}>
+                Retry
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <FishTripNavBar />
-      <View className="px-5 pt-3 pb-3 flex-row justify-between items-center bg-white border-b border-slate-100">
-        <View>
-          <Text className="text-xl font-bold text-slate-900">
+
+      <View
+        style={{
+          paddingHorizontal: 20,
+          paddingTop: 10,
+          paddingBottom: 12,
+          backgroundColor: "#ffffff",
+          borderBottomWidth: 1,
+          borderBottomColor: "#e5e7eb",
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <View style={{ flex: 1, paddingRight: 12 }}>
+          <Text style={{ fontSize: 22, fontWeight: "800", color: colors.text }}>
             Learning Summary
           </Text>
-          <Text className="text-xs text-slate-400 mt-0.5">
+          <Text style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
             DATCIE adaptive learning overview
           </Text>
         </View>
 
         <TouchableOpacity
           onPress={() => router.back()}
-          className="bg-slate-100 rounded-xl px-3 py-2"
-          activeOpacity={0.8}
+          activeOpacity={0.85}
+          style={{
+            backgroundColor: "#f1f5f9",
+            borderRadius: 14,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            minHeight: 42,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <Text className="text-slate-700 font-semibold">← Back</Text>
+          <Text style={{ color: "#334155", fontWeight: "700" }}>Back</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView
-        className="flex-1 px-4 pt-4"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 28 }}
+        contentContainerStyle={{
+          paddingHorizontal: horizontalPadding,
+          paddingTop: 16,
+          paddingBottom: 28,
+        }}
       >
-        {/* 🎯 SYSTEM-WIDE OVERVIEW */}
-        <View className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200 p-5 mb-4">
-          <View className="flex-row items-center mb-4">
-            <Ionicons name="stats-chart" size={24} color="#3b82f6" />
-            <Text className="text-xl font-bold text-blue-900 ml-2">
-              System-Wide Learning Analytics
-            </Text>
+        <View
+          style={{
+            backgroundColor: colors.blueSoft,
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: "#bfdbfe",
+            padding: 18,
+            marginBottom: 16,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
+            <View
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 14,
+                backgroundColor: "#dbeafe",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 12,
+              }}
+            >
+              <Ionicons name="stats-chart" size={22} color={colors.blue} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 20, fontWeight: "800", color: "#1e3a8a" }}>
+                System-Wide Learning Analytics
+              </Text>
+              <Text style={{ fontSize: 12, color: "#3b82f6", marginTop: 2 }}>
+                Overall intelligence and model adaptation health
+              </Text>
+            </View>
           </View>
 
-          <View className="flex-row gap-3 mb-3">
-            <View className="flex-1 bg-white rounded-xl p-3 border border-blue-100">
-              <Text className="text-blue-600 text-xs font-semibold mb-1">
-                TOTAL BOATS
-              </Text>
-              <Text className="text-blue-900 font-bold text-2xl">
-                {data?.totalBoats ?? 0}
-              </Text>
-            </View>
-
-            <View className="flex-1 bg-white rounded-xl p-3 border border-emerald-100">
-              <Text className="text-emerald-600 text-xs font-semibold mb-1">
-                TRIPS LEARNED
-              </Text>
-              <Text className="text-emerald-900 font-bold text-2xl">
-                {data?.totalTripsLearned ?? 0}
-              </Text>
-            </View>
-          </View>
-
-          <View className="flex-row gap-3">
-            <View className="flex-1 bg-white rounded-xl p-3 border border-purple-100">
-              <Text className="text-purple-600 text-xs font-semibold mb-1">
-                AVG CONFIDENCE
-              </Text>
-              <Text className="text-purple-900 font-bold text-2xl">
-                {data?.averageConfidence
-                  ? `${(data.averageConfidence * 100).toFixed(0)}%`
-                  : "N/A"}
-              </Text>
-            </View>
-
-            <View className="flex-1 bg-white rounded-xl p-3 border border-rose-100">
-              <Text className="text-rose-600 text-xs font-semibold mb-1">
-                AVG ERROR (L)
-              </Text>
-              <Text className="text-rose-900 font-bold text-2xl">
-                {data?.averagePredictionError
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+            }}
+          >
+            <MetricCard
+              title="TOTAL BOATS"
+              value={String(data?.totalBoats ?? 0)}
+              subtitle="Boats participating in learning"
+              icon="boat-outline"
+              accent={colors.blue}
+              accentSoft="#dbeafe"
+              width={metricCardWidth}
+            />
+            <MetricCard
+              title="TRIPS LEARNED"
+              value={String(data?.totalTripsLearned ?? 0)}
+              subtitle="Trips used to improve predictions"
+              icon="git-merge-outline"
+              accent={colors.green}
+              accentSoft="#dcfce7"
+              width={metricCardWidth}
+            />
+            <MetricCard
+              title="AVG CONFIDENCE"
+              value={formatPercent(data?.averageConfidence)}
+              subtitle="How confident the model feels"
+              icon="shield-checkmark-outline"
+              accent={colors.purple}
+              accentSoft="#ede9fe"
+              width={metricCardWidth}
+            />
+            <MetricCard
+              title="AVG ERROR (L)"
+              value={
+                typeof data?.averagePredictionError === "number" &&
+                !Number.isNaN(data.averagePredictionError)
                   ? data.averagePredictionError.toFixed(1)
-                  : "N/A"}
-              </Text>
-            </View>
+                  : "N/A"
+              }
+              subtitle="Average prediction gap in liters"
+              icon="alert-circle-outline"
+              accent={colors.rose}
+              accentSoft="#ffe4e6"
+              width={metricCardWidth}
+            />
           </View>
 
-          <View className="bg-white rounded-xl p-3 mt-3 border border-slate-200">
-            <View className="flex-row justify-between items-center">
-              <Text className="text-slate-600 font-semibold">
+          <View
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: 18,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: isWide ? "row" : "column",
+                justifyContent: "space-between",
+                alignItems: isWide ? "center" : "flex-start",
+              }}
+            >
+              <Text
+                style={{
+                  color: "#475569",
+                  fontWeight: "700",
+                  fontSize: 14,
+                  marginBottom: isWide ? 0 : 10,
+                }}
+              >
                 System Status
               </Text>
+
               <View
-                className={`px-3 py-1.5 rounded-full ${
-                  data?.improvementStatus === "improving"
-                    ? "bg-green-100"
-                    : data?.improvementStatus === "stable"
-                      ? "bg-blue-100"
-                      : "bg-amber-100"
-                }`}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  backgroundColor: statusMeta.bg,
+                  borderWidth: 1,
+                  borderColor: statusMeta.border,
+                }}
               >
                 <Text
-                  className={`font-bold text-sm ${
-                    data?.improvementStatus === "improving"
-                      ? "text-green-700"
-                      : data?.improvementStatus === "stable"
-                        ? "text-blue-700"
-                        : "text-amber-700"
-                  }`}
+                  style={{
+                    color: statusMeta.text,
+                    fontWeight: "800",
+                    fontSize: 13,
+                    textTransform: "capitalize",
+                  }}
                 >
-                  {data?.improvementStatus ?? "Unknown"}
+                  {data?.improvementStatus || "Unknown"}
                 </Text>
               </View>
             </View>
-            <Text className="text-slate-500 text-xs mt-2">
-              Last Updated:{" "}
-              {data?.lastUpdated
-                ? new Date(data.lastUpdated).toLocaleDateString()
-                : "N/A"}
+
+            <Text style={{ color: colors.subtext, fontSize: 12, marginTop: 10 }}>
+              Last Updated: {formatDate(data?.lastUpdated)}
             </Text>
           </View>
         </View>
 
-        {/* 📊 CONFIDENCE VISUALIZATION */}
-        {data?.averageConfidence && (
-          <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
-            <Text className="text-base font-bold text-slate-800 mb-3">
+        {typeof data?.averageConfidence === "number" && !Number.isNaN(data.averageConfidence) ? (
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 24,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 18,
+              marginBottom: 16,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 17,
+                fontWeight: "800",
+                color: colors.text,
+                marginBottom: 14,
+              }}
+            >
               🎯 System Confidence Level
             </Text>
 
-            <ProgressChart
-              data={{
-                labels: ["Confidence"],
-                data: [data.averageConfidence],
-              }}
-              width={screenWidth - 72}
-              height={180}
-              strokeWidth={16}
-              radius={60}
-              chartConfig={{
-                backgroundGradientFrom: "#ffffff",
-                backgroundGradientTo: "#ffffff",
-                color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-                strokeWidth: 2,
-                barPercentage: 0.5,
-              }}
-              hideLegend={false}
-            />
+            <View style={{ alignItems: "center" }}>
+              <ProgressChart
+                data={{
+                  labels: ["Confidence"],
+                  data: [Math.max(0, Math.min(1, data.averageConfidence))],
+                }}
+                width={progressWidth}
+                height={190}
+                strokeWidth={16}
+                radius={62}
+                chartConfig={{
+                  backgroundGradientFrom: "#ffffff",
+                  backgroundGradientTo: "#ffffff",
+                  color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
+                  labelColor: () => "#475569",
+                  strokeWidth: 2,
+                  barPercentage: 0.5,
+                  decimalPlaces: 0,
+                }}
+                hideLegend={false}
+              />
+            </View>
 
-            <View className="bg-indigo-50 rounded-xl p-3 mt-3">
-              <Text className="text-indigo-800 text-xs font-medium text-center">
+            <View
+              style={{
+                backgroundColor: colors.indigoSoft,
+                borderRadius: 16,
+                padding: 14,
+                marginTop: 12,
+              }}
+            >
+              <Text
+                style={{
+                  color: "#3730a3",
+                  fontSize: 13,
+                  fontWeight: "600",
+                  textAlign: "center",
+                  lineHeight: 20,
+                }}
+              >
                 {data.averageConfidence > 0.8
                   ? "🌟 Excellent - Model is highly confident in predictions"
                   : data.averageConfidence > 0.6
-                    ? "✅ Good - Model is moderately confident"
-                    : "⚠️ Building Confidence - Need more training data"}
+                  ? "✅ Good - Model is moderately confident"
+                  : "⚠️ Building Confidence - Need more training data"}
               </Text>
             </View>
           </View>
-        )}
+        ) : null}
 
-        {/* 📈 TOP PERFORMING BOATS */}
-        <Text className="text-lg font-bold text-slate-800 mb-3 mt-2">
-          🏆 Top Performing Boats
-        </Text>
+        <SectionTitle title="🏆 Top Performing Boats" />
 
         {data?.topPerformingBoats && data.topPerformingBoats.length > 0 ? (
-          <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
-            {data.topPerformingBoats.map((boat, index) => (
-              <View
-                key={`${boat.boatId}-${index}`}
-                className="mb-4 pb-4 border-b border-slate-100 last:border-b-0 last:mb-0 last:pb-0"
-              >
-                <View className="flex-row justify-between items-start mb-2">
-                  <View className="flex-1">
-                    <View className="flex-row items-center mb-1">
-                      <View
-                        className={`w-8 h-8 rounded-full items-center justify-center ${
-                          index === 0
-                            ? "bg-yellow-400"
-                            : index === 1
-                              ? "bg-gray-300"
-                              : "bg-orange-300"
-                        }`}
-                      >
-                        <Text className="font-bold text-white">
-                          #{index + 1}
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 24,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 18,
+              marginBottom: 16,
+            }}
+          >
+            {data.topPerformingBoats.map((boat, index) => {
+              const maturity = getMaturityColors(boat.maturityLevel);
+              const trend = getTrendMeta(boat.improvementTrend);
+
+              return (
+                <View
+                  key={`${boat.boatId}-${index}`}
+                  style={{
+                    marginBottom: index === data.topPerformingBoats.length - 1 ? 0 : 16,
+                    paddingBottom:
+                      index === data.topPerformingBoats.length - 1 ? 0 : 16,
+                    borderBottomWidth:
+                      index === data.topPerformingBoats.length - 1 ? 0 : 1,
+                    borderBottomColor: "#f1f5f9",
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <View style={{ flex: 1, paddingRight: 10 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center" }}>
+                        <View
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 999,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor:
+                              index === 0
+                                ? "#facc15"
+                                : index === 1
+                                ? "#cbd5e1"
+                                : "#fdba74",
+                            marginRight: 10,
+                          }}
+                        >
+                          <Text style={{ color: "#ffffff", fontWeight: "800" }}>
+                            #{index + 1}
+                          </Text>
+                        </View>
+
+                        <Text
+                          style={{
+                            color: colors.text,
+                            fontWeight: "800",
+                            fontSize: 15,
+                            flex: 1,
+                          }}
+                        >
+                          Boat ID: {String(boat.boatId).slice(0, 8)}...
                         </Text>
                       </View>
-                      <Text className="text-slate-900 font-bold text-base ml-3">
-                        Boat ID: {String(boat.boatId).slice(0, 8)}...
+                    </View>
+
+                    <View
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 999,
+                        backgroundColor: maturity.bg,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: maturity.text,
+                          fontSize: 12,
+                          fontWeight: "800",
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {boat.maturityLevel || "Learning"}
                       </Text>
                     </View>
                   </View>
 
                   <View
-                    className={`px-3 py-1 rounded-full ${
-                      boat.maturityLevel === "expert"
-                        ? "bg-green-100"
-                        : boat.maturityLevel === "experienced"
-                          ? "bg-blue-100"
-                          : "bg-amber-100"
-                    }`}
+                    style={{
+                      backgroundColor: "#f8fafc",
+                      borderRadius: 18,
+                      padding: 14,
+                    }}
                   >
-                    <Text
-                      className={`text-xs font-bold ${
-                        boat.maturityLevel === "expert"
-                          ? "text-green-700"
-                          : boat.maturityLevel === "experienced"
-                            ? "text-blue-700"
-                            : "text-amber-700"
-                      }`}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: 8,
+                      }}
                     >
-                      {boat.maturityLevel ?? "Learning"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View className="bg-slate-50 rounded-xl p-3 mt-2">
-                  <View className="flex-row justify-between mb-1.5">
-                    <Text className="text-slate-600 text-sm">Total Trips</Text>
-                    <Text className="text-slate-900 font-semibold">
-                      {boat.totalTrips ?? 0}
-                    </Text>
-                  </View>
-
-                  <View className="flex-row justify-between mb-1.5">
-                    <Text className="text-slate-600 text-sm">Confidence</Text>
-                    <Text className="text-indigo-700 font-bold">
-                      {boat.confidence
-                        ? `${(boat.confidence * 100).toFixed(0)}%`
-                        : "N/A"}
-                    </Text>
-                  </View>
-
-                  <View className="flex-row justify-between mb-1.5">
-                    <Text className="text-slate-600 text-sm">Avg Error</Text>
-                    <Text className="text-slate-900 font-semibold">
-                      {boat.avgPredictionError
-                        ? `${boat.avgPredictionError.toFixed(1)} L`
-                        : "N/A"}
-                    </Text>
-                  </View>
-
-                  <View className="flex-row justify-between">
-                    <Text className="text-slate-600 text-sm">Trend</Text>
-                    <View className="flex-row items-center">
-                      <Ionicons
-                        name={
-                          boat.improvementTrend === "improving"
-                            ? "trending-up"
-                            : boat.improvementTrend === "stable"
-                              ? "remove"
-                              : "trending-down"
-                        }
-                        size={16}
-                        color={
-                          boat.improvementTrend === "improving"
-                            ? "#10b981"
-                            : boat.improvementTrend === "stable"
-                              ? "#3b82f6"
-                              : "#ef4444"
-                        }
-                      />
-                      <Text
-                        className={`font-semibold text-sm ml-1 ${
-                          boat.improvementTrend === "improving"
-                            ? "text-green-600"
-                            : boat.improvementTrend === "stable"
-                              ? "text-blue-600"
-                              : "text-rose-600"
-                        }`}
-                      >
-                        {boat.improvementTrend ?? "-"}
+                      <Text style={{ color: colors.subtext, fontSize: 14 }}>Total Trips</Text>
+                      <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>
+                        {boat.totalTrips ?? 0}
                       </Text>
+                    </View>
+
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Text style={{ color: colors.subtext, fontSize: 14 }}>Confidence</Text>
+                      <Text style={{ color: colors.indigo, fontWeight: "800", fontSize: 14 }}>
+                        {formatPercent(boat.confidence)}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Text style={{ color: colors.subtext, fontSize: 14 }}>Avg Error</Text>
+                      <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>
+                        {formatLiters(boat.avgPredictionError)}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ color: colors.subtext, fontSize: 14 }}>Trend</Text>
+                      <View style={{ flexDirection: "row", alignItems: "center" }}>
+                        <Ionicons name={trend.icon} size={16} color={trend.color} />
+                        <Text
+                          style={{
+                            color: trend.color,
+                            fontWeight: "700",
+                            fontSize: 14,
+                            marginLeft: 6,
+                            textTransform: "capitalize",
+                          }}
+                        >
+                          {trend.text}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
 
-            <View className="bg-green-50 rounded-lg p-3 mt-3">
-              <Text className="text-green-800 text-xs font-medium text-center">
-                ✨ These boats have the most accurate predictions based on
-                learning data
+            <View
+              style={{
+                backgroundColor: colors.greenSoft,
+                borderRadius: 16,
+                padding: 14,
+                marginTop: 14,
+              }}
+            >
+              <Text
+                style={{
+                  color: "#166534",
+                  fontSize: 13,
+                  fontWeight: "600",
+                  textAlign: "center",
+                  lineHeight: 20,
+                }}
+              >
+                ✨ These boats have the most accurate predictions based on learning data
               </Text>
             </View>
           </View>
         ) : (
-          <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
-            <Text className="text-slate-500 text-center">
-              No top performing boats yet. Log actual trips to build learning
-              data.
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: 24,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 20,
+              marginBottom: 16,
+            }}
+          >
+            <Text style={{ color: colors.subtext, textAlign: "center", lineHeight: 20 }}>
+              No top performing boats yet. Log actual trips to build learning data.
             </Text>
           </View>
         )}
 
-        {/* ⚠️ BOATS NEEDING ATTENTION */}
-        {data?.needsAttentionBoats && data.needsAttentionBoats.length > 0 && (
+        {data?.needsAttentionBoats && data.needsAttentionBoats.length > 0 ? (
           <>
-            <Text className="text-lg font-bold text-slate-800 mb-3 mt-2">
-              ⚠️ Boats Needing Attention
-            </Text>
+            <SectionTitle title="⚠️ Boats Needing Attention" />
 
-            <View className="bg-amber-50 rounded-2xl border border-amber-200 p-5 mb-4">
+            <View
+              style={{
+                backgroundColor: colors.amberSoft,
+                borderRadius: 24,
+                borderWidth: 1,
+                borderColor: "#fde68a",
+                padding: 18,
+                marginBottom: 16,
+              }}
+            >
               {data.needsAttentionBoats.map((boat, index) => (
                 <View
                   key={`${boat.boatId}-${index}`}
-                  className="mb-3 pb-3 border-b border-amber-100 last:border-b-0 last:mb-0 last:pb-0"
+                  style={{
+                    marginBottom:
+                      index === data.needsAttentionBoats.length - 1 ? 0 : 12,
+                    paddingBottom:
+                      index === data.needsAttentionBoats.length - 1 ? 0 : 12,
+                    borderBottomWidth:
+                      index === data.needsAttentionBoats.length - 1 ? 0 : 1,
+                    borderBottomColor: "#fdecc8",
+                  }}
                 >
-                  <View className="flex-row items-center justify-between mb-2">
-                    <Text className="text-slate-900 font-bold">
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: colors.text,
+                        fontWeight: "800",
+                        fontSize: 14,
+                        flex: 1,
+                        paddingRight: 8,
+                      }}
+                    >
                       Boat ID: {String(boat.boatId).slice(0, 8)}...
                     </Text>
-                    <Ionicons name="warning" size={20} color="#f59e0b" />
+                    <Ionicons name="warning" size={20} color={colors.amber} />
                   </View>
 
-                  <View className="bg-white rounded-lg p-2.5">
-                    <Text className="text-amber-800 text-sm">
+                  <View
+                    style={{
+                      backgroundColor: "#ffffff",
+                      borderRadius: 16,
+                      padding: 12,
+                    }}
+                  >
+                    <Text style={{ color: "#92400e", fontSize: 13, lineHeight: 20 }}>
                       • Trips: {boat.totalTrips ?? 0} • Error:{" "}
-                      {boat.avgPredictionError?.toFixed(1) ?? "N/A"} L
+                      {formatLiters(boat.avgPredictionError)}
                     </Text>
-                    <Text className="text-amber-700 text-xs mt-1">
+                    <Text
+                      style={{
+                        color: "#a16207",
+                        fontSize: 12,
+                        marginTop: 6,
+                        lineHeight: 18,
+                      }}
+                    >
                       Reason:{" "}
                       {boat.improvementTrend === "declining"
                         ? "Accuracy declining - needs recalibration"
@@ -407,49 +864,104 @@ const LearningSummaryScreen = () => {
                 </View>
               ))}
 
-              <View className="bg-amber-100 rounded-lg p-3 mt-2">
-                <Text className="text-amber-900 text-xs font-medium text-center">
-                  💡 Log more actual trips for these boats to improve prediction
-                  accuracy
+              <View
+                style={{
+                  backgroundColor: "#fde68a",
+                  borderRadius: 16,
+                  padding: 14,
+                  marginTop: 12,
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#78350f",
+                    fontSize: 13,
+                    fontWeight: "600",
+                    textAlign: "center",
+                    lineHeight: 20,
+                  }}
+                >
+                  💡 Log more actual trips for these boats to improve prediction accuracy
                 </Text>
               </View>
             </View>
           </>
-        )}
+        ) : null}
 
-        {/* 📊 RESEARCH INSIGHTS */}
-        <View className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-200 p-5 mb-4">
-          <View className="flex-row items-center mb-3">
-            <Ionicons name="школяр" size={22} color="#9333ea" />
-            <Text className="text-base font-bold text-purple-900 ml-2">
+        <View
+          style={{
+            backgroundColor: colors.purpleSoft,
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: "#ddd6fe",
+            padding: 18,
+            marginBottom: 12,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 14,
+                backgroundColor: "#ede9fe",
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 10,
+              }}
+            >
+              <Ionicons name="bulb-outline" size={20} color={colors.purple} />
+            </View>
+
+            <Text style={{ fontSize: 17, fontWeight: "800", color: "#581c87", flex: 1 }}>
               Adaptive Learning Insights
             </Text>
           </View>
 
-          <View className="bg-white rounded-xl p-4">
-            <Text className="text-slate-700 text-sm leading-5 mb-2">
-              ✅{" "}
-              <Text className="font-semibold">Boat-Specific Adaptation:</Text>{" "}
-              Each boat's unique characteristics are learned over time.
+          <View
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: 18,
+              padding: 16,
+            }}
+          >
+            <Text style={{ color: "#334155", fontSize: 14, lineHeight: 22, marginBottom: 10 }}>
+              ✅ <Text style={{ fontWeight: "700" }}>Boat-Specific Adaptation:</Text> Each
+              boat&apos;s unique characteristics are learned over time.
             </Text>
-            <Text className="text-slate-700 text-sm leading-5 mb-2">
-              ✅ <Text className="font-semibold">Continuous Improvement:</Text>{" "}
-              Model accuracy increases with every logged trip.
+            <Text style={{ color: "#334155", fontSize: 14, lineHeight: 22, marginBottom: 10 }}>
+              ✅ <Text style={{ fontWeight: "700" }}>Continuous Improvement:</Text> Model
+              accuracy increases with every logged trip.
             </Text>
-            <Text className="text-slate-700 text-sm leading-5 mb-2">
-              ✅ <Text className="font-semibold">Historical Context:</Text>{" "}
-              Predictions leverage past performance for better accuracy.
+            <Text style={{ color: "#334155", fontSize: 14, lineHeight: 22, marginBottom: 10 }}>
+              ✅ <Text style={{ fontWeight: "700" }}>Historical Context:</Text> Predictions
+              leverage past performance for better accuracy.
             </Text>
-            <Text className="text-slate-700 text-sm leading-5">
-              ✅ <Text className="font-semibold">Economic Intelligence:</Text>{" "}
-              System learns realistic cost patterns beyond just fuel.
+            <Text style={{ color: "#334155", fontSize: 14, lineHeight: 22 }}>
+              ✅ <Text style={{ fontWeight: "700" }}>Economic Intelligence:</Text> System
+              learns realistic cost patterns beyond just fuel.
             </Text>
           </View>
 
-          <View className="bg-purple-100 rounded-lg p-3 mt-3">
-            <Text className="text-purple-900 text-xs font-bold text-center">
-              🔬 Research Novelty: Adaptive, boat-specific trip cost
-              intelligence with external cost modeling
+          <View
+            style={{
+              backgroundColor: "#e9d5ff",
+              borderRadius: 16,
+              padding: 14,
+              marginTop: 12,
+            }}
+          >
+            <Text
+              style={{
+                color: "#581c87",
+                fontSize: 13,
+                fontWeight: "800",
+                textAlign: "center",
+                lineHeight: 20,
+              }}
+            >
+              🔬 Research Novelty: Adaptive, boat-specific trip cost intelligence
+              with external cost modeling
             </Text>
           </View>
         </View>
