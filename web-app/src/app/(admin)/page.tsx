@@ -1,39 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity, DollarSign, UserPlus, Users } from "lucide-react";
+import { useDashboardStore } from "@/stores/dashboardStore";
 
 export default function AdminDashboardPage() {
   const [selectedCard, setSelectedCard] = useState<
-    "totalUsers" | "activeUsers" | "revenue" | "newSignups" | null
+    "totalUsers" | "activeUsers" | "revenue" | "newSignups"
   >("totalUsers");
 
-  const dummyUsers = [
-    { id: "u_001", name: "Ravi Perera", email: "ravi@example.com", role: "admin", district: "Galle", active: true },
-    { id: "u_002", name: "Shanti Kumar", email: "shanti@example.com", role: "customer", district: "Colombo", active: true },
-    { id: "u_003", name: "Nimal Silva", email: "nimal@example.com", role: "customer", district: "Matara", active: false },
-    { id: "u_004", name: "Kasun Fernando", email: "kasun@example.com", role: "customer", district: "Gampaha", active: true },
-    { id: "u_005", name: "Ishara Jay", email: "ishara@example.com", role: "customer", district: "Kandy", active: false },
-  ] as const;
+  const { users, isLoading, error, fetchUsers } = useDashboardStore();
 
-  const dummySignups = [
-    { id: "s_101", name: "Tharindu", email: "tharindu@example.com", createdAt: "Today, 09:12" },
-    { id: "s_102", name: "Hasini", email: "hasini@example.com", createdAt: "Yesterday, 17:40" },
-    { id: "s_103", name: "Suresh", email: "suresh@example.com", createdAt: "3 days ago" },
-    { id: "s_104", name: "Malith", email: "malith@example.com", createdAt: "6 days ago" },
-  ] as const;
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-  const dummyRevenueEntries = [
-    { id: "r_901", date: "Today", description: "Subscription payment", amountLkr: 12500, method: "Card" },
-    { id: "r_902", date: "Today", description: "Marketplace fee", amountLkr: 3200, method: "Bank" },
-    { id: "r_903", date: "Yesterday", description: "Subscription payment", amountLkr: 12500, method: "Card" },
-    { id: "r_904", date: "2 days ago", description: "Marketplace fee", amountLkr: 4100, method: "Cash" },
-  ] as const;
+  const totalUsers = users.length;
+  const activeUsers = users.filter((u) => u.isVerified === true).length;
 
-  const totalUsers = 1248;
-  const activeUsers = 392;
+  const now = Date.now();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  const newSignups7d = users.filter((u) => {
+    const created = u?.createdAt ? new Date(u.createdAt).getTime() : 0;
+    return created && now - created <= sevenDaysMs;
+  }).length;
+
   const revenueMtdLabel = "LKR 2.4M";
-  const newSignups7d = 81;
 
   function cardBase(isActive: boolean) {
     return `bg-white rounded-2xl shadow-xl p-5 text-left transition-all focus:outline-none focus:ring-2 focus:ring-blue-200 ${
@@ -41,11 +33,36 @@ export default function AdminDashboardPage() {
     }`;
   }
 
+  if (isLoading && users.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500">Loading dashboard data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+        <h2 className="text-lg font-semibold text-red-900">Error Loading Dashboard</h2>
+        <p className="text-red-700 mt-2">{error}</p>
+        <button
+          onClick={() => fetchUsers()}
+          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Overview of the application (dummy data)</p>
+        <p className="text-gray-600 mt-1">
+          {isLoading ? "Refreshing..." : `Overview (${users.length} total users)`}
+        </p>
       </div>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -64,7 +81,7 @@ export default function AdminDashboardPage() {
               <Users className="w-5 h-5 text-blue-600" />
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-3">+34 in last 7 days</p>
+          <p className="text-xs text-gray-500 mt-3">+{newSignups7d} in last 7 days</p>
         </button>
 
         <button
@@ -82,7 +99,7 @@ export default function AdminDashboardPage() {
               <Activity className="w-5 h-5 text-emerald-600" />
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-3">Active today</p>
+          <p className="text-xs text-gray-500 mt-3">Verified accounts</p>
         </button>
 
         <button
@@ -118,7 +135,7 @@ export default function AdminDashboardPage() {
               <UserPlus className="w-5 h-5 text-cyan-600" />
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-3">Conversion 4.1%</p>
+          <p className="text-xs text-gray-500 mt-3">Last 7 days</p>
         </button>
       </section>
 
@@ -130,57 +147,68 @@ export default function AdminDashboardPage() {
               : selectedCard === "activeUsers"
                 ? "Active users"
                 : selectedCard === "newSignups"
-                  ? "New signups"
+                  ? "New signups (7 days)"
                   : "Revenue entries"}
           </h2>
-          <p className="text-xs text-gray-500">Dummy data for admin UI preview</p>
+          <p className="text-xs text-gray-500">
+            {isLoading ? "Refreshing..." : `Showing ${users.length} users`}
+          </p>
         </div>
 
         {selectedCard === "revenue" ? (
           <div className="space-y-3">
-            {dummyRevenueEntries.map((r) => (
-              <div key={r.id} className="p-4 rounded-xl bg-gray-50 flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm font-semibold text-gray-900">{r.description}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {r.date} • {r.method}
-                  </div>
-                </div>
-                <div className="text-sm font-bold text-gray-900 whitespace-nowrap">
-                  LKR {r.amountLkr.toLocaleString()}
-                </div>
-              </div>
-            ))}
+            <p className="text-gray-500 text-center py-8">Revenue module coming soon</p>
           </div>
         ) : selectedCard === "newSignups" ? (
           <div className="space-y-3">
-            {dummySignups.map((s) => (
-              <div key={s.id} className="p-4 rounded-xl bg-gray-50">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900">{s.name}</div>
-                    <div className="text-xs text-gray-500 mt-1">{s.email}</div>
+            {users
+              .filter((u) => {
+                const created = u?.createdAt ? new Date(u.createdAt).getTime() : 0;
+                return created && now - created <= sevenDaysMs;
+              })
+              .map((u) => (
+                <div key={u._id} className="p-4 rounded-xl bg-gray-50">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        {u.firstName || u.lastName
+                          ? `${u.firstName || ""} ${u.lastName || ""}`.trim()
+                          : u.username || u.email}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">{u.email}</div>
+                    </div>
+                    <div className="text-xs text-gray-500 whitespace-nowrap">
+                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "-"}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500 whitespace-nowrap">{s.createdAt}</div>
                 </div>
-              </div>
-            ))}
+              ))}
+            {newSignups7d === 0 && (
+              <p className="text-gray-500 text-center py-4">No new signups in last 7 days</p>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
-            {(selectedCard === "activeUsers" ? dummyUsers.filter((u) => u.active) : dummyUsers).map((u) => (
-              <div key={u.id} className="p-4 rounded-xl bg-gray-50">
+            {(selectedCard === "activeUsers"
+              ? users.filter((u) => u.isVerified === true)
+              : users
+            ).map((u) => (
+              <div key={u._id} className="p-4 rounded-xl bg-gray-50">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-sm font-semibold text-gray-900">{u.name}</div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      {u.firstName || u.lastName
+                        ? `${u.firstName || ""} ${u.lastName || ""}`.trim()
+                        : u.username || u.email}
+                    </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {u.email} • {u.district}
+                      {u.email} • {u.district || "-"}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs font-semibold text-gray-700">{u.role}</div>
-                    <div className={`text-xs mt-1 ${u.active ? "text-emerald-700" : "text-gray-500"}`}>
-                      {u.active ? "Active" : "Inactive"}
+                    <div className="text-xs font-semibold text-gray-700">{u.role || "-"}</div>
+                    <div className={`text-xs mt-1 ${u.isVerified ? "text-emerald-700" : "text-gray-500"}`}>
+                      {u.isVerified ? "Verified" : "Unverified"}
                     </div>
                   </div>
                 </div>

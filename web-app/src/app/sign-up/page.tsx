@@ -189,10 +189,11 @@ export default function SignUpPage() {
     setErrors({});
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { confirmPassword: _confirm, ...signupData } = formData;
       await completeSignup({ 
-        ...formData, 
+        ...signupData, 
         phone: formData.phone.replace(/\s/g, ''),
-        password: formData.password 
       });
       
       setSuccess(true);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   LayoutDashboard,
@@ -24,6 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const user = useAuthStore((s) => s.user);
   const clear = useAuthStore((s) => s.clear);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pending, setPending] = useState(false);
@@ -38,6 +39,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     [],
   );
 
+  // Wait for hydration to complete before checking auth state
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  if (!isHydrated) return null; // Prevent hydration mismatch
   if (!user) return <SignInPage />;
 
   async function onSignOut() {

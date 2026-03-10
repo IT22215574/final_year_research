@@ -227,7 +227,7 @@ const SelectSignIn = () => {
         {/* Icons Layer */}
         <View style={styles.iconsLayer}>{renderDistributedIcons()}</View>
 
-        {/* Title - Only Smart fisher lanaka in top section */}
+        {/* Title - Only  in top section */}
         <Text style={styles.header}>
           <Text className="text-blue-400">S</Text>
           <Text>MART </Text>
@@ -548,3 +548,4 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 });
+
