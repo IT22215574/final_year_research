@@ -634,12 +634,15 @@ export default function PredictionsScreen() {
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [recsLastUpdated, setRecsLastUpdated] = useState<string | null>(null);  // HH:MM of last successful fetch
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
 
   // Load favorites from storage — re-runs when user account changes
   useEffect(() => {
+    setFavoritesLoaded(false);
     setFavoriteItems([]); // clear previous user's favorites immediately
     AsyncStorage.getItem(favStorageKey).then(stored => {
       if (stored) { try { setFavoriteItems(JSON.parse(stored)); } catch {} }
+      setFavoritesLoaded(true);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
@@ -968,6 +971,7 @@ export default function PredictionsScreen() {
 
   // Fetch recommendations
   useEffect(() => {
+    if (!favoritesLoaded) return; // wait until AsyncStorage load completes (prevents triple-fire on mount)
     const fetchRecommendations = async () => {
       setLoadingRecs(true);
       setRecsError(null);
@@ -996,7 +1000,7 @@ export default function PredictionsScreen() {
       }
     };
     fetchRecommendations();
-  }, [budget, preference, favoriteItems, recsRetryKey]);
+  }, [budget, preference, favoriteItems, recsRetryKey, favoritesLoaded]);
 
   const favIds = favoriteItems.map(f => f.fish_id);
 

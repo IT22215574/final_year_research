@@ -9,6 +9,14 @@ import "react-native-reanimated";
 import "../global.css";
 import { StatusBar } from "expo-status-bar";
 
+// Suppress the SafeAreaView deprecation warning that comes from third-party libraries
+// All project code uses react-native-safe-area-context which is the correct package
+const _warn = console.warn.bind(console);
+console.warn = (...args: any[]) => {
+  if (typeof args[0] === 'string' && args[0].includes('SafeAreaView has been deprecated')) return;
+  _warn(...args);
+};
+
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
