@@ -387,22 +387,12 @@ const TripPlanner = () => {
         manualExternalCosts:
           manualExternalCosts.length > 0
             ? manualExternalCosts.map(
-                ({
+                ({ name, category, amount, description }) => ({
                   name,
                   category,
-                  quantity,
-                  pricePerUnit,
                   amount,
                   description,
-                  icon,
-                }) => ({
-                  name,
-                  category,
-                  quantity: quantity || 1,
-                  pricePerUnit: pricePerUnit || 0,
-                  amount,
-                  description,
-                  icon,
+                  source: "manual" as const,
                 }),
               )
             : undefined,
@@ -491,6 +481,18 @@ const TripPlanner = () => {
         expectedCatch: parseFloat(expectedCatch || "120"),
         marketPrice: parseFloat(marketPrice || "550"),
         mode,
+        manualExternalCosts:
+          manualExternalCosts.length > 0
+            ? manualExternalCosts.map(
+                ({ name, category, amount, description }) => ({
+                  name,
+                  category,
+                  amount,
+                  description,
+                  source: "manual" as const,
+                }),
+              )
+            : undefined,
       };
 
       const res: any = await optimizeTripDatcie(body);
