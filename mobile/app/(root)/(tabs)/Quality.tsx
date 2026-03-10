@@ -1,15 +1,21 @@
 ﻿﻿// screens/Quality.tsx  — Hub screen
 
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { HEADER_GRADIENT } from "@/constants";
+import { useGradingRecordStore } from "@/stores/gradingRecordStore";
 
 export default function Quality() {
   const router = useRouter();
+  const { history, loadHistory } = useGradingRecordStore();
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   return (
     <SafeAreaView style={s.container} edges={["bottom", "left", "right"]}>
@@ -20,6 +26,8 @@ export default function Quality() {
         end={{ x: 1, y: 0 }}
         style={s.header}
       >
+        <Text style={s.headerTitle}>Fish Quality</Text>
+        <Text style={s.headerSub}>Detect species and grade freshness</Text>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -59,6 +67,31 @@ export default function Quality() {
             </Text>
           </View>
           <MaterialIcons name="chevron-right" size={26} color="#94a3b8" />
+        </TouchableOpacity>
+
+        {/* Grading History card */}
+        <TouchableOpacity
+          style={s.card}
+          activeOpacity={0.85}
+          onPress={() => router.push("/(root)/(tabs)/GradingHistory")}
+        >
+          <LinearGradient colors={["#6c5ce7", "#a29bfe"]} style={s.cardIcon}>
+            <MaterialIcons name="history" size={34} color="#fff" />
+          </LinearGradient>
+          <View style={s.cardText}>
+            <Text style={s.cardTitle}>Grading History</Text>
+            <Text style={s.cardDesc}>
+              View, manage and revisit all your saved grading results.
+            </Text>
+          </View>
+          <View style={s.badgeRow}>
+            {history.length > 0 && (
+              <View style={s.countBadge}>
+                <Text style={s.countText}>{history.length}</Text>
+              </View>
+            )}
+            <MaterialIcons name="chevron-right" size={26} color="#94a3b8" />
+          </View>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -100,4 +133,14 @@ const s = StyleSheet.create({
   cardText: { flex: 1 },
   cardTitle: { fontSize: 17, fontWeight: "700", color: "#0f172a", marginBottom: 4 },
   cardDesc: { fontSize: 13, color: "#64748b", lineHeight: 19 },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  countBadge: {
+    backgroundColor: "#6c5ce7",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    minWidth: 26,
+    alignItems: "center",
+  },
+  countText: { color: "#fff", fontSize: 12, fontWeight: "700" },
 });

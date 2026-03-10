@@ -20,6 +20,7 @@ type ZoneLevel = "HIGH" | "MEDIUM" | "LOW";
 
 const Home = () => {
   const { currentUser, signOut } = useAuthStore();
+  console.log("Current user in Home screen:", currentUser);
   const router = useRouter();
   // NOTE: This screen previously depended on `react-native-maps` + a demo util.
   // Those dependencies are not present in `mobile/package.json`, which can crash Metro
