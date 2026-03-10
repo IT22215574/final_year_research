@@ -411,7 +411,7 @@ const TripPlanner = () => {
       const res: any = await predictTripDatcie(body);
 
       // ✅ Validate response before processing
-      if (!res || typeof res !== 'object') {
+      if (!res || typeof res !== "object") {
         throw new Error("Invalid response from prediction service");
       }
 
@@ -429,9 +429,14 @@ const TripPlanner = () => {
             res?.riskCategory ??
             null,
         );
-        setRecommendations(Array.isArray(res?.recommendations) ? res.recommendations : []);
+        setRecommendations(
+          Array.isArray(res?.recommendations) ? res.recommendations : [],
+        );
       } catch (parseError) {
-        console.warn("Warning: Error parsing prediction response details:", parseError);
+        console.warn(
+          "Warning: Error parsing prediction response details:",
+          parseError,
+        );
         // Continue with navigation even if parsing fails
       }
 

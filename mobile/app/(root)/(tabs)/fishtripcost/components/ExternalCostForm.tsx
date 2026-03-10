@@ -81,7 +81,9 @@ export default function ExternalCostForm({
   useEffect(() => {
     let isMounted = true; // Prevent state updates after unmount
     loadCostPreferences(isMounted);
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, []); // Keep empty deps - we want this to run only once
 
   const loadCostPreferences = async (isMounted = true) => {
@@ -89,7 +91,7 @@ export default function ExternalCostForm({
       if (!isMounted) return;
       setLoadingPreferences(true);
       const data = await getCostPreferences();
-      
+
       if (!isMounted) return; // Check after async operation
       setPreferences(data.filter((p) => p.isActive));
 
@@ -118,7 +120,7 @@ export default function ExternalCostForm({
           const newAutoApplyCosts = autoApplyCosts.filter(
             (c) => !existingPrefIds.includes(c.preferenceId),
           );
-          return newAutoApplyCosts.length > 0 
+          return newAutoApplyCosts.length > 0
             ? [...currentCosts, ...newAutoApplyCosts]
             : currentCosts;
         });
@@ -127,7 +129,10 @@ export default function ExternalCostForm({
       console.error("Failed to load cost preferences:", error);
       if (isMounted) {
         // Only show alert if component is still mounted
-        Alert.alert("Error", "Failed to load cost preferences. Please try again.");
+        Alert.alert(
+          "Error",
+          "Failed to load cost preferences. Please try again.",
+        );
       }
     } finally {
       if (isMounted) {
@@ -229,7 +234,10 @@ export default function ExternalCostForm({
     try {
       const quantity = parseFloat(newQuantity);
       if (Number.isNaN(quantity) || quantity <= 0) {
-        Alert.alert("Invalid Quantity", "Please enter a valid quantity greater than 0");
+        Alert.alert(
+          "Invalid Quantity",
+          "Please enter a valid quantity greater than 0",
+        );
         return;
       }
 
@@ -243,7 +251,7 @@ export default function ExternalCostForm({
           return cost;
         });
       });
-      
+
       setEditingQuantities((prev) => {
         const next = { ...prev };
         delete next[preferenceId];

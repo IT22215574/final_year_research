@@ -151,7 +151,8 @@ export default function AddCostPreferenceScreen() {
           <View className="flex-row items-start">
             <Ionicons name="bulb" size={20} color="#3B82F6" />
             <Text className="text-xs text-blue-700 ml-2 flex-1">
-              Create reusable external costs with quantity-based pricing. Enable auto-apply to include them automatically in all trip predictions.
+              Create reusable external costs with quantity-based pricing. Enable
+              auto-apply to include them automatically in all trip predictions.
             </Text>
           </View>
         </View>
