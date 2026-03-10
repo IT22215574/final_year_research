@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { getMyTrips } from "@/services/tripService";
 import { getMyBoats } from "@/services/boatService";
-import FishTripNavBar from "./components/FishTripNavBar";
+import ScreenHeader from "./components/ScreenHeader";
 
 const money = (n: any) => {
   const num = Number(n);
@@ -147,28 +147,10 @@ const HistoryScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <FishTripNavBar />
-
-      {/* Header */}
-      <View className="bg-white border-b border-gray-200 px-4 pt-3 pb-4">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <TouchableOpacity
-              onPress={() => router.back()}
-              className="w-9 h-9 rounded-lg bg-gray-100 items-center justify-center mr-3"
-              activeOpacity={0.7}
-            >
-              <Text className="text-gray-600 text-lg">←</Text>
-            </TouchableOpacity>
-            <View>
-              <Text className="text-xl font-bold text-gray-900">History</Text>
-              <Text className="text-xs text-gray-500">
-                {filteredTrips.length} {selectedBoatId ? "filtered" : "saved"}{" "}
-                trips
-              </Text>
-            </View>
-          </View>
-
+      <ScreenHeader
+        title="Trip Analytics"
+        subtitle={`${filteredTrips.length} ${selectedBoatId ? "filtered" : "saved"} trips`}
+        rightComponent={
           <TouchableOpacity
             onPress={onRefresh}
             className="w-9 h-9 rounded-lg bg-gray-100 items-center justify-center"
@@ -176,6 +158,19 @@ const HistoryScreen = () => {
           >
             <Text className="text-gray-600 text-lg">↻</Text>
           </TouchableOpacity>
+        }
+      />
+
+      {/* Header */}
+      <View className="bg-white border-b border-gray-200 px-4 pt-3 pb-4">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <View>
+              <Text className="text-sm font-medium text-gray-600">
+                View and analyze your fishing trip history
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Search Bar */}

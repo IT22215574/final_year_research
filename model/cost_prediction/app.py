@@ -34,6 +34,7 @@ realtime_engine = RealTimeDataEngine(MODEL_DIR)
 
 class FuelPredictionRequest(BaseModel):
     boatId: str
+    boatType: Optional[str] = None  # ✅ Added for boat-type-specific fuel baselines
     distanceKm: float = Field(..., ge=0)
     speed: float = Field(..., ge=0.1)
     engineHP: float = Field(..., ge=1)

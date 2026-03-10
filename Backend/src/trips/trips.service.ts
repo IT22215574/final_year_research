@@ -23,6 +23,7 @@ import {
 } from '../schemas/trip-coefficient.schema';
 import { Boat, BoatDocument } from '../schemas/boat.schema';
 import { UpdateActualsDto } from './dto/update-actuals.dto';
+import { TripMetricsService } from './services/trip-metrics.service';
 
 @Injectable()
 export class TripsService {
@@ -33,6 +34,7 @@ export class TripsService {
     private tripCoeffModel: Model<TripCoefficientDocument>,
     private readonly http: HttpService,
     private readonly config: ConfigService,
+    private readonly tripMetricsService: TripMetricsService,
   ) {}
 
   // =========================
@@ -317,6 +319,38 @@ export class TripsService {
     trip.totalCostDifference = totalCostDifference;
     trip.externalCostDifference = externalCostDifference;
     trip.profitDifference = profitDifference;
+
+    // Calculate and store comparison metrics using TripMetricsService
+    const metrics = this.tripMetricsService.calculateTripMetrics(trip);
+
+    // Assign standard comparison metrics
+    trip.fuelErrorLiters = metrics.fuelErrorLiters;
+    trip.fuelErrorPercent = metrics.fuelErrorPercent;
+    trip.fuelVarianceLiters = metrics.fuelVarianceLiters;
+    trip.isFuelPredictionAccurate = metrics.isFuelPredictionAccurate;
+    trip.costErrorAmount = metrics.costErrorAmount;
+    trip.costErrorPercent = metrics.costErrorPercent;
+    trip.costVarianceAmount = metrics.costVarianceAmount;
+    trip.isCostPredictionAccurate = metrics.isCostPredictionAccurate;
+    trip.fuelCostErrorAmount = metrics.fuelCostErrorAmount;
+    trip.fuelCostErrorPercent = metrics.fuelCostErrorPercent;
+    trip.comparisonEligible = metrics.comparisonEligible;
+    trip.accuracyThresholdUsed = metrics.accuracyThresholdUsed;
+    trip.comparisonCalculatedAt = metrics.comparisonCalculatedAt;
+
+    // ✅ NEW: Assign boat type-based normalized metrics
+    if (metrics.normalizedFuelMetrics) {
+      trip.expectedFuelForBoatType =
+        metrics.normalizedFuelMetrics.expectedFuelForBoatType;
+      trip.normalizedVariancePercent =
+        metrics.normalizedFuelMetrics.normalizedVariancePercent;
+      trip.efficiencyScore = metrics.normalizedFuelMetrics.efficiencyScore;
+      trip.varianceRating = metrics.normalizedFuelMetrics.varianceRating;
+      trip.mlAdjustedExpectedFuel =
+        metrics.normalizedFuelMetrics.mlAdjustedExpectedFuel;
+      trip.mlVariancePercent = metrics.normalizedFuelMetrics.mlVariancePercent;
+      trip.boatTypeUsedForMetrics = metrics.normalizedFuelMetrics.boatTypeUsed;
+    }
 
     trip.status = 'completed';
 
@@ -673,36 +707,118 @@ export class TripsService {
     if (trips.length === 0) {
       return {
         totalTrips: 0,
-        totalCost: 0,
-        averageCost: 0,
+        completedTrips: 0,
+        predictionsWithActuals: 0,
+        fuelAccuracyRate: 0,
+        costAccuracyRate: 0,
+        averagePredictedCost: 0,
+        averageActualCost: 0,
+        averageFuelErrorPercent: 0,
+        averageCostErrorPercent: 0,
+        totalPredictedFuel: 0,
+        totalActualFuel: 0,
+        totalFuelVariance: 0,
+        totalPredictedCost: 0,
+        totalActualCost: 0,
+        totalCostVariance: 0,
         totalFuelUsed: 0,
         totalDistance: 0,
       };
     }
 
-    const totalCost = trips.reduce(
-      (sum, trip) =>
-        sum + Number(trip.actualTotalCost || trip.predictedTotalCost || 0),
-      0,
+    // Use TripMetricsService to calculate comprehensive dashboard stats
+    return this.tripMetricsService.calculateDashboardStats(trips);
+  }
+
+  /**
+   * Debug endpoint: Get detailed breakdown of trip metrics
+   * Shows which trips are included/excluded and why
+   */
+  async getStatsDebug(userId: string) {
+    const trips = await this.findByUser(userId);
+
+    const breakdown = {
+      totalTrips: trips.length,
+      completed: trips.filter((t) => t.status === 'completed').length,
+      withPredictions: trips.filter((t) => t.predictedFuelLiters != null)
+        .length,
+      withActuals: trips.filter((t) => t.actualFuelLiters != null).length,
+      eligible: 0,
+      filtered: 0,
+      reasons: {
+        noPrediction: 0,
+        noActual: 0,
+        invalidValues: 0,
+        extremeOutlier: 0,
+      },
+      worstOffenders: [] as any[],
+    };
+
+    const problematicTrips = [];
+
+    for (const trip of trips) {
+      const predicted = trip.predictedFuelLiters;
+      const actual = trip.actualFuelLiters;
+
+      // Check eligibility
+      if (predicted == null) {
+        breakdown.reasons.noPrediction++;
+        breakdown.filtered++;
+        continue;
+      }
+
+      if (actual == null) {
+        breakdown.reasons.noActual++;
+        breakdown.filtered++;
+        continue;
+      }
+
+      if (predicted <= 0 || actual < 0) {
+        breakdown.reasons.invalidValues++;
+        breakdown.filtered++;
+        problematicTrips.push({
+          id: trip._id,
+          predicted,
+          actual,
+          reason: 'Invalid values (zero or negative)',
+        });
+        continue;
+      }
+
+      const fuelRatio = actual > 0 ? predicted / actual : 0;
+      if (fuelRatio > 10 || fuelRatio < 0.1) {
+        breakdown.reasons.extremeOutlier++;
+        breakdown.filtered++;
+        const errorPercent = Math.abs(((actual - predicted) / predicted) * 100);
+        problematicTrips.push({
+          id: trip._id,
+          predicted,
+          actual,
+          variance: actual - predicted,
+          errorPercent: Math.round(errorPercent),
+          ratio: Math.round(fuelRatio * 100) / 100,
+          reason: `Extreme outlier (${fuelRatio > 10 ? 'prediction 10x+ actual' : 'actual 10x+ prediction'})`,
+        });
+        continue;
+      }
+
+      breakdown.eligible++;
+    }
+
+    // Sort problematic trips by absolute variance
+    problematicTrips.sort(
+      (a, b) => Math.abs(b.variance || 0) - Math.abs(a.variance || 0),
     );
 
-    const totalFuelUsed = trips.reduce(
-      (sum, trip) =>
-        sum + Number(trip.actualFuelLiters || trip.fuelUsedLiters || 0),
-      0,
-    );
-
-    const totalDistance = trips.reduce(
-      (sum, trip) => sum + Number(trip.distanceKm || 0),
-      0,
-    );
+    breakdown.worstOffenders = problematicTrips.slice(0, 10);
 
     return {
-      totalTrips: trips.length,
-      totalCost: Math.round(totalCost * 100) / 100,
-      averageCost: Math.round((totalCost / trips.length) * 100) / 100,
-      totalFuelUsed: Math.round(totalFuelUsed * 100) / 100,
-      totalDistance: Math.round(totalDistance * 100) / 100,
+      ...breakdown,
+      stats: this.tripMetricsService.calculateDashboardStats(trips),
+      message:
+        breakdown.filtered > 0
+          ? `${breakdown.filtered} trips filtered out due to data quality issues. See worstOffenders for details.`
+          : 'All trips passed data quality checks.',
     };
   }
 

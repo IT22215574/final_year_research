@@ -18,7 +18,8 @@ import {
   deleteCostPreference,
   type CostPreference,
 } from "@/services/costPreferenceService";
-import FishTripNavBar from "../components/FishTripNavBar";
+import ScreenHeader from "../components/ScreenHeader";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default function CostPreferencesScreen() {
   const [preferences, setPreferences] = useState<CostPreference[]>([]);
@@ -32,7 +33,9 @@ export default function CostPreferencesScreen() {
       const data = await getCostPreferences();
       setPreferences(Array.isArray(data) ? data : []);
     } catch (error: any) {
+      console.error("Failed to load cost preferences:", error);
       Alert.alert("Error", error?.message || "Failed to load cost preferences");
+      setPreferences([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -197,8 +200,44 @@ export default function CostPreferencesScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#f8fafc" }}>
-      <FishTripNavBar />
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error("Cost Preferences Screen Error:", error, errorInfo);
+      }}
+    >
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#f8fafc" }}>
+      <ScreenHeader
+        title="External Costs"
+        subtitle="Manage your trip cost preferences"
+        rightComponent={
+          <TouchableOpacity
+            onPress={() =>
+              router.push("/(root)/(tabs)/fishtripcost/costs/add-cost" as any)
+            }
+            activeOpacity={0.85}
+            style={{
+              backgroundColor: "#2563eb",
+              borderRadius: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <Ionicons name="add-circle" size={18} color="#fff" />
+            <Text
+              style={{
+                color: "#ffffff",
+                fontSize: 14,
+                fontWeight: "600",
+                marginLeft: 6,
+              }}
+            >
+              Add Cost
+            </Text>
+          </TouchableOpacity>
+        }
+      />
       <ScrollView
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
@@ -206,7 +245,7 @@ export default function CostPreferencesScreen() {
         <View
           style={{
             paddingHorizontal: 20,
-            paddingTop: 20,
+            paddingTop: 16,
             paddingBottom: 14,
           }}
         >
@@ -220,19 +259,9 @@ export default function CostPreferencesScreen() {
             <View style={{ flex: 1, paddingRight: 12 }}>
               <Text
                 style={{
-                  fontSize: 26,
-                  fontWeight: "800",
-                  color: "#0f172a",
-                }}
-              >
-                External Cost Intelligence
-              </Text>
-              <Text
-                style={{
-                  fontSize: 14,
+                  fontSize: 16,
+                  fontWeight: "600",
                   color: "#475569",
-                  marginTop: 4,
-                  lineHeight: 20,
                 }}
               >
                 Reusable cost preferences for realistic trip planning
@@ -241,7 +270,7 @@ export default function CostPreferencesScreen() {
 
             <TouchableOpacity
               onPress={() =>
-                router.push("/(root)/(tabs)/costs/add-cost" as any)
+                router.push("/(root)/(tabs)/fishtripcost/costs/add-cost" as any)
               }
               activeOpacity={0.85}
               style={{
@@ -563,29 +592,103 @@ export default function CostPreferencesScreen() {
                           marginBottom: 14,
                         }}
                       >
-                        <View style={{ flex: 1, paddingRight: 12 }}>
-                          <Text
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "flex-start",
+                            flex: 1,
+                            paddingRight: 12,
+                          }}
+                        >
+                          {/* Custom Icon */}
+                          <View
                             style={{
-                              fontSize: 16,
-                              fontWeight: "700",
-                              color: pref.isActive ? "#0f172a" : "#94a3b8",
+                              width: 36,
+                              height: 36,
+                              borderRadius: 12,
+                              backgroundColor: pref.isActive
+                                ? "#eff6ff"
+                                : "#f1f5f9",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              marginRight: 12,
+                              marginTop: 2,
                             }}
                           >
-                            {pref.name}
-                          </Text>
+                            <Ionicons
+                              name={(pref.icon || "cash-outline") as any}
+                              size={20}
+                              color={pref.isActive ? "#2563eb" : "#94a3b8"}
+                            />
+                          </View>
 
-                          {pref.description ? (
+                          <View style={{ flex: 1 }}>
                             <Text
                               style={{
-                                fontSize: 12,
-                                color: "#64748b",
-                                marginTop: 6,
-                                lineHeight: 18,
+                                fontSize: 16,
+                                fontWeight: "700",
+                                color: pref.isActive ? "#0f172a" : "#94a3b8",
                               }}
                             >
-                              {pref.description}
+                              {pref.name}
                             </Text>
-                          ) : null}
+
+                            {/* Quantity and Price Info */}
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                marginTop: 4,
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  color: "#64748b",
+                                  marginRight: 8,
+                                }}
+                              >
+                                {pref.quantity || 1} × Rs{" "}
+                                {Number(
+                                  pref.pricePerUnit || 0,
+                                ).toLocaleString()}
+                              </Text>
+                              {pref.autoApply && (
+                                <View
+                                  style={{
+                                    backgroundColor: "#eef2ff",
+                                    borderRadius: 6,
+                                    paddingHorizontal: 6,
+                                    paddingVertical: 2,
+                                    marginRight: 6,
+                                  }}
+                                >
+                                  <Text
+                                    style={{
+                                      fontSize: 10,
+                                      color: "#4f46e5",
+                                      fontWeight: "600",
+                                    }}
+                                  >
+                                    AUTO-APPLY
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+
+                            {pref.description ? (
+                              <Text
+                                style={{
+                                  fontSize: 12,
+                                  color: "#64748b",
+                                  marginTop: 6,
+                                  lineHeight: 18,
+                                }}
+                              >
+                                {pref.description}
+                              </Text>
+                            ) : null}
+                          </View>
                         </View>
 
                         <Text
@@ -710,7 +813,7 @@ export default function CostPreferencesScreen() {
                           <TouchableOpacity
                             onPress={() =>
                               router.push(
-                                `/(root)/(tabs)/fishtripcost/costs/edit/${pref._id}` as any,
+                                `/(root)/(tabs)/fishtripcost/costs/edit-cost/${pref._id}` as any,
                               )
                             }
                             disabled={isBusy}
@@ -772,5 +875,6 @@ export default function CostPreferencesScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+    </ErrorBoundary>
   );
 }
