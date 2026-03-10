@@ -149,6 +149,10 @@ const fetchJsonWithTimeout = async (url: string, init: RequestInit, timeoutMs: n
   }
 };
 
+/**
+ * Tries to fetch data from the prediction API.
+ * It will loop through backup URLs if the main URL fails due to a network error.
+ */
 async function predictionRequest<T>(path: string, init: RequestInit = {}, timeoutMs = 8000): Promise<T> {
   const baseUrls = getPredictionApiBaseUrls();
   let lastError: unknown;
@@ -177,6 +181,9 @@ async function predictionRequest<T>(path: string, init: RequestInit = {}, timeou
 // ─── Custom confidence-interval chart ──────────────────────────────────────
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+/**
+ * Draws a smooth curved line between data points on the SVG chart.
+ */
 function smoothPath(pts: { x: number; y: number }[]): string {
   if (pts.length === 0) return '';
   if (pts.length === 1) return `M${pts[0].x},${pts[0].y}`;
@@ -190,6 +197,10 @@ function smoothPath(pts: { x: number; y: number }[]): string {
   return d;
 }
 
+/**
+ * Draws a shaded band area (like a highlight range) on the SVG chart
+ * by combining a top line and a bottom line.
+ */
 function bandPath(
   upperPts: { x: number; y: number }[],
   lowerPts: { x: number; y: number }[],
@@ -206,6 +217,10 @@ function bandPath(
   return fwd + back + ' Z';
 }
 
+/**
+ * A custom chart component that visualizes a 7-day or 31-day price trend.
+ * It shows the predicted line and shaded high/low probability ranges.
+ */
 function PriceFluctuationChart({
   weekData,
   chartWidth,
@@ -301,6 +316,10 @@ function PriceFluctuationChart({
 // ────────────────────────────────────────────────────────────────────────────
 
 // ── Elasticity Comparison Chart ───────────────────────────────────────────
+/**
+ * A horizontal bar chart that compares different fish based on how 
+ * sensitive their demand is to price changes (Elasticity).
+ */
 function ElasticityChart({ items, highlighted }: {
   items: ElasticityItem[];
   highlighted: string | null;
@@ -400,6 +419,10 @@ function ElasticityChart({ items, highlighted }: {
 }
 
 // ── Feature Importance Chart ─────────────────────────────────────────────────
+/**
+ * A pie chart and legend that shows the biggest factors affecting 
+ * the current price (e.g., weather, fuel, season, festivals).
+ */
 function FeatureImportanceChart({ items }: { items: FeatureImportanceItem[] }) {
   if (items.length === 0) return null;
   const maxVal = Math.max(...items.map(f => f.rf), 1);
@@ -501,6 +524,10 @@ function FeatureImportanceChart({ items }: { items: FeatureImportanceItem[] }) {
 }
 
 // ── Market Demand Meter ─────────────────────────────────────────────────────
+/**
+ * A customized indicator bar to show how high or low the upcoming
+ * consumer demand is predicted to be over the next 5 days.
+ */
 function MarketDemandMeter({ days, spikeWarning, spikeDay }: {
   days: DemandDay[];
   spikeWarning: boolean;
@@ -585,7 +612,9 @@ function MarketDemandMeter({ days, spikeWarning, spikeDay }: {
   );
 }
 
-// Reusable error card shown when any section fails to load
+/**
+ * Reusable error card shown when a specific block of data (insights, alerts, etc.) fails to load.
+ */
 function DataUnavailableCard({ message, onRetry }: { message?: string; onRetry?: () => void }) {
   return (
     <View style={{ padding: 32, alignItems: 'center' }}>
@@ -606,6 +635,13 @@ function DataUnavailableCard({ message, onRetry }: { message?: string; onRetry?:
   );
 }
 
+/**
+ * PredictionsScreen Component:
+ * This is the main Market screen inside the mobile app.
+ * It manages two tabs: 'Daily Prices' and 'Market Insights'.
+ * Users can search for a fish, view predicted prices, see 31-day price charts,
+ * check market alerts, and get AI-powered recommendations based on their budget.
+ */
 export default function PredictionsScreen() {
   const router = useRouter();
   const [fishList, setFishList] = useState<FishOption[]>([]);
@@ -684,6 +720,7 @@ export default function PredictionsScreen() {
   const [showAllAlerts, setShowAllAlerts] = useState(false);
   const [featureImportance, setFeatureImportance] = useState<FeatureImportanceItem[]>([]);
 
+  /** Reads the overall machine learning accuracy percentage from the backend. */
   const fetchAccuracy = async () => {
     try {
       const data = await predictionRequest<any>('/accuracy', { method: 'GET' }, 5000);
@@ -698,6 +735,7 @@ export default function PredictionsScreen() {
   }, []);
 
   useEffect(() => {
+    /** Pulls market alerts (sudden price drops/spikes) for the dashboard. */
     const fetchAlerts = async () => {
       setLoadingAlerts(true);
       try {
@@ -764,9 +802,14 @@ export default function PredictionsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFishId]);
 
+  /**
+   * handlePredictPrice:
+   * Connects to the python backend API to get current fish prices and 31-day history.
+   * If there is a very high price spike detected, it warns the user with a push notification.
+   */
   const handlePredictPrice = async () => {
     if (!selectedFishId) return;
-    
+
     setLoadingPredict(true);
     setPredictError(null);
     setFeedbackGiven(false); // Reset feedback state for new prediction
@@ -825,6 +868,10 @@ export default function PredictionsScreen() {
     }
   };
 
+  /**
+   * Sends user feedback (right or wrong) about the predicted price to the backend,
+   * which updates the global accuracy score.
+   */
   const handleFeedback = async (isCorrect: boolean) => {
     try {
       const data = await predictionRequest<any>(
@@ -881,6 +928,7 @@ export default function PredictionsScreen() {
 
   // Fetch Market Trend (synced to selectedFishId)
   useEffect(() => {
+    /** Connects to the backend to get a 12-month historical price trend curve for the selected fish. */
     const fetchTrend = async () => {
       if (!selectedFishId) return;
       setLoadingTrend(true);
@@ -909,6 +957,7 @@ export default function PredictionsScreen() {
 
   // Fetch Elasticity chart data whenever selected fish changes
   useEffect(() => {
+    /** Pulls down a comparison list showing how demand for different sea creatures shifts when prices go up. */
     const fetchElasticity = async () => {
       try {
         const qs = selectedFishId ? `?fish_id=${selectedFishId}` : '';
@@ -926,6 +975,7 @@ export default function PredictionsScreen() {
 
   // Fetch Market Insights
   useEffect(() => {
+    /** Connects to the prediction API to find out if the fishing catch will be high/low, and how weather affects it today. */
     const fetchInsights = async () => {
       if (!selectedFishId) return;
       setLoadingInsights(true);
@@ -974,6 +1024,9 @@ export default function PredictionsScreen() {
   // Fetch recommendations
   useEffect(() => {
     if (!favoritesLoaded) return; // wait until AsyncStorage load completes (prevents triple-fire on mount)
+    /**
+     * Fetches daily fish recommendations based on current user inputs (e.g., budget, preferences).
+     */
     const fetchRecommendations = async () => {
       setLoadingRecs(true);
       setRecsError(null);
@@ -1009,6 +1062,11 @@ export default function PredictionsScreen() {
   const favIdsRef = useRef<number[]>(favIds);
   useEffect(() => { favIdsRef.current = favIds; }, [favIds]);
 
+  /**
+   * Toggles the favorite status of a recommended fish.
+   * It first updates the UI immediately (optimistic update),
+   * then calls the API to save the change to the database.
+   */
   const toggleFavorite = (rec: any) => {
     const isCurrentlyFav = favoriteItems.some(f => f.fish_id === rec.fish_id);
 

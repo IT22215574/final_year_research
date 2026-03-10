@@ -158,6 +158,9 @@ class FeedbackRequest(BaseModel):
 
 
 def _encode_fish(sinhala_name: str) -> int:
+    """
+    Converts a Sinhala fish name into its corresponding ID number for the machine learning model.
+    """
     try:
         return int(le_sinhala.transform([sinhala_name])[0])
     except Exception:
@@ -165,6 +168,9 @@ def _encode_fish(sinhala_name: str) -> int:
 
 
 def _find_fish(req: PredictRequest) -> pd.Series:
+    """
+    Finds fish details from the dataset using either the fish ID or the Sinhala name.
+    """
     if req.fish_id is not None:
         matches = fish_df[fish_df["fish_id"] == req.fish_id]
     elif req.sinhala_name:
@@ -313,6 +319,9 @@ def _build_feature_row(target_date: datetime, fish_encoded: int) -> dict:
 
 
 def _predict_single_day(target_date: datetime, fish_encoded: int) -> float:
+    """
+    Predicts the price of a fish for one specific date using the Random Forest and Gradient Boosting models.
+    """
     feature_row = _build_feature_row(target_date, fish_encoded)
     features_df = pd.DataFrame([feature_row])
     rf_pred = float(rf_model.predict(features_df)[0])
@@ -320,6 +329,9 @@ def _predict_single_day(target_date: datetime, fish_encoded: int) -> float:
     return (rf_pred + gb_pred) / 2
 
 def _predict_series(center_date: datetime, fish_encoded: int):
+    """
+    Predicts fish prices for a range of dates (15 days before and 15 days after) to draw a trend chart.
+    """
     dates: List[str] = []
     prices: List[float] = []
     for offset in range(-15, 16):
@@ -353,6 +365,11 @@ def list_fish():
 
 @app.post("/predict")
 def predict(req: PredictRequest):
+    """
+    Finds the fish price for a specific date selected by the user.
+    It returns the predicted price, confidence intervals (price range), 
+    and the reasons why the price changes (like weather, holidays, etc.).
+    """
     try:
         fish_row = _find_fish(req)
         target_date = datetime.fromisoformat(req.date)
@@ -519,6 +536,11 @@ def formatLKR_py(amount: float) -> str:
 
 @app.post("/recommend")
 def recommend(req: RecommendRequest):
+    """
+    Recommends the best fish based on the user's budget and preference.
+    Preferences can be "profitable", "seasonal", or "popular".
+    A great feature for users who don't know what fish to buy today.
+    """
     try:
         target_date = datetime.fromisoformat(req.date)
     except ValueError:
@@ -650,6 +672,9 @@ import os
 FEEDBACK_FILE = BASE_DIR / "feedback.json"
 
 def _load_feedback():
+    """
+    Loads user feedback (yes/no on predictions) from a local JSON file.
+    """
     if not os.path.exists(FEEDBACK_FILE):
         return {"yes": 0, "no": 0}
     try:
@@ -659,11 +684,18 @@ def _load_feedback():
         return {"yes": 0, "no": 0}
 
 def _save_feedback(data):
+    """
+    Saves user feedback to the local JSON file.
+    """
     with open(FEEDBACK_FILE, "w") as f:
         json.dump(data, f)
 
 @app.post("/feedback")
 def submit_feedback(req: FeedbackRequest):
+    """
+    Endpoint: Receives user feedback on whether a prediction was correct,
+    and recalculates the overall model accuracy based on votes.
+    """
     data = _load_feedback()
     if req.is_correct:
         data["yes"] += 1
@@ -678,6 +710,9 @@ def submit_feedback(req: FeedbackRequest):
 
 @app.get("/accuracy")
 def get_accuracy():
+    """
+    Endpoint: Returns the total current accuracy percentage based on feedback.
+    """
     data = _load_feedback()
     total = data["yes"] + data["no"]
     accuracy = (data["yes"] / total * 100) if total > 0 else 0
@@ -685,6 +720,9 @@ def get_accuracy():
 
 @app.post("/trend")
 def get_trend(req: PredictRequest):
+    """
+    Endpoint: Generates a 12-month historical price trend (using the 15th of past months) for a selected fish.
+    """
     try:
         fish_row = _find_fish(req)
     except HTTPException:
