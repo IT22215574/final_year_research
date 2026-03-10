@@ -387,12 +387,7 @@ const TripPlanner = () => {
         manualExternalCosts:
           manualExternalCosts.length > 0
             ? manualExternalCosts.map(
-                ({
-                  name,
-                  category,
-                  amount,
-                  description,
-                }) => ({
+                ({ name, category, amount, description }) => ({
                   name,
                   category,
                   amount,
@@ -489,12 +484,7 @@ const TripPlanner = () => {
         manualExternalCosts:
           manualExternalCosts.length > 0
             ? manualExternalCosts.map(
-                ({
-                  name,
-                  category,
-                  amount,
-                  description,
-                }) => ({
+                ({ name, category, amount, description }) => ({
                   name,
                   category,
                   amount,
