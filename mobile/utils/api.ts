@@ -10,14 +10,14 @@ const normalizeUrl = (baseUrl: string, endpoint: string) => {
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const baseUrls = getAuthApiBaseUrls();
 
-  const accessToken = await SecureStore.getItemAsync('access_token');
-  const extraHeaders = (options.headers || {}) as Record<string, string>;
-
+  // Get token from SecureStore
+  const accessToken = await SecureStore.getItemAsync("access_token");
+  
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
     'x-client-type': 'mobile',
-    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    ...extraHeaders,
+    ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }), // CRITICAL: Add token
+    ...options.headers as Record<string, string>,
   };
 
   let lastError: unknown;
