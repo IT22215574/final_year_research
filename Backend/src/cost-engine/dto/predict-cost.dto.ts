@@ -15,29 +15,41 @@ export class PredictCostDto {
   @IsMongoId()
   boatId: string;
 
+  // Coordinates (optional if distanceKm provided)
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(-90)
   @Max(90)
-  startLat: number;
+  startLat?: number;
 
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(-180)
   @Max(180)
-  startLon: number;
+  startLon?: number;
 
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(-90)
   @Max(90)
-  endLat: number;
+  endLat?: number;
 
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(-180)
   @Max(180)
-  endLon: number;
+  endLon?: number;
+
+  // Manual distance (optional if coordinates provided)
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  distanceKm?: number;
 
   @Type(() => Number)
   @IsNumber()

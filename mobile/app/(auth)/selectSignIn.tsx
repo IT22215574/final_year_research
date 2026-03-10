@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import Svg, { Path, Circle } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { icons } from "@/constants"; // Adjust path if needed
 import { useRouter } from "expo-router";
 
@@ -72,24 +73,9 @@ const SelectSignIn = () => {
     };
   }, []);
 
-  // Pick only the icons you want (same as onBoard3)
-  const selectedIcons = [
-    icons.Icon1,
-    icons.Icon2,
-    icons.Icon3,
-    icons.Icon4,
-    icons.Icon5,
-    icons.Icon6,
-    icons.Icon1,
-    icons.Icon3,
-    icons.Icon2,
-    icons.Icon4,
-    icons.Icon3,
-    icons.Icon5,
-    icons.Icon1,
-    icons.Icon6,
-    icons.Icon2,
-  ];
+  // Icons are missing - using empty array to prevent errors
+  // TODO: Add icon assets or use Expo vector icons
+  const selectedIcons: any[] = [];
 
   const getPredefinedPositions = () => {
     const positions = [
@@ -283,7 +269,7 @@ const SelectSignIn = () => {
         >
           <View style={styles.roleContent}>
             <View style={styles.roleLeft}>
-              <Image source={icons.FisherIcon} style={styles.icon} />
+              <Ionicons name="boat" size={40} color="#0B3D91" />
               <View style={styles.roleTextContainer}>
                 <Text style={styles.roleTitle}>Fisher Man</Text>
                 <Text style={styles.roleDesc}>
@@ -316,7 +302,7 @@ const SelectSignIn = () => {
         >
           <View style={styles.roleContent}>
             <View style={styles.roleLeft}>
-              <Image source={icons.BuyerIcon} style={styles.icon} />
+              <Ionicons name="cart" size={40} color="#0B3D91" />
               <View style={styles.roleTextContainer}>
                 <Text style={styles.roleTitle}>Customer</Text>
                 <Text style={styles.roleDesc}>Explore as a customer</Text>

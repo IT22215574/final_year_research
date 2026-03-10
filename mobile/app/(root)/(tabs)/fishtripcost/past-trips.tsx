@@ -17,8 +17,14 @@ import { useFocusEffect, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Checkbox } from "expo-checkbox";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { cacheDirectory, writeAsStringAsync } from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 
-import { getMyTrips, batchTrainTrips } from "@/services/tripService";
+import {
+  getMyTrips,
+  batchTrainTrips,
+  exportTripsCSV,
+} from "@/services/tripService";
 import FishTripNavBar from "./components/FishTripNavBar";
 
 type ExternalCostItem = {
@@ -33,6 +39,7 @@ type Trip = {
   _id: string;
   userId: string;
 
+  tripDate?: string;
   startLat?: number;
   startLon?: number;
   endLat?: number;
@@ -177,8 +184,10 @@ const TripCard = ({
   onToggleSelect: (id: string) => void;
 }) => {
   const [expanded, setExpanded] = useState(false);
+
   const isCompleted = trip.status === "completed";
   const hasActualData = trip.actualFuelLiters != null;
+
   const mainCost =
     isCompleted && trip.actualTotalCost != null
       ? trip.actualTotalCost
@@ -196,7 +205,7 @@ const TripCard = ({
     if (selectionMode) {
       onToggleSelect(trip._id);
     } else {
-      setExpanded(!expanded);
+      setExpanded((prev) => !prev);
     }
   };
 
@@ -220,7 +229,6 @@ const TripCard = ({
         elevation: 3,
       }}
     >
-      {/* Main Header - Always Visible */}
       <TouchableOpacity activeOpacity={0.9} onPress={handlePress}>
         <View
           style={{
@@ -241,19 +249,30 @@ const TripCard = ({
           )}
 
           <View style={{ flex: 1 }}>
-            {/* Date - Prominent Display */}
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 6,
+              }}
+            >
               <Ionicons name="calendar-outline" size={18} color="#3b82f6" />
-              <Text style={{ fontSize: 16, fontWeight: "700", color: "#111827", marginLeft: 6 }}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "700",
+                  color: "#111827",
+                  marginLeft: 6,
+                }}
+              >
                 {formatDateTime(trip.departureTime)}
               </Text>
             </View>
 
-            {/* Status & Mode Tags */}
             <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
               <View
                 style={{
-                  backgroundColor: getStatusColor(trip.status) + "20",
+                  backgroundColor: `${getStatusColor(trip.status)}20`,
                   paddingHorizontal: 8,
                   paddingVertical: 3,
                   borderRadius: 6,
@@ -272,6 +291,7 @@ const TripCard = ({
                   {trip.status || "planned"}
                 </Text>
               </View>
+
               <View
                 style={{
                   backgroundColor: "#f3f4f6",
@@ -293,10 +313,11 @@ const TripCard = ({
                   {trip.mode || "island"}
                 </Text>
               </View>
+
               {trip.riskCategory && (
                 <View
                   style={{
-                    backgroundColor: getRiskColor(trip.riskCategory) + "20",
+                    backgroundColor: `${getRiskColor(trip.riskCategory)}20`,
                     paddingHorizontal: 8,
                     paddingVertical: 3,
                     borderRadius: 6,
@@ -319,7 +340,6 @@ const TripCard = ({
             </View>
           </View>
 
-          {/* Expand/Collapse Icon */}
           {!selectionMode && (
             <Ionicons
               name={expanded ? "chevron-up" : "chevron-down"}
@@ -329,7 +349,6 @@ const TripCard = ({
           )}
         </View>
 
-        {/* Summary Stats - Always Visible */}
         <View
           style={{
             flexDirection: "row",
@@ -347,6 +366,7 @@ const TripCard = ({
               {formatCurrency(mainCost)}
             </Text>
           </View>
+
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>
               ⛽ Fuel
@@ -355,6 +375,7 @@ const TripCard = ({
               {mainFuel != null ? `${formatNumber(mainFuel)} L` : "N/A"}
             </Text>
           </View>
+
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>
               📍 Distance
@@ -370,6 +391,7 @@ const TripCard = ({
             ⚠️ No actual data - cannot train
           </Text>
         )}
+
         {selectionMode && hasActualData && (
           <Text style={{ fontSize: 11, color: "#15803d", marginTop: 8 }}>
             ✓ Can be used for training
@@ -377,23 +399,41 @@ const TripCard = ({
         )}
       </TouchableOpacity>
 
-      {/* Expanded Details */}
       {expanded && !selectionMode && (
-        <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: "#e5e7eb" }}>
-          {/* Return Time */}
-          <View style={{ backgroundColor: "#f9fafb", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom :6 }}>
+        <View
+          style={{
+            marginTop: 16,
+            paddingTop: 16,
+            borderTopWidth: 1,
+            borderTopColor: "#e5e7eb",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#f9fafb",
+              borderRadius: 12,
+              padding: 12,
+              marginBottom: 12,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 6,
+              }}
+            >
               <Ionicons name="arrow-back-outline" size={16} color="#6b7280" />
               <Text style={{ fontSize: 12, color: "#6b7280", marginLeft: 6 }}>
                 Return Time
               </Text>
             </View>
+
             <Text style={{ fontSize: 14, fontWeight: "600", color: "#111827" }}>
               {formatDateTime(trip.returnTime)}
             </Text>
           </View>
 
-          {/* Additional Details Grid */}
           <View
             style={{
               flexDirection: "row",
@@ -412,14 +452,19 @@ const TripCard = ({
                   marginBottom: 10,
                 }}
               >
-                <Text style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
+                <Text
+                  style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}
+                >
                   ⏱️ Duration
                 </Text>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>
+                <Text
+                  style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}
+                >
                   {formatNumber(duration, 0)} hrs
                 </Text>
               </View>
             )}
+
             {trip.crewCount != null && (
               <View
                 style={{
@@ -430,14 +475,19 @@ const TripCard = ({
                   marginBottom: 10,
                 }}
               >
-                <Text style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
+                <Text
+                  style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}
+                >
                   👥 Crew
                 </Text>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>
+                <Text
+                  style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}
+                >
                   {trip.crewCount} people
                 </Text>
               </View>
             )}
+
             {trip.carbonEmissionKg != null && (
               <View
                 style={{
@@ -449,14 +499,19 @@ const TripCard = ({
                   marginBottom: 10,
                 }}
               >
-                <Text style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
+                <Text
+                  style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}
+                >
                   🌿 Carbon
                 </Text>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>
+                <Text
+                  style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}
+                >
                   {formatNumber(trip.carbonEmissionKg)} kg
                 </Text>
               </View>
             )}
+
             {trip.profitabilityProbability != null && (
               <View
                 style={{
@@ -467,17 +522,20 @@ const TripCard = ({
                   marginBottom: 10,
                 }}
               >
-                <Text style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>
+                <Text
+                  style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}
+                >
                   📈 Profitability
                 </Text>
-                <Text style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}>
+                <Text
+                  style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}
+                >
                   {Math.round(trip.profitabilityProbability * 100)}%
                 </Text>
               </View>
             )}
           </View>
 
-          {/* View Full Details Button */}
           <TouchableOpacity
             onPress={handleViewDetails}
             style={{
@@ -489,7 +547,12 @@ const TripCard = ({
               justifyContent: "center",
             }}
           >
-            <Ionicons name="information-circle-outline" size={20} color="#ffffff" style={{ marginRight: 6 }} />
+            <Ionicons
+              name="information-circle-outline"
+              size={20}
+              color="#ffffff"
+              style={{ marginRight: 6 }}
+            />
             <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}>
               View Full Details
             </Text>
@@ -508,10 +571,10 @@ export default function PastTripsScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedTripIds, setSelectedTripIds] = useState<string[]>([]);
   const [training, setTraining] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  
-  // Date filter states
+
   const [dateFilterVisible, setDateFilterVisible] = useState(false);
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
@@ -538,7 +601,7 @@ export default function PastTripsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadTrips(true);
-    }, [])
+    }, []),
   );
 
   const onRefresh = async () => {
@@ -546,23 +609,99 @@ export default function PastTripsScreen() {
     await loadTrips(false);
   };
 
+  const handleExport = async (dataType: "predicted" | "actual" | "mixed") => {
+    try {
+      setExporting(true);
+
+      // Fetch CSV data from backend with selected data type
+      const csvContent = await exportTripsCSV(dataType);
+
+      // Count rows for user feedback
+      const rowCount = csvContent.split("\n").length - 1; // -1 for header
+
+      if (rowCount === 0) {
+        const dataTypeLabels = {
+          predicted: "predicted",
+          actual: "actual logged",
+          mixed: "complete training",
+        };
+        Alert.alert(
+          "No Data",
+          `No trips with ${dataTypeLabels[dataType]} data found.\n\n` +
+            (dataType === "actual"
+              ? "Complete trips and log actual data to export actual data."
+              : dataType === "predicted"
+                ? "Create trip predictions to export predicted data."
+                : "Add trip predictions or actual logged data."),
+        );
+        return;
+      }
+
+      // Create file with timestamp and data type
+      const fileName = `trips_${dataType}_${Date.now()}.csv`;
+      const fileUri = `${cacheDirectory}${fileName}`;
+
+      // Save CSV to file
+      await writeAsStringAsync(fileUri, csvContent);
+
+      const dataTypeLabels = {
+        predicted: "Predicted",
+        actual: "Actual",
+        mixed: "Mixed",
+      };
+
+      // Share the file - this opens share dialog
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        // Share with system dialog - user can save to Files, Drive, etc.
+        await Sharing.shareAsync(fileUri, {
+          mimeType: "text/csv",
+          dialogTitle: `Save ${dataTypeLabels[dataType]} Training Data`,
+          UTI: "public.comma-separated-values-text",
+        });
+
+        // Don't show success alert here - let user complete the share action
+      } else {
+        // Fallback for devices without sharing capability
+        Alert.alert(
+          "✅ File Ready",
+          `${rowCount} ${dataTypeLabels[dataType].toLowerCase()} trip(s) exported!\n\n` +
+            `File: ${fileName}\n\n` +
+            "The file is ready in app cache. Use the share button to save it to your preferred location.",
+        );
+      }
+    } catch (error: any) {
+      Alert.alert(
+        "Export Failed",
+        error?.message || "Failed to export trips as CSV",
+      );
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const toggleTripSelection = (tripId: string) => {
     setSelectedTripIds((prev) =>
       prev.includes(tripId)
         ? prev.filter((id) => id !== tripId)
-        : [...prev, tripId]
+        : [...prev, tripId],
     );
   };
 
   const onBatchTrain = async () => {
     if (selectedTripIds.length === 0) {
-      Alert.alert("No Selection", "Please select at least one trip to train on.");
+      Alert.alert(
+        "No Selection",
+        "Please select at least one trip to train on.",
+      );
       return;
     }
 
     Alert.alert(
       "Confirm Training",
-      `Train the model on ${selectedTripIds.length} selected trip${selectedTripIds.length > 1 ? "s" : ""}?`,
+      `Train the model on ${selectedTripIds.length} selected trip${
+        selectedTripIds.length > 1 ? "s" : ""
+      }?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -571,12 +710,14 @@ export default function PastTripsScreen() {
             try {
               setTraining(true);
               const result = await batchTrainTrips(selectedTripIds);
-              
+
               Alert.alert(
                 "✅ Training Complete",
-                `Successfully trained on ${result.tripsProcessed} trip${result.tripsProcessed > 1 ? "s" : ""}!\n\n` +
-                `Boats updated: ${result.boatsUpdated}\n` +
-                `Average error: ${result.learningResult?.averageError?.toFixed(2) || "N/A"}%`,
+                `Successfully trained on ${result.tripsProcessed} trip${
+                  result.tripsProcessed > 1 ? "s" : ""
+                }!\n\nBoats updated: ${result.boatsUpdated}\nAverage error: ${
+                  result.learningResult?.averageError?.toFixed(2) || "N/A"
+                }%`,
                 [
                   {
                     text: "OK",
@@ -585,49 +726,50 @@ export default function PastTripsScreen() {
                       setSelectionMode(false);
                     },
                   },
-                ]
+                ],
               );
             } catch (err: any) {
               Alert.alert(
                 "Training Failed",
-                err?.message || "Failed to train model on selected trips."
+                err?.message || "Failed to train model on selected trips.",
               );
             } finally {
               setTraining(false);
             }
           },
         },
-      ]
+      ],
     );
   };
 
   const selectGoodTrips = () => {
     if (!Array.isArray(trips)) return;
-    
+
     const goodTrips = trips
       .filter(
         (trip) =>
           trip.actualFuelLiters != null &&
-          Math.abs(trip.fuelPredictionError || 100) < 15
+          Math.abs(trip.fuelPredictionError || 100) < 15,
       )
       .map((trip) => trip._id);
 
     setSelectedTripIds(goodTrips);
-    
+
     if (goodTrips.length === 0) {
       Alert.alert(
         "No Quality Trips",
-        "No trips found with actual data and prediction error < 15%."
+        "No trips found with actual data and prediction error < 15%.",
       );
     } else {
       Alert.alert(
         "Auto-Selected",
-        `Selected ${goodTrips.length} high-quality trip${goodTrips.length > 1 ? "s" : ""} (error < 15%)`
+        `Selected ${goodTrips.length} high-quality trip${
+          goodTrips.length > 1 ? "s" : ""
+        } (error < 15%)`,
       );
     }
   };
 
-  // Quick date filter functions
   const setToday = () => {
     const today = new Date();
     setStartDate(today);
@@ -636,8 +778,16 @@ export default function PastTripsScreen() {
 
   const setThisWeek = () => {
     const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
-    const lastDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + (6 - today.getDay()));
+    const firstDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() - today.getDay(),
+    );
+    const lastDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() + (6 - today.getDay()),
+    );
     setStartDate(firstDay);
     setEndDate(lastDay);
   };
@@ -655,63 +805,64 @@ export default function PastTripsScreen() {
     setEndDate(null);
   };
 
-  const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    setShowStartDatePicker(Platform.OS === 'ios');
+  const handleStartDateChange = (_event: any, selectedDate?: Date) => {
+    if (Platform.OS !== "ios") {
+      setShowStartDatePicker(false);
+    }
     if (selectedDate) {
       setStartDate(selectedDate);
     }
   };
 
-  const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    setShowEndDatePicker(Platform.OS === 'ios');
+  const handleEndDateChange = (_event: any, selectedDate?: Date) => {
+    if (Platform.OS !== "ios") {
+      setShowEndDatePicker(false);
+    }
     if (selectedDate) {
       setEndDate(selectedDate);
     }
   };
 
-  // Count trainable trips (those with actual data)
   const trainableTripsCount = useMemo(() => {
     if (!Array.isArray(trips)) return 0;
     return trips.filter((trip) => trip.actualFuelLiters != null).length;
   }, [trips]);
 
-  // Filter trips based on search and status filter
   const filteredTrips = useMemo(() => {
     if (!Array.isArray(trips)) return [];
-    
+
     let result = [...trips];
 
-    // Status filter
     if (statusFilter !== "all") {
       result = result.filter((trip) => trip.status === statusFilter);
     }
 
-    // Date range filter
     if (startDate || endDate) {
       result = result.filter((trip) => {
-        const tripDate = new Date(trip.departureTime);
-        
-        // Set start date to beginning of day
+        // Use tripDate if available, otherwise fall back to departureTime
+        const dateToUse = trip.tripDate || trip.departureTime;
+        const tripDate = new Date(dateToUse);
+        if (Number.isNaN(tripDate.getTime())) return false;
+
         if (startDate) {
           const start = new Date(startDate);
           start.setHours(0, 0, 0, 0);
           if (tripDate < start) return false;
         }
-        
-        // Set end date to end of day
+
         if (endDate) {
           const end = new Date(endDate);
           end.setHours(23, 59, 59, 999);
           if (tripDate > end) return false;
         }
-        
+
         return true;
       });
     }
 
-    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
+
       result = result.filter((trip) => {
         const departureDate = formatDateTime(trip.departureTime).toLowerCase();
         const tripId = (trip._id || "").toLowerCase();
@@ -732,16 +883,15 @@ export default function PastTripsScreen() {
     return result;
   }, [trips, searchQuery, statusFilter, startDate, endDate]);
 
-  // Trip count text with filtered info
   const tripCountText = useMemo(() => {
-    const count = filteredTrips?.length || 0;
-    const total = trips?.length || 0;
-    
+    const count = filteredTrips.length;
+    const total = trips.length;
+
     if (searchQuery || statusFilter !== "all" || startDate || endDate) {
       if (count === 1) return `1 trip found (of ${total} total)`;
       return `${count} trips found (of ${total} total)`;
     }
-    
+
     if (count === 1) return "1 trip found";
     return `${count} trips found`;
   }, [filteredTrips, trips, searchQuery, statusFilter, startDate, endDate]);
@@ -769,6 +919,7 @@ export default function PastTripsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f9fafb" }}>
       <FishTripNavBar />
+
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
         <View
           style={{
@@ -785,29 +936,97 @@ export default function PastTripsScreen() {
               {tripCountText}
               {trainableTripsCount > 0 ? (
                 <Text style={{ color: "#15803d", fontWeight: "600" }}>
-                  {" "}• {trainableTripsCount} trainable
+                  {" "}
+                  • {trainableTripsCount} trainable
                 </Text>
               ) : null}
             </Text>
           </View>
 
           {!selectionMode ? (
-            <TouchableOpacity
-              onPress={() => setSelectionMode(true)}
-              style={{
-                backgroundColor: "#3b82f6",
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 12,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
-              <Ionicons name="checkbox-outline" size={18} color="#ffffff" style={{ marginRight: 6 }} />
-              <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}>
-                Select
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TouchableOpacity
+                onPress={async () => {
+                  // Show data type selection dialog
+                  Alert.alert(
+                    "Export Training Data",
+                    "Choose the type of data to export:",
+                    [
+                      {
+                        text: "Predicted Data",
+                        onPress: () => handleExport("predicted"),
+                      },
+                      {
+                        text: "Actual Data",
+                        onPress: () => handleExport("actual"),
+                      },
+                      {
+                        text: "Mixed (All)",
+                        onPress: () => handleExport("mixed"),
+                      },
+                      {
+                        text: "Cancel",
+                        style: "cancel",
+                      },
+                    ],
+                  );
+                }}
+                disabled={exporting || trips.length === 0}
+                style={{
+                  backgroundColor:
+                    exporting || trips.length === 0 ? "#d1d5db" : "#059669",
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                {exporting ? (
+                  <ActivityIndicator
+                    size="small"
+                    color="#ffffff"
+                    style={{ marginRight: 6 }}
+                  />
+                ) : (
+                  <Ionicons
+                    name="download-outline"
+                    size={18}
+                    color="#ffffff"
+                    style={{ marginRight: 6 }}
+                  />
+                )}
+                <Text
+                  style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}
+                >
+                  CSV
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setSelectionMode(true)}
+                style={{
+                  backgroundColor: "#3b82f6",
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <Ionicons
+                  name="checkbox-outline"
+                  size={18}
+                  color="#ffffff"
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}
+                >
+                  Select
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <View>
               <TouchableOpacity
@@ -826,9 +1045,18 @@ export default function PastTripsScreen() {
                 }}
               >
                 {training ? (
-                  <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 6 }} />
+                  <ActivityIndicator
+                    size="small"
+                    color="#ffffff"
+                    style={{ marginRight: 6 }}
+                  />
                 ) : (
-                  <Ionicons name="flash" size={16} color="#ffffff" style={{ marginRight: 6 }} />
+                  <Ionicons
+                    name="flash"
+                    size={16}
+                    color="#ffffff"
+                    style={{ marginRight: 6 }}
+                  />
                 )}
                 <Text
                   style={{ color: "#ffffff", fontWeight: "700", fontSize: 13 }}
@@ -845,6 +1073,7 @@ export default function PastTripsScreen() {
                     paddingHorizontal: 10,
                     paddingVertical: 6,
                     borderRadius: 8,
+                    marginRight: 8,
                   }}
                 >
                   <Text
@@ -885,7 +1114,6 @@ export default function PastTripsScreen() {
           )}
         </View>
 
-        {/* Search Bar */}
         {!selectionMode && (
           <View style={{ marginTop: 16 }}>
             <View
@@ -921,19 +1149,24 @@ export default function PastTripsScreen() {
               )}
             </View>
 
-            {/* Status Filters */}
-            <View style={{ flexDirection: "row", marginTop: 10 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingTop: 10 }}
+            >
               {["all", "planned", "completed", "cancelled"].map((status) => (
                 <TouchableOpacity
                   key={status}
                   onPress={() => setStatusFilter(status)}
                   style={{
-                    backgroundColor: statusFilter === status ? "#3b82f6" : "#ffffff",
+                    backgroundColor:
+                      statusFilter === status ? "#3b82f6" : "#ffffff",
                     paddingHorizontal: 14,
                     paddingVertical: 7,
                     borderRadius: 8,
                     borderWidth: 1,
-                    borderColor: statusFilter === status ? "#3b82f6" : "#e5e7eb",
+                    borderColor:
+                      statusFilter === status ? "#3b82f6" : "#e5e7eb",
                     marginRight: 8,
                   }}
                 >
@@ -949,37 +1182,42 @@ export default function PastTripsScreen() {
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </ScrollView>
 
-            {/* Date Filter Toggle & Quick Filters */}
-            <View style={{ flexDirection: "row", marginTop: 10, alignItems: "center" }}>
+            <View
+              style={{
+                flexDirection: "row",
+                marginTop: 10,
+                alignItems: "center",
+              }}
+            >
               <TouchableOpacity
-                onPress={() => setDateFilterVisible(!dateFilterVisible)}
+                onPress={() => setDateFilterVisible(true)}
                 style={{
-                  backgroundColor: (startDate || endDate) ? "#8b5cf6" : "#ffffff",
+                  backgroundColor: startDate || endDate ? "#8b5cf6" : "#ffffff",
                   paddingHorizontal: 12,
                   paddingVertical: 7,
                   borderRadius: 8,
                   borderWidth: 1,
-                  borderColor: (startDate || endDate) ? "#8b5cf6" : "#e5e7eb",
+                  borderColor: startDate || endDate ? "#8b5cf6" : "#e5e7eb",
                   flexDirection: "row",
                   alignItems: "center",
                 }}
               >
-                <Ionicons 
-                  name="calendar-outline" 
-                  size={16} 
-                  color={(startDate || endDate) ? "#ffffff" : "#6b7280"} 
+                <Ionicons
+                  name="calendar-outline"
+                  size={16}
+                  color={startDate || endDate ? "#ffffff" : "#6b7280"}
                   style={{ marginRight: 6 }}
                 />
                 <Text
                   style={{
                     fontSize: 13,
                     fontWeight: "600",
-                    color: (startDate || endDate) ? "#ffffff" : "#6b7280",
+                    color: startDate || endDate ? "#ffffff" : "#6b7280",
                   }}
                 >
-                  {(startDate || endDate) ? "Filters Active" : "Date Filter"}
+                  {startDate || endDate ? "Filters Active" : "Date Filter"}
                 </Text>
               </TouchableOpacity>
 
@@ -996,7 +1234,13 @@ export default function PastTripsScreen() {
                     marginLeft: 8,
                   }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#dc2626" }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: "#dc2626",
+                    }}
+                  >
                     Clear
                   </Text>
                 </TouchableOpacity>
@@ -1006,11 +1250,10 @@ export default function PastTripsScreen() {
         )}
       </View>
 
-      {/* Date Filter Modal */}
       <Modal
         visible={dateFilterVisible}
         animationType="slide"
-        transparent={true}
+        transparent
         onRequestClose={() => setDateFilterVisible(false)}
       >
         <View
@@ -1028,7 +1271,6 @@ export default function PastTripsScreen() {
               maxHeight: "80%",
             }}
           >
-            {/* Modal Header */}
             <View
               style={{
                 flexDirection: "row",
@@ -1039,7 +1281,9 @@ export default function PastTripsScreen() {
                 borderBottomColor: "#e5e7eb",
               }}
             >
-              <Text style={{ fontSize: 18, fontWeight: "700", color: "#111827" }}>
+              <Text
+                style={{ fontSize: 18, fontWeight: "700", color: "#111827" }}
+              >
                 Filter by Date
               </Text>
               <TouchableOpacity onPress={() => setDateFilterVisible(false)}>
@@ -1047,13 +1291,25 @@ export default function PastTripsScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Modal Content */}
             <ScrollView style={{ padding: 16 }}>
-              {/* Quick Date Filters */}
-              <Text style={{ fontSize: 13, fontWeight: "600", color: "#6b7280", marginBottom: 8 }}>
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: "600",
+                  color: "#6b7280",
+                  marginBottom: 8,
+                }}
+              >
                 Quick Select
               </Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", marginBottom: 12 }}>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  marginBottom: 12,
+                }}
+              >
                 <TouchableOpacity
                   onPress={() => {
                     setToday();
@@ -1070,7 +1326,13 @@ export default function PastTripsScreen() {
                     marginBottom: 6,
                   }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#3b82f6" }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: "#3b82f6",
+                    }}
+                  >
                     Today
                   </Text>
                 </TouchableOpacity>
@@ -1091,7 +1353,13 @@ export default function PastTripsScreen() {
                     marginBottom: 6,
                   }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#3b82f6" }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: "#3b82f6",
+                    }}
+                  >
                     This Week
                   </Text>
                 </TouchableOpacity>
@@ -1112,19 +1380,31 @@ export default function PastTripsScreen() {
                     marginBottom: 6,
                   }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#3b82f6" }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: "#3b82f6",
+                    }}
+                  >
                     This Month
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Date Range Selectors */}
               <View>
-                {/* Start Date */}
                 <View style={{ marginBottom: 10 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#6b7280", marginBottom: 6 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      marginBottom: 6,
+                    }}
+                  >
                     From Date
                   </Text>
+
                   <TouchableOpacity
                     onPress={() => setShowStartDatePicker(true)}
                     style={{
@@ -1139,22 +1419,36 @@ export default function PastTripsScreen() {
                       justifyContent: "space-between",
                     }}
                   >
-                    <Text style={{ fontSize: 14, color: startDate ? "#111827" : "#9ca3af" }}>
-                      {startDate ? startDate.toLocaleDateString("en-LK", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      }) : "Select start date"}
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: startDate ? "#111827" : "#9ca3af",
+                      }}
+                    >
+                      {startDate
+                        ? startDate.toLocaleDateString("en-LK", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "Select start date"}
                     </Text>
                     <Ionicons name="calendar" size={18} color="#6b7280" />
                   </TouchableOpacity>
                 </View>
 
-                {/* End Date */}
                 <View style={{ marginBottom: 10 }}>
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: "#6b7280", marginBottom: 6 }}>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: "#6b7280",
+                      marginBottom: 6,
+                    }}
+                  >
                     To Date
                   </Text>
+
                   <TouchableOpacity
                     onPress={() => setShowEndDatePicker(true)}
                     style={{
@@ -1169,19 +1463,25 @@ export default function PastTripsScreen() {
                       justifyContent: "space-between",
                     }}
                   >
-                    <Text style={{ fontSize: 14, color: endDate ? "#111827" : "#9ca3af" }}>
-                      {endDate ? endDate.toLocaleDateString("en-LK", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      }) : "Select end date"}
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: endDate ? "#111827" : "#9ca3af",
+                      }}
+                    >
+                      {endDate
+                        ? endDate.toLocaleDateString("en-LK", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "Select end date"}
                     </Text>
                     <Ionicons name="calendar" size={18} color="#6b7280" />
                   </TouchableOpacity>
                 </View>
 
-                {/* Active Date Range Display */}
-                {(startDate || endDate) ? (
+                {startDate || endDate ? (
                   <View
                     style={{
                       backgroundColor: "#f0fdf4",
@@ -1190,19 +1490,37 @@ export default function PastTripsScreen() {
                       marginTop: 4,
                     }}
                   >
-                    <Text style={{ fontSize: 12, color: "#15803d", fontWeight: "600" }}>
-                      {`📅 Filtering: ${startDate ? startDate.toLocaleDateString("en-LK", { month: "short", day: "numeric" }) : "..."} → ${endDate ? endDate.toLocaleDateString("en-LK", { month: "short", day: "numeric" }) : "..."}`}
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: "#15803d",
+                        fontWeight: "600",
+                      }}
+                    >
+                      📅 Filtering:{" "}
+                      {startDate
+                        ? startDate.toLocaleDateString("en-LK", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "..."}{" "}
+                      →{" "}
+                      {endDate
+                        ? endDate.toLocaleDateString("en-LK", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "..."}
                     </Text>
                   </View>
                 ) : null}
               </View>
 
-              {/* Date Pickers */}
               {showStartDatePicker && (
                 <DateTimePicker
                   value={startDate || new Date()}
                   mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
                   onChange={handleStartDateChange}
                   maximumDate={endDate || new Date()}
                 />
@@ -1212,15 +1530,20 @@ export default function PastTripsScreen() {
                 <DateTimePicker
                   value={endDate || new Date()}
                   mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
                   onChange={handleEndDateChange}
                   minimumDate={startDate || undefined}
                   maximumDate={new Date()}
                 />
               )}
 
-              {/* Action Buttons */}
-              <View style={{ flexDirection: "row", marginTop: 20, marginBottom: 10 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  marginTop: 20,
+                  marginBottom: 10,
+                }}
+              >
                 <TouchableOpacity
                   onPress={() => {
                     clearDateFilter();
@@ -1234,7 +1557,13 @@ export default function PastTripsScreen() {
                     marginRight: 8,
                   }}
                 >
-                  <Text style={{ textAlign: "center", fontWeight: "600", color: "#6b7280" }}>
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      fontWeight: "600",
+                      color: "#6b7280",
+                    }}
+                  >
                     Clear
                   </Text>
                 </TouchableOpacity>
@@ -1249,7 +1578,13 @@ export default function PastTripsScreen() {
                     marginLeft: 8,
                   }}
                 >
-                  <Text style={{ textAlign: "center", fontWeight: "600", color: "#ffffff" }}>
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      fontWeight: "600",
+                      color: "#ffffff",
+                    }}
+                  >
                     Apply
                   </Text>
                 </TouchableOpacity>
@@ -1276,27 +1611,62 @@ export default function PastTripsScreen() {
             onPress={() => loadTrips(true)}
             style={{ marginTop: 8 }}
           >
-            <Text style={{ color: "#991b1b", fontWeight: "700" }}>Try again</Text>
+            <Text style={{ color: "#991b1b", fontWeight: "700" }}>
+              Try again
+            </Text>
           </TouchableOpacity>
         </View>
       ) : null}
 
       {filteredTrips.length === 0 && !error ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
-          <Ionicons name="search-outline" size={64} color="#d1d5db" />
-          <Text style={{ marginTop: 16, fontSize: 18, fontWeight: "600", color: "#111827" }}>
-            No trips found
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingHorizontal: 24,
+          }}
+        >
+          <Ionicons
+            name={
+              searchQuery || statusFilter !== "all" || startDate || endDate
+                ? "search-outline"
+                : "boat-outline"
+            }
+            size={64}
+            color="#d1d5db"
+          />
+          <Text
+            style={{
+              marginTop: 16,
+              fontSize: 18,
+              fontWeight: "600",
+              color: "#111827",
+            }}
+          >
+            {searchQuery || statusFilter !== "all" || startDate || endDate
+              ? "No trips found"
+              : "No trips yet"}
           </Text>
-          <Text style={{ marginTop: 6, fontSize: 14, color: "#6b7280", textAlign: "center" }}>
-            {searchQuery || statusFilter !== "all"
+          <Text
+            style={{
+              marginTop: 6,
+              fontSize: 14,
+              color: "#6b7280",
+              textAlign: "center",
+            }}
+          >
+            {searchQuery || statusFilter !== "all" || startDate || endDate
               ? "Try adjusting your search or filters"
-              : "Create your first trip to get started"}
+              : "Your planned and completed trips will appear here after you save them."}
           </Text>
-          {searchQuery || statusFilter !== "all" ? (
+
+          {searchQuery || statusFilter !== "all" || startDate || endDate ? (
             <TouchableOpacity
               onPress={() => {
                 setSearchQuery("");
                 setStatusFilter("all");
+                clearDateFilter();
               }}
               style={{
                 marginTop: 20,
@@ -1306,9 +1676,26 @@ export default function PastTripsScreen() {
                 borderRadius: 10,
               }}
             >
-              <Text style={{ color: "#ffffff", fontWeight: "600" }}>Clear Filters</Text>
+              <Text style={{ color: "#ffffff", fontWeight: "600" }}>
+                Clear Filters
+              </Text>
             </TouchableOpacity>
-          ) : null}
+          ) : (
+            <TouchableOpacity
+              onPress={() => router.push("/(root)/(tabs)/fishtripcost")}
+              style={{
+                marginTop: 18,
+                backgroundColor: "#111827",
+                paddingHorizontal: 18,
+                paddingVertical: 12,
+                borderRadius: 12,
+              }}
+            >
+              <Text style={{ color: "#ffffff", fontWeight: "600" }}>
+                Go to Trip Planner
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <FlatList
@@ -1325,12 +1712,12 @@ export default function PastTripsScreen() {
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingTop: 4,
-            paddingBottom: 20,
+            paddingBottom: 24,
           }}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
-          ListEmptyComponent={null}
         />
       )}
     </SafeAreaView>

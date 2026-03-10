@@ -14,8 +14,8 @@ import nav_home from "@/assets/icons/nav_home.png";
 // background images
 import Onboard from "@/assets/images/onboard.png";
 import Onboard01 from "@/assets/images/OnBoard1.png";
-import Onboard02 from "@/assets/images/OnBoard2.png";
-import Onboard03 from "@/assets/images/OnBoard3.png";
+ import Onboard02 from "@/assets/images/OnBoard2.png";
+ import Onboard03 from "@/assets/images/OnBoard3.png";
 
 import whatsapp from "@/assets/icons/whatsapp.png";
 import phone from "@/assets/icons/phone.png";

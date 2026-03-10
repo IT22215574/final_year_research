@@ -1,4 +1,4 @@
-import { Tabs, router } from "expo-router";
+import { Tabs, router, usePathname } from "expo-router";
 import {
   Image,
   Text,
@@ -15,21 +15,236 @@ import { useState, useEffect, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import Overlay from "@/components/Overlay";
 import { useFocusEffect } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
 
+// Types
+type TabName =
+  | "home"
+  | "Market"
+  | "Quality"
+  | "Notifications"
+  | "profile"
+  | "Update_profile"
+  | "SpeciesDetection"
+  | "QualityGrading"
+  | "GradingHistory"
+  | "GradingDetail";
+
+interface NavItemConfig {
+  tabName: TabName;
+  route: string;
+  icon: any;
+  label: string;
+  showBadge?: boolean;
+  iconStyle?: object;
+}
+
+// Responsive Helpers
+const IS_WEB = Platform.OS === "web";
+
+const getScaleFns = (width: number, height: number) => {
+  const safeWidth = width || 1024;
+  const safeHeight = height || 768;
+
+  const isDesktop = IS_WEB && safeWidth >= 768;
+  const isTablet = safeWidth >= 768;
+  const isSmallScreen = safeWidth <= 375;
+
+  const scale = (size: number) => {
+    const factor = safeWidth / 375;
+    const max = isDesktop ? 1.4 : 1.8;
+    return Math.ceil(size * Math.min(factor, max));
+  };
+
+  const moderateScale = (size: number, f = 0.5) => {
+    const factor = safeWidth / 375;
+    const capped = isDesktop ? Math.min(factor, 1.4) : factor;
+    return size + (capped - 1) * size * f;
+  };
+
+  const verticalScale = (size: number) => {
+    const factor = safeHeight / 667;
+    const max = isDesktop ? 1.4 : 1.8;
+    return Math.ceil(size * Math.min(factor, max));
+  };
+
+  return {
+    isDesktop,
+    isTablet,
+    isSmallScreen,
+    scale,
+    moderateScale,
+    verticalScale,
+  };
+};
+
+// Nav Item
+interface NavItemProps {
+  icon: any;
+  label: string;
+  isActive: boolean;
+  onPress: () => void;
+  showBadge?: boolean;
+  badgeCount?: number;
+  isDesktop: boolean;
+  iconSize: number;
+  containerSize: number;
+  iconStyle?: object;
+}
+
+const NavItem = ({
+  icon,
+  label,
+  isActive,
+  onPress,
+  showBadge,
+  badgeCount = 0,
+  isDesktop,
+  iconSize,
+  containerSize,
+  iconStyle,
+}: NavItemProps) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onHoverIn={IS_WEB ? () => setIsHovered(true) : undefined}
+      onHoverOut={IS_WEB ? () => setIsHovered(false) : undefined}
+      style={[
+        styles.navItem,
+        isDesktop && styles.navItemDesktop,
+        !isDesktop && { flex: 1 },
+        IS_WEB && isHovered && styles.navItemHovered,
+      ]}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isActive }}
+      accessibilityLabel={label}
+    >
+      <View
+        style={[
+          styles.iconContainer,
+          {
+            width: containerSize,
+            height: containerSize,
+            borderRadius: containerSize / 2,
+          },
+          isActive && styles.iconContainerActive,
+          IS_WEB && isHovered && !isActive && styles.iconContainerHovered,
+        ]}
+      >
+        <Image
+          source={icon}
+          style={[
+            { width: iconSize, height: iconSize },
+            {
+              tintColor: isActive
+                ? "#FFFFFF"
+                : isHovered && !isActive
+                ? "#005CFF"
+                : "#64748b",
+            },
+            iconStyle,
+          ]}
+          resizeMode="contain"
+        />
+        {showBadge && badgeCount > 0 && (
+          <View style={styles.tabBadge}>
+            <Text style={styles.tabBadgeText}>
+              {badgeCount > 99 ? "99+" : badgeCount}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <Text
+        style={[
+          styles.navText,
+          isActive && styles.navTextActive,
+          IS_WEB && isHovered && !isActive && { color: "#005CFF" },
+          isDesktop && { lineHeight: 12 },
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+};
+
+// Main Layout
 const TabsLayout = () => {
+  const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const { width, height } = useWindowDimensions();
+
+  const {
+    isDesktop,
+    scale,
+    moderateScale,
+    verticalScale,
+  } = useMemo(() => getScaleFns(width, height), [width, height]);
 
   const [activeTab, setActiveTab] = useState("home");
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const { currentUser } = useAuthStore();
+
+  const { currentUser, isSignedIn } = useAuthStore();
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
 
-  // Fetch unread count on focus and component mount
+  const isGuest = !isSignedIn || !currentUser;
+
+  const navItems: NavItemConfig[] = useMemo(
+    () => [
+      {
+        tabName: "home",
+        route: "/(root)/(tabs)/home",
+        icon: icons.nav_home,
+        label: "Home",
+        iconStyle: { marginRight: 3 },
+      },
+      {
+        tabName: "Market",
+        route: "/(root)/(tabs)/Market",
+        icon: icons.HouseSale,
+        label: "Market",
+      },
+      {
+        tabName: "Quality",
+        route: "/(root)/(tabs)/Quality",
+        icon: icons.Digital,
+        label: "Quality",
+      },
+      {
+        tabName: "profile",
+        route: "/(root)/(tabs)/profile",
+        icon: icons.nav_user,
+        label: "Profile",
+        showBadge: false,
+      },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    if (pathname.includes("/Market")) {
+      setActiveTab("Market");
+    } else if (pathname.includes("/Quality")) {
+      setActiveTab("Quality");
+    } else if (pathname.includes("/Notifications")) {
+      setActiveTab("Notifications");
+    } else if (pathname.includes("/profile") || pathname.includes("/Update_profile")) {
+      setActiveTab("profile");
+    } else {
+      setActiveTab("home");
+    }
+  }, [pathname]);
+
   useFocusEffect(
     useCallback(() => {
       if (currentUser?.id) {
         fetchUnreadCount();
       }
-    }, [currentUser?.id, fetchUnreadCount]),
+    }, [currentUser?.id, fetchUnreadCount])
   );
 
   // Initial fetch
@@ -39,302 +254,277 @@ const TabsLayout = () => {
     }
   }, [currentUser?.id, fetchUnreadCount]);
 
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (activeTab === "home") {
+          BackHandler.exitApp();
+          return true;
+        }
 
+        setActiveTab("home");
+        router.replace("/(root)/(tabs)/home");
+        return true;
+      };
 
-  const handleTabPress = (tabName: string, route: string) => {
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress
+      );
+
+      return () => subscription.remove();
+    }, [activeTab])
+  );
+
+  const handleTabPress = (tabName: TabName, route: string) => {
+    if (tabName === "profile" && isGuest) {
+      router.push("/sign-in");
+      return;
+    }
+
     setActiveTab(tabName);
     router.push(route as any);
   };
 
-  const handleProfileNavigation = () => {
-    setActiveTab("profile");
-    router.push("/(root)/(tabs)/profile" as any);
+  const toggleSidebar = () => {
+    setSidebarVisible((prev) => !prev);
   };
 
-  const toggleSidebar = () => setSidebarVisible((prev) => !prev);
+  const iconSize = scale(24);
+  const containerSize = scale(40);
+  const headerHeight = verticalScale(55);
+
+  const bottomBarHeight: number = isDesktop
+    ? Math.max(90, containerSize + 20 + 14 + verticalScale(8))
+    : Platform.select({
+        ios: verticalScale(60) + insets.bottom,
+        android: verticalScale(65) + insets.bottom,
+        default: verticalScale(70) + insets.bottom,
+      }) ?? verticalScale(70) + insets.bottom;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* Blue Status Bar */}
       <StatusBar style="light" backgroundColor="#f8fafc" translucent={false} />
 
-      <Tabs
-        initialRouteName="home"
-        screenOptions={{
-          headerShown: true,
-          headerShadowVisible: false,
-          headerTintColor: "black",
-          headerTitleStyle: {
-            fontWeight: "bold",
-            color: "white",
-            fontFamily: "Inter-Bold",
-          },
-          headerLeft: () => (
-            <View>
-              <TouchableOpacity
-                style={{ marginLeft: 15 }}
-                onPress={toggleSidebar}
-              >
-                <Image
-                  source={icons.burgermenu}
-                  style={styles.menuIcon}
-                  resizeMode="contain"
+      <View style={isDesktop ? styles.desktopWrapper : styles.container}>
+        {isDesktop && currentUser && (
+          <Sidebar isVisible={true} onClose={() => {}} />
+        )}
+
+        <View style={{ flex: 1 }}>
+          <Tabs
+            initialRouteName="home"
+            screenOptions={{
+              headerShown: true,
+              tabBarShowLabel: false,
+              tabBarStyle: { display: "none" },
+              headerBackground: () => (
+                <LinearGradient
+                  colors={HEADER_GRADIENT}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
                 />
-              </TouchableOpacity>
-            </View>
-          ),
-          headerRight: () => (
-            <TouchableOpacity
-              style={{ marginRight: 20, marginTop: 4 }}
-              onPress={() => router.push("/(root)/(tabs)/Notifications")}
-            >
-              <Image
-                source={icons.notification}
-                style={styles.notificationIcon}
-                resizeMode="contain"
-              />
-              {/* Conditionally render badge */}
-              {unreadCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </Text>
+              ),
+              headerStyle: {
+                backgroundColor: "transparent",
+                elevation: 0,
+                shadowOpacity: 0,
+                borderBottomWidth: 0,
+                height: headerHeight,
+              },
+              headerShadowVisible: false,
+              headerTintColor: "#FFFFFF",
+              headerTitleStyle: {
+                fontWeight: "bold",
+                color: "#FFFFFF",
+                fontFamily: "Inter-Bold",
+                fontSize: moderateScale(18),
+              },
+              headerLeft: () => (
+                <View>
+                  {!isDesktop && (
+                    <TouchableOpacity
+                      style={{ marginLeft: moderateScale(15) }}
+                      onPress={toggleSidebar}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <Image
+                        source={icons.burgermenu}
+                        style={{
+                          width: scale(28),
+                          height: scale(28),
+                          tintColor: "#FFFFFF",
+                        }}
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
-              )}
-            </TouchableOpacity>
-          ),
-          headerStyle: {
-            elevation: 0,
-            shadowOpacity: 0,
-            borderBottomWidth: 0,
-            marginBottom: 10,
-          },
-          tabBarShowLabel: false,
-          tabBarStyle: {
-            display: "none",
-          },
-        }}
-      >
-        {/* ... all your Tabs.Screen components remain the same ... */}
-        <Tabs.Screen
-          name="home"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="Market"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="Quality"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="Notifications"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: "Profile",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="update_profile"
-          options={{
-            title: "Edit Profile",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        {/* Routes that exist in (tabs)/ but are accessed programmatically, not via the tab bar */}
-        <Tabs.Screen
-          name="predictions"
-          options={{
-            title: "Predictions",
-            headerShown: true,
-            headerStyle: { backgroundColor: "#0057FF" },
-          }}
-        />
-        <Tabs.Screen
-          name="QualityGrading"
-          options={{
-            title: "Quality Grading",
-            headerShown: false,
-          }}
-        />
-        <Tabs.Screen
-          name="SpeciesDetection"
-          options={{
-            title: "Species Detection",
-            headerShown: false,
-          }}
-        />
-        <Tabs.Screen
-          name="fish-map"
-          options={{
-            title: "Fish Map",
-            headerShown: true,
-            headerStyle: { backgroundColor: "#0057FF" },
-          }}
-        />
-        <Tabs.Screen
-          name="market-alerts"
-          options={{
-            title: "Market Alerts",
-            headerShown: true,
-            headerStyle: { backgroundColor: "#0057FF" },
-          }}
-        />
-        <Tabs.Screen
-          name="fishtripcost"
-          options={{
-            title: "Trip Cost",
-            headerShown: false,
-          }}
-        />
-        <Tabs.Screen
-          name="boats"
-          options={{
-            title: "Boats",
-            headerShown: false,
-          }}
-        />
-        <Tabs.Screen
-          name="costs"
-          options={{
-            title: "Costs",
-            headerShown: false,
-          }}
-        />
-      </Tabs>
+              ),
+              tabBarShowLabel: false,
+              tabBarStyle: {
+                display: "none",
+              },
+            }}
+          >
+            <Tabs.Screen
+              name="home"
+              options={{
+                title: "",
+                headerShown: true,
+              }}
+            />
 
-      {/* Sidebar and Overlay */}
-      <Sidebar
-        isVisible={sidebarVisible}
-        onClose={() => setSidebarVisible(false)}
-      />
-      <Overlay
-        isVisible={sidebarVisible}
-        onClose={() => setSidebarVisible(false)}
-      />
+            <Tabs.Screen
+              name="Market"
+              options={{
+                title: "",
+                headerShown: true,
+              }}
+            />
+            <Tabs.Screen
+              name="Quality"
+              options={{
+                title: "Quality Grade",
+                headerShown: true,
+                headerTitleAlign: "center",
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+              }}
+            />
+            <Tabs.Screen
+              name="Notifications"
+              options={{
+                title: "",
+                headerShown: true,
+              }}
+            />
+            <Tabs.Screen
+              name="profile"
+              options={{
+                title: "Profile",
+                headerShown: true,
+                headerTitleAlign: "center",
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+              }}
+            />
 
-      {/* Custom Bottom Navigation - This remains exactly the same */}
-      <View style={styles.customTabBar} className="rounded-t-3xl shadow-lg">
-        {/* Navigation Items - This remains exactly the same */}
-        <View style={styles.navItemsContainer}>
-          {/* ... all your existing navigation items remain the same ... */}
-          
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleTabPress("home", "/(tabs)/home")}
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "home" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.nav_home}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "home" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "home" && styles.navTextActive,
-                ]}
-              >
-                Home
-              </Text>
-            </TouchableOpacity>
-          
-          {(currentUser?.role === "Teacher" ||
-            currentUser?.role === "INTERNAL_TEACHER" ||
-            currentUser?.role === "EXTERNAL_TEACHER") && (
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleTabPress("search", "/(tabs)/SearchMatches")}
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "search" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.search}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "search" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "search" && styles.navTextActive,
-                ]}
-              >
-                Search
-              </Text>
-            </TouchableOpacity>
+            <Tabs.Screen
+              name="Update_profile"
+              options={{
+                title: "Edit Profile",
+                headerShown: true,
+                headerTitleAlign: "center",
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+                href: null,
+              }}
+            />
+
+            <Tabs.Screen
+              name="SpeciesDetection"
+              options={{
+                title: "Species Detection",
+                headerShown: true,
+                headerTitleAlign: "center",
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+                href: null,
+              }}
+            />
+
+            <Tabs.Screen
+              name="QualityGrading"
+              options={{
+                title: "Quality Grading",
+                headerShown: true,
+                headerTitleAlign: "center",
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+                href: null,
+              }}
+            />
+            <Tabs.Screen
+              name="GradingHistory"
+              options={{
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+                href: null,
+              }}
+            />
+            <Tabs.Screen
+              name="GradingDetail"
+              options={{
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+                href: null,
+              }}
+            />
+
+            <Tabs.Screen
+              name="fishtripcost"
+              options={{
+                title: "Fish Trip Cost",
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+                href: null,
+              }}
+            />
+          </Tabs>
+
+          {!isDesktop && (
+            <>
+              <Sidebar
+                isVisible={sidebarVisible}
+                onClose={() => setSidebarVisible(false)}
+              />
+              <Overlay
+                isVisible={sidebarVisible}
+                onClose={() => setSidebarVisible(false)}
+              />
+            </>
           )}
+        </View>
 
-          
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() => handleTabPress("Market", "/(tabs)/Market")}
+        {/* Bottom Navigation - Unified for desktop & mobile */}
+          {isDesktop ? (
+            <View
+              style={[
+                styles.customTabBar,
+                styles.tabBarDesktop,
+                { height: bottomBarHeight },
+              ]}
             >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "Market" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.HouseSale}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "Market" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
+              <View style={[styles.navItemsContainer, styles.navItemsDesktop]}>
+                {navItems.map((item) => (
+                  <NavItem
+                    key={item.tabName}
+                    icon={item.icon}
+                    label={item.label}
+                    isActive={activeTab === item.tabName}
+                    onPress={() => handleTabPress(item.tabName, item.route)}
+                    showBadge={item.showBadge}
+                    badgeCount={unreadCount}
+                    isDesktop={true}
+                    iconSize={iconSize}
+                    containerSize={containerSize}
+                    iconStyle={item.iconStyle}
+                  />
+                ))}
               </View>
               <Text
                 style={[
@@ -374,79 +564,8 @@ const TabsLayout = () => {
                   resizeMode="contain"
                 />
               </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "TransferRequest" && styles.navTextActive,
-                ]}
-              >
-                Requests
-              </Text>
-            </TouchableOpacity>
+            )
           )}
-
-
-            <TouchableOpacity
-              style={styles.navItem}
-              onPress={() =>
-                handleTabPress("Quality", "/(tabs)/Quality")
-              }
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  activeTab === "Quality" && styles.iconContainerActive,
-                ]}
-              >
-                <Image
-                  source={icons.Digital}
-                  style={[
-                    styles.navIcon,
-                    activeTab === "Quality" && styles.navIconActive,
-                  ]}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "Quality" && styles.navTextActive,
-                ]}
-              >
-                Quality
-              </Text>
-            </TouchableOpacity>
-
-
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={handleProfileNavigation}
-          >
-            <View
-              style={[
-                styles.iconContainer,
-                activeTab === "profile" && styles.iconContainerActive,
-              ]}
-            >
-              <Image
-                source={icons.nav_user}
-                style={[
-                  styles.navIcon,
-                  activeTab === "profile" && styles.navIconActive,
-                ]}
-                resizeMode="contain"
-              />
-            </View>
-            <Text
-              style={[
-                styles.navText,
-                activeTab === "profile" && styles.navTextActive,
-              ]}
-            >
-              Profile
-            </Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </SafeAreaView>
   );

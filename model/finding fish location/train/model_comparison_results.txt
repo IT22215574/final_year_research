@@ -1,0 +1,60 @@
+================================================================================
+MODEL COMPARISON: OLD (6 features) vs NEW (7 features with Bathymetry)
+================================================================================
+
+FEATURES USED:
+--------------------------------------------------------------------------------
+Old Model: lat, lon, sst, chlor_a, water_u, water_v
+New Model: lat, lon, sst, chlor_a, water_u, water_v, depth
+Difference: Added 'depth' (bathymetry) feature
+
+CORE METRICS:
+--------------------------------------------------------------------------------
+Metric                     Old Model       New Model          Change
+--------------------------------------------------------------------------------
+Accuracy                      0.9999          0.9999 +0.0000 (+0.00%)
+Precision                     1.0000          1.0000 +0.0000 (+0.00%)
+Recall                        0.9993          0.9993 +0.0000 (+0.00%)
+F1-Score                      0.9996          0.9996 +0.0000 (+0.00%)
+ROC-AUC                       1.0000          1.0000 +0.0000 (+0.00%)
+Specificity                   1.0000          1.0000 +0.0000 (+0.00%)
+
+CONFUSION MATRIX:
+--------------------------------------------------------------------------------
+Metric                     Old Model       New Model
+--------------------------------------------------------------------------------
+True Positives                 1,381           1,381
+True Negatives                 6,220           6,220
+False Positives                    0               0
+False Negatives                    1               1
+
+PER-CLASS METRICS (Class 0: No Fish, Class 1: Fish Present):
+--------------------------------------------------------------------------------
+
+No Fish (0):
+Metric                     Old Model       New Model
+----------------------------------------
+Precision                     0.9998          0.9998
+Recall                        1.0000          1.0000
+F1-score                      0.9999          0.9999
+Support                        6,220           6,220
+
+Fish Present (1):
+Metric                     Old Model       New Model
+----------------------------------------
+Precision                     1.0000          1.0000
+Recall                        0.9993          0.9993
+F1-score                      0.9996          0.9996
+Support                        1,382           1,382
+
+SUMMARY:
+--------------------------------------------------------------------------------
+✓ No significant improvements in core metrics
+✓ No degradations in core metrics
+
+CONCLUSION:
+--------------------------------------------------------------------------------
+➡️  Adding bathymetry (depth) feature had MINIMAL IMPACT on metrics.
+   However, the model now makes depth-aware predictions, which are more
+   biologically meaningful for fishing zone recommendations.
+================================================================================

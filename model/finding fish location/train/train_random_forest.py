@@ -21,6 +21,7 @@ DEFAULT_FEATURE_COLUMNS = [
     "chlor_a",
     "water_u",
     "water_v",
+    "depth",  # Added bathymetry as a feature
 ]
 DEFAULT_TARGET_COLUMN = "fish_presence"
 
@@ -36,7 +37,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data",
         type=Path,
-        default=Path(__file__).with_name("final_dataset_no_bathymetry.csv"),
+        default=Path(__file__).with_name("final_dataset_with_bathymetry.csv"),
         help="Path to the CSV dataset.",
     )
     parser.add_argument(
