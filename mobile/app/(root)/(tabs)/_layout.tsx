@@ -31,7 +31,7 @@ type TabName =
   | "Quality" 
   | "Notifications" 
   | "profile" 
-  | "Update_profile"
+  | "update_profile"
   | "SpeciesDetection"
   | "QualityGrading";
 
@@ -231,7 +231,7 @@ const TabsLayout = () => {
   useFocusEffect(
     useCallback(() => {
       if (currentUser?.id) {
-        console.log("🎯 TabsLayout focused, fetching unread count...");
+        console.log("≡ƒÄ» TabsLayout focused, fetching unread count...");
         fetchUnreadCount();
       }
     }, [currentUser?.id, fetchUnreadCount]),
@@ -432,7 +432,7 @@ const TabsLayout = () => {
               }}
             />
             <Tabs.Screen
-              name="Update_profile"
+              name="update_profile"
               options={{
                 title: "Edit Profile",
                 headerTitleAlign: "center",
@@ -451,6 +451,34 @@ const TabsLayout = () => {
                 title: "Quality Grading",
                 headerTitleAlign: "center",
               }}
+            />
+            <Tabs.Screen
+              name="predictions"
+              options={{ title: "Predictions", headerTitleAlign: "center" }}
+            />
+            <Tabs.Screen
+              name="fish-map"
+              options={{ title: "Fish Map", headerTitleAlign: "center" }}
+            />
+            <Tabs.Screen
+              name="market-alerts"
+              options={{ title: "Market Alerts", headerTitleAlign: "center" }}
+            />
+            <Tabs.Screen
+              name="fishtripcost"
+              options={{ title: "Trip Cost", headerShown: false }}
+            />
+            <Tabs.Screen
+              name="boats"
+              options={{ title: "Boats", headerShown: false }}
+            />
+            <Tabs.Screen
+              name="costs"
+              options={{ title: "Costs", headerShown: false }}
+            />
+            <Tabs.Screen
+              name="fish/[id]"
+              options={{ title: "Fish Detail", headerTitleAlign: "center" }}
             />
           </Tabs>
 

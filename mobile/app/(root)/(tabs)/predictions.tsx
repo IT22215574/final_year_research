@@ -5,7 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LineChart } from 'react-native-chart-kit';
 import Svg, { Path, Line as SvgLine, Text as SvgText, Circle } from 'react-native-svg';
-import * as Notifications from 'expo-notifications';
+// expo-notifications is lazy-required inside the notification function to avoid
+// module-level side effects (Android push token auto-registration) crashing Expo Go.
 import { getPredictionApiBaseUrls } from '@/src/config/api';
 import useAuthStore from '@/stores/authStore';
 
@@ -792,11 +793,13 @@ export default function PredictionsScreen() {
           const diff = (todayPrice - tomorrowPrice).toFixed(2);
           
           // Request permissions if not already granted
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const Notifications = require('expo-notifications');
           const { status } = await Notifications.getPermissionsAsync().catch(() => ({ status: 'denied' }));
           if (status !== 'granted') {
             await Notifications.requestPermissionsAsync().catch(() => null);
           }
-          
+
           // Schedule notification
           await Notifications.scheduleNotificationAsync({
             content: {
