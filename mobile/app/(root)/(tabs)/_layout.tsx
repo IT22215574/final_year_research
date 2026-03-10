@@ -1,4 +1,4 @@
-import { Tabs, router } from "expo-router";
+import { Tabs, router, usePathname } from "expo-router";
 import {
   Image,
   Text,
@@ -25,12 +25,12 @@ import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 
 // Types
-type TabName = 
-  | "home" 
-  | "Market" 
-  | "Quality" 
-  | "Notifications" 
-  | "profile" 
+type TabName =
+  | "home"
+  | "Market"
+  | "Quality"
+  | "Notifications"
+  | "profile"
   | "Update_profile"
   | "SpeciesDetection"
   | "QualityGrading";
@@ -40,7 +40,6 @@ interface NavItemConfig {
   route: string;
   icon: any;
   label: string;
-  /** Show unread badge */
   showBadge?: boolean;
   iconStyle?: object;
 }
@@ -84,7 +83,7 @@ const getScaleFns = (width: number, height: number) => {
   };
 };
 
-// NavItem Component
+// Nav Item
 interface NavItemProps {
   icon: any;
   label: string;
@@ -143,12 +142,12 @@ const NavItem = ({
           source={icon}
           style={[
             { width: iconSize, height: iconSize },
-            { 
-              tintColor: isActive 
-                ? "#FFFFFF" 
-                : isHovered && !isActive 
-                  ? "#005CFF" 
-                  : "#64748b" 
+            {
+              tintColor: isActive
+                ? "#FFFFFF"
+                : isHovered && !isActive
+                ? "#005CFF"
+                : "#64748b",
             },
             iconStyle,
           ]}
@@ -162,6 +161,7 @@ const NavItem = ({
           </View>
         )}
       </View>
+
       <Text
         style={[
           styles.navText,
@@ -180,11 +180,11 @@ const NavItem = ({
 // Main Layout
 const TabsLayout = () => {
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
   const { width, height } = useWindowDimensions();
+
   const {
     isDesktop,
-    isTablet,
-    isSmallScreen,
     scale,
     moderateScale,
     verticalScale,
@@ -192,49 +192,64 @@ const TabsLayout = () => {
 
   const [activeTab, setActiveTab] = useState<TabName>("home");
   const [sidebarVisible, setSidebarVisible] = useState(false);
+
   const { currentUser, isSignedIn } = useAuthStore();
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
 
   const isGuest = !isSignedIn || !currentUser;
 
-  // Nav Items Config
-  const navItems: NavItemConfig[] = useMemo(() => [
-    {
-      tabName: "home",
-      route: "/home",
-      icon: icons.nav_home,
-      label: "Home",
-      iconStyle: { marginRight: 3 },
-    },
-    {
-      tabName: "Market",
-      route: "/Market",
-      icon: icons.HouseSale,
-      label: "Market",
-    },
-    {
-      tabName: "Quality",
-      route: "/Quality",
-      icon: icons.Digital,
-      label: "Quality",
-    },
-    {
-      tabName: "profile",
-      route: "/profile",
-      icon: icons.nav_user,
-      label: "Profile",
-      showBadge: false,
-    },
-  ], []);
+  const navItems: NavItemConfig[] = useMemo(
+    () => [
+      {
+        tabName: "home",
+        route: "/(root)/(tabs)/home",
+        icon: icons.nav_home,
+        label: "Home",
+        iconStyle: { marginRight: 3 },
+      },
+      {
+        tabName: "Market",
+        route: "/(root)/(tabs)/Market",
+        icon: icons.HouseSale,
+        label: "Market",
+      },
+      {
+        tabName: "Quality",
+        route: "/(root)/(tabs)/Quality",
+        icon: icons.Digital,
+        label: "Quality",
+      },
+      {
+        tabName: "profile",
+        route: "/(root)/(tabs)/profile",
+        icon: icons.nav_user,
+        label: "Profile",
+        showBadge: false,
+      },
+    ],
+    []
+  );
 
-  // Effects
+  useEffect(() => {
+    if (pathname.includes("/Market")) {
+      setActiveTab("Market");
+    } else if (pathname.includes("/Quality")) {
+      setActiveTab("Quality");
+    } else if (pathname.includes("/Notifications")) {
+      setActiveTab("Notifications");
+    } else if (pathname.includes("/profile") || pathname.includes("/Update_profile")) {
+      setActiveTab("profile");
+    } else {
+      setActiveTab("home");
+    }
+  }, [pathname]);
+
   useFocusEffect(
     useCallback(() => {
       if (currentUser?.id) {
-        console.log("🎯 TabsLayout focused, fetching unread count...");
         fetchUnreadCount();
       }
-    }, [currentUser?.id, fetchUnreadCount]),
+    }, [currentUser?.id, fetchUnreadCount])
   );
 
   useEffect(() => {
@@ -243,7 +258,6 @@ const TabsLayout = () => {
     }
   }, [currentUser?.id, fetchUnreadCount]);
 
-  // Handle Android back button
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -251,47 +265,39 @@ const TabsLayout = () => {
           BackHandler.exitApp();
           return true;
         }
+
         setActiveTab("home");
-        router.replace("/home");
+        router.replace("/(root)/(tabs)/home");
         return true;
       };
-      
+
       const subscription = BackHandler.addEventListener(
         "hardwareBackPress",
         onBackPress
       );
+
       return () => subscription.remove();
     }, [activeTab])
   );
 
-  // Handlers
   const handleTabPress = (tabName: TabName, route: string) => {
     if (tabName === "profile" && isGuest) {
       router.push("/sign-in");
       return;
     }
+
     setActiveTab(tabName);
     router.push(route as any);
   };
 
-  const handleProfileNavigation = () => {
-    if (isGuest) {
-      router.push("/sign-in");
-    } else {
-      setActiveTab("profile");
-      router.push("/profile");
-    }
-  };
-
   const toggleSidebar = () => {
-    setSidebarVisible(!sidebarVisible);
+    setSidebarVisible((prev) => !prev);
   };
 
-  // Computed styles
   const iconSize = scale(24);
   const containerSize = scale(40);
   const headerHeight = verticalScale(55);
-  
+
   const bottomBarHeight: number = isDesktop
     ? Math.max(90, containerSize + 20 + 14 + verticalScale(8))
     : Platform.select({
@@ -309,7 +315,6 @@ const TabsLayout = () => {
       />
 
       <View style={isDesktop ? styles.desktopWrapper : styles.container}>
-        {/* Desktop: Persistent sidebar on the left */}
         {isDesktop && currentUser && (
           <Sidebar isVisible={true} onClose={() => {}} />
         )}
@@ -319,6 +324,8 @@ const TabsLayout = () => {
             initialRouteName="home"
             screenOptions={{
               headerShown: true,
+              tabBarShowLabel: false,
+              tabBarStyle: { display: "none" },
               headerBackground: () => (
                 <LinearGradient
                   colors={HEADER_GRADIENT}
@@ -362,155 +369,88 @@ const TabsLayout = () => {
                     </TouchableOpacity>
                   )}
                 </View>
-              )}
-            </TouchableOpacity>
-          ),
-          tabBarShowLabel: false,
-          tabBarStyle: {
-            display: "none",
-          },
-        }}
-      >
-        {/* ... all your Tabs.Screen components remain the same ... */}
-        <Tabs.Screen
-          name="home"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-
-        <Tabs.Screen
-          name="Market"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="Quality"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="Notifications"
-          options={{
-            title: "",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: "Profile",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-
-        <Tabs.Screen
-          name="fishtripcost"
-          options={{
-            title: "Fish Trip Cost",
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#0057FF",
-            },
-          }}
-        />
-      </Tabs>
-
-      {/* Sidebar and Overlay */}
-      <Sidebar
-        isVisible={sidebarVisible}
-        onClose={() => setSidebarVisible(false)}
-      />
-      <Overlay
-        isVisible={sidebarVisible}
-        onClose={() => setSidebarVisible(false)}
-      />
-
-      {/* Custom Bottom Navigation - This remains exactly the same */}
-      <View style={styles.customTabBar} className="rounded-t-3xl shadow-lg">
-        {/* Navigation Items - This remains exactly the same */}
-        <View style={styles.navItemsContainer}>
-          {/* Home */}
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => handleTabPress("home", "/(root)/(tabs)/home")}
+              ),
+            }}
           >
             <Tabs.Screen
               name="home"
               options={{
                 title: "",
+                headerShown: true,
               }}
             />
+
             <Tabs.Screen
               name="Market"
               options={{
                 title: "",
+                headerShown: true,
               }}
             />
+
             <Tabs.Screen
               name="Quality"
               options={{
                 title: "Quality Grade",
+                headerShown: true,
                 headerTitleAlign: "center",
               }}
             />
+
             <Tabs.Screen
               name="Notifications"
               options={{
                 title: "",
+                headerShown: true,
               }}
             />
+
             <Tabs.Screen
               name="profile"
               options={{
-                title: "",
+                title: "Profile",
+                headerShown: true,
                 headerTitleAlign: "center",
               }}
             />
+
             <Tabs.Screen
               name="Update_profile"
               options={{
                 title: "Edit Profile",
                 headerTitleAlign: "center",
+                href: null,
               }}
             />
+
             <Tabs.Screen
               name="SpeciesDetection"
               options={{
                 title: "Species Detection",
                 headerTitleAlign: "center",
+                href: null,
               }}
             />
+
             <Tabs.Screen
               name="QualityGrading"
               options={{
                 title: "Quality Grading",
                 headerTitleAlign: "center",
+                href: null,
+              }}
+            />
+
+            <Tabs.Screen
+              name="fishtripcost"
+              options={{
+                title: "Fish Trip Cost",
+                headerShown: true,
+                href: null,
               }}
             />
           </Tabs>
 
-          {/* Mobile overlay sidebar */}
           {!isDesktop && (
             <>
               <Sidebar
@@ -524,7 +464,6 @@ const TabsLayout = () => {
             </>
           )}
 
-          {/* Bottom Navigation - Unified for desktop & mobile */}
           {isDesktop ? (
             <View
               style={[
@@ -543,7 +482,7 @@ const TabsLayout = () => {
                     onPress={() => handleTabPress(item.tabName, item.route)}
                     showBadge={item.showBadge}
                     badgeCount={unreadCount}
-                    isDesktop={isDesktop}
+                    isDesktop={true}
                     iconSize={iconSize}
                     containerSize={containerSize}
                     iconStyle={item.iconStyle}
