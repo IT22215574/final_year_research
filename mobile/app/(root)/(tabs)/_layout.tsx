@@ -372,6 +372,10 @@ const TabsLayout = () => {
                   )}
                 </View>
               ),
+              tabBarShowLabel: false,
+              tabBarStyle: {
+                display: "none",
+              },
             }}
           >
             <Tabs.Screen
@@ -389,16 +393,17 @@ const TabsLayout = () => {
                 headerShown: true,
               }}
             />
-
             <Tabs.Screen
               name="Quality"
               options={{
                 title: "Quality Grade",
                 headerShown: true,
                 headerTitleAlign: "center",
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
               }}
             />
-
             <Tabs.Screen
               name="Notifications"
               options={{
@@ -406,13 +411,15 @@ const TabsLayout = () => {
                 headerShown: true,
               }}
             />
-
             <Tabs.Screen
               name="profile"
               options={{
                 title: "Profile",
                 headerShown: true,
                 headerTitleAlign: "center",
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
               }}
             />
 
@@ -420,7 +427,11 @@ const TabsLayout = () => {
               name="Update_profile"
               options={{
                 title: "Edit Profile",
+                headerShown: true,
                 headerTitleAlign: "center",
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
                 href: null,
               }}
             />
@@ -429,7 +440,11 @@ const TabsLayout = () => {
               name="SpeciesDetection"
               options={{
                 title: "Species Detection",
+                headerShown: true,
                 headerTitleAlign: "center",
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
                 href: null,
               }}
             />
@@ -438,7 +453,31 @@ const TabsLayout = () => {
               name="QualityGrading"
               options={{
                 title: "Quality Grading",
+                headerShown: true,
                 headerTitleAlign: "center",
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+                href: null,
+              }}
+            />
+            <Tabs.Screen
+              name="GradingHistory"
+              options={{
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+                href: null,
+              }}
+            />
+            <Tabs.Screen
+              name="GradingDetail"
+              options={{
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
                 href: null,
               }}
             />
@@ -448,19 +487,10 @@ const TabsLayout = () => {
               options={{
                 title: "Fish Trip Cost",
                 headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
                 href: null,
-              }}
-            />
-            <Tabs.Screen
-              name="GradingHistory"
-              options={{
-                headerShown: true,
-              }}
-            />
-            <Tabs.Screen
-              name="GradingDetail"
-              options={{
-                headerShown: true,
               }}
             />
           </Tabs>
@@ -477,7 +507,9 @@ const TabsLayout = () => {
               />
             </>
           )}
+        </View>
 
+        {/* Bottom Navigation - Unified for desktop & mobile */}
           {isDesktop ? (
             <View
               style={[
@@ -536,7 +568,6 @@ const TabsLayout = () => {
               </View>
             )
           )}
-        </View>
       </View>
     </SafeAreaProvider>
   );

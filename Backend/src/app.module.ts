@@ -15,6 +15,7 @@ import { CostPreferencesModule } from './cost-preferences/cost-preferences.modul
 import { FishCategoryModule } from './fish-category/fish-category.module';
 import { FishMarketModule } from './fish-market/fish-market.module';
 import { GradingRecordsModule } from './grading-records/grading-records.module';
+import { FishZonesModule } from './fish-zones/fish-zones.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { GradingRecordsModule } from './grading-records/grading-records.module';
     FishCategoryModule,
     FishMarketModule,
     GradingRecordsModule,
+    FishZonesModule,
   ],
 })
 export class AppModule {}
