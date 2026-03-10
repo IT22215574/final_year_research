@@ -1,4 +1,10 @@
-import { IsNumber, IsOptional, IsString, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -56,7 +62,7 @@ export class TripResponseDto {
   userId: string;
   boatId?: string;
   status: string;
-  
+
   departureTime?: Date;
   returnTime?: Date;
 

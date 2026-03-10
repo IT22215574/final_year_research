@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common';
 
 /**
  * BoatTypeCoefficientService
- * 
+ *
  * Provides boat type-specific fuel consumption baselines, efficiency coefficients,
  * and normalized variance calculations for Sri Lankan fishing vessels.
- * 
+ *
  * This makes fuel variance metrics CONTEXTUAL and MEANINGFUL by comparing
  * actual performance against boat type norms rather than just raw differences.
  */
@@ -34,7 +34,7 @@ export interface NormalizedVarianceMetrics {
   // ML-adjusted metrics
   mlAdjustedExpectedFuel: number | null; // L - ML-learned expected fuel for THIS boat
   mlVariancePercent: number | null; // % - variance from ML prediction
-  
+
   // Context
   boatTypeUsed: string;
   distanceKm: number;
@@ -42,7 +42,6 @@ export interface NormalizedVarianceMetrics {
 
 @Injectable()
 export class BoatTypeCoefficientService {
-  
   /**
    * Sri Lankan fishing boat type fuel profiles
    * Based on research data and BOAT_FUEL_BASELINES
@@ -98,13 +97,15 @@ export class BoatTypeCoefficientService {
     boatId?: string,
   ): NormalizedVarianceMetrics {
     // Get boat type profile
-    const profile = this.BOAT_TYPE_PROFILES[boatType] || this.getDefaultProfile();
+    const profile =
+      this.BOAT_TYPE_PROFILES[boatType] || this.getDefaultProfile();
 
     // Raw variance (already calculated in TripMetricsService)
     const rawVarianceLiters = actualFuel - predictedFuel;
-    const rawVariancePercent = predictedFuel > 0 
-      ? Math.abs((rawVarianceLiters / predictedFuel) * 100)
-      : 0;
+    const rawVariancePercent =
+      predictedFuel > 0
+        ? Math.abs((rawVarianceLiters / predictedFuel) * 100)
+        : 0;
 
     // Expected fuel based on boat type baseline
     const expectedFuelForBoatType = this.calculateExpectedFuelForBoatType(
@@ -114,9 +115,10 @@ export class BoatTypeCoefficientService {
 
     // Normalized variance - compare actual to boat type baseline
     const normalizedVarianceLiters = actualFuel - expectedFuelForBoatType;
-    const normalizedVariancePercent = expectedFuelForBoatType > 0
-      ? (normalizedVarianceLiters / expectedFuelForBoatType) * 100
-      : 0;
+    const normalizedVariancePercent =
+      expectedFuelForBoatType > 0
+        ? (normalizedVarianceLiters / expectedFuelForBoatType) * 100
+        : 0;
 
     // Efficiency score (0-100)
     // Higher score = more efficient (using less fuel than expected)
@@ -165,8 +167,9 @@ export class BoatTypeCoefficientService {
     boatType: string,
     distanceKm: number,
   ): number {
-    const profile = this.BOAT_TYPE_PROFILES[boatType] || this.getDefaultProfile();
-    
+    const profile =
+      this.BOAT_TYPE_PROFILES[boatType] || this.getDefaultProfile();
+
     // Base calculation: distance * fuel per km
     let expectedFuel = distanceKm * profile.baselineFuelPerKm;
 
@@ -195,7 +198,7 @@ export class BoatTypeCoefficientService {
     if (expectedFuel <= 0) return 50;
 
     const efficiency = (expectedFuel / actualFuel) * 100;
-    
+
     // Cap at reasonable bounds
     return Math.max(0, Math.min(150, Math.round(efficiency)));
   }
@@ -232,11 +235,11 @@ export class BoatTypeCoefficientService {
 
     // TODO: Query boat's learning coefficients from database
     // TODO: Use adaptive learning history to refine expected fuel
-    
+
     // For now, blend ML prediction (70%) with boat type baseline (30%)
     // This provides a middle ground between learned patterns and type norms
-    const blendedExpected = (mlPredictedFuel * 0.7) + (boatTypeExpectedFuel * 0.3);
-    
+    const blendedExpected = mlPredictedFuel * 0.7 + boatTypeExpectedFuel * 0.3;
+
     return blendedExpected > 0 ? blendedExpected : null;
   }
 

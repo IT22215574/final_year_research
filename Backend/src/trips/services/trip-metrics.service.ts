@@ -1,12 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { BoatTypeCoefficientService, NormalizedVarianceMetrics } from './boat-type-coefficients.service';
+import {
+  BoatTypeCoefficientService,
+  NormalizedVarianceMetrics,
+} from './boat-type-coefficients.service';
 
 /**
  * TripMetricsService
- * 
+ *
  * Calculates official trip-level comparison metrics and aggregated dashboard stats.
  * This is the SINGLE SOURCE OF TRUTH for all research accuracy metrics.
- * 
+ *
  * Design principles:
  * 1. Backend owns all metric formulas
  * 2. Frontend only displays backend-calculated values
@@ -47,43 +50,67 @@ export class TripMetricsService {
 
     // Fuel metrics
     const fuelErrorLiters = this.calculateError(predicted.fuel, actual.fuel);
-    const fuelErrorPercent = this.calculateErrorPercent(predicted.fuel, actual.fuel);
-    const fuelVarianceLiters = this.calculateVariance(predicted.fuel, actual.fuel);
-    
+    const fuelErrorPercent = this.calculateErrorPercent(
+      predicted.fuel,
+      actual.fuel,
+    );
+    const fuelVarianceLiters = this.calculateVariance(
+      predicted.fuel,
+      actual.fuel,
+    );
+
     // Cost metrics
     const costErrorAmount = this.calculateError(predicted.cost, actual.cost);
-    const costErrorPercent = this.calculateErrorPercent(predicted.cost, actual.cost);
-    const costVarianceAmount = this.calculateVariance(predicted.cost, actual.cost);
+    const costErrorPercent = this.calculateErrorPercent(
+      predicted.cost,
+      actual.cost,
+    );
+    const costVarianceAmount = this.calculateVariance(
+      predicted.cost,
+      actual.cost,
+    );
 
     // Fuel cost metrics (separate from total cost)
-    const fuelCostErrorAmount = this.calculateError(predicted.fuelCost, actual.fuelCost);
-    const fuelCostErrorPercent = this.calculateErrorPercent(predicted.fuelCost, actual.fuelCost);
+    const fuelCostErrorAmount = this.calculateError(
+      predicted.fuelCost,
+      actual.fuelCost,
+    );
+    const fuelCostErrorPercent = this.calculateErrorPercent(
+      predicted.fuelCost,
+      actual.fuelCost,
+    );
 
     // Accuracy flags
-    const isFuelPredictionAccurate = 
-      fuelErrorPercent != null && fuelErrorPercent <= this.FUEL_ACCURACY_THRESHOLD;
-    
-    const isCostPredictionAccurate = 
-      costErrorPercent != null && costErrorPercent <= this.COST_ACCURACY_THRESHOLD;
+    const isFuelPredictionAccurate =
+      fuelErrorPercent != null &&
+      fuelErrorPercent <= this.FUEL_ACCURACY_THRESHOLD;
+
+    const isCostPredictionAccurate =
+      costErrorPercent != null &&
+      costErrorPercent <= this.COST_ACCURACY_THRESHOLD;
 
     // Comparison eligibility
     const comparisonEligible = this.isComparisonEligible(trip);
 
     // ✅ NEW: Boat type-based normalized variance metrics
     let normalizedMetrics: NormalizedVarianceMetrics | null = null;
-    
+
     if (comparisonEligible && predicted.fuel != null && actual.fuel != null) {
       const boatType = trip.boatType || 'UNKNOWN';
-      const distanceKm = this.safeNumber(trip.distanceKm) || this.safeNumber(trip.predictedDistanceKm) || 0;
+      const distanceKm =
+        this.safeNumber(trip.distanceKm) ||
+        this.safeNumber(trip.predictedDistanceKm) ||
+        0;
       const boatId = trip.boatId;
 
-      normalizedMetrics = this.boatTypeCoefficientService.calculateNormalizedVariance(
-        predicted.fuel,
-        actual.fuel,
-        boatType,
-        distanceKm,
-        boatId,
-      );
+      normalizedMetrics =
+        this.boatTypeCoefficientService.calculateNormalizedVariance(
+          predicted.fuel,
+          actual.fuel,
+          boatType,
+          distanceKm,
+          boatId,
+        );
     }
 
     return {
@@ -119,89 +146,116 @@ export class TripMetricsService {
    */
   calculateDashboardStats(trips: any[]): DashboardStats {
     const totalTrips = trips.length;
-    const completedTrips = trips.filter(t => t.status === 'completed').length;
-    
+    const completedTrips = trips.filter((t) => t.status === 'completed').length;
+
     // Only include trips with both predicted and actual values
-    const eligibleTrips = trips.filter(t => this.isComparisonEligible(t));
+    const eligibleTrips = trips.filter((t) => this.isComparisonEligible(t));
     const predictionsWithActuals = eligibleTrips.length;
 
     // Fuel accuracy calculation
-    const fuelAccurateTrips = eligibleTrips.filter(t => {
+    const fuelAccurateTrips = eligibleTrips.filter((t) => {
       const errorPercent = this.calculateErrorPercent(
         this.safeNumber(t.predictedFuelLiters),
-        this.safeNumber(t.actualFuelLiters)
+        this.safeNumber(t.actualFuelLiters),
       );
-      return errorPercent != null && errorPercent <= this.FUEL_ACCURACY_THRESHOLD;
+      return (
+        errorPercent != null && errorPercent <= this.FUEL_ACCURACY_THRESHOLD
+      );
     });
 
-    const fuelAccuracyRate = predictionsWithActuals > 0
-      ? Math.round((fuelAccurateTrips.length / predictionsWithActuals) * 100)
-      : 0;
+    const fuelAccuracyRate =
+      predictionsWithActuals > 0
+        ? Math.round((fuelAccurateTrips.length / predictionsWithActuals) * 100)
+        : 0;
 
     // Cost accuracy calculation
-    const costAccurateTrips = eligibleTrips.filter(t => {
+    const costAccurateTrips = eligibleTrips.filter((t) => {
       const actualCost = this.calculateActualTotalCost(t);
       const errorPercent = this.calculateErrorPercent(
         this.safeNumber(t.predictedTotalCost),
-        actualCost
+        actualCost,
       );
-      return errorPercent != null && errorPercent <= this.COST_ACCURACY_THRESHOLD;
+      return (
+        errorPercent != null && errorPercent <= this.COST_ACCURACY_THRESHOLD
+      );
     });
 
-    const costAccuracyRate = predictionsWithActuals > 0
-      ? Math.round((costAccurateTrips.length / predictionsWithActuals) * 100)
-      : 0;
+    const costAccuracyRate =
+      predictionsWithActuals > 0
+        ? Math.round((costAccurateTrips.length / predictionsWithActuals) * 100)
+        : 0;
 
     // Fuel aggregations
-    const totalPredictedFuel = this.sumSafe(trips.map(t => t.predictedFuelLiters));
-    const totalActualFuel = this.sumSafe(eligibleTrips.map(t => t.actualFuelLiters));
+    const totalPredictedFuel = this.sumSafe(
+      trips.map((t) => t.predictedFuelLiters),
+    );
+    const totalActualFuel = this.sumSafe(
+      eligibleTrips.map((t) => t.actualFuelLiters),
+    );
     const totalFuelVariance = totalActualFuel - totalPredictedFuel;
 
     // Cost aggregations
-    const totalPredictedCost = this.sumSafe(trips.map(t => t.predictedTotalCost));
+    const totalPredictedCost = this.sumSafe(
+      trips.map((t) => t.predictedTotalCost),
+    );
     const totalActualCost = eligibleTrips.reduce((sum, t) => {
       return sum + (this.calculateActualTotalCost(t) || 0);
     }, 0);
     const totalCostVariance = totalActualCost - totalPredictedCost;
 
     // Averages
-    const averagePredictedCost = totalTrips > 0 
-      ? Math.round(totalPredictedCost / totalTrips) 
-      : 0;
-    
-    const averageActualCost = predictionsWithActuals > 0
-      ? Math.round(totalActualCost / predictionsWithActuals)
-      : 0;
+    const averagePredictedCost =
+      totalTrips > 0 ? Math.round(totalPredictedCost / totalTrips) : 0;
+
+    const averageActualCost =
+      predictionsWithActuals > 0
+        ? Math.round(totalActualCost / predictionsWithActuals)
+        : 0;
 
     // Error percentages
-    const fuelErrors = eligibleTrips.map(t => 
-      this.calculateErrorPercent(
-        this.safeNumber(t.predictedFuelLiters),
-        this.safeNumber(t.actualFuelLiters)
+    const fuelErrors = eligibleTrips
+      .map((t) =>
+        this.calculateErrorPercent(
+          this.safeNumber(t.predictedFuelLiters),
+          this.safeNumber(t.actualFuelLiters),
+        ),
       )
-    ).filter(e => e != null);
+      .filter((e) => e != null);
 
-    const averageFuelErrorPercent = fuelErrors.length > 0
-      ? Math.round((fuelErrors.reduce((sum, e) => sum + e, 0) / fuelErrors.length) * 10) / 10
-      : 0;
+    const averageFuelErrorPercent =
+      fuelErrors.length > 0
+        ? Math.round(
+            (fuelErrors.reduce((sum, e) => sum + e, 0) / fuelErrors.length) *
+              10,
+          ) / 10
+        : 0;
 
-    const costErrors = eligibleTrips.map(t => {
-      const actualCost = this.calculateActualTotalCost(t);
-      return this.calculateErrorPercent(
-        this.safeNumber(t.predictedTotalCost),
-        actualCost
-      );
-    }).filter(e => e != null);
+    const costErrors = eligibleTrips
+      .map((t) => {
+        const actualCost = this.calculateActualTotalCost(t);
+        return this.calculateErrorPercent(
+          this.safeNumber(t.predictedTotalCost),
+          actualCost,
+        );
+      })
+      .filter((e) => e != null);
 
-    const averageCostErrorPercent = costErrors.length > 0
-      ? Math.round((costErrors.reduce((sum, e) => sum + e, 0) / costErrors.length) * 10) / 10
-      : 0;
+    const averageCostErrorPercent =
+      costErrors.length > 0
+        ? Math.round(
+            (costErrors.reduce((sum, e) => sum + e, 0) / costErrors.length) *
+              10,
+          ) / 10
+        : 0;
 
     // Distance
-    const totalDistance = this.sumSafe(trips.map(t => t.distanceKm || t.predictedDistanceKm));
+    const totalDistance = this.sumSafe(
+      trips.map((t) => t.distanceKm || t.predictedDistanceKm),
+    );
 
     // ✅ NEW: Boat type-based normalized metrics aggregation
-    const normalizedMetrics = this.calculateAggregatedNormalizedMetrics(eligibleTrips);
+    const normalizedMetrics =
+      this.calculateAggregatedNormalizedMetrics(eligibleTrips);
 
     return {
       // Basic counts
@@ -231,7 +285,7 @@ export class TripMetricsService {
 
       // Deprecated (keep for backward compatibility, but mark clearly)
       totalFuelUsed: Math.round(totalActualFuel * 10) / 10, // DEPRECATED: use totalActualFuel
-      
+
       // Other
       totalDistance: Math.round(totalDistance * 10) / 10,
 
@@ -243,13 +297,18 @@ export class TripMetricsService {
   /**
    * ✅ NEW: Calculate aggregated boat type-based normalized metrics
    */
-  private calculateAggregatedNormalizedMetrics(trips: any[]): AggregatedNormalizedMetrics {
+  private calculateAggregatedNormalizedMetrics(
+    trips: any[],
+  ): AggregatedNormalizedMetrics {
     const tripMetrics = trips
-      .map(trip => {
+      .map((trip) => {
         const predictedFuel = this.safeNumber(trip.predictedFuelLiters);
         const actualFuel = this.safeNumber(trip.actualFuelLiters);
         const boatType = trip.boatType || 'UNKNOWN';
-        const distanceKm = this.safeNumber(trip.distanceKm) || this.safeNumber(trip.predictedDistanceKm) || 0;
+        const distanceKm =
+          this.safeNumber(trip.distanceKm) ||
+          this.safeNumber(trip.predictedDistanceKm) ||
+          0;
         const boatId = trip.boatId;
 
         if (predictedFuel == null || actualFuel == null || distanceKm === 0) {
@@ -264,7 +323,7 @@ export class TripMetricsService {
           boatId,
         );
       })
-      .filter(m => m != null);
+      .filter((m) => m != null);
 
     if (tripMetrics.length === 0) {
       return {
@@ -277,9 +336,18 @@ export class TripMetricsService {
     }
 
     // Calculate averages
-    const avgEfficiency = tripMetrics.reduce((sum, m) => sum + m.efficiencyScore, 0) / tripMetrics.length;
-    const avgNormalizedVariance = tripMetrics.reduce((sum, m) => sum + Math.abs(m.normalizedVariancePercent), 0) / tripMetrics.length;
-    const totalExpected = tripMetrics.reduce((sum, m) => sum + m.expectedFuelForBoatType, 0);
+    const avgEfficiency =
+      tripMetrics.reduce((sum, m) => sum + m.efficiencyScore, 0) /
+      tripMetrics.length;
+    const avgNormalizedVariance =
+      tripMetrics.reduce(
+        (sum, m) => sum + Math.abs(m.normalizedVariancePercent),
+        0,
+      ) / tripMetrics.length;
+    const totalExpected = tripMetrics.reduce(
+      (sum, m) => sum + m.expectedFuelForBoatType,
+      0,
+    );
 
     // Overall rating based on average efficiency
     let overallRating: 'excellent' | 'good' | 'fair' | 'poor';
@@ -295,11 +363,12 @@ export class TripMetricsService {
 
     // Breakdown by boat type
     const boatTypeBreakdown: Record<string, BoatTypeStats> = {};
-    
-    trips.forEach(trip => {
+
+    trips.forEach((trip) => {
       const boatType = trip.boatType || 'UNKNOWN';
       if (!boatTypeBreakdown[boatType]) {
-        const profile = this.boatTypeCoefficientService.getBoatTypeProfile(boatType);
+        const profile =
+          this.boatTypeCoefficientService.getBoatTypeProfile(boatType);
         boatTypeBreakdown[boatType] = {
           boatTypeName: profile.name,
           count: 0,
@@ -311,19 +380,24 @@ export class TripMetricsService {
     });
 
     // Calculate per-boat-type metrics
-    Object.keys(boatTypeBreakdown).forEach(boatType => {
-      const typeMetrics = tripMetrics.filter(m => m.boatTypeUsed === boatType);
+    Object.keys(boatTypeBreakdown).forEach((boatType) => {
+      const typeMetrics = tripMetrics.filter(
+        (m) => m.boatTypeUsed === boatType,
+      );
       if (typeMetrics.length > 0) {
-        boatTypeBreakdown[boatType].averageEfficiency = 
-          typeMetrics.reduce((sum, m) => sum + m.efficiencyScore, 0) / typeMetrics.length;
-        boatTypeBreakdown[boatType].averageVariance = 
-          typeMetrics.reduce((sum, m) => sum + m.normalizedVariancePercent, 0) / typeMetrics.length;
+        boatTypeBreakdown[boatType].averageEfficiency =
+          typeMetrics.reduce((sum, m) => sum + m.efficiencyScore, 0) /
+          typeMetrics.length;
+        boatTypeBreakdown[boatType].averageVariance =
+          typeMetrics.reduce((sum, m) => sum + m.normalizedVariancePercent, 0) /
+          typeMetrics.length;
       }
     });
 
     return {
       averageEfficiencyScore: Math.round(avgEfficiency),
-      averageNormalizedVariancePercent: Math.round(avgNormalizedVariance * 10) / 10,
+      averageNormalizedVariancePercent:
+        Math.round(avgNormalizedVariance * 10) / 10,
       totalExpectedFuelForBoatTypes: Math.round(totalExpected * 10) / 10,
       overallVarianceRating: overallRating,
       boatTypeBreakdown,
@@ -344,7 +418,10 @@ export class TripMetricsService {
   /**
    * Calculate absolute error
    */
-  private calculateError(predicted: number | null, actual: number | null): number | null {
+  private calculateError(
+    predicted: number | null,
+    actual: number | null,
+  ): number | null {
     if (predicted == null || actual == null) return null;
     return Math.abs(actual - predicted);
   }
@@ -352,7 +429,10 @@ export class TripMetricsService {
   /**
    * Calculate error percentage
    */
-  private calculateErrorPercent(predicted: number | null, actual: number | null): number | null {
+  private calculateErrorPercent(
+    predicted: number | null,
+    actual: number | null,
+  ): number | null {
     if (predicted == null || actual == null || predicted === 0) return null;
     return Math.abs((actual - predicted) / predicted) * 100;
   }
@@ -360,7 +440,10 @@ export class TripMetricsService {
   /**
    * Calculate variance (positive = actual > predicted, negative = actual < predicted)
    */
-  private calculateVariance(predicted: number | null, actual: number | null): number | null {
+  private calculateVariance(
+    predicted: number | null,
+    actual: number | null,
+  ): number | null {
     if (predicted == null || actual == null) return null;
     return actual - predicted;
   }
@@ -384,7 +467,10 @@ export class TripMetricsService {
    * Calculate total from actualExternalCosts array
    */
   private calculateActualExternalCostTotal(trip: any): number | null {
-    if (!Array.isArray(trip.actualExternalCosts) || trip.actualExternalCosts.length === 0) {
+    if (
+      !Array.isArray(trip.actualExternalCosts) ||
+      trip.actualExternalCosts.length === 0
+    ) {
       return null;
     }
 
