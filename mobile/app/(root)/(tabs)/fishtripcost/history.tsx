@@ -163,7 +163,8 @@ const HistoryScreen = () => {
             <View>
               <Text className="text-xl font-bold text-gray-900">History</Text>
               <Text className="text-xs text-gray-500">
-                {filteredTrips.length} {selectedBoatId ? 'filtered' : 'saved'} trips
+                {filteredTrips.length} {selectedBoatId ? "filtered" : "saved"}{" "}
+                trips
               </Text>
             </View>
           </View>
@@ -282,7 +283,7 @@ const HistoryScreen = () => {
           </Text>
           <Text className="text-gray-500 text-center text-sm mb-4">
             {selectedBoatId
-              ? `No trips found for the selected boat${searchQuery ? ' and search query' : ''}`
+              ? `No trips found for the selected boat${searchQuery ? " and search query" : ""}`
               : `No trips match "${searchQuery}"`}
           </Text>
           <View className="flex-row gap-2">
