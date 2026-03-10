@@ -12,6 +12,9 @@ import { AnalyticsModule } from './trips_analytics/trips_analytics.module';
 import { MlModule } from './tripml/tripml.module';
 import { CostEngineModule } from './cost-engine/cost-engine.module';
 import { CostPreferencesModule } from './cost-preferences/cost-preferences.module';
+import { FishCategoryModule } from './fish-category/fish-category.module';
+import { FishMarketModule } from './fish-market/fish-market.module';
+import { GradingRecordsModule } from './grading-records/grading-records.module';
 
 @Module({
   imports: [
@@ -43,7 +46,9 @@ import { CostPreferencesModule } from './cost-preferences/cost-preferences.modul
     MlModule,
     CostEngineModule,
     CostPreferencesModule,
-
+    FishCategoryModule,
+    FishMarketModule,
+    GradingRecordsModule,
   ],
 })
 export class AppModule {}

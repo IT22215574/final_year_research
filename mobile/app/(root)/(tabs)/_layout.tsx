@@ -33,7 +33,9 @@ type TabName =
   | "profile" 
   | "Update_profile"
   | "SpeciesDetection"
-  | "QualityGrading";
+  | "QualityGrading"
+  | "GradingHistory"
+  | "GradingDetail";
 
 interface NavItemConfig {
   tabName: TabName;
@@ -450,6 +452,18 @@ const TabsLayout = () => {
               options={{
                 title: "Quality Grading",
                 headerTitleAlign: "center",
+              }}
+            />
+            <Tabs.Screen
+              name="GradingHistory"
+              options={{
+                headerShown: true,
+              }}
+            />
+            <Tabs.Screen
+              name="GradingDetail"
+              options={{
+                headerShown: true,
               }}
             />
           </Tabs>
