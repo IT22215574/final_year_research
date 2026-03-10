@@ -85,15 +85,40 @@ export class CostEngineService {
   async predictTrip(dto: PredictCostDto, userId?: string) {
     const boat = await this.getValidatedBoatForPrediction(dto.boatId, userId);
 
-    const baseDistanceKm = haversineDistanceKm(
-      dto.startLat,
-      dto.startLon,
-      dto.endLat,
-      dto.endLon,
-    );
+    // ✅ Support both coordinate-based and manual distance
+    let baseDistanceKm: number;
+    let predictedDistanceKm: number;
+    let calculatedFromCoordinates = false;
+    const drf = 0.05; // Detour/route factor
 
-    const drf = 0.05;
-    const predictedDistanceKm = effectiveDistanceKm(baseDistanceKm, drf);
+    // If coordinates provided, calculate distance
+    if (
+      dto.startLat != null &&
+      dto.startLon != null &&
+      dto.endLat != null &&
+      dto.endLon != null   
+    ) {
+      baseDistanceKm = haversineDistanceKm(
+        dto.startLat,
+        dto.startLon,
+        dto.endLat,
+        dto.endLon,
+      );
+      predictedDistanceKm = effectiveDistanceKm(baseDistanceKm, drf);
+      calculatedFromCoordinates = true;
+    }
+    // Otherwise, use manual distance
+    else if (dto.distanceKm != null && dto.distanceKm > 0) {
+      baseDistanceKm = dto.distanceKm;
+      predictedDistanceKm = effectiveDistanceKm(baseDistanceKm, drf);
+      calculatedFromCoordinates = false;
+    }
+    // Neither provided - error
+    else {
+      throw new BadRequestException(
+        'Either coordinates (startLat, startLon, endLat, endLon) or manual distance (distanceKm) must be provided',
+      );
+    }
 
     const { wsi, normalized: wsiNormalized } = calculateWSI(
       dto.windSpeed,
@@ -357,132 +382,132 @@ export class CostEngineService {
   // =========================
   // PREDICT + SAVE TRIP
   // =========================
-async predictAndSave(dto: PredictAndSaveDto, req: Request) {
-  const anyReq: any = req;
-  const user = anyReq.user;
+  async predictAndSave(dto: PredictAndSaveDto, req: Request) {
+    const anyReq: any = req;
+    const user = anyReq.user;
 
-  const userId = user?.userId || user?.id || user?.sub || user?._id;
+    const userId = user?.userId || user?.id || user?.sub || user?._id;
 
-  if (!userId) {
-    throw new BadRequestException(
-      'User not found in request. Protect this endpoint with AuthGuard and ensure req.user has userId.',
-    );
-  }
-
-  const boat = await this.getValidatedBoatForPrediction(dto.boatId, userId);
-
-  const prediction = await this.predictTrip(dto, userId);
-
-  if (dto.clientRequestId) {
-    const exists = await this.tripModel.findOne({
-      clientRequestId: dto.clientRequestId,
-    });
-
-    if (exists) {
-      return {
-        message: 'Trip already exists for this clientRequestId',
-        trip: exists,
-        prediction,
-        duplicate: true,
-      };
-    }
-  }
-
-  const departureTime = dto.departureTime
-    ? new Date(dto.departureTime)
-    : new Date();
-
-  const returnTime = dto.returnTime
-    ? new Date(dto.returnTime)
-    : new Date(
-        departureTime.getTime() + (dto.fishingHours + 2) * 60 * 60 * 1000,
+    if (!userId) {
+      throw new BadRequestException(
+        'User not found in request. Protect this endpoint with AuthGuard and ensure req.user has userId.',
       );
+    }
 
-  const tripToSave: Partial<Trip> = {
-    userId,
-    boatId: dto.boatId,
-    clientRequestId: dto.clientRequestId,
-    departureTime,
-    returnTime,
+    const boat = await this.getValidatedBoatForPrediction(dto.boatId, userId);
 
-    startLat: dto.startLat,
-    startLon: dto.startLon,
-    endLat: dto.endLat,
-    endLon: dto.endLon,
+    const prediction = await this.predictTrip(dto, userId);
 
-    distanceKm:
-      prediction?.distance?.predictedDistanceKm ??
-      prediction?.distance?.baseDistanceKm ??
-      undefined,
+    if (dto.clientRequestId) {
+      const exists = await this.tripModel.findOne({
+        clientRequestId: dto.clientRequestId,
+      });
 
-    engineHorsePower: boat.engineHorsePower,
-    engineHP: boat.engineHorsePower,
-    boatType: boat.boatType,
+      if (exists) {
+        return {
+          message: 'Trip already exists for this clientRequestId',
+          trip: exists,
+          prediction,
+          duplicate: true,
+        };
+      }
+    }
 
-    windSpeed: dto.windSpeed,
-    waveHeight: dto.waveHeight,
-    fuelPricePerLiter: dto.fuelPrice,
-    marketPrice: dto.marketPrice,
+    const departureTime = dto.departureTime
+      ? new Date(dto.departureTime)
+      : new Date();
 
-    speed: dto.speed,
-    crewCount: dto.crewCount,
-    fishingHours: dto.fishingHours,
-    numberOfDays: dto.numberOfDays,
+    const returnTime = dto.returnTime
+      ? new Date(dto.returnTime)
+      : new Date(
+          departureTime.getTime() + (dto.fishingHours + 2) * 60 * 60 * 1000,
+        );
 
-    predictedFuelLiters: prediction.fuel.adjustedFuelLiters,
-    predictedTotalCost: prediction.cost.predictedTotalCost,
-    predictedOperationalCost: prediction.cost.baseOperationalCost,
-    predictedFuelCost: prediction.cost.fuelCost,
-    predictedCrewCost: prediction.cost.crewCost,
-    predictedExternalCosts: prediction.cost.externalCosts,
-    predictedExternalCostTotal: prediction.cost.externalCostTotal,
-    predictedDistanceKm: prediction.distance.predictedDistanceKm,
+    const tripToSave: Partial<Trip> = {
+      userId,
+      boatId: dto.boatId,
+      clientRequestId: dto.clientRequestId,
+      departureTime,
+      returnTime,
 
-    weatherSeverityIndex: prediction.weather.wsi,
-    economicStressIndex: prediction.economics.fesi,
+      startLat: dto.startLat,
+      startLon: dto.startLon,
+      endLat: dto.endLat,
+      endLon: dto.endLon,
 
-    carbonEmissionKg: prediction.carbon.carbonEmissionKg,
-    carbonPerKgCatch: prediction.carbon.carbonPerKgCatch,
+      distanceKm:
+        prediction?.distance?.predictedDistanceKm ??
+        prediction?.distance?.baseDistanceKm ??
+        undefined,
 
-    profitabilityProbability:
-      prediction.profitability.profitabilityProbability,
-    riskCategory: prediction.profitability.riskCategory,
+      engineHorsePower: boat.engineHorsePower,
+      engineHP: boat.engineHorsePower,
+      boatType: boat.boatType,
 
-    optimizationRecommendations: prediction.recommendations,
+      windSpeed: dto.windSpeed,
+      waveHeight: dto.waveHeight,
+      fuelPricePerLiter: dto.fuelPrice,
+      marketPrice: dto.marketPrice,
 
-    mode: dto.mode ?? 'island',
-    status: 'planned',
-  };
+      speed: dto.speed,
+      crewCount: dto.crewCount,
+      fishingHours: dto.fishingHours,
+      numberOfDays: dto.numberOfDays,
 
-  const trip = await this.tripModel.create(tripToSave);
+      predictedFuelLiters: prediction.fuel.adjustedFuelLiters,
+      predictedTotalCost: prediction.cost.predictedTotalCost,
+      predictedOperationalCost: prediction.cost.baseOperationalCost,
+      predictedFuelCost: prediction.cost.fuelCost,
+      predictedCrewCost: prediction.cost.crewCost,
+      predictedExternalCosts: prediction.cost.externalCosts,
+      predictedExternalCostTotal: prediction.cost.externalCostTotal,
+      predictedDistanceKm: prediction.distance.predictedDistanceKm,
 
-  return { trip, prediction };
-}
+      weatherSeverityIndex: prediction.weather.wsi,
+      economicStressIndex: prediction.economics.fesi,
+
+      carbonEmissionKg: prediction.carbon.carbonEmissionKg,
+      carbonPerKgCatch: prediction.carbon.carbonPerKgCatch,
+
+      profitabilityProbability:
+        prediction.profitability.profitabilityProbability,
+      riskCategory: prediction.profitability.riskCategory,
+
+      optimizationRecommendations: prediction.recommendations,
+
+      mode: dto.mode ?? 'island',
+      status: 'planned',
+    };
+
+    const trip = await this.tripModel.create(tripToSave);
+
+    return { trip, prediction };
+  }
   // =========================
   // OPTIMIZE TRIP
   // =========================
-async optimizeTrip(dto: OptimizeTripDto, userId?: string) {
-  const speedsToTry = dto.speed ? [dto.speed] : [8, 10, 12, 14];
+  async optimizeTrip(dto: OptimizeTripDto, userId?: string) {
+    const speedsToTry = dto.speed ? [dto.speed] : [8, 10, 12, 14];
 
-  const results: Array<{
-    speed: number;
-    score: number;
-    prediction: any;
-  }> = [];
+    const results: Array<{
+      speed: number;
+      score: number;
+      prediction: any;
+    }> = [];
 
-  for (const speed of speedsToTry) {
-    const payload: PredictCostDto = { ...dto, speed };
-    const prediction = await this.predictTrip(payload, userId);
+    for (const speed of speedsToTry) {
+      const payload: PredictCostDto = { ...dto, speed };
+      const prediction = await this.predictTrip(payload, userId);
 
-    results.push({
-      speed,
-      score: prediction.cost.predictedTotalCost,
-      prediction,
-    });
+      results.push({
+        speed,
+        score: prediction.cost.predictedTotalCost,
+        prediction,
+      });
+    }
+
+    return buildOptimizationResult(results);
   }
-
-  return buildOptimizationResult(results);
-}
 
   async createTrip(userId: string, data: any) {
     return this.tripModel.create({

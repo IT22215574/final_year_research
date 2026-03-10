@@ -17,7 +17,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import useTripStore from "@/stores/tripStore";
 import { getMyTrips, getMyStats } from "@/services/tripService";
-import TripPlanner from "./components/TripPlanner";
 import FishTripNavBar from "./components/FishTripNavBar";
 import Animated, { 
   FadeInDown, 
@@ -36,10 +35,9 @@ const { width } = Dimensions.get('window');
 const STAT_CARD_WIDTH = (width - 48) / 2;
 
 export default function FishTripCostDashboard() {
-  const { savedTrips } = useTripStore();
-  const [activeView, setActiveView] = useState<
-    "dashboard" | "planner" | "boats" | "costs"
-  >("dashboard");
+  const [activeView, setActiveView] = useState<"dashboard" | "costs">(
+    "dashboard",
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [greeting, setGreeting] = useState("Good morning");
@@ -159,7 +157,7 @@ export default function FishTripCostDashboard() {
         });
       }
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      console.error("Error loading dashboard data:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -169,7 +167,7 @@ export default function FishTripCostDashboard() {
   useFocusEffect(
     useCallback(() => {
       loadDashboardData(true);
-    }, [])
+    }, []),
   );
 
   const onRefresh = async () => {
@@ -178,19 +176,16 @@ export default function FishTripCostDashboard() {
   };
 
   useEffect(() => {
-    if (activeView === "boats") {
-      router.push("/(root)/(tabs)/boats" as any);
-      setActiveView("dashboard");
-    } else if (activeView === "costs") {
-      router.push("/(root)/(tabs)/costs" as any);
+    if (activeView === "costs") {
+      router.push("/(root)/(tabs)/fishtripcost/costs" as any);
       setActiveView("dashboard");
     }
   }, [activeView]);
 
   const quickActionTiles = [
-    { 
-      id: "planner", 
-      label: "New Trip", 
+    {
+      id: "planner",
+      label: "New Trip",
       icon: "add-circle",
       iconSet: Ionicons,
       color: "#3b82f6",
@@ -198,9 +193,9 @@ export default function FishTripCostDashboard() {
       gradient: ["#3b82f6", "#2563eb"],
       action: () => setActiveView("planner"),
     },
-    { 
-      id: "past-trips", 
-      label: "Past Trips", 
+    {
+      id: "past-trips",
+      label: "Past Trips",
       icon: "list",
       iconSet: Ionicons,
       color: "#10b981",
@@ -208,9 +203,9 @@ export default function FishTripCostDashboard() {
       gradient: ["#10b981", "#059669"],
       action: () => router.push("/fishtripcost/past-trips" as any),
     },
-    { 
-      id: "boats", 
-      label: "My Boats", 
+    {
+      id: "boats",
+      label: "My Boats",
       icon: "boat",
       iconSet: Ionicons,
       color: "#8b5cf6",
@@ -228,9 +223,9 @@ export default function FishTripCostDashboard() {
       gradient: ["#f59e0b", "#d97706"],
       action: () => router.push("/fishtripcost/learning-summary" as any),
     },
-    { 
-      id: "history", 
-      label: "Analytics", 
+    {
+      id: "history",
+      label: "Analytics",
       icon: "stats-chart",
       iconSet: Ionicons,
       color: "#06b6d4",
@@ -238,9 +233,9 @@ export default function FishTripCostDashboard() {
       gradient: ["#06b6d4", "#0891b2"],
       action: () => router.push("/fishtripcost/history" as any),
     },
-    { 
-      id: "costs", 
-      label: "Costs", 
+    {
+      id: "costs",
+      label: "Costs",
       icon: "cash",
       iconSet: Ionicons,
       color: "#ef4444",
@@ -251,9 +246,9 @@ export default function FishTripCostDashboard() {
   ];
 
   const statCards = [
-    { 
-      label: "Total Trips", 
-      value: stats.totalTrips, 
+    {
+      label: "Total Trips",
+      value: stats.totalTrips,
       icon: "navigate",
       iconSet: Ionicons,
       color: "#3b82f6",
@@ -261,9 +256,9 @@ export default function FishTripCostDashboard() {
       suffix: "",
       format: "number",
     },
-    { 
-      label: "Completed", 
-      value: stats.completedTrips, 
+    {
+      label: "Completed",
+      value: stats.completedTrips,
       icon: "checkmark-circle",
       iconSet: Ionicons,
       color: "#10b981",
@@ -304,9 +299,6 @@ export default function FishTripCostDashboard() {
 
   const renderContent = () => {
     switch (activeView) {
-      case "planner":
-        return <TripPlanner />;
-      case "boats":
       case "costs":
         return null;
       case "dashboard":

@@ -33,7 +33,9 @@ type TabName =
   | "profile" 
   | "Update_profile"
   | "SpeciesDetection"
-  | "QualityGrading";
+  | "QualityGrading"
+  | "GradingHistory"
+  | "GradingDetail";
 
 interface NavItemConfig {
   tabName: TabName;
@@ -362,42 +364,98 @@ const TabsLayout = () => {
                     </TouchableOpacity>
                   )}
                 </View>
-              ),
-              headerRight: () => (
-                <View>
-                  <TouchableOpacity
-                    style={{ marginRight: moderateScale(20), marginTop: 4 }}
-                    onPress={() => router.push("/Notifications")}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Image
-                      source={icons.notification}
-                      style={{
-                        width: scale(28),
-                        height: scale(28),
-                        tintColor: "#FFFFFF",
-                      }}
-                      resizeMode="contain"
-                    />
-                    {unreadCount > 0 && (
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>
-                          {unreadCount > 99 ? "99+" : unreadCount}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              ),
-              // Add bottom padding to content to account for custom tab bar
-              sceneStyle: {
-                paddingBottom: isDesktop ? 0 : bottomBarHeight,
-              },
-              tabBarShowLabel: false,
-              tabBarStyle: {
-                display: "none",
-              },
-            }}
+              )}
+            </TouchableOpacity>
+          ),
+          tabBarShowLabel: false,
+          tabBarStyle: {
+            display: "none",
+          },
+        }}
+      >
+        {/* ... all your Tabs.Screen components remain the same ... */}
+        <Tabs.Screen
+          name="home"
+          options={{
+            title: "",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+
+        <Tabs.Screen
+          name="Market"
+          options={{
+            title: "",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="Quality"
+          options={{
+            title: "",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="Notifications"
+          options={{
+            title: "",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "Profile",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+
+        <Tabs.Screen
+          name="fishtripcost"
+          options={{
+            title: "Fish Trip Cost",
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: "#0057FF",
+            },
+          }}
+        />
+      </Tabs>
+
+      {/* Sidebar and Overlay */}
+      <Sidebar
+        isVisible={sidebarVisible}
+        onClose={() => setSidebarVisible(false)}
+      />
+      <Overlay
+        isVisible={sidebarVisible}
+        onClose={() => setSidebarVisible(false)}
+      />
+
+      {/* Custom Bottom Navigation - This remains exactly the same */}
+      <View style={styles.customTabBar} className="rounded-t-3xl shadow-lg">
+        {/* Navigation Items - This remains exactly the same */}
+        <View style={styles.navItemsContainer}>
+          {/* Home */}
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => handleTabPress("home", "/(root)/(tabs)/home")}
           >
             <Tabs.Screen
               name="home"
@@ -450,6 +508,18 @@ const TabsLayout = () => {
               options={{
                 title: "Quality Grading",
                 headerTitleAlign: "center",
+              }}
+            />
+            <Tabs.Screen
+              name="GradingHistory"
+              options={{
+                headerShown: true,
+              }}
+            />
+            <Tabs.Screen
+              name="GradingDetail"
+              options={{
+                headerShown: true,
               }}
             />
           </Tabs>

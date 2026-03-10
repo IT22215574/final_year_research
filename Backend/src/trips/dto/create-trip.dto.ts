@@ -34,6 +34,11 @@ class PredictedExternalCostItemDto {
 }
 
 export class CreateTripDto {
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  tripDate?: Date;
+
   @IsNotEmpty()
   @Type(() => Date)
   @IsDate()

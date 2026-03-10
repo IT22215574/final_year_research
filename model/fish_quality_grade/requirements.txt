@@ -1,7 +1,19 @@
-fastapi==0.109.0
-uvicorn==0.27.0
-numpy==1.26.3
-onnxruntime==1.17.0
-Pillow==10.2.0
-pillow-heif==0.15.0
-python-multipart==0.0.6
+# fish_quality_grade/requirements.txt
+# Install with:  pip install -r requirements.txt
+
+# ── Web framework ──────────────────────────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9        # required for UploadFile
+
+# ── ML / inference ─────────────────────────────────────────────────────────────
+onnxruntime>=1.17.0
+numpy>=1.24.0
+
+# ── Image processing ───────────────────────────────────────────────────────────
+Pillow>=10.0.0
+pillow-heif>=0.16.0            # HEIC / HEIF support (iPhone photos)
+opencv-python-headless>=4.9.0  # CV pipeline for /measure endpoint (no GUI deps)
+
+# ── Utilities ──────────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0           # optional .env support

@@ -1,36 +1,13 @@
 // mobile/stores/tripStore.ts
 import { create } from "zustand";
 import { Trip, TripStats } from "@/types/type";
+import { DatciePredictBody } from "@/services/tripService";
 
 // ==============================
 // DATCIE Types (Frontend-friendly)
 // ==============================
 
 export type DatcieMode = "island" | "international";
-
-export type DatciePredictBody = {
-  boatId: string;
-
-  startLat: number;
-  startLon: number;
-  endLat: number;
-  endLon: number;
-
-  windSpeed: number;
-  waveHeight: number;
-
-  fuelPrice: number;
-
-  expectedCatch: number;
-  marketPrice: number;
-
-  fishingHours: number;
-  numberOfDays: number;
-  crewCount: number;
-
-  speed?: number;
-  mode?: DatcieMode;
-};
 
 export type DatcieLogActualBody = {
   actualFuelLiters: number; // ✅ correct backend field
@@ -113,7 +90,7 @@ const useTripStore = create<TripState>((set) => ({
   updateTrip: (id, updatedTrip) =>
     set((state) => ({
       trips: state.trips.map((t: any) =>
-        String(t?._id) === String(id) ? updatedTrip : t
+        String(t?._id) === String(id) ? updatedTrip : t,
       ),
     })),
 

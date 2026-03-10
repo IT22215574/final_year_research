@@ -26,6 +26,9 @@ export class Trip {
   // =========================
   // Trip time
   // =========================
+  @Prop()
+  tripDate?: Date;
+
   @Prop({ required: true })
   departureTime: Date;
 

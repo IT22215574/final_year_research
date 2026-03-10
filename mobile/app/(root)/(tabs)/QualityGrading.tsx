@@ -23,19 +23,30 @@ import {
   runFishPipeline,
 } from "@/utils/fish_quality_utils/runFishPipeline";
 import type { PredictionResult } from "@/utils/fish_quality_utils/fishTypes";
+import FishWeightCard from "@/components/FishWeightCard";
+import { useGradingRecordStore } from "@/stores/gradingRecordStore";
 
 /** Species that support quality grading (match labels from the model exactly) */
 const GRADABLE_SPECIES = ["tuna", "makerel"];
 
 // ── Fish name dictionary (model label → display names) ──────────────────────
-const FISH_NAMES: Record<string, { english: string; sinhala: string; romanized: string }> = {
-  tuna:    { english: "Skipjack Tuna", sinhala: "බලයා", romanized: "Balaya"  },
-  makerel: { english: "Shortfin Scad", sinhala: "ලින්නා",  romanized: "Linna"   },
+const FISH_NAMES: Record<
+  string,
+  { english: string; sinhala: string; romanized: string }
+> = {
+  tuna: { english: "Skipjack Tuna", sinhala: "බලයා", romanized: "Balaya" },
+  makerel: { english: "Shortfin Scad", sinhala: "ලින්නා", romanized: "Linna" },
 };
 
 const getFishName = (label?: string | null) => {
   const key = (label ?? "").toLowerCase().trim();
-  return FISH_NAMES[key] ?? { english: label ?? "Unknown", sinhala: "", romanized: "" };
+  return (
+    FISH_NAMES[key] ?? {
+      english: label ?? "Unknown",
+      sinhala: "",
+      romanized: "",
+    }
+  );
 };
 
 const gradeColor = (grade?: string | null) => {
@@ -155,7 +166,7 @@ export default function QualityGrading() {
 
       // ── Pair mismatch check ──────────────────────────────────────────────
       if (r.isFish && r.pairValidation && !r.pairValidation.matched) {
-        const leftDisplay  = getFishName(r.pairValidation.leftLabel).english;
+        const leftDisplay = getFishName(r.pairValidation.leftLabel).english;
         const rightDisplay = getFishName(r.pairValidation.rightLabel).english;
         setResult(r);
         Alert.alert(
@@ -189,6 +200,28 @@ export default function QualityGrading() {
     }
   };
 
+  const { save: saveRecord, savingRecord } = useGradingRecordStore();
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const handleSaveResult = useCallback(async () => {
+    if (!result || !isGradable) return;
+    try {
+      const names = getFishName(result.species);
+      await saveRecord({
+        fishSpecies: result.species ?? undefined,
+        fishName: names.english,
+        predictedGrade: result.grade ?? undefined,
+        gradeConfidence: result.gradeConfidence,
+        speciesConfidence: result.speciesConfidence,
+        imageUris: [leftImage, rightImage].filter(Boolean) as string[],
+      });
+      Alert.alert("Saved!", "Grading result saved to your history.");
+      setSaveSuccess(true);
+    } catch (e: any) {
+      Alert.alert("Save Failed", e?.message ?? "Could not save result.");
+    }
+  }, [result, leftImage, rightImage, saveRecord]);
+
   const reset = () => {
     setLeftImage(null);
     setRightImage(null);
@@ -196,6 +229,7 @@ export default function QualityGrading() {
     setRightName("No image selected");
     setResult(null);
     setPredError(null);
+    setSaveSuccess(false);
   };
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -230,13 +264,14 @@ export default function QualityGrading() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={s.header}
-      >
-
-      </LinearGradient>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.push("/Quality")}>
+      ></LinearGradient>
+      <View className="p-4">
+        <TouchableOpacity
+          style={s.backBtn}
+          onPress={() => router.push("/Quality")}
+        >
           <MaterialIcons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
-
         <View style={s.statusContainer}>
           <View style={[s.statusDot, { backgroundColor: apiStatusColor }]} />
           <Text style={[s.statusText, { color: apiStatusColor }]}>
@@ -254,6 +289,8 @@ export default function QualityGrading() {
         {apiStatus === "error" && apiError && (
           <Text style={s.apiErrText}>{apiError}</Text>
         )}
+      </View>
+
       <ScrollView
         contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
@@ -264,7 +301,6 @@ export default function QualityGrading() {
           />
         }
       >
-        
         {/* ── Supported species notice ── */}
         <View style={s.noticeBox}>
           <MaterialIcons name="info-outline" size={16} color="#27ae60" />
@@ -388,7 +424,11 @@ export default function QualityGrading() {
             {/* Pair mismatch banner */}
             {result.pairValidation && !result.pairValidation.matched && (
               <View style={s.mismatchBanner}>
-                <MaterialIcons name="compare-arrows" size={24} color="#e74c3c" />
+                <MaterialIcons
+                  name="compare-arrows"
+                  size={24}
+                  color="#e74c3c"
+                />
                 <View style={{ flex: 1 }}>
                   <Text style={s.mismatchTitle}>Images Don't Match!</Text>
                   <Text style={s.mismatchRow}>
@@ -440,7 +480,10 @@ export default function QualityGrading() {
               <>
                 {/* Species banner */}
                 <View style={s.speciesBanner}>
-                  <LinearGradient colors={["#27ae60", "#2ecc71"]} style={s.speciesBannerIcon}>
+                  <LinearGradient
+                    colors={["#27ae60", "#2ecc71"]}
+                    style={s.speciesBannerIcon}
+                  >
                     <MaterialIcons name="set-meal" size={28} color="#fff" />
                   </LinearGradient>
                   <View style={s.speciesBannerText}>
@@ -453,7 +496,8 @@ export default function QualityGrading() {
                           {getFishName(result.species).sinhala}
                         </Text>
                         <Text style={s.speciesBannerRomanized}>
-                          {" · "}{getFishName(result.species).romanized}
+                          {" · "}
+                          {getFishName(result.species).romanized}
                         </Text>
                       </View>
                     ) : null}
@@ -514,9 +558,49 @@ export default function QualityGrading() {
                   />
                   <Text style={s.detailsBtnText}>View Stage Details</Text>
                 </TouchableOpacity>
+
+                {/* Save + History row */}
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+                  <TouchableOpacity
+                    style={[s.detailsBtn, { flex: 1 }]}
+                    onPress={handleSaveResult}
+                    disabled={savingRecord || saveSuccess}
+                  >
+                    {savingRecord ? (
+                      <ActivityIndicator size="small" color="#27ae60" />
+                    ) : (
+                      <>
+                        <MaterialIcons
+                          name={saveSuccess ? "check-circle" : "save"}
+                          size={16}
+                          color="#27ae60"
+                        />
+                        <Text style={s.detailsBtnText}>
+                          {saveSuccess ? "Saved!" : "Save Result"}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.detailsBtn, { flex: 1 }]}
+                    onPress={() => router.push("/(root)/(tabs)/GradingHistory")}
+                  >
+                    <MaterialIcons name="history" size={16} color="#27ae60" />
+                    <Text style={s.detailsBtnText}>View History</Text>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
           </View>
+        )}
+
+        {/* ── Weight estimation ── */}
+        {isGradable && result?.species && (
+          <FishWeightCard
+            modelLabel={result.species}
+            leftImageUri={leftImage}
+            rightImageUri={rightImage}
+          />
         )}
 
         {/* ── Empty state ── */}
@@ -603,6 +687,8 @@ const s = StyleSheet.create({
     left: 20,
     top: 18,
     zIndex: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.6)",
   },
   headerContent: {
     alignItems: "center",
@@ -763,14 +849,44 @@ const s = StyleSheet.create({
   },
 
   // Species banner (grade screen)
-  speciesBanner: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#edfbf0", borderRadius: 14, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: "#a8e6c1" },
-  speciesBannerIcon: { width: 52, height: 52, borderRadius: 14, justifyContent: "center", alignItems: "center", flexShrink: 0 },
+  speciesBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#edfbf0",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#a8e6c1",
+  },
+  speciesBannerIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
+  },
   speciesBannerText: { flex: 1 },
   speciesBannerEnglish: { fontSize: 16, fontWeight: "800", color: "#0f172a" },
-  speciesBannerSinhalaRow: { flexDirection: "row", alignItems: "center", marginTop: 3 },
+  speciesBannerSinhalaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 3,
+  },
   speciesBannerSinhala: { fontSize: 20, fontWeight: "700", color: "#27ae60" },
-  speciesBannerRomanized: { fontSize: 12, color: "#64748b", fontStyle: "italic" },
-  speciesBannerConfBadge: { backgroundColor: "#d4efdf", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
+  speciesBannerRomanized: {
+    fontSize: 12,
+    color: "#64748b",
+    fontStyle: "italic",
+  },
+  speciesBannerConfBadge: {
+    backgroundColor: "#d4efdf",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
   speciesBannerConfText: { fontSize: 13, fontWeight: "700", color: "#1a6636" },
 
   gradeCenter: { alignItems: "center", paddingVertical: 12, gap: 6 },
@@ -796,11 +912,31 @@ const s = StyleSheet.create({
   },
   warnText: { color: "#d68910", fontSize: 12 },
 
-  mismatchBanner: { flexDirection: "row", alignItems: "flex-start", gap: 10, backgroundColor: "#fff5f5", borderRadius: 12, padding: 14, marginBottom: 14, borderWidth: 1.5, borderColor: "#fca5a5" },
-  mismatchTitle: { fontSize: 14, fontWeight: "800", color: "#e74c3c", marginBottom: 4 },
+  mismatchBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    backgroundColor: "#fff5f5",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1.5,
+    borderColor: "#fca5a5",
+  },
+  mismatchTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#e74c3c",
+    marginBottom: 4,
+  },
   mismatchRow: { fontSize: 13, color: "#374151", marginBottom: 1 },
   mismatchSide: { fontWeight: "700", color: "#0f172a" },
-  mismatchHint: { fontSize: 11, color: "#9ca3af", marginTop: 6, fontStyle: "italic" },
+  mismatchHint: {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginTop: 6,
+    fontStyle: "italic",
+  },
 
   detailsBtn: {
     flexDirection: "row",

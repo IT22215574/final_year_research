@@ -15,12 +15,20 @@ from datetime import datetime
 import json
 import base64
 
+# Configure logging first — must be set up before any module-level log calls
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Register HEIC/HEIF opener
 register_heif_opener()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Fish measurement service (OpenCV pipeline) — optional dependency
+try:
+    from services.fish_measurement import measure_fish
+    MEASUREMENT_AVAILABLE = True
+except ImportError as _cv_err:
+    logger.warning(f"fish_measurement service unavailable (opencv not installed?): {_cv_err}")
+    MEASUREMENT_AVAILABLE = False
 
 # --------------------------------------------------
 # CONFIG
@@ -680,6 +688,108 @@ async def get_stats():
             "grade_classifier": GRADE_CLASSIFIER_ONNX
         }
     }
+
+
+# ── /measure endpoint ──────────────────────────────────────────────────────────
+
+@app.post("/measure")
+async def measure(
+    image: UploadFile = File(..., description="Fish photo. Include a ruler for accurate results."),
+    species: Optional[str] = Query(
+        None,
+        description=(
+            "Model label for weight estimation: "
+            "'tuna' (Skipjack Tuna) or 'makerel' (Indian Scad). "
+            "Omit to skip weight calculation."
+        ),
+    ),
+    ruler_real_cm: float = Query(
+        30.0,
+        ge=1.0,
+        le=200.0,
+        description="Real-world length of the reference ruler in centimetres (default 30 cm).",
+    ),
+) -> Dict:
+    """
+    Measure fish length, width, and (optionally) weight from a single image.
+
+    The image should contain:
+    • The fish, ideally photographed from the side on a flat surface.
+    • A reference ruler placed beside the fish for accurate pixel→cm calibration.
+      If no ruler is detected the API falls back to an image-width estimate
+      (confidence will be lower).
+
+    Returns
+    -------
+    ```json
+    {
+      "length_cm":          48.20,
+      "width_cm":            8.10,
+      "weight_kg":           2.41,
+      "pixel_length":       920.0,
+      "pixel_width":        155.3,
+      "ruler_pixel_length": 580.0,
+      "ruler_strategy":     "colour_segmentation",
+      "confidence":          0.85,
+      "warnings":           []
+    }
+    ```
+    `weight_kg` is `null` when `species` is not supplied or not supported.
+    """
+    if not MEASUREMENT_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Fish measurement service is unavailable. "
+                "Install opencv-python-headless and restart the server."
+            ),
+        )
+
+    # Validate content type
+    content_type = (image.content_type or "").lower()
+    allowed_types = {"image/jpeg", "image/jpg", "image/png", "image/webp",
+                     "image/heic", "image/heif", "image/bmp", "image/tiff"}
+    if content_type and content_type not in allowed_types and not content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported content type '{content_type}'. Please upload an image file."
+        )
+
+    try:
+        image_data = await image.read()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to read uploaded file: {exc}")
+    finally:
+        await image.close()
+
+    if not image_data:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    try:
+        start = time.time()
+        result = measure_fish(
+            image_data=image_data,
+            species=species,
+            ruler_real_cm=ruler_real_cm,
+        )
+        elapsed = round(time.time() - start, 3)
+
+        response = result.to_dict()
+        response["processing_time"] = elapsed
+        response["species"] = species
+        response["ruler_real_cm"] = ruler_real_cm
+
+        logger.info(
+            f"[/measure] length={result.length_cm:.2f} cm, "
+            f"weight={result.weight_kg} kg, "
+            f"confidence={result.confidence}, "
+            f"time={elapsed}s"
+        )
+        return response
+
+    except Exception as exc:
+        logger.error(f"[/measure] Unexpected error: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Measurement failed: {exc}")
 
 
 if __name__ == "__main__":

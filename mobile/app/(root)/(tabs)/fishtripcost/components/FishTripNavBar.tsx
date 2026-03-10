@@ -11,41 +11,41 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { 
-    id: "dashboard", 
-    label: "Dashboard", 
-    icon: "home", 
-    route: "/fishtripcost" 
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    icon: "home",
+    route: "/fishtripcost",
   },
-  { 
-    id: "planner", 
-    label: "New Trip", 
-    icon: "add-circle", 
-    route: "/fishtripcost/planner" 
+  {
+    id: "planner",
+    label: "New Trip",
+    icon: "add-circle",
+    route: "/fishtripcost/planner",
   },
-  { 
-    id: "past-trips", 
-    label: "Past Trips", 
-    icon: "list", 
-    route: "/fishtripcost/past-trips" 
+  {
+    id: "past-trips",
+    label: "Past Trips",
+    icon: "list",
+    route: "/fishtripcost/past-trips",
   },
-  { 
-    id: "boats", 
-    label: "Boats", 
-    icon: "boat", 
-    route: "/(root)/(tabs)/boats" 
+  {
+    id: "boats",
+    label: "Boats",
+    icon: "boat",
+    route: "/fishtripcost/boats",
   },
-  { 
-    id: "learning", 
-    label: "Learning", 
-    icon: "analytics", 
-    route: "/fishtripcost/learning-summary" 
+  {
+    id: "learning",
+    label: "Learning",
+    icon: "analytics",
+    route: "/fishtripcost/learning-summary",
   },
-  { 
-    id: "history", 
-    label: "Analytics", 
-    icon: "stats-chart", 
-    route: "/fishtripcost/history" 
+  {
+    id: "history",
+    label: "Analytics",
+    icon: "stats-chart",
+    route: "/fishtripcost/history",
   },
 ];
 
@@ -56,7 +56,10 @@ export default function FishTripNavBar() {
   const isActive = (route: string) => {
     // Check if current path matches the route
     if (route === "/fishtripcost") {
-      return pathname === "/fishtripcost" || pathname === "/(root)/(tabs)/fishtripcost";
+      return (
+        pathname === "/fishtripcost" ||
+        pathname === "/(root)/(tabs)/fishtripcost"
+      );
     }
     return pathname.includes(route.replace("/(root)/(tabs)", ""));
   };
@@ -66,7 +69,7 @@ export default function FishTripNavBar() {
   };
 
   return (
-    <View 
+    <View
       className="bg-white border-b border-slate-200"
       style={{
         shadowColor: "#000",
@@ -76,8 +79,8 @@ export default function FishTripNavBar() {
         elevation: 2,
       }}
     >
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10 }}
       >
@@ -98,10 +101,10 @@ export default function FishTripNavBar() {
                 elevation: active ? 2 : 0,
               }}
             >
-              <Ionicons 
-                name={item.icon} 
-                size={18} 
-                color={active ? "#ffffff" : "#64748b"} 
+              <Ionicons
+                name={item.icon}
+                size={18}
+                color={active ? "#ffffff" : "#64748b"}
               />
               <Text
                 className={`ml-2 font-semibold text-sm ${
@@ -117,4 +120,3 @@ export default function FishTripNavBar() {
     </View>
   );
 }
-
