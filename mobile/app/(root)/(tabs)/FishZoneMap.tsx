@@ -31,6 +31,7 @@ interface FishZone {
   water_v: number;
   fish_zone: number;
   fish_probability: number;
+  bathymetry: number;
 }
 
 interface FishZoneResponse {
@@ -543,6 +544,13 @@ export default function FishZoneMapScreen() {
                 <Text style={styles.detailLabel}>Current (N/S):</Text>
                 <Text style={styles.detailValue}>
                   {selectedZone.water_v.toFixed(3)} m/s
+                </Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Water Depth:</Text>
+                <Text style={styles.detailValue}>
+                  {selectedZone.bathymetry > 0 ? `${selectedZone.bathymetry.toFixed(1)}m` : 'Unknown'}
                 </Text>
               </View>
 

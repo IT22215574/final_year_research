@@ -12,6 +12,7 @@ export interface FishZone {
   water_v: number;
   fish_zone: number;
   fish_probability: number;
+  bathymetry: number;
 }
 
 export interface FishZoneGeoJSON {
@@ -88,6 +89,7 @@ export class FishZonesService {
             water_v: parseFloat(data.water_v),
             fish_zone: parseInt(data.fish_zone),
             fish_probability: parseFloat(data.fish_probability),
+            bathymetry: parseFloat(data.bathymetry || '0'),
           });
         })
         .on('end', () => resolve(results))
@@ -176,6 +178,7 @@ export class FishZonesService {
           chlorophyll: zone.chlor_a,
           current_u: zone.water_u,
           current_v: zone.water_v,
+          bathymetry: zone.bathymetry,
         },
       })),
     };

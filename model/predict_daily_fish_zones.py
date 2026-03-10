@@ -151,6 +151,20 @@ def load_latest_currents() -> Optional[xr.Dataset]:
         return None
 
 
+def load_bathymetry() -> Optional[xr.Dataset]:
+    """Load bathymetry data."""
+    if not BATHYMETRY_PATH.exists():
+        logger.warning(f"Bathymetry data not found at {BATHYMETRY_PATH}")
+        return None
+    
+    logger.info(f"Loading bathymetry data: {BATHYMETRY_PATH.name}")
+    try:
+        return xr.open_dataset(BATHYMETRY_PATH)
+    except Exception as e:
+        logger.error(f"Failed to load bathymetry data: {e}")
+        return None
+
+
 def load_model() -> Optional[dict]:
     """Load the trained Random Forest model."""
     if not MODEL_PATH.exists():
@@ -168,7 +182,7 @@ def load_model() -> Optional[dict]:
         else:
             return {
                 "pipeline": artifact,
-                "feature_columns": ["lat", "lon", "sst", "chlor_a", "water_u", "water_v"]
+                "feature_columns": ["lat", "lon", "sst", "chlor_a", "water_u", "water_v", "depth"]
             }
     except Exception as e:
         logger.error(f"Failed to load model: {e}")
@@ -239,6 +253,7 @@ def predict_fish_zones(grid_df: pd.DataFrame,
                       sst_ds: xr.Dataset, 
                       chlor_ds: xr.Dataset, 
                       currents_ds: xr.Dataset, 
+                      bathymetry_ds: Optional[xr.Dataset],
                       model_artifact: dict) -> pd.DataFrame:
     """Predict fish zones for all grid points."""
     
@@ -250,11 +265,21 @@ def predict_fish_zones(grid_df: pd.DataFrame,
     u_var = 'uo' if 'uo' in currents_ds else 'water_u'
     v_var = 'vo' if 'vo' in currents_ds else 'water_v'
     
+    # Find bathymetry variable name if available
+    bathy_var = None
+    if bathymetry_ds is not None:
+        for var in ['deptho', 'elevation', 'bathymetry', 'depth']:
+            if var in bathymetry_ds:
+                bathy_var = var
+                logger.info(f"Found bathymetry variable: {bathy_var}")
+                break
+    
     # Extract data for each point
     sst_values = []
     chlor_values = []
     u_values = []
     v_values = []
+    bathy_values = []
     
     valid_indices = []
     
@@ -266,6 +291,22 @@ def predict_fish_zones(grid_df: pd.DataFrame,
         u = extract_value_at_point(currents_ds, u_var, lat, lon)
         v = extract_value_at_point(currents_ds, v_var, lat, lon)
         
+        # Extract bathymetry if available
+        bathy = None
+        if bathymetry_ds is not None and bathy_var is not None:
+            bathy = extract_value_at_point(bathymetry_ds, bathy_var, lat, lon)
+            # Convert elevation to depth (GEBCO style: negative values are ocean depth)
+            # For 'deptho', values are already positive depths
+            if bathy is not None:
+                if bathy_var == 'elevation' and bathy < 0:
+                    bathy = abs(bathy)  # Convert negative elevation to positive depth
+                elif bathy_var == 'deptho':
+                    # deptho is already positive depth, keep as is
+                    pass
+                # Ensure depth is positive and reasonable (0-6000m)
+                if bathy < 0 or bathy > 6000:
+                    bathy = None
+        
         # Only include points with all valid data
         if all(val is not None for val in [sst, chlor, u, v]):
             valid_indices.append(idx)
@@ -273,6 +314,7 @@ def predict_fish_zones(grid_df: pd.DataFrame,
             chlor_values.append(chlor)
             u_values.append(u)
             v_values.append(v)
+            bathy_values.append(bathy if bathy is not None else 0.0)
     
     # Create feature dataframe
     valid_grid = grid_df.loc[valid_indices].copy()
@@ -280,6 +322,7 @@ def predict_fish_zones(grid_df: pd.DataFrame,
     valid_grid['chlor_a'] = chlor_values
     valid_grid['water_u'] = u_values
     valid_grid['water_v'] = v_values
+    valid_grid['depth'] = bathy_values  # Renamed from 'bathymetry' to 'depth' to match model training
     
     logger.info(f"Valid data points: {len(valid_grid)} / {len(grid_df)}")
     
@@ -296,6 +339,9 @@ def predict_fish_zones(grid_df: pd.DataFrame,
     
     valid_grid['fish_zone'] = predictions
     valid_grid['fish_probability'] = probabilities
+    
+    # Add bathymetry column for output (same as depth)
+    valid_grid['bathymetry'] = valid_grid['depth']
     
     return valid_grid
 
@@ -326,7 +372,8 @@ def save_predictions_geojson(predictions_df: pd.DataFrame, output_path: Path):
                 "sst": float(row['sst']),
                 "chlorophyll": float(row['chlor_a']),
                 "current_u": float(row['water_u']),
-                "current_v": float(row['water_v'])
+                "current_v": float(row['water_v']),
+                "bathymetry": float(row['bathymetry'])
             }
         }
         features.append(feature)
@@ -413,6 +460,7 @@ Environmental Data Ranges:
 - Chlorophyll: {predictions_df['chlor_a'].min():.4f} to {predictions_df['chlor_a'].max():.4f} mg/m³
 - Ocean Current U: {predictions_df['water_u'].min():.3f} to {predictions_df['water_u'].max():.3f} m/s
 - Ocean Current V: {predictions_df['water_v'].min():.3f} to {predictions_df['water_v'].max():.3f} m/s
+- Water Depth: {predictions_df['depth'].min():.1f}m to {predictions_df['depth'].max():.1f}m
 {'='*50}
 """
     
@@ -438,16 +486,20 @@ def main():
     sst_ds = load_latest_sst()
     chlor_ds = load_latest_chlorophyll()
     currents_ds = load_latest_currents()
+    bathymetry_ds = load_bathymetry()
     
     if any(ds is None for ds in [sst_ds, chlor_ds, currents_ds]):
         logger.error("Missing environmental data. Ensure all data is downloaded first.")
         return 1
     
+    if bathymetry_ds is None:
+        logger.warning("Bathymetry data not available - depths will be set to 0")
+    
     # Create prediction grid
     grid_df = create_prediction_grid()
     
     # Make predictions
-    predictions_df = predict_fish_zones(grid_df, sst_ds, chlor_ds, currents_ds, model_artifact)
+    predictions_df = predict_fish_zones(grid_df, sst_ds, chlor_ds, currents_ds, bathymetry_ds, model_artifact)
     
     if len(predictions_df) == 0:
         logger.error("No valid predictions generated. Check data quality.")
