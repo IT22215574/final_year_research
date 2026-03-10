@@ -372,10 +372,6 @@ const TabsLayout = () => {
                   )}
                 </View>
               ),
-              tabBarShowLabel: false,
-              tabBarStyle: {
-                display: "none",
-              },
             }}
           >
             <Tabs.Screen
