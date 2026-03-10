@@ -1191,13 +1191,14 @@ def get_market_alerts(date: Optional[str] = None):
     today = datetime.fromisoformat(date) if date else datetime.now()
     alerts: list[dict] = []
 
-    # ── 1. Weather check for today & next 2 days ─────────────────────────────
-    for offset in range(3):
+    # ── 1. Weather check for today & next 6 days ─────────────────────────────
+    for offset in range(7):
         check_date = today + timedelta(days=offset)
         w = _get_weather_row(check_date)
         wind = w["wind_speed_max"]
         rain = w["rainfall_sum"]
         label = "Today" if offset == 0 else "Tomorrow" if offset == 1 else f"In {offset} days"
+        age_label = "Today" if offset == 0 else "Tomorrow" if offset == 1 else "This week"
         if wind > 35 or rain > 40:
             alerts.append({
                 "type":        "danger",
@@ -1205,7 +1206,7 @@ def get_market_alerts(date: Optional[str] = None):
                 "color":       "#ef4444",
                 "title":       f"Storm Warning — {label}",
                 "description": f"Wind {wind:.0f} km/h, Rain {rain:.0f} mm — Fishing boats may stay ashore",
-                "age":         label,
+                "age":         age_label,
             })
         elif wind > 22 or rain > 15:
             alerts.append({
@@ -1214,7 +1215,7 @@ def get_market_alerts(date: Optional[str] = None):
                 "color":       "#f59e0b",
                 "title":       f"Rough Weather — {label}",
                 "description": f"Wind {wind:.0f} km/h, Rain {rain:.0f} mm — Supply may be reduced",
-                "age":         label,
+                "age":         age_label,
             })
 
     # ── 2. Fuel price alert ───────────────────────────────────────────────────
@@ -1322,14 +1323,89 @@ def get_market_alerts(date: Optional[str] = None):
     except Exception:
         pass
 
-    # Deduplicate by title (keep first occurrence), cap at 6
+    # ── 6. Price prediction alerts for top traded fish ────────────────────────
+    TOP_FISH = [
+        (5,  "Skipjack Tuna"),
+        (6,  "Yellowfin Tuna"),
+        (7,  "Sardinella"),
+        (9,  "Herrings"),
+        (10, "Indian Mackerel"),
+    ]
+    try:
+        tomorrow = today + timedelta(days=1)
+        three_days = today + timedelta(days=3)
+        for fid, fname in TOP_FISH:
+            fish_rows = fish_df[fish_df["fish_id"] == fid]
+            if fish_rows.empty:
+                continue
+            sinhala = fish_rows.iloc[0]["sinhala_name"]
+            try:
+                enc = int(le_sinhala.transform([sinhala])[0])
+            except Exception:
+                continue
+            price_today = _predict_single_day(today, enc)
+            price_3d    = _predict_single_day(three_days, enc)
+            if price_today <= 0:
+                continue
+            pct_change = (price_3d - price_today) / price_today * 100
+            if pct_change >= 7:
+                alerts.append({
+                    "type":        "warning",
+                    "icon":        "trending-up-outline",
+                    "color":       "#ef4444",
+                    "title":       f"{fname} Price Rising (+{pct_change:.1f}%)",
+                    "description": f"Model forecasts Rs. {price_today:.0f} → Rs. {price_3d:.0f}/kg in 3 days — consider buying early",
+                    "age":         "Forecast",
+                })
+            elif pct_change >= 4:
+                alerts.append({
+                    "type":        "info",
+                    "icon":        "arrow-up-circle-outline",
+                    "color":       "#f59e0b",
+                    "title":       f"{fname} Slight Price Rise (+{pct_change:.1f}%)",
+                    "description": f"Predicted Rs. {price_today:.0f} → Rs. {price_3d:.0f}/kg over next 3 days",
+                    "age":         "Forecast",
+                })
+            elif pct_change <= -7:
+                alerts.append({
+                    "type":        "success",
+                    "icon":        "trending-down-outline",
+                    "color":       "#10b981",
+                    "title":       f"{fname} Price Dropping ({pct_change:.1f}%)",
+                    "description": f"Model forecasts Rs. {price_today:.0f} → Rs. {price_3d:.0f}/kg — good time to stock up",
+                    "age":         "Forecast",
+                })
+            elif pct_change <= -4:
+                alerts.append({
+                    "type":        "info",
+                    "icon":        "arrow-down-circle-outline",
+                    "color":       "#6366f1",
+                    "title":       f"{fname} Slight Price Drop ({pct_change:.1f}%)",
+                    "description": f"Predicted Rs. {price_today:.0f} → Rs. {price_3d:.0f}/kg over next 3 days",
+                    "age":         "Forecast",
+                })
+            else:
+                # Stable price — add as info alert once (only the first stable one)
+                if not any(a.get("title", "").startswith("Stable Prices") for a in alerts):
+                    alerts.append({
+                        "type":        "success",
+                        "icon":        "checkmark-circle-outline",
+                        "color":       "#10b981",
+                        "title":       f"Stable Prices — {fname}",
+                        "description": f"Forecast stable at ~Rs. {price_today:.0f}/kg for the next 3 days",
+                        "age":         "Forecast",
+                    })
+    except Exception:
+        pass
+
+    # Deduplicate by title (keep first occurrence), cap at 15
     seen: set[str] = set()
     unique: list[dict] = []
     for a in alerts:
         if a["title"] not in seen:
             seen.add(a["title"])
             unique.append(a)
-        if len(unique) >= 6:
+        if len(unique) >= 15:
             break
 
     # Always return at least one informational alert when things are calm
