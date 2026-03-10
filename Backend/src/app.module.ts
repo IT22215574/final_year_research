@@ -13,6 +13,7 @@ import { AnalyticsModule } from './trips_analytics/trips_analytics.module';
 import { MlModule } from './tripml/tripml.module';
 import { CostEngineModule } from './cost-engine/cost-engine.module';
 import { CostPreferencesModule } from './cost-preferences/cost-preferences.module';
+import { FavoriteFishModule } from './favorite-fish/favorite-fish.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { CostPreferencesModule } from './cost-preferences/cost-preferences.modul
     MlModule,
     CostEngineModule,
     CostPreferencesModule,
+    FavoriteFishModule,
 
     NotificationModule,
   ],

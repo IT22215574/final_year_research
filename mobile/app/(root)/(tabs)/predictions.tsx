@@ -1,8 +1,8 @@
 ﻿import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, ActivityIndicator, Alert, Dimensions } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiFetch } from '@/utils/api';
 import { LineChart } from 'react-native-chart-kit';
 import Svg, { Path, Line as SvgLine, Text as SvgText, Circle } from 'react-native-svg';
 // expo-notifications is lazy-required inside the notification function to avoid
@@ -622,10 +622,8 @@ export default function PredictionsScreen() {
   const [trendData, setTrendData] = useState<any[]>([]);
   const [loadingTrend, setLoadingTrend] = useState(false);
 
-  // Current user — needed early for per-account favorites storage key
+  // Current user — needed for favorites API calls
   const currentUser = useAuthStore(s => s.currentUser);
-  // Each account gets its own favorites list (key = favoriteItems_<userId>)
-  const favStorageKey = `favoriteItems_${currentUser?.id ?? 'guest'}`;
 
   // Recommendations state
   const [budget, setBudget] = useState<number>(1000);
@@ -636,21 +634,24 @@ export default function PredictionsScreen() {
   const [favoriteItems, setFavoriteItems] = useState<FavoriteItem[]>([]);
   const [favoritesLoaded, setFavoritesLoaded] = useState(false);
 
-  // Load favorites from storage — re-runs when user account changes
+  // Load favorites from MongoDB — re-runs when the logged-in user changes
   useEffect(() => {
-    setFavoritesLoaded(false);
-    setFavoriteItems([]); // clear previous user's favorites immediately
-    AsyncStorage.getItem(favStorageKey).then(stored => {
-      if (stored) { try { setFavoriteItems(JSON.parse(stored)); } catch {} }
+    if (!currentUser?.id) {
+      setFavoriteItems([]);
       setFavoritesLoaded(true);
-    });
+      return;
+    }
+    setFavoritesLoaded(false);
+    setFavoriteItems([]);
+    apiFetch('/api/v1/fish-favorites')
+      .then(res => res.json())
+      .then(json => {
+        if (json?.success && Array.isArray(json.data)) setFavoriteItems(json.data);
+      })
+      .catch(err => console.error('Failed to load favorites', err))
+      .finally(() => setFavoritesLoaded(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
-
-  // Persist favorites under the current user's key whenever they change
-  useEffect(() => {
-    AsyncStorage.setItem(favStorageKey, JSON.stringify(favoriteItems));
-  }, [favStorageKey, favoriteItems]);
 
   // Feedback state
   const [feedbackGiven, setFeedbackGiven] = useState(false);
@@ -680,6 +681,7 @@ export default function PredictionsScreen() {
 
   const [marketAlerts, setMarketAlerts] = useState<MarketAlert[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [showAllAlerts, setShowAllAlerts] = useState(false);
   const [featureImportance, setFeatureImportance] = useState<FeatureImportanceItem[]>([]);
 
   const fetchAccuracy = async () => {
@@ -982,7 +984,7 @@ export default function PredictionsScreen() {
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ budget: budget === 9999 ? 99999 : budget, date: dateStr, preference, favorite_fish_ids: favoriteItems.map(f => f.fish_id) }),
+            body: JSON.stringify({ budget: budget === 9999 ? 99999 : budget, date: dateStr, preference, favorite_fish_ids: favIdsRef.current }),
           },
           12000,
         );
@@ -1000,26 +1002,52 @@ export default function PredictionsScreen() {
       }
     };
     fetchRecommendations();
-  }, [budget, preference, favoriteItems, recsRetryKey, favoritesLoaded]);
+  }, [budget, preference, recsRetryKey, favoritesLoaded]);
 
   const favIds = favoriteItems.map(f => f.fish_id);
+  // Ref always holds the latest favIds without causing re-renders or deps changes
+  const favIdsRef = useRef<number[]>(favIds);
+  useEffect(() => { favIdsRef.current = favIds; }, [favIds]);
 
   const toggleFavorite = (rec: any) => {
-    setFavoriteItems(prev => {
-      if (prev.some(f => f.fish_id === rec.fish_id)) {
-        return prev.filter(f => f.fish_id !== rec.fish_id);
-      }
-      return [
-        ...prev,
-        {
-          fish_id: rec.fish_id,
-          sinhala_name: rec.sinhala_name,
-          common_name: rec.common_name,
-          predicted_price: rec.predicted_price ?? 0,
-          date_added: new Date().toISOString().split('T')[0],
-        },
-      ];
-    });
+    const isCurrentlyFav = favoriteItems.some(f => f.fish_id === rec.fish_id);
+
+    // Optimistic UI update
+    if (isCurrentlyFav) {
+      setFavoriteItems(prev => prev.filter(f => f.fish_id !== rec.fish_id));
+      apiFetch(`/api/v1/fish-favorites/${rec.fish_id}`, { method: 'DELETE' })
+        .catch(err => {
+          console.error('Failed to remove favorite', err);
+          // Rollback on failure
+          setFavoriteItems(prev => [
+            ...prev,
+            {
+              fish_id: rec.fish_id,
+              sinhala_name: rec.sinhala_name,
+              common_name: rec.common_name,
+              predicted_price: rec.predicted_price ?? 0,
+              date_added: new Date().toISOString().split('T')[0],
+            },
+          ]);
+        });
+    } else {
+      const newItem: FavoriteItem = {
+        fish_id: rec.fish_id,
+        sinhala_name: rec.sinhala_name,
+        common_name: rec.common_name,
+        predicted_price: rec.predicted_price ?? 0,
+        date_added: new Date().toISOString().split('T')[0],
+      };
+      setFavoriteItems(prev => [...prev, newItem]);
+      apiFetch('/api/v1/fish-favorites', {
+        method: 'POST',
+        body: JSON.stringify(newItem),
+      }).catch(err => {
+        console.error('Failed to add favorite', err);
+        // Rollback on failure
+        setFavoriteItems(prev => prev.filter(f => f.fish_id !== rec.fish_id));
+      });
+    }
   };
 
   // Filtered recommendations — API already applies budget + seasonal filter server-side.
@@ -1486,11 +1514,15 @@ export default function PredictionsScreen() {
         <View style={[styles.card, { zIndex: 5, marginBottom: 16 }]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <Text style={styles.sectionHeaderTitle}>Market Alerts</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/market-alerts' as any)}>
-              <Text style={{ color: '#2563eb', fontWeight: '600' }}>See All</Text>
-            </TouchableOpacity>
+            {marketAlerts.length > 3 && (
+              <TouchableOpacity onPress={() => setShowAllAlerts(v => !v)}>
+                <Text style={{ color: '#2563eb', fontWeight: '600' }}>
+                  {showAllAlerts ? 'Show Less' : `See All (${marketAlerts.length})`}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
-          
+
           <View style={{ marginTop: 16, gap: 12 }}>
             {loadingAlerts ? (
               <ActivityIndicator size="small" color="#2563eb" style={{ marginVertical: 16 }} />
@@ -1502,7 +1534,7 @@ export default function PredictionsScreen() {
                 </Text>
               </View>
             ) : (
-              marketAlerts.map((alert, i) => (
+              (showAllAlerts ? marketAlerts : marketAlerts.slice(0, 3)).map((alert, i) => (
                 <View
                   key={i}
                   style={{
