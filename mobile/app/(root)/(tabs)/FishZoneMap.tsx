@@ -49,7 +49,7 @@ export default function FishZoneMapScreen() {
     null
   );
   const [selectedZone, setSelectedZone] = useState<FishZone | null>(null);
-  const [minProbability, setMinProbability] = useState(0.5); // Show zones with >50% probability
+  const [minProbability, setMinProbability] = useState(0.3); // Show zones with >30% probability (better default)
 
   // Sri Lanka center for map
   const SRI_LANKA_CENTER = {

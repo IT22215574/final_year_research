@@ -131,32 +131,18 @@ const Home = () => {
             </View>
 
             <View style={styles.mapContainer}>
-              <View
-                style={
-                  [
-                    styles.map,
-                    {
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: 16,
-                    },
-                  ] as any
-                }
+              <TouchableOpacity
+                style={styles.viewMapButton}
+                onPress={() => router.push("/(root)/(tabs)/FishZoneMap")}
+                activeOpacity={0.7}
               >
-                <Text
-                  style={{
-                    color: "#0f172a",
-                    fontWeight: "700",
-                    marginBottom: 6,
-                  }}
-                >
-                  Map preview unavailable
+                <Ionicons name="map" size={24} color="#FFF" />
+                <Text style={styles.viewMapButtonText}>
+                  View Fish Zone Map
                 </Text>
-                <Text style={{ color: "#334155", textAlign: "center" }}>
-                  This screen is UI-only right now because `react-native-maps`
-                  isn't installed.
-                </Text>
-                <View style={{ height: 12 }} />
+                <Ionicons name="arrow-forward" size={20} color="#FFF" />
+              </TouchableOpacity>
+              <View style={styles.zoneStats}>
                 <Text style={{ color: "#334155", fontWeight: "600" }}>
                   High: {zoneCounts.HIGH} • Medium: {zoneCounts.MEDIUM} • Low:{" "}
                   {zoneCounts.LOW}
@@ -400,96 +386,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginRight: 10,
   },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0f172a",
-    marginBottom: 10,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-    gap: 12,
-  },
-  inputLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: "#334155",
-    fontWeight: "600",
-  },
-  inputBox: {
-    width: 120,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: "#f8fafc",
-    color: "#0f172a",
-    fontSize: 14,
-  },
-  mapContainer: {
-    height: 260,
-    borderRadius: 14,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-    position: "relative",
-  },
-  map: {
-    flex: 1,
-  },
-  zoomOutButton: {
-    position: "absolute",
-    right: 16,
-    top: 16,
-    width: 48,
-    height: 48,
-    backgroundColor: "rgba(15, 23, 42, 0.9)",
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  legendRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 10,
-    flexWrap: "wrap",
-  },
-  legendDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 13,
-    color: "#334155",
-    fontWeight: "600",
-    marginRight: 10,
-  },
   scheduleCard: {
     backgroundColor: "#fff",
     padding: 20,
@@ -552,11 +448,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  headerGradient: {
+  viewMapButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0EA5E9",
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+    borderRadius: 12,
+    gap: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  viewMapButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  zoneStats: {
+    alignItems: "center",
+    paddingVertical: 12,
   },
   headerGradient: {
     paddingHorizontal: 24,

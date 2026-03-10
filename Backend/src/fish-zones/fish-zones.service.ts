@@ -114,8 +114,9 @@ export class FishZonesService {
     }
 
     const allZones = await this.readCSV(csvFile);
+    // Filter by fish_zone=1 (only show actual fish zones) AND minimum probability
     const filteredZones = allZones.filter(
-      (zone) => zone.fish_probability >= minProbability,
+      (zone) => zone.fish_zone === 1 && zone.fish_probability >= minProbability,
     );
 
     // Extract date from filename (e.g., fish_zones_2026-03-10.csv)
@@ -148,12 +149,11 @@ export class FishZonesService {
         fs.readFileSync(geojsonFile, 'utf-8'),
       ) as FishZoneGeoJSON;
 
-      // Filter by probability if needed
-      if (minProbability > 0) {
-        geojsonData.features = geojsonData.features.filter(
-          (feature) => feature.properties.fish_probability >= minProbability,
-        );
-      }
+      // Filter by fish_zone=1 (only actual fish zones) AND probability
+      geojsonData.features = geojsonData.features.filter(
+        (feature) => feature.properties.fish_zone === 1 && 
+                     feature.properties.fish_probability >= minProbability,
+      );
 
       return geojsonData;
     }
