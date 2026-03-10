@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ScrollView, 
-  Image, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  ActivityIndicator,
   RefreshControl,
   Dimensions,
   Platform,
-  StatusBar
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -18,8 +18,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import useTripStore from "@/stores/tripStore";
 import { getMyTrips, getMyStats } from "@/services/tripService";
 import FishTripNavBar from "./components/FishTripNavBar";
-import Animated, { 
-  FadeInDown, 
+import Animated, {
+  FadeInDown,
   FadeInUp,
   SlideInRight,
   useAnimatedStyle,
@@ -28,10 +28,10 @@ import Animated, {
   withSpring,
   Easing,
   interpolate,
-  Extrapolate
+  Extrapolate,
 } from "react-native-reanimated";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 const STAT_CARD_WIDTH = (width - 48) / 2;
 
 export default function FishTripCostDashboard() {
@@ -66,13 +66,13 @@ export default function FishTripCostDashboard() {
 
   // Animate header on mount
   useEffect(() => {
-    headerOpacity.value = withTiming(1, { 
-      duration: 600, 
-      easing: Easing.out(Easing.ease) 
+    headerOpacity.value = withTiming(1, {
+      duration: 600,
+      easing: Easing.out(Easing.ease),
     });
-    headerTranslateY.value = withSpring(0, { 
-      damping: 15, 
-      stiffness: 100 
+    headerTranslateY.value = withSpring(0, {
+      damping: 15,
+      stiffness: 100,
     });
   }, []);
 
@@ -84,7 +84,7 @@ export default function FishTripCostDashboard() {
   const loadDashboardData = async (showLoader = true) => {
     try {
       if (showLoader) setLoading(true);
-      
+
       const [tripsData, statsData] = await Promise.all([
         getMyTrips(),
         getMyStats().catch(() => null),
@@ -95,27 +95,33 @@ export default function FishTripCostDashboard() {
 
       if (statsData) {
         // Calculate accuracy rate
-        const withActuals = tripsArray.filter((t: any) => t.actualFuelLiters != null).length;
+        const withActuals = tripsArray.filter(
+          (t: any) => t.actualFuelLiters != null,
+        ).length;
         const accuratePredictions = tripsArray.filter((t: any) => {
           if (!t.actualFuelLiters || !t.predictedFuelLiters) return false;
           const diff = Math.abs(t.actualFuelLiters - t.predictedFuelLiters);
           return diff / t.predictedFuelLiters <= 0.15;
         }).length;
 
-        const accuracyRate = withActuals > 0 
-          ? Math.round((accuratePredictions / withActuals) * 100) 
-          : 0;
+        const accuracyRate =
+          withActuals > 0
+            ? Math.round((accuratePredictions / withActuals) * 100)
+            : 0;
 
         const totalFuelSaved = tripsArray.reduce((sum: number, t: any) => {
           if (t.actualFuelLiters && t.predictedFuelLiters) {
-            return sum + Math.max(0, t.predictedFuelLiters - t.actualFuelLiters);
+            return (
+              sum + Math.max(0, t.predictedFuelLiters - t.actualFuelLiters)
+            );
           }
           return sum;
         }, 0);
 
         setStats({
           totalTrips: statsData.totalTrips || 0,
-          completedTrips: tripsArray.filter((t: any) => t.status === 'completed').length || 0,
+          completedTrips:
+            tripsArray.filter((t: any) => t.status === "completed").length || 0,
           averageCost: Math.round(statsData.averageCost || 0),
           predictionsWithActuals: withActuals,
           totalFuelUsed: statsData.totalFuelUsed || 0,
@@ -123,25 +129,36 @@ export default function FishTripCostDashboard() {
           accuracyRate,
         });
       } else {
-        const completed = tripsArray.filter((t: any) => t.status === 'completed').length;
-        const withActuals = tripsArray.filter((t: any) => t.actualFuelLiters != null).length;
-        const avgCost = tripsArray.length > 0
-          ? tripsArray.reduce((sum: number, t: any) => sum + (t.predictedTotalCost || 0), 0) / tripsArray.length
-          : 0;
-        
+        const completed = tripsArray.filter(
+          (t: any) => t.status === "completed",
+        ).length;
+        const withActuals = tripsArray.filter(
+          (t: any) => t.actualFuelLiters != null,
+        ).length;
+        const avgCost =
+          tripsArray.length > 0
+            ? tripsArray.reduce(
+                (sum: number, t: any) => sum + (t.predictedTotalCost || 0),
+                0,
+              ) / tripsArray.length
+            : 0;
+
         const accuratePredictions = tripsArray.filter((t: any) => {
           if (!t.actualFuelLiters || !t.predictedFuelLiters) return false;
           const diff = Math.abs(t.actualFuelLiters - t.predictedFuelLiters);
           return diff / t.predictedFuelLiters <= 0.15;
         }).length;
 
-        const accuracyRate = withActuals > 0 
-          ? Math.round((accuratePredictions / withActuals) * 100) 
-          : 0;
+        const accuracyRate =
+          withActuals > 0
+            ? Math.round((accuratePredictions / withActuals) * 100)
+            : 0;
 
         const totalFuelSaved = tripsArray.reduce((sum: number, t: any) => {
           if (t.actualFuelLiters && t.predictedFuelLiters) {
-            return sum + Math.max(0, t.predictedFuelLiters - t.actualFuelLiters);
+            return (
+              sum + Math.max(0, t.predictedFuelLiters - t.actualFuelLiters)
+            );
           }
           return sum;
         }, 0);
@@ -211,11 +228,11 @@ export default function FishTripCostDashboard() {
       color: "#8b5cf6",
       bgColor: "#f5f3ff",
       gradient: ["#8b5cf6", "#7c3aed"],
-      action: () => router.push("/(root)/(tabs)/boats" as any),
+      action: () => router.push("/(root)/(tabs)/fishtripcost/boats" as any),
     },
-    { 
-      id: "learning", 
-      label: "AI Insights", 
+    {
+      id: "learning",
+      label: "AI Insights",
       icon: "analytics",
       iconSet: Ionicons,
       color: "#f59e0b",
@@ -322,11 +339,11 @@ export default function FishTripCostDashboard() {
         }
 
         return (
-          <Animated.ScrollView 
+          <Animated.ScrollView
             showsVerticalScrollIndicator={false}
             refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
+              <RefreshControl
+                refreshing={refreshing}
                 onRefresh={onRefresh}
                 tintColor="#3b82f6"
                 colors={["#3b82f6"]}
@@ -355,7 +372,7 @@ export default function FishTripCostDashboard() {
                       Dashboard
                     </Text>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     className="bg-white/20 p-2 rounded-full"
                     activeOpacity={0.7}
                     onPress={() => router.push("/profile" as any)}
@@ -417,11 +434,15 @@ export default function FishTripCostDashboard() {
                         elevation: 3,
                       }}
                     >
-                      <View 
+                      <View
                         className="rounded-xl w-10 h-10 items-center justify-center mb-3"
                         style={{ backgroundColor: stat.bgColor }}
                       >
-                        <stat.iconSet name={stat.icon as any} size={20} color={stat.color} />
+                        <stat.iconSet
+                          name={stat.icon as any}
+                          size={20}
+                          color={stat.color}
+                        />
                       </View>
                       <Text className="text-xs text-slate-500 mb-1">
                         {stat.label}
@@ -437,7 +458,7 @@ export default function FishTripCostDashboard() {
 
             {/* Fuel Efficiency Card */}
             {stats.totalFuelSaved > 0 && (
-              <Animated.View 
+              <Animated.View
                 entering={SlideInRight.delay(400)}
                 className="mx-5 mb-6"
               >
@@ -457,7 +478,11 @@ export default function FishTripCostDashboard() {
                   <View className="flex-row items-center justify-between">
                     <View className="flex-1">
                       <View className="flex-row items-center mb-2">
-                        <MaterialCommunityIcons name="fuel" size={20} color="white" />
+                        <MaterialCommunityIcons
+                          name="fuel"
+                          size={20}
+                          color="white"
+                        />
                         <Text className="text-white font-semibold ml-2">
                           Fuel Efficiency
                         </Text>
@@ -470,7 +495,11 @@ export default function FishTripCostDashboard() {
                       </Text>
                     </View>
                     <View className="bg-white/20 p-3 rounded-full">
-                      <MaterialCommunityIcons name="leaf" size={28} color="white" />
+                      <MaterialCommunityIcons
+                        name="leaf"
+                        size={28}
+                        color="white"
+                      />
                     </View>
                   </View>
                 </LinearGradient>
@@ -487,7 +516,7 @@ export default function FishTripCostDashboard() {
                   {quickActionTiles.length} options
                 </Text>
               </View>
-              
+
               <View className="flex-row flex-wrap justify-between">
                 {quickActionTiles.map((tile, index) => (
                   <Animated.View
@@ -514,7 +543,11 @@ export default function FishTripCostDashboard() {
                         }}
                       >
                         <View className="bg-white/20 p-3 rounded-xl mb-2">
-                          <tile.iconSet name={tile.icon as any} size={24} color="white" />
+                          <tile.iconSet
+                            name={tile.icon as any}
+                            size={24}
+                            color="white"
+                          />
                         </View>
                         <Text className="text-white text-xs font-semibold text-center">
                           {tile.label}
@@ -528,7 +561,7 @@ export default function FishTripCostDashboard() {
 
             {/* Recent Activity */}
             {trips.length > 0 && (
-              <Animated.View 
+              <Animated.View
                 entering={FadeInDown.delay(500)}
                 className="px-5 pb-8"
               >
@@ -541,8 +574,10 @@ export default function FishTripCostDashboard() {
                       Your latest fishing expeditions
                     </Text>
                   </View>
-                  <TouchableOpacity 
-                    onPress={() => router.push("/fishtripcost/past-trips" as any)}
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push("/fishtripcost/past-trips" as any)
+                    }
                     className="bg-blue-50 px-4 py-2 rounded-full"
                   >
                     <Text className="text-sm text-blue-600 font-semibold">
@@ -552,11 +587,12 @@ export default function FishTripCostDashboard() {
                 </View>
 
                 {trips.slice(0, 3).map((trip: any, index) => {
-                  const statusColor = trip.status === 'completed' 
-                    ? { bg: '#d1fae5', text: '#10b981' }
-                    : trip.status === 'in-progress'
-                      ? { bg: '#fef3c7', text: '#f59e0b' }
-                      : { bg: '#dbeafe', text: '#3b82f6' };
+                  const statusColor =
+                    trip.status === "completed"
+                      ? { bg: "#d1fae5", text: "#10b981" }
+                      : trip.status === "in-progress"
+                        ? { bg: "#fef3c7", text: "#f59e0b" }
+                        : { bg: "#dbeafe", text: "#3b82f6" };
 
                   return (
                     <Animated.View
@@ -564,7 +600,11 @@ export default function FishTripCostDashboard() {
                       entering={FadeInUp.delay(600 + index * 100).springify()}
                     >
                       <TouchableOpacity
-                        onPress={() => router.push(`/fishtripcost/trip-details/${trip._id}` as any)}
+                        onPress={() =>
+                          router.push(
+                            `/fishtripcost/trip-details/${trip._id}` as any,
+                          )
+                        }
                         className="bg-white rounded-xl p-4 mb-3"
                         style={{
                           shadowColor: "#000",
@@ -577,36 +617,53 @@ export default function FishTripCostDashboard() {
                         <View className="flex-row justify-between items-start">
                           <View className="flex-1">
                             <View className="flex-row items-center mb-2">
-                              <MaterialCommunityIcons 
-                                name="fish" 
-                                size={16} 
-                                color="#3b82f6" 
+                              <MaterialCommunityIcons
+                                name="fish"
+                                size={16}
+                                color="#3b82f6"
                               />
                               <Text className="text-sm font-bold text-slate-900 ml-2">
                                 Trip {trip._id.slice(-6)}
                               </Text>
                             </View>
-                            
+
                             <View className="flex-row items-center mb-2">
-                              <Ionicons name="calendar-outline" size={12} color="#94a3b8" />
+                              <Ionicons
+                                name="calendar-outline"
+                                size={12}
+                                color="#94a3b8"
+                              />
                               <Text className="text-xs text-slate-500 ml-1">
-                                {new Date(trip.departureTime).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric'
+                                {new Date(
+                                  trip.departureTime,
+                                ).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
                                 })}
                               </Text>
                             </View>
 
                             <View className="flex-row gap-3">
                               <View className="flex-row items-center">
-                                <Ionicons name="cash-outline" size={12} color="#f59e0b" />
+                                <Ionicons
+                                  name="cash-outline"
+                                  size={12}
+                                  color="#f59e0b"
+                                />
                                 <Text className="text-xs text-slate-600 ml-1">
-                                  Rs {(trip.predictedTotalCost || 0).toLocaleString()}
+                                  Rs{" "}
+                                  {(
+                                    trip.predictedTotalCost || 0
+                                  ).toLocaleString()}
                                 </Text>
                               </View>
                               <View className="flex-row items-center">
-                                <MaterialCommunityIcons name="fuel" size={12} color="#3b82f6" />
+                                <MaterialCommunityIcons
+                                  name="fuel"
+                                  size={12}
+                                  color="#3b82f6"
+                                />
                                 <Text className="text-xs text-slate-600 ml-1">
                                   {(trip.predictedFuelLiters || 0).toFixed(1)}L
                                 </Text>
@@ -614,25 +671,25 @@ export default function FishTripCostDashboard() {
                             </View>
                           </View>
 
-                          <View 
+                          <View
                             className="px-3 py-1 rounded-full"
                             style={{ backgroundColor: statusColor.bg }}
                           >
-                            <Text 
+                            <Text
                               className="text-xs font-semibold"
                               style={{ color: statusColor.text }}
                             >
-                              {trip.status || 'planned'}
+                              {trip.status || "planned"}
                             </Text>
                           </View>
                         </View>
 
-                        {trip.status === 'in-progress' && (
+                        {trip.status === "in-progress" && (
                           <View className="mt-3">
                             <View className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                              <View 
+                              <View
                                 className="h-full bg-blue-500 rounded-full"
-                                style={{ width: '45%' }}
+                                style={{ width: "45%" }}
                               />
                             </View>
                             <Text className="text-xs text-slate-400 mt-1">
@@ -649,17 +706,21 @@ export default function FishTripCostDashboard() {
 
             {/* Empty State */}
             {trips.length === 0 && !loading && (
-              <Animated.View 
+              <Animated.View
                 entering={FadeInUp}
                 className="px-5 pb-8 items-center"
               >
                 <View className="bg-white rounded-3xl p-8 items-center w-full">
-                  <MaterialCommunityIcons name="fish" size={64} color="#cbd5e1" />
+                  <MaterialCommunityIcons
+                    name="fish"
+                    size={64}
+                    color="#cbd5e1"
+                  />
                   <Text className="text-slate-800 font-bold text-lg mt-4">
                     No trips yet
                   </Text>
                   <Text className="text-slate-400 text-sm text-center mt-2">
-                    Start planning your first fishing trip{'\n'}
+                    Start planning your first fishing trip{"\n"}
                     with AI-powered cost predictions
                   </Text>
                   <TouchableOpacity

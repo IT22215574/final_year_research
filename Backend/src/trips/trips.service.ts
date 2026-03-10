@@ -94,17 +94,64 @@ export class TripsService {
   // FIND BY USER
   // =========================
   async findByUser(userId: string): Promise<TripDocument[]> {
-    return await this.tripModel
+    const trips = await this.tripModel
       .find({ userId })
       .sort({ departureTime: -1 })
+      .lean()
       .exec();
+
+    // Populate boat info for each trip
+    const enrichedTrips = await Promise.all(
+      trips.map(async (trip) => {
+        if (trip.boatId) {
+          const boat = await this.boatModel
+            .findById(trip.boatId)
+            .select('boatName boatType')
+            .lean()
+            .exec();
+
+          return {
+            ...trip,
+            boat: boat || null,
+          };
+        }
+        return { ...trip, boat: null };
+      }),
+    );
+
+    return enrichedTrips as any;
   }
 
   // =========================
   // FIND ALL
   // =========================
   async findAll(): Promise<TripDocument[]> {
-    return await this.tripModel.find().sort({ departureTime: -1 }).exec();
+    const trips = await this.tripModel
+      .find()
+      .sort({ departureTime: -1 })
+      .lean()
+      .exec();
+
+    // Populate boat info for each trip
+    const enrichedTrips = await Promise.all(
+      trips.map(async (trip) => {
+        if (trip.boatId) {
+          const boat = await this.boatModel
+            .findById(trip.boatId)
+            .select('boatName boatType')
+            .lean()
+            .exec();
+
+          return {
+            ...trip,
+            boat: boat || null,
+          };
+        }
+        return { ...trip, boat: null };
+      }),
+    );
+
+    return enrichedTrips as any;
   }
 
   // =========================
