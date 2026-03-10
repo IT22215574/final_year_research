@@ -26,8 +26,6 @@ export default function Quality() {
         end={{ x: 1, y: 0 }}
         style={s.header}
       >
-        <Text style={s.headerTitle}>Fish Quality</Text>
-        <Text style={s.headerSub}>Detect species and grade freshness</Text>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
@@ -73,7 +71,7 @@ export default function Quality() {
         <TouchableOpacity
           style={s.card}
           activeOpacity={0.85}
-          onPress={() => router.push("/(root)/(tabs)/GradingHistory")}
+          onPress={() => router.push("/(root)/(tabs)/GradingHistory" as any)}
         >
           <LinearGradient colors={["#6c5ce7", "#a29bfe"]} style={s.cardIcon}>
             <MaterialIcons name="history" size={34} color="#fff" />
@@ -132,7 +130,7 @@ const s = StyleSheet.create({
   },
   cardText: { flex: 1 },
   cardTitle: { fontSize: 17, fontWeight: "700", color: "#0f172a", marginBottom: 4 },
-  cardDesc: { fontSize: 13, color: "#64748b", lineHeight: 19 },
+  cardDesc: { fontSize: 12, color: "#64748b", lineHeight: 19 },
   badgeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   countBadge: {
     backgroundColor: "#6c5ce7",
