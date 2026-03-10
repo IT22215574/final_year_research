@@ -191,8 +191,9 @@ export default function AddBoatScreen() {
 
       <ScrollView
         className="px-4 pt-4"
-        contentContainerStyle={{ paddingBottom: 30 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={true}
       >
         <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
           <Text className="text-sm font-semibold text-slate-800 mb-3">

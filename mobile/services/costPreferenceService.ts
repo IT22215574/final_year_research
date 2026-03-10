@@ -4,6 +4,9 @@ export type CostPreference = {
   _id: string;
   name: string;
   category: string;
+  icon?: string;
+  quantity: number;
+  pricePerUnit: number;
   amount: number;
   description?: string;
   autoApply?: boolean;
@@ -15,6 +18,9 @@ export type CostPreference = {
 export type CreateCostPreferenceBody = {
   name: string;
   category: string;
+  icon?: string;
+  quantity: number;
+  pricePerUnit: number;
   amount: number;
   description?: string;
   autoApply?: boolean;
@@ -43,13 +49,13 @@ export const getActiveAutoApplyCostPreferences = async (): Promise<
     "/api/v1/cost-preferences/active-auto-apply",
     {
       method: "GET",
-    }
+    },
   );
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     throw new Error(
-      error.message || "Failed to fetch active auto-apply cost preferences"
+      error.message || "Failed to fetch active auto-apply cost preferences",
     );
   }
 
@@ -57,7 +63,7 @@ export const getActiveAutoApplyCostPreferences = async (): Promise<
 };
 
 export const getCostPreferenceById = async (
-  id: string
+  id: string,
 ): Promise<CostPreference> => {
   const response = await apiFetch(`/api/v1/cost-preferences/${id}`, {
     method: "GET",
@@ -72,7 +78,7 @@ export const getCostPreferenceById = async (
 };
 
 export const createCostPreference = async (
-  body: CreateCostPreferenceBody
+  body: CreateCostPreferenceBody,
 ): Promise<CostPreference> => {
   const response = await apiFetch("/api/v1/cost-preferences", {
     method: "POST",
@@ -89,7 +95,7 @@ export const createCostPreference = async (
 
 export const updateCostPreference = async (
   id: string,
-  body: UpdateCostPreferenceBody
+  body: UpdateCostPreferenceBody,
 ): Promise<CostPreference> => {
   const response = await apiFetch(`/api/v1/cost-preferences/${id}`, {
     method: "PUT",
@@ -105,7 +111,7 @@ export const updateCostPreference = async (
 };
 
 export const toggleCostPreference = async (
-  id: string
+  id: string,
 ): Promise<CostPreference> => {
   const response = await apiFetch(`/api/v1/cost-preferences/${id}/toggle`, {
     method: "PATCH",

@@ -385,29 +385,64 @@ const TripPlanner = () => {
         marketPrice: parseFloat(marketPrice || "550"),
         mode,
         manualExternalCosts:
-          manualExternalCosts.length > 0 ? manualExternalCosts : undefined,
+          manualExternalCosts.length > 0
+            ? manualExternalCosts.map(
+                ({
+                  name,
+                  category,
+                  quantity,
+                  pricePerUnit,
+                  amount,
+                  description,
+                  icon,
+                }) => ({
+                  name,
+                  category,
+                  quantity: quantity || 1,
+                  pricePerUnit: pricePerUnit || 0,
+                  amount,
+                  description,
+                  icon,
+                }),
+              )
+            : undefined,
       };
 
       const res: any = await predictTripDatcie(body);
+
+      // ✅ Validate response before processing
+      if (!res || typeof res !== "object") {
+        throw new Error("Invalid response from prediction service");
+      }
 
       // ✅ STORE for result screen
       setDatcieBody(body);
       setDatciePrediction(res);
 
-      // Local preview (optional)
-      setPredictedFuel(res?.fuel?.predictedFuelLiters ?? null);
-      setPredictedCost(res?.cost?.predictedTotalCost ?? null);
-      setRiskScore(
-        res?.profitability?.riskCategory ??
-          res?.profitability?.risk ??
-          res?.riskCategory ??
-          null,
-      );
-      setRecommendations(res?.recommendations ?? []);
+      // Local preview with safe property access
+      try {
+        setPredictedFuel(res?.fuel?.predictedFuelLiters ?? null);
+        setPredictedCost(res?.cost?.predictedTotalCost ?? null);
+        setRiskScore(
+          res?.profitability?.riskCategory ??
+            res?.profitability?.risk ??
+            res?.riskCategory ??
+            null,
+        );
+        setRecommendations(
+          Array.isArray(res?.recommendations) ? res.recommendations : [],
+        );
+      } catch (parseError) {
+        console.warn(
+          "Warning: Error parsing prediction response details:",
+          parseError,
+        );
+        // Continue with navigation even if parsing fails
+      }
 
       router.push("/(root)/(tabs)/fishtripcost/result");
     } catch (error: any) {
-      console.error(error);
+      console.error("Prediction error:", error);
       Alert.alert("Error", error?.message || "DATCIE predict failed");
     } finally {
       setLoading(false);

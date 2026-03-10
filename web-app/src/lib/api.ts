@@ -17,10 +17,13 @@ export async function apiFetch<T>(
   path: string,
   options?: Omit<RequestInit, "headers"> & { headers?: Record<string, string> },
 ): Promise<T> {
+  const isFormData =
+    typeof FormData !== "undefined" && options?.body instanceof FormData;
+
   const res = await fetch(joinUrl(env.apiBaseUrl, path), {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(options?.headers ?? {}),
     },
     credentials: "include",
@@ -48,12 +51,14 @@ export async function apiFetch<T>(
         : undefined;
 
     const message = messageFromPayload || res.statusText || "Request failed";
+
     const err: ApiError = {
       status: res.status,
       message,
       field: fieldFromPayload,
       details: payload,
     };
+
     throw err;
   }
 

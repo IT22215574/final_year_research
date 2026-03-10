@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 from .boat_coefficients import BoatCoefficientsManager
+from .fuel_baselines import get_boat_fuel_baseline, get_boat_type_name
 
 
 class AdaptiveFuelEngine:
@@ -23,6 +24,7 @@ class AdaptiveFuelEngine:
 
     def predict(self, payload: dict):
         boat_id = payload["boatId"]
+        boat_type = payload.get("boatType")  # ✅ Get boat type for baseline
         
         # Get boat-specific adaptive coefficients
         boat_coeffs = self.coefficients_manager.get_boat_coefficients(boat_id)
@@ -50,10 +52,29 @@ class AdaptiveFuelEngine:
 
         # Get base prediction from ML model
         base_predicted = float(self.model.predict(X)[0])
+        
+        # ✅ Apply boat-type-specific fuel baseline adjustment
+        # This adjusts the ML prediction based on the boat's inherent efficiency
+        if boat_type:
+            fuel_baseline = get_boat_fuel_baseline(boat_type)
+            distance_km = float(payload["distanceKm"])
+            
+            # Calculate baseline fuel from distance using boat-type rate
+            baseline_distance_fuel = distance_km * fuel_baseline
+            
+            # Use baseline for distance portion, keep ML prediction for other factors
+            # This ensures boat-type efficiency is properly reflected
+            fishing_component = float(payload["engineHP"]) * float(payload["fishingHours"]) * 0.10
+            baseline_total = baseline_distance_fuel + fishing_component
+            
+            # Blend ML prediction with boat-type baseline (70% baseline, 30% ML)
+            # This allows ML to adjust while respecting boat-type efficiency
+            predicted = baseline_total * 0.7 + base_predicted * 0.3
+        else:
+            # No boat type provided, use pure ML prediction
+            predicted = base_predicted
 
         # Apply boat-specific adaptive coefficients
-        predicted = base_predicted
-        
         # 1. Apply main fuel efficiency factor (learned from historical errors)
         predicted *= boat_coeffs["fuelEfficiencyFactor"]
         
@@ -88,7 +109,8 @@ class AdaptiveFuelEngine:
         predicted *= float(payload.get("engineDegradation", 1.0))
         predicted *= float(payload.get("fuelEfficiencyFactor", 1.0))
 
-        return {
+        # Prepare response with boat-type info
+        response = {
             "predictedFuelLiters": round(predicted, 2),
             "basePrediction": round(base_predicted, 2),
             "boatSpecificAdjustments": {
@@ -101,3 +123,14 @@ class AdaptiveFuelEngine:
                 "dataPoints": boat_coeffs["dataPoints"]
             }
         }
+        
+        # ✅ Add boat-type baseline info if available
+        if boat_type:
+            response["boatTypeInfo"] = {
+                "boatType": boat_type,
+                "boatTypeName": get_boat_type_name(boat_type),
+                "baselineFuelPerKm": get_boat_fuel_baseline(boat_type),
+                "baselineApplied": True
+            }
+        
+        return response

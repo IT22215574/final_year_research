@@ -25,7 +25,7 @@ import {
   batchTrainTrips,
   exportTripsCSV,
 } from "@/services/tripService";
-import FishTripNavBar from "./components/FishTripNavBar";
+import ScreenHeader from "./components/ScreenHeader";
 
 type ExternalCostItem = {
   name: string;
@@ -918,7 +918,10 @@ export default function PastTripsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f9fafb" }}>
-      <FishTripNavBar />
+      <ScreenHeader
+        title="My Trips"
+        subtitle={`${tripCountText}${trainableTripsCount > 0 ? ` • ${trainableTripsCount} trainable` : ""}`}
+      />
 
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
         <View
@@ -929,17 +932,8 @@ export default function PastTripsScreen() {
           }}
         >
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 26, fontWeight: "700", color: "#111827" }}>
-              My Trips
-            </Text>
-            <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 6 }}>
-              {tripCountText}
-              {trainableTripsCount > 0 ? (
-                <Text style={{ color: "#15803d", fontWeight: "600" }}>
-                  {" "}
-                  • {trainableTripsCount} trainable
-                </Text>
-              ) : null}
+            <Text style={{ fontSize: 16, fontWeight: "600", color: "#374151" }}>
+              Track and manage your fishing trips
             </Text>
           </View>
 

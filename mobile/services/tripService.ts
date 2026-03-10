@@ -1,4 +1,5 @@
 import { apiFetch } from "@/utils/api";
+import { Trip, DashboardStats } from "@/types/trip";
 
 export type ExternalCostItem = {
   name: string;
@@ -99,14 +100,11 @@ export type CreateTripDto = {
   clientRequestId?: string;
 };
 
-export type Trip = any;
-export type TripStats = {
-  totalTrips: number;
-  totalCost: number;
-  averageCost: number;
-  totalFuelUsed: number;
-  totalDistance: number;
-};
+// Re-export types from centralized types file
+export type { Trip, DashboardStats, LogActualDto } from "@/types/trip";
+
+// Deprecated: Use DashboardStats instead
+export type TripStats = DashboardStats;
 
 export const createTrip = async (tripData: CreateTripDto): Promise<Trip> => {
   const response = await apiFetch("/api/v1/trips", {
@@ -135,7 +133,7 @@ export const getMyTrips = async (): Promise<Trip[]> => {
   return await response.json();
 };
 
-export const getMyStats = async (): Promise<TripStats> => {
+export const getMyStats = async (): Promise<DashboardStats> => {
   const response = await apiFetch("/api/v1/trips/my-stats", {
     method: "GET",
   });

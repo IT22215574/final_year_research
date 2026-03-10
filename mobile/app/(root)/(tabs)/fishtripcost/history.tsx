@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { getMyTrips } from "@/services/tripService";
 import { getMyBoats } from "@/services/boatService";
+import ScreenHeader from "./components/ScreenHeader";
 import FishTripNavBar from "./components/FishTripNavBar";
 
 const money = (n: any) => {
@@ -169,6 +170,47 @@ const HistoryScreen = () => {
             </View>
           </View>
 
+  const filteredTrips = trips.filter((trip) => {
+    // Filter by selected boat
+    if (selectedBoatId && trip.boatId !== selectedBoatId) {
+      return false;
+    }
+
+    // Filter by search query
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+    const tripId = String(trip?._id ?? trip?.id).toLowerCase();
+    const boatName = (
+      trip?.boat?.boatName ||
+      trip?.boatName ||
+      ""
+    ).toLowerCase();
+    const boatType = (
+      trip?.boat?.boatType ||
+      trip?.boatType ||
+      ""
+    ).toLowerCase();
+    const tripName = getTripDisplayName(trip).toLowerCase();
+    const date = trip?.createdAt
+      ? new Date(trip.createdAt).toLocaleString().toLowerCase()
+      : "";
+
+    return (
+      tripId.includes(query) ||
+      boatName.includes(query) ||
+      boatType.includes(query) ||
+      tripName.includes(query) ||
+      date.includes(query)
+    );
+  });
+
+  return (
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <ScreenHeader
+        title="Trip Analytics"
+        subtitle={`${filteredTrips.length} ${selectedBoatId ? "filtered" : "saved"} trips`}
+        rightComponent={
           <TouchableOpacity
             onPress={onRefresh}
             className="w-9 h-9 rounded-lg bg-gray-100 items-center justify-center"
@@ -176,6 +218,19 @@ const HistoryScreen = () => {
           >
             <Text className="text-gray-600 text-lg">↻</Text>
           </TouchableOpacity>
+        }
+      />
+
+      {/* Header */}
+      <View className="bg-white border-b border-gray-200 px-4 pt-3 pb-4">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <View>
+              <Text className="text-sm font-medium text-gray-600">
+                View and analyze your fishing trip history
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Search Bar */}

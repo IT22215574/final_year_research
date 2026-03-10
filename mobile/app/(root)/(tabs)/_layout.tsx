@@ -372,10 +372,6 @@ const TabsLayout = () => {
                   )}
                 </View>
               ),
-              tabBarShowLabel: false,
-              tabBarStyle: {
-                display: "none",
-              },
             }}
           >
             <Tabs.Screen
@@ -393,6 +389,7 @@ const TabsLayout = () => {
                 headerShown: true,
               }}
             />
+
             <Tabs.Screen
               name="Quality"
               options={{
@@ -404,6 +401,7 @@ const TabsLayout = () => {
                 },
               }}
             />
+
             <Tabs.Screen
               name="Notifications"
               options={{
@@ -411,6 +409,7 @@ const TabsLayout = () => {
                 headerShown: true,
               }}
             />
+
             <Tabs.Screen
               name="profile"
               options={{
@@ -429,9 +428,6 @@ const TabsLayout = () => {
                 title: "Edit Profile",
                 headerShown: true,
                 headerTitleAlign: "center",
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
                 href: null,
               }}
             />
@@ -455,9 +451,15 @@ const TabsLayout = () => {
                 title: "Quality Grading",
                 headerShown: true,
                 headerTitleAlign: "center",
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
+                href: null,
+              }}
+            />
+
+            <Tabs.Screen
+              name="fishtripcost"
+              options={{
+                title: "Fish Trip Cost",
+                headerShown: true,
                 href: null,
               }}
             />

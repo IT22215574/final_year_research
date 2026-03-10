@@ -14,7 +14,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 
-import { BOAT_TYPES } from './dto/create-boat.dto';
+import { BOAT_TYPES, BOAT_FUEL_BASELINES } from './dto/create-boat.dto';
 
 @Injectable()
 export class BoatService {
@@ -31,6 +31,17 @@ export class BoatService {
 
   getBoatTypes() {
     return BOAT_TYPES;
+  }
+
+  getFuelBaselines() {
+    return BOAT_FUEL_BASELINES;
+  }
+
+  getBoatTypesWithFuelInfo() {
+    return BOAT_TYPES.map((boatType) => ({
+      boatType,
+      fuelInfo: BOAT_FUEL_BASELINES[boatType],
+    }));
   }
 
   async create(data: Partial<Boat>) {

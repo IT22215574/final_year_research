@@ -183,7 +183,7 @@ export default function EditBoatScreen() {
       Alert.alert("Success", "Boat updated successfully", [
         {
           text: "OK",
-          onPress: () => router.replace(`/fishtripcost/boats/${id}`),
+          onPress: () => router.replace(`../boats/${id}`),
         },
       ]);
     } catch (error: any) {
@@ -204,7 +204,7 @@ export default function EditBoatScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
-      <View className="px-5 pt-3 pb-3 bg-white border-b border-slate-100 flex-row justify-between items-center">
+      <View className="px-5 pt-3 pb-4 bg-white border-b border-slate-100 flex-row justify-between items-center rounded-b-2xl shadow-sm">
         <Text className="text-xl font-bold text-slate-900">Edit Boat</Text>
 
         <TouchableOpacity
@@ -217,7 +217,8 @@ export default function EditBoatScreen() {
 
       <ScrollView
         className="px-4 pt-4"
-        contentContainerStyle={{ paddingBottom: 30 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
       >
         <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
           <Text className="text-sm font-semibold text-slate-800 mb-3">
