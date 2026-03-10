@@ -58,3 +58,39 @@ Environmental Data Ranges:
 2026-03-10 14:42:22 | INFO | ============================================================
 2026-03-10 14:42:22 | INFO | Fish Zone Prediction Complete!
 2026-03-10 14:42:22 | INFO | ============================================================
+2026-03-10 20:27:55 | INFO | ============================================================
+2026-03-10 20:27:55 | INFO | Starting Daily Fish Zone Prediction
+2026-03-10 20:27:55 | INFO | ============================================================
+2026-03-10 20:27:55 | INFO | Loading model: rf_fish_zone_model.pkl
+2026-03-10 20:27:58 | INFO | Loading SST data: sst_2026-03-08_(2).nc
+2026-03-10 20:27:59 | INFO | Loading chlorophyll data: chlorophyll_2026-03-08.nc
+2026-03-10 20:27:59 | INFO | Loading ocean current data: currents_2026-03-08.nc
+2026-03-10 20:27:59 | INFO | Created prediction grid with 949 ocean points
+2026-03-10 20:27:59 | INFO | Extracting environmental data for grid points...
+2026-03-10 20:28:01 | INFO | Valid data points: 925 / 949
+2026-03-10 20:28:01 | INFO | Making predictions...
+2026-03-10 20:28:01 | INFO | Saved predictions to /Users/ravindujayaweera/Desktop/project/final_year_research/model/fish_zone_predictions/fish_zones_2026-03-10.csv
+2026-03-10 20:28:01 | INFO | Saved GeoJSON to /Users/ravindujayaweera/Desktop/project/final_year_research/model/fish_zone_predictions/fish_zones_2026-03-10.geojson
+2026-03-10 20:28:02 | INFO | Saved heatmap to /Users/ravindujayaweera/Desktop/project/final_year_research/model/fish_zone_predictions/fish_zones_heatmap_2026-03-10.png
+2026-03-10 20:28:02 | INFO | 
+Fish Zone Prediction Summary
+==================================================
+Date: 2026-03-10 20:28:02
+
+Total prediction points: 925
+Predicted fish zones: 57 (6.2%)
+High probability zones (>70%): 47 (5.1%)
+
+Average fish probability: 0.075
+Maximum fish probability: 1.000
+
+Environmental Data Ranges:
+- SST: 27.87°C to 29.56°C
+- Chlorophyll: 0.0662 to 6.5578 mg/m³
+- Ocean Current U: -0.944 to 0.349 m/s
+- Ocean Current V: -0.546 to 0.520 m/s
+==================================================
+
+2026-03-10 20:28:02 | INFO | ============================================================
+2026-03-10 20:28:02 | INFO | Fish Zone Prediction Complete!
+2026-03-10 20:28:02 | INFO | ============================================================

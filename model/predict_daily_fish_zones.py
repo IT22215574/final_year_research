@@ -205,6 +205,11 @@ def extract_value_at_point(ds: xr.Dataset, var_name: str, lat: float, lon: float
             val = float(val)
             if np.isnan(val) or np.isinf(val):
                 return None
+            
+            # Convert SST from Kelvin to Celsius if needed
+            if 'sst' in var_name.lower() and val > 100:  # Likely in Kelvin if > 100
+                val = val - 273.15
+            
             return val
         
         return None
