@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BarChart3, LayoutDashboard, LogOut, Menu, UserPlus, X } from "lucide-react";
+import { BarChart3, Fish, LayoutDashboard, LogOut, Menu, Store, Users, X } from "lucide-react";
 
 import { signOut } from "@/lib/authApi";
 import type { ApiError } from "@/lib/api";
@@ -25,8 +25,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navItems = useMemo(
     () => [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/admin/users", label: "Users", icon: Users },
+      { href: "/admin/fish-categories", label: "Fish Categories", icon: Fish },
+      { href: "/admin/fish-market", label: "Fish Market", icon: Store },
       { href: "/admin/activity", label: "Activity", icon: BarChart3 },
-      { href: "/sign-up", label: "Create user", icon: UserPlus },
     ],
     [],
   );
