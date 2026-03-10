@@ -5,14 +5,14 @@ Rows used: 37984 (land filtered=True)
 Test size: 0.2 (n_test=7597)
 
 Metrics:
-- Accuracy: 0.9998683690930631
+- Accuracy: 0.9990785836514413
 - Precision: 1.0
-- Recall: 0.9992764109985528
-- F1: 0.9996380745566413
-- ROC AUC: 0.9999998835737729
-- Average Precision (PR AUC): 0.9999994767975405
-- Log loss: 0.0015490535896497298
-- Brier score: 0.00015973410556798737
+- Recall: 0.9949348769898697
+- F1: 0.9974610083424011
+- ROC AUC: 0.9999977879016849
+- Average Precision (PR AUC): 0.9999896632918852
+- Log loss: 0.08281566628152616
+- Brier score: 0.009488749945153788
 
 Saved files:
 - rf_model_metrics.json

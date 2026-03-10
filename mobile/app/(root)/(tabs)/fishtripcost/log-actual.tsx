@@ -525,16 +525,11 @@ const LogActualScreen = () => {
                 placeholder="e.g. 185.5"
                 keyboardType="decimal-pad"
                 editable={!!summary.tripId}
-                style={{
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  fontSize: 16,
-                  borderWidth: 1,
-                  borderColor: '#d1d5db',
-                  backgroundColor: summary.tripId ? '#f9fafb' : '#f3f4f6',
-                  color: summary.tripId ? '#111827' : '#9ca3af',
-                }}
+                className={`rounded-xl px-4 py-3.5 text-base ${
+                  summary.tripId
+                    ? "bg-gray-50 border border-gray-300 text-gray-900"
+                    : "bg-gray-100 border border-gray-300 text-gray-400"
+                }`}
                 placeholderTextColor="#9ca3af"
               />
               <Text className="text-xs text-gray-500 mt-2">
@@ -552,16 +547,11 @@ const LogActualScreen = () => {
                 placeholder="e.g. 142"
                 keyboardType="decimal-pad"
                 editable={!!summary.tripId}
-                style={{
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  fontSize: 16,
-                  borderWidth: 1,
-                  borderColor: '#d1d5db',
-                  backgroundColor: summary.tripId ? '#f9fafb' : '#f3f4f6',
-                  color: summary.tripId ? '#111827' : '#9ca3af',
-                }}
+                className={`rounded-xl px-4 py-3.5 text-base ${
+                  summary.tripId
+                    ? "bg-gray-50 border border-gray-300 text-gray-900"
+                    : "bg-gray-100 border border-gray-300 text-gray-400"
+                }`}
                 placeholderTextColor="#9ca3af"
               />
               <Text className="text-xs text-gray-500 mt-2">
@@ -579,16 +569,11 @@ const LogActualScreen = () => {
                 placeholder="e.g. 85200"
                 keyboardType="decimal-pad"
                 editable={!!summary.tripId}
-                style={{
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  fontSize: 16,
-                  borderWidth: 1,
-                  borderColor: '#d1d5db',
-                  backgroundColor: summary.tripId ? '#f9fafb' : '#f3f4f6',
-                  color: summary.tripId ? '#111827' : '#9ca3af',
-                }}
+                className={`rounded-xl px-4 py-3.5 text-base ${
+                  summary.tripId
+                    ? "bg-gray-50 border border-gray-300 text-gray-900"
+                    : "bg-gray-100 border border-gray-300 text-gray-400"
+                }`}
                 placeholderTextColor="#9ca3af"
               />
               <Text className="text-xs text-gray-500 mt-2">
@@ -607,17 +592,11 @@ const LogActualScreen = () => {
                 multiline
                 numberOfLines={4}
                 editable={!!summary.tripId}
-                style={{
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  fontSize: 16,
-                  minHeight: 100,
-                  borderWidth: 1,
-                  borderColor: '#d1d5db',
-                  backgroundColor: summary.tripId ? '#f9fafb' : '#f3f4f6',
-                  color: summary.tripId ? '#111827' : '#9ca3af',
-                }}
+                className={`rounded-xl px-4 py-3.5 text-base min-h-[100px] ${
+                  summary.tripId
+                    ? "bg-gray-50 border border-gray-300 text-gray-900"
+                    : "bg-gray-100 border border-gray-300 text-gray-400"
+                }`}
                 placeholderTextColor="#9ca3af"
                 textAlignVertical="top"
               />

@@ -17,6 +17,7 @@ import { useRouter } from "expo-router";
 import { getMyTrips } from "@/services/tripService";
 import { getMyBoats } from "@/services/boatService";
 import ScreenHeader from "./components/ScreenHeader";
+import FishTripNavBar from "./components/FishTripNavBar";
 
 const money = (n: any) => {
   const num = Number(n);
@@ -109,6 +110,65 @@ const HistoryScreen = () => {
     setSelectedTrip(trip);
     setModalVisible(true);
   };
+
+  const filteredTrips = trips.filter((trip) => {
+    // Filter by selected boat
+    if (selectedBoatId && trip.boatId !== selectedBoatId) {
+      return false;
+    }
+
+    // Filter by search query
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+    const tripId = String(trip?._id ?? trip?.id).toLowerCase();
+    const boatName = (
+      trip?.boat?.boatName ||
+      trip?.boatName ||
+      ""
+    ).toLowerCase();
+    const boatType = (
+      trip?.boat?.boatType ||
+      trip?.boatType ||
+      ""
+    ).toLowerCase();
+    const tripName = getTripDisplayName(trip).toLowerCase();
+    const date = trip?.createdAt
+      ? new Date(trip.createdAt).toLocaleString().toLowerCase()
+      : "";
+
+    return (
+      tripId.includes(query) ||
+      boatName.includes(query) ||
+      boatType.includes(query) ||
+      tripName.includes(query) ||
+      date.includes(query)
+    );
+  });
+
+  return (
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <FishTripNavBar />
+
+      {/* Header */}
+      <View className="bg-white border-b border-gray-200 px-4 pt-3 pb-4">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <TouchableOpacity
+              onPress={() => router.back()}
+              className="w-9 h-9 rounded-lg bg-gray-100 items-center justify-center mr-3"
+              activeOpacity={0.7}
+            >
+              <Text className="text-gray-600 text-lg">←</Text>
+            </TouchableOpacity>
+            <View>
+              <Text className="text-xl font-bold text-gray-900">History</Text>
+              <Text className="text-xs text-gray-500">
+                {filteredTrips.length} {selectedBoatId ? "filtered" : "saved"}{" "}
+                trips
+              </Text>
+            </View>
+          </View>
 
   const filteredTrips = trips.filter((trip) => {
     // Filter by selected boat
