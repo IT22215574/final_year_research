@@ -1,0 +1,82 @@
+# Quick Answer to Your Questions
+===============================
+
+## Q1: Do I get 3 datasets daily?
+**NO - You only get SST daily (1 dataset, not 3)**
+
+Current cron job:
+```
+0 6 * * * fetch_sst_daily.sh  ← Only downloads SST
+```
+
+## Q2: Do I need to run export commands again?
+**NO - Credentials are already in the script**
+
+Your credentials (ravindujayaweera123@gmail.com) are already configured in:
+- fetch_sst_daily.sh
+- fetch_copernicus_daily.sh (the new one I just created)
+
+===============================
+# How to Get All 3 Datasets Daily
+===============================
+
+## Option A: SIMPLE - One command to update cron
+
+Run this command to replace your current SST-only cron with all 3 datasets:
+
+```bash
+(crontab -l | grep -v fetch_sst_daily.sh; echo "0 6 * * * /Users/ravindujayaweera/Desktop/project/final_year_research/model/fetch_copernicus_daily.sh >> /Users/ravindujayaweera/Desktop/project/final_year_research/model/cron.log 2>&1") | crontab -
+```
+
+## Option B: MANUAL - Edit crontab yourself
+
+1. Open crontab editor:
+   ```bash
+   crontab -e
+   ```
+
+2. Find this line:
+   ```
+   0 6 * * * /Users/ravindujayaweera/Desktop/project/final_year_research/model/fetch_sst_daily.sh
+   ```
+
+3. Replace with:
+   ```
+   0 6 * * * /Users/ravindujayaweera/Desktop/project/final_year_research/model/fetch_copernicus_daily.sh >> /Users/ravindujayaweera/Desktop/project/final_year_research/model/cron.log 2>&1
+   ```
+
+4. Save and exit (in vi: press Esc, then type :wq and Enter)
+
+## Verify it worked:
+
+```bash
+crontab -l
+```
+
+You should see the new job listed.
+
+===============================
+# What You'll Get Daily at 6 AM
+===============================
+
+✓ Sea Surface Temperature  → model/sst_data/sst_YYYY-MM-DD.nc
+✓ Ocean Currents          → model/ocean_currents/currents_YYYY-MM-DD.nc
+✓ Chlorophyll             → model/chlorophyll_data/chlorophyll_YYYY-MM-DD.nc
+
+All downloads logged to: model/copernicus_download_log.txt
+
+===============================
+# Test It Now (Optional)
+===============================
+
+To test the script immediately (don't wait for 6 AM):
+
+```bash
+cd ~/Desktop/project/final_year_research/model
+./fetch_copernicus_daily.sh
+```
+
+This will download all 3 datasets for the most recent available date.
+
+Note: The script automatically tries recent dates if today's data isn't available yet.
+      (Today → Yesterday → 2 days ago → 3 days ago)
