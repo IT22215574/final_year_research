@@ -148,8 +148,8 @@ const NavItem = ({
               tintColor: isActive
                 ? "#FFFFFF"
                 : isHovered && !isActive
-                ? "#005CFF"
-                : "#64748b",
+                  ? "#005CFF"
+                  : "#64748b",
             },
             iconStyle,
           ]}
@@ -185,12 +185,10 @@ const TabsLayout = () => {
   const pathname = usePathname();
   const { width, height } = useWindowDimensions();
 
-  const {
-    isDesktop,
-    scale,
-    moderateScale,
-    verticalScale,
-  } = useMemo(() => getScaleFns(width, height), [width, height]);
+  const { isDesktop, scale, moderateScale, verticalScale } = useMemo(
+    () => getScaleFns(width, height),
+    [width, height],
+  );
 
   const [activeTab, setActiveTab] = useState<TabName>("home");
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -229,7 +227,7 @@ const TabsLayout = () => {
         showBadge: false,
       },
     ],
-    []
+    [],
   );
 
   useEffect(() => {
@@ -239,7 +237,10 @@ const TabsLayout = () => {
       setActiveTab("Quality");
     } else if (pathname.includes("/Notifications")) {
       setActiveTab("Notifications");
-    } else if (pathname.includes("/profile") || pathname.includes("/Update_profile")) {
+    } else if (
+      pathname.includes("/profile") ||
+      pathname.includes("/Update_profile")
+    ) {
       setActiveTab("profile");
     } else {
       setActiveTab("home");
@@ -251,7 +252,7 @@ const TabsLayout = () => {
       if (currentUser?.id) {
         fetchUnreadCount();
       }
-    }, [currentUser?.id, fetchUnreadCount])
+    }, [currentUser?.id, fetchUnreadCount]),
   );
 
   useEffect(() => {
@@ -275,11 +276,11 @@ const TabsLayout = () => {
 
       const subscription = BackHandler.addEventListener(
         "hardwareBackPress",
-        onBackPress
+        onBackPress,
       );
 
       return () => subscription.remove();
-    }, [activeTab])
+    }, [activeTab]),
   );
 
   const handleTabPress = (tabName: TabName, route: string) => {
@@ -302,11 +303,11 @@ const TabsLayout = () => {
 
   const bottomBarHeight: number = isDesktop
     ? Math.max(90, containerSize + 20 + 14 + verticalScale(8))
-    : Platform.select({
+    : (Platform.select({
         ios: verticalScale(60) + insets.bottom,
         android: verticalScale(65) + insets.bottom,
         default: verticalScale(70) + insets.bottom,
-      }) ?? verticalScale(70) + insets.bottom;
+      }) ?? verticalScale(70) + insets.bottom);
 
   return (
     <SafeAreaProvider style={styles.safe}>
@@ -464,6 +465,7 @@ const TabsLayout = () => {
             <Tabs.Screen
               name="GradingHistory"
               options={{
+                title: "Quality History",
                 headerShown: true,
                 headerStyle: {
                   backgroundColor: "#0057FF",
@@ -474,6 +476,7 @@ const TabsLayout = () => {
             <Tabs.Screen
               name="GradingDetail"
               options={{
+                title: "Quality Details",
                 headerShown: true,
                 headerStyle: {
                   backgroundColor: "#0057FF",
@@ -510,15 +513,45 @@ const TabsLayout = () => {
         </View>
 
         {/* Bottom Navigation - Unified for desktop & mobile */}
-          {isDesktop ? (
+        {isDesktop ? (
+          <View
+            style={[
+              styles.customTabBar,
+              styles.tabBarDesktop,
+              { height: bottomBarHeight },
+            ]}
+          >
+            <View style={[styles.navItemsContainer, styles.navItemsDesktop]}>
+              {navItems.map((item) => (
+                <NavItem
+                  key={item.tabName}
+                  icon={item.icon}
+                  label={item.label}
+                  isActive={activeTab === item.tabName}
+                  onPress={() => handleTabPress(item.tabName, item.route)}
+                  showBadge={item.showBadge}
+                  badgeCount={unreadCount}
+                  isDesktop={true}
+                  iconSize={iconSize}
+                  containerSize={containerSize}
+                  iconStyle={item.iconStyle}
+                />
+              ))}
+            </View>
+          </View>
+        ) : (
+          !sidebarVisible && (
             <View
               style={[
                 styles.customTabBar,
-                styles.tabBarDesktop,
-                { height: bottomBarHeight },
+                styles.tabBarMobile,
+                {
+                  paddingBottom: Math.max(insets.bottom, verticalScale(8)),
+                  height: bottomBarHeight,
+                },
               ]}
             >
-              <View style={[styles.navItemsContainer, styles.navItemsDesktop]}>
+              <View style={styles.navItemsContainer}>
                 {navItems.map((item) => (
                   <NavItem
                     key={item.tabName}
@@ -528,7 +561,7 @@ const TabsLayout = () => {
                     onPress={() => handleTabPress(item.tabName, item.route)}
                     showBadge={item.showBadge}
                     badgeCount={unreadCount}
-                    isDesktop={true}
+                    isDesktop={false}
                     iconSize={iconSize}
                     containerSize={containerSize}
                     iconStyle={item.iconStyle}
@@ -536,38 +569,8 @@ const TabsLayout = () => {
                 ))}
               </View>
             </View>
-          ) : (
-            !sidebarVisible && (
-              <View
-                style={[
-                  styles.customTabBar,
-                  styles.tabBarMobile,
-                  {
-                    paddingBottom: Math.max(insets.bottom, verticalScale(8)),
-                    height: bottomBarHeight,
-                  },
-                ]}
-              >
-                <View style={styles.navItemsContainer}>
-                  {navItems.map((item) => (
-                    <NavItem
-                      key={item.tabName}
-                      icon={item.icon}
-                      label={item.label}
-                      isActive={activeTab === item.tabName}
-                      onPress={() => handleTabPress(item.tabName, item.route)}
-                      showBadge={item.showBadge}
-                      badgeCount={unreadCount}
-                      isDesktop={false}
-                      iconSize={iconSize}
-                      containerSize={containerSize}
-                      iconStyle={item.iconStyle}
-                    />
-                  ))}
-                </View>
-              </View>
-            )
-          )}
+          )
+        )}
       </View>
     </SafeAreaProvider>
   );
