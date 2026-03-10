@@ -26,6 +26,19 @@ import type { PredictionResult } from "@/utils/fish_quality_utils/fishTypes";
 import FishWeightCard from "@/components/FishWeightCard";
 import { useGradingRecordStore } from "@/stores/gradingRecordStore";
 
+// ── Measurement system imports ───────────────────────────────────────────────
+import type {
+  CalibrationData,
+  LinearMeasurement,
+  FishMeasurements,
+} from "@/types/measurement";
+import MeasurementCalibrationModal from "@/components/MeasurementCalibrationModal";
+import FishMeasurementModal from "@/components/FishMeasurementModal";
+import MeasurementResultsCard from "@/components/MeasurementResultsCard";
+import MeasurementInstructions from "@/components/MeasurementInstructions";
+import { buildFishMeasurements } from "@/utils/measurementUtils";
+import { resolveSpecies, getSizeCategoryForSpecies } from "@/utils/fishWeight";
+
 /** Species that support quality grading (match labels from the model exactly) */
 const GRADABLE_SPECIES = ["tuna", "makerel"];
 
@@ -63,6 +76,43 @@ const gradeDescription = (grade?: string | null) => {
   return "Grade unavailable";
 };
 
+/** Icon, colour and title for each per-image validation failure status. */
+const VALIDATION_STATUS_UI: Record<
+  string,
+  { icon: string; color: string; title: string }
+> = {
+  no_fish: {
+    icon: "no-photography",
+    color: "#e74c3c",
+    title: "No Fish Detected",
+  },
+  invalid_pair: {
+    icon: "broken-image",
+    color: "#e74c3c",
+    title: "Invalid Image Pair",
+  },
+  species_mismatch: {
+    icon: "compare-arrows",
+    color: "#f39c12",
+    title: "Species Mismatch",
+  },
+  unknown_species: {
+    icon: "help-outline",
+    color: "#f39c12",
+    title: "Unknown Species",
+  },
+  unsupported_species: {
+    icon: "block",
+    color: "#f39c12",
+    title: "Unsupported Species",
+  },
+  low_confidence: {
+    icon: "warning",
+    color: "#f39c12",
+    title: "Low Confidence",
+  },
+};
+
 export default function QualityGrading() {
   const router = useRouter();
 
@@ -82,6 +132,13 @@ export default function QualityGrading() {
   const [apiError, setApiError] = useState<string | null>(null);
 
   const [showDetails, setShowDetails] = useState(false);
+
+  // ── Measurement state ──────────────────────────────────────────────────────
+  const [showCalibration, setShowCalibration] = useState(false);
+  const [showMeasurement, setShowMeasurement] = useState(false);
+  const [calibration, setCalibration] = useState<CalibrationData | null>(null);
+  const [fishMeasurements, setFishMeasurements] =
+    useState<FishMeasurements | null>(null);
 
   // ── API health check ───────────────────────────────────────────────────────
   const checkApi = useCallback(async () => {
@@ -164,7 +221,23 @@ export default function QualityGrading() {
         onProgress: (msg: string) => setLoadingMsg(msg),
       });
 
-      // ── Pair mismatch check ──────────────────────────────────────────────
+      // ── Per-image validation failures from backend ───────────────────────
+      const valFailures = [
+        "no_fish",
+        "invalid_pair",
+        "species_mismatch",
+        "unknown_species",
+        "unsupported_species",
+      ];
+      if (
+        r.validationStatus &&
+        valFailures.includes(r.validationStatus)
+      ) {
+        setResult(r);
+        return; // validation failure card will render in the UI
+      }
+
+      // ── Pair mismatch check (backward-compat fallback) ───────────────────
       if (r.isFish && r.pairValidation && !r.pairValidation.matched) {
         const leftDisplay = getFishName(r.pairValidation.leftLabel).english;
         const rightDisplay = getFishName(r.pairValidation.rightLabel).english;
@@ -207,6 +280,40 @@ export default function QualityGrading() {
     if (!result || !isGradable) return;
     try {
       const names = getFishName(result.species);
+      const speciesKey = resolveSpecies(result.species);
+
+      // Build notes including measurement data if available
+      let notes = "";
+      if (fishMeasurements) {
+        const m = fishMeasurements;
+        notes += `Length: ${m.length.valueCm} cm (${m.length.confidence} conf.)`;
+        if (m.girth) {
+          notes += ` | Girth: ${m.girth.valueCm} cm (${m.girth.confidence} conf.)`;
+        }
+        notes += ` | Weight: ${m.weightEstimate.valueKg} kg (${m.weightEstimate.method})`;
+        if (m.weightEstimate.sizeCategory) {
+          notes += ` | Size: ${m.weightEstimate.sizeCategory}`;
+        }
+        notes += ` | Calibration: ${m.calibration.pixelsPerCm.toFixed(1)} px/cm`;
+      }
+
+      // ── Build measurement payload fields ─────────────────────────────────
+      // Measured length and estimated weight are stored for future
+      // reporting and analytics.
+      const measuredLengthCm = fishMeasurements?.length.valueCm;
+      const estimatedWeightKg = fishMeasurements?.weightEstimate.valueKg;
+      const estimatedWeightGrams = estimatedWeightKg != null
+        ? parseFloat((estimatedWeightKg * 1000).toFixed(1))
+        : undefined;
+      const measurementMethod = fishMeasurements?.weightEstimate.method;
+      const measurementConfidence = fishMeasurements?.weightEstimate.confidence;
+
+      // Size category is only for Skipjack Tuna — based on estimated weight thresholds
+      const sizeCategory = getSizeCategoryForSpecies(
+        speciesKey,
+        estimatedWeightKg ?? null,
+      );
+
       await saveRecord({
         fishSpecies: result.species ?? undefined,
         fishName: names.english,
@@ -214,13 +321,20 @@ export default function QualityGrading() {
         gradeConfidence: result.gradeConfidence,
         speciesConfidence: result.speciesConfidence,
         imageUris: [leftImage, rightImage].filter(Boolean) as string[],
+        notes: notes || undefined,
+        measuredLengthCm,
+        estimatedWeightKg,
+        estimatedWeightGrams,
+        sizeCategory,
+        measurementMethod,
+        measurementConfidence,
       });
       Alert.alert("Saved!", "Grading result saved to your history.");
       setSaveSuccess(true);
     } catch (e: any) {
       Alert.alert("Save Failed", e?.message ?? "Could not save result.");
     }
-  }, [result, leftImage, rightImage, saveRecord]);
+  }, [result, leftImage, rightImage, saveRecord, fishMeasurements]);
 
   const reset = () => {
     setLeftImage(null);
@@ -230,7 +344,49 @@ export default function QualityGrading() {
     setResult(null);
     setPredError(null);
     setSaveSuccess(false);
+    setCalibration(null);
+    setFishMeasurements(null);
   };
+
+  // ── Measurement handlers ───────────────────────────────────────────────────
+  const handleStartMeasurement = useCallback(() => {
+    if (!calibration) {
+      setShowCalibration(true);
+    } else {
+      setShowMeasurement(true);
+    }
+  }, [calibration]);
+
+  const handleCalibrated = useCallback((cal: CalibrationData) => {
+    setCalibration(cal);
+    setShowCalibration(false);
+    // Immediately open measurement modal after calibration
+    setShowMeasurement(true);
+  }, []);
+
+  const handleMeasurementComplete = useCallback(
+    (length: LinearMeasurement, girth?: LinearMeasurement) => {
+      if (!result?.species) return;
+      const speciesKey = resolveSpecies(result.species);
+      if (!speciesKey || !calibration) return;
+
+      const measurements = buildFishMeasurements(
+        calibration,
+        length,
+        speciesKey,
+        girth
+      );
+      setFishMeasurements(measurements);
+      setShowMeasurement(false);
+    },
+    [result, calibration]
+  );
+
+  const handleRecalibrate = useCallback(() => {
+    setCalibration(null);
+    setFishMeasurements(null);
+    setShowCalibration(true);
+  }, []);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const apiStatusColor =
@@ -421,32 +577,134 @@ export default function QualityGrading() {
           <View style={s.card}>
             <Text style={s.cardTitle}>Grading Result</Text>
 
-            {/* Pair mismatch banner */}
-            {result.pairValidation && !result.pairValidation.matched && (
-              <View style={s.mismatchBanner}>
-                <MaterialIcons
-                  name="compare-arrows"
-                  size={24}
-                  color="#e74c3c"
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={s.mismatchTitle}>Images Don't Match!</Text>
-                  <Text style={s.mismatchRow}>
-                    <Text style={s.mismatchSide}>Left: </Text>
-                    {getFishName(result.pairValidation.leftLabel).english}
-                  </Text>
-                  <Text style={s.mismatchRow}>
-                    <Text style={s.mismatchSide}>Right: </Text>
-                    {getFishName(result.pairValidation.rightLabel).english}
-                  </Text>
-                  <Text style={s.mismatchHint}>
-                    Grading requires both images to be of the same fish.
-                  </Text>
+            {/* Pair mismatch banner (backward-compat; new pipeline uses validationStatus) */}
+            {result.pairValidation &&
+              !result.pairValidation.matched &&
+              result.validationStatus !== "species_mismatch" && (
+                <View style={s.mismatchBanner}>
+                  <MaterialIcons
+                    name="compare-arrows"
+                    size={24}
+                    color="#e74c3c"
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.mismatchTitle}>Images Don't Match!</Text>
+                    <Text style={s.mismatchRow}>
+                      <Text style={s.mismatchSide}>Left: </Text>
+                      {getFishName(result.pairValidation.leftLabel).english}
+                    </Text>
+                    <Text style={s.mismatchRow}>
+                      <Text style={s.mismatchSide}>Right: </Text>
+                      {getFishName(result.pairValidation.rightLabel).english}
+                    </Text>
+                    <Text style={s.mismatchHint}>
+                      Grading requires both images to be of the same fish.
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            )}
+              )}
 
-            {!result.isFish ? (
+            {/* ── Per-image validation failure card ── */}
+            {result.validationStatus &&
+            !["success", "success_no_grade", "low_confidence"].includes(
+              result.validationStatus,
+            ) ? (
+              <View style={s.validationBox}>
+                <MaterialIcons
+                  name={
+                    (VALIDATION_STATUS_UI[result.validationStatus]?.icon ??
+                      "error") as any
+                  }
+                  size={48}
+                  color={
+                    VALIDATION_STATUS_UI[result.validationStatus]?.color ??
+                    "#e74c3c"
+                  }
+                />
+                <Text
+                  style={[
+                    s.validationTitle,
+                    {
+                      color:
+                        VALIDATION_STATUS_UI[result.validationStatus]?.color ??
+                        "#e74c3c",
+                    },
+                  ]}
+                >
+                  {VALIDATION_STATUS_UI[result.validationStatus]?.title ??
+                    "Validation Failed"}
+                </Text>
+                <Text style={s.validationMessage}>
+                  {result.validationMessage ??
+                    "An issue was detected with the uploaded images."}
+                </Text>
+
+                {/* Per-image breakdown */}
+                {result.perImageValidation && (
+                  <View style={s.perImageDetails}>
+                    <Text style={s.perImageHeading}>Per-Image Analysis</Text>
+
+                    {/* Left */}
+                    <View style={s.perImageRow}>
+                      <View
+                        style={[
+                          s.perImageDot,
+                          {
+                            backgroundColor:
+                              result.perImageValidation.leftFishDetected
+                                ? "#27ae60"
+                                : "#e74c3c",
+                          },
+                        ]}
+                      />
+                      <Text style={s.perImageLabel}>Left:</Text>
+                      <Text style={s.perImageValue}>
+                        {result.perImageValidation.leftFishDetected
+                          ? "✓ Fish"
+                          : "✗ Not fish"}
+                        {" · "}
+                        {(
+                          result.perImageValidation.leftFishConfidence * 100
+                        ).toFixed(0)}
+                        %
+                        {result.perImageValidation.leftSpecies
+                          ? ` · ${getFishName(result.perImageValidation.leftSpecies).english}`
+                          : ""}
+                      </Text>
+                    </View>
+
+                    {/* Right */}
+                    <View style={s.perImageRow}>
+                      <View
+                        style={[
+                          s.perImageDot,
+                          {
+                            backgroundColor:
+                              result.perImageValidation.rightFishDetected
+                                ? "#27ae60"
+                                : "#e74c3c",
+                          },
+                        ]}
+                      />
+                      <Text style={s.perImageLabel}>Right:</Text>
+                      <Text style={s.perImageValue}>
+                        {result.perImageValidation.rightFishDetected
+                          ? "✓ Fish"
+                          : "✗ Not fish"}
+                        {" · "}
+                        {(
+                          result.perImageValidation.rightFishConfidence * 100
+                        ).toFixed(0)}
+                        %
+                        {result.perImageValidation.rightSpecies
+                          ? ` · ${getFishName(result.perImageValidation.rightSpecies).english}`
+                          : ""}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            ) : !result.isFish ? (
               <View style={s.notFishBox}>
                 <MaterialIcons
                   name="no-photography"
@@ -537,6 +795,17 @@ export default function QualityGrading() {
                   )}
                 </View>
 
+                {/* Low-confidence warning banner */}
+                {result.validationStatus === "low_confidence" && (
+                  <View style={s.lowConfBanner}>
+                    <MaterialIcons name="warning" size={16} color="#d68910" />
+                    <Text style={s.lowConfText}>
+                      {result.validationMessage ??
+                        "Grade confidence is below the minimum threshold."}
+                    </Text>
+                  </View>
+                )}
+
                 {result.warnings && result.warnings.length > 0 && (
                   <View style={s.warnBox}>
                     {result.warnings.map((w, i) => (
@@ -594,13 +863,76 @@ export default function QualityGrading() {
           </View>
         )}
 
-        {/* ── Weight estimation ── */}
+        {/* ── Weight estimation ── 
         {isGradable && result?.species && (
           <FishWeightCard
             modelLabel={result.species}
             leftImageUri={leftImage}
             rightImageUri={rightImage}
           />
+        )}*/}
+
+        {/* ── Fish Measurement System ── */}
+        {isGradable && result?.species && resolveSpecies(result.species) && (
+          <>
+            {/* Measurement instructions */}
+            <MeasurementInstructions
+              speciesKey={resolveSpecies(result.species)!}
+            />
+
+            {/* Start measurement / re-measure button */}
+            {!fishMeasurements ? (
+              <TouchableOpacity
+                style={s.measureBtn}
+                onPress={handleStartMeasurement}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={["#0057FF", "#00C6FF"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={s.measureBtnGradient}
+                >
+                  <MaterialIcons name="straighten" size={20} color="#fff" />
+                  <Text style={s.measureBtnText}>
+                    {calibration
+                      ? "📏 Measure Fish on Image"
+                      : "📐 Calibrate & Measure Fish"}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <>
+                {/* Measurement results card */}
+                <MeasurementResultsCard
+                  measurements={fishMeasurements}
+                  species={resolveSpecies(result.species)!}
+                />
+
+                {/* Re-measure options */}
+                <View style={s.reMeasureRow}>
+                  <TouchableOpacity
+                    style={s.reMeasureBtn}
+                    onPress={() => setShowMeasurement(true)}
+                  >
+                    <MaterialIcons name="refresh" size={16} color="#0057FF" />
+                    <Text style={[s.reMeasureBtnText, { color: "#0057FF" }]}>
+                      Re-measure
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={s.reMeasureBtn}
+                    onPress={handleRecalibrate}
+                  >
+                    <MaterialIcons name="settings" size={16} color="#e67e22" />
+                    <Text style={[s.reMeasureBtnText, { color: "#e67e22" }]}>
+                      Re-calibrate
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </>
         )}
 
         {/* ── Empty state ── */}
@@ -613,6 +945,28 @@ export default function QualityGrading() {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Measurement Calibration Modal ── */}
+      {leftImage && (
+        <MeasurementCalibrationModal
+          visible={showCalibration}
+          imageUri={leftImage}
+          onCalibrated={handleCalibrated}
+          onCancel={() => setShowCalibration(false)}
+        />
+      )}
+
+      {/* ── Fish Measurement Modal ── */}
+      {leftImage && calibration && result?.species && resolveSpecies(result.species) && (
+        <FishMeasurementModal
+          visible={showMeasurement}
+          imageUri={leftImage}
+          calibration={calibration}
+          speciesKey={resolveSpecies(result.species)!}
+          onComplete={handleMeasurementComplete}
+          onCancel={() => setShowMeasurement(false)}
+        />
+      )}
 
       {/* ── Stage Details Modal ── */}
       <Modal visible={showDetails} animationType="slide" transparent>
@@ -1020,4 +1374,99 @@ const s = StyleSheet.create({
     marginTop: 18,
   },
   closeBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+
+  // ── Measurement styles ──────────────────────────────────────────────────
+  measureBtn: { borderRadius: 12, overflow: "hidden" },
+  measureBtnGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 14,
+  },
+  measureBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  reMeasureRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  reMeasureBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    backgroundColor: "#fff",
+  },
+  reMeasureBtnText: { fontSize: 13, fontWeight: "600" },
+
+  /* ── Per-image validation failure ───────────────────────────────── */
+  validationBox: {
+    alignItems: "center",
+    paddingVertical: 20,
+    gap: 10,
+  },
+  validationTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  validationMessage: {
+    fontSize: 14,
+    color: "#64748b",
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 8,
+  },
+  perImageDetails: {
+    width: "100%" as any,
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 8,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  perImageHeading: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748b",
+    marginBottom: 2,
+  },
+  perImageRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+  },
+  perImageDot: { width: 8, height: 8, borderRadius: 4 },
+  perImageLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#0f172a",
+    width: 50,
+  },
+  perImageValue: { flex: 1, fontSize: 12, color: "#64748b" },
+
+  /* ── Low-confidence warning banner ─────────────────────────────── */
+  lowConfBanner: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    backgroundColor: "#fef9e7",
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#f9e79f",
+  },
+  lowConfText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#7d6608",
+    lineHeight: 16,
+  },
 });

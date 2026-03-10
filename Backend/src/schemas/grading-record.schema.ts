@@ -37,6 +37,38 @@ export class GradingRecord {
   @Prop({ trim: true, default: '' })
   notes: string;
 
+  // ── Measurement & size classification fields ──────────────────────────────────
+  // Measured length and estimated weight are stored for future
+  // reporting and analytics.
+
+  /** Measured fish length in centimetres */
+  @Prop({ type: Number })
+  measuredLengthCm: number;
+
+  /** Estimated weight in kilograms (from species-specific formula) */
+  @Prop({ type: Number })
+  estimatedWeightKg: number;
+
+  /** Estimated weight in grams */
+  @Prop({ type: Number })
+  estimatedWeightGrams: number;
+
+  /**
+   * Size category — only for Skipjack Tuna.
+   * Based on estimated weight: >3 kg → large, 1–3 kg → medium, <1 kg → small.
+   * null / absent for non-skipjack species.
+   */
+  @Prop({ type: String, enum: ['small', 'medium', 'large', null], default: null })
+  sizeCategory: 'small' | 'medium' | 'large' | null;
+
+  /** Weight estimation method (e.g. "research-length-weight", "length-only") */
+  @Prop({ trim: true })
+  measurementMethod: string;
+
+  /** Measurement confidence score (0–1) */
+  @Prop({ type: Number, min: 0, max: 1 })
+  measurementConfidence: number;
+
   /**
    * Whether this record has been linked to a market listing.
    * "saved"        — stored but not yet used in market

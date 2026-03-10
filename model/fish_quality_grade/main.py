@@ -86,6 +86,12 @@ SPECIES_THRESHOLD = 0.45  # Lowered for internet images
 GRADE_THRESHOLD = 0.45
 UNKNOWN_SPECIES_THRESHOLD = 0.30  # Below this, classify as unknown
 
+# ── Per-image validation thresholds ─────────────────────────────────────────
+# Stricter thresholds for per-image checks BEFORE running the dual-image pipeline
+PER_IMAGE_FISH_THRESHOLD  = 0.80   # Each image must independently be recognised as a fish
+PER_IMAGE_SPECIES_THRESHOLD = 0.70 # Species must be confidently identified per image
+FINAL_GRADE_THRESHOLD = 0.65       # Grade confidence minimum
+
 # Enable test-time augmentation for better accuracy
 USE_TTA = True
 TTA_AUGMENTATIONS = 3  # Number of augmented views
@@ -113,6 +119,9 @@ GRADE_LABELS = {
     1: "B",
     2: "C"
 }
+
+# All species recognised by the species classifier
+SUPPORTED_SPECIES = list(SPECIES_LABELS.values())
 
 MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
@@ -407,6 +416,14 @@ def run_model(session, left: np.ndarray, right: np.ndarray, use_tta: bool = Fals
         raise HTTPException(status_code=500, detail=f"Model inference error: {str(e)}")
 
 
+def run_single_image(session, img: np.ndarray, use_tta: bool = False) -> Dict:
+    """
+    Run inference on a single image by feeding it as both the left and right
+    input.  This allows per-image validation with the dual-input model.
+    """
+    return run_model(session, img, img, use_tta=use_tta)
+
+
 @app.on_event("startup")
 async def startup_event():
     """Load models on startup"""
@@ -457,175 +474,302 @@ async def predict(
     use_tta: bool = Query(USE_TTA, description="Use Test-Time Augmentation")
 ) -> Dict:
     """
-    Predict fish species and grade from left and right images
-    Handles internet/downloaded images with special preprocessing
+    Full validation and prediction pipeline for fish images.
+
+    Steps:
+      1. Validate LEFT image is a fish  (per-image)
+      2. Validate RIGHT image is a fish (per-image)
+      3. Predict species for LEFT image  (per-image)
+      4. Predict species for RIGHT image (per-image)
+      5. Reject if species confidence too low  → unknown_species
+      6. Compare left vs right species         → species_mismatch
+      7. Check species is supported            → unsupported_species
+      8. Run dual-image grading
+      9. Apply grade confidence threshold      → low_confidence
     """
     start_time = time.time()
-    
-    # Check if models are loaded
+
+    # ── Model check ───────────────────────────────────────────────────────
     if not all([fish_session, species_session, grade_session]):
         success, message = load_models()
         if not success:
             raise HTTPException(status_code=503, detail=f"Models not available: {message}")
-    
-    # Validate file types
+
+    # ── File-type validation ──────────────────────────────────────────────
     REJECTED_TYPES = {'application/json', 'text/plain', 'text/html'}
     for img in [left_image, right_image]:
         ct = (img.content_type or '').lower()
         if ct in REJECTED_TYPES:
             raise HTTPException(status_code=400, detail=f"File {img.filename} is not an image")
-    
-    # Check cache
+
+    # ── Cache check ───────────────────────────────────────────────────────
     cache_key = None
     if CACHE_SIZE > 0:
         left_contents = await left_image.read()
         right_contents = await right_image.read()
         cache_key = get_cache_key(left_contents, right_contents)
-        
         if cache_key in prediction_cache:
             cached = prediction_cache[cache_key]
             if time.time() - cached["timestamp"] < CACHE_TTL:
                 logger.info(f"Cache hit for {cache_key}")
                 cached["result"]["from_cache"] = True
                 return cached["result"]
-        
-        # Reset file positions for preprocessing
         await left_image.seek(0)
         await right_image.seek(0)
-    
-    # Preprocess images with quality assessment
+
+    # ── Preprocess ────────────────────────────────────────────────────────
     try:
         left, left_quality = await preprocess_image(left_image, apply_enhancements=True)
         right, right_quality = await preprocess_image(right_image, apply_enhancements=True)
     finally:
         await left_image.close()
         await right_image.close()
-    
-    # Stage 1: Fish / Non-Fish with TTA
+
+    # Collect image-quality warnings
+    warnings: List[str] = []
+    if left_quality.get("is_screenshot"):
+        warnings.append("Left image appears to be a screenshot — results may be less accurate")
+    if right_quality.get("is_screenshot"):
+        warnings.append("Right image appears to be a screenshot — results may be less accurate")
+    if left_quality.get("quality_issues"):
+        warnings.append(f"Left image issues: {', '.join(left_quality['quality_issues'])}")
+    if right_quality.get("quality_issues"):
+        warnings.append(f"Right image issues: {', '.join(right_quality['quality_issues'])}")
+
+    # ── Helper: build response dict ───────────────────────────────────────
+    def _response(status: str, message: str, **kw) -> Dict:
+        resp = {
+            "request_id": hashlib.md5(str(time.time()).encode()).hexdigest()[:8],
+            "timestamp": datetime.now().isoformat(),
+            "processing_time": round(time.time() - start_time, 3),
+            "status": status,
+            "message": message,
+            "image_quality": {"left": left_quality, "right": right_quality},
+            "warnings": warnings,
+        }
+        resp.update(kw)
+        return resp
+
+    def _cache_and_return(resp: Dict) -> Dict:
+        if cache_key:
+            prediction_cache[cache_key] = {"timestamp": time.time(), "result": resp}
+            if len(prediction_cache) > CACHE_SIZE:
+                oldest = min(prediction_cache.keys(),
+                             key=lambda k: prediction_cache[k]["timestamp"])
+                del prediction_cache[oldest]
+        return resp
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 1 & 2 — Per-image fish detection (no TTA for speed)
+    # ═══════════════════════════════════════════════════════════════════════
+    left_fish = run_single_image(fish_session, left, use_tta=False)
+    right_fish = run_single_image(fish_session, right, use_tta=False)
+
+    left_fish_label  = BINARY_LABELS[left_fish["prediction_idx"]]
+    right_fish_label = BINARY_LABELS[right_fish["prediction_idx"]]
+    left_fish_ok  = left_fish_label == "fish" and left_fish["confidence"] >= PER_IMAGE_FISH_THRESHOLD
+    right_fish_ok = right_fish_label == "fish" and right_fish["confidence"] >= PER_IMAGE_FISH_THRESHOLD
+
+    piv = {  # per-image validation payload
+        "left_fish_detected":    left_fish_ok,
+        "left_fish_confidence":  round(left_fish["confidence"], 4),
+        "left_fish_label":       left_fish_label,
+        "right_fish_detected":   right_fish_ok,
+        "right_fish_confidence": round(right_fish["confidence"], 4),
+        "right_fish_label":      right_fish_label,
+    }
+
+    logger.info(
+        f"[predict] Per-image fish: left={left_fish_label}"
+        f"({left_fish['confidence']:.2f}) "
+        f"right={right_fish_label}({right_fish['confidence']:.2f})"
+    )
+
+    # Both non-fish
+    if not left_fish_ok and not right_fish_ok:
+        return _cache_and_return(_response(
+            "no_fish",
+            "No valid fish detected in the uploaded images.",
+            per_image_validation=piv,
+            final_result="NOT FISH",
+            stage1={
+                "label": "non_fish",
+                "confidence": max(left_fish["confidence"], right_fish["confidence"]),
+                "probabilities": {
+                    BINARY_LABELS[i]: float(p)
+                    for i, p in enumerate(left_fish["probabilities"])
+                },
+            },
+        ))
+
+    # One fish, one non-fish
+    if left_fish_ok != right_fish_ok:
+        return _cache_and_return(_response(
+            "invalid_pair",
+            "Both images must contain a valid fish. "
+            "One image does not appear to contain a fish.",
+            per_image_validation=piv,
+            final_result="INVALID PAIR",
+        ))
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 3 & 4 — Per-image species prediction
+    # ═══════════════════════════════════════════════════════════════════════
+    left_sp  = run_single_image(species_session, left, use_tta=use_tta)
+    right_sp = run_single_image(species_session, right, use_tta=use_tta)
+
+    left_species    = SPECIES_LABELS[left_sp["prediction_idx"]]
+    right_species   = SPECIES_LABELS[right_sp["prediction_idx"]]
+    left_sp_conf    = left_sp["confidence"]
+    right_sp_conf   = right_sp["confidence"]
+
+    piv.update({
+        "left_species":             left_species,
+        "left_species_confidence":  round(left_sp_conf, 4),
+        "right_species":            right_species,
+        "right_species_confidence": round(right_sp_conf, 4),
+    })
+
+    logger.info(
+        f"[predict] Per-image species: left={left_species}"
+        f"({left_sp_conf:.2f}) right={right_species}({right_sp_conf:.2f})"
+    )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 5 — Unknown species (low confidence on either side)
+    # ═══════════════════════════════════════════════════════════════════════
+    if left_sp_conf < PER_IMAGE_SPECIES_THRESHOLD or right_sp_conf < PER_IMAGE_SPECIES_THRESHOLD:
+        low_side = "left" if left_sp_conf <= right_sp_conf else "right"
+        low_conf = min(left_sp_conf, right_sp_conf)
+        return _cache_and_return(_response(
+            "unknown_species",
+            f"Fish species could not be recognised confidently. "
+            f"The {low_side} image had low species confidence ({low_conf:.0%}).",
+            per_image_validation=piv,
+            final_result="UNKNOWN SPECIES",
+        ))
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 6 — Species mismatch
+    # ═══════════════════════════════════════════════════════════════════════
+    if left_species != right_species:
+        return _cache_and_return(_response(
+            "species_mismatch",
+            "The two images appear to belong to different fish species. "
+            "Please upload left and right images of the same fish.",
+            per_image_validation=piv,
+            pair_validation={
+                "matched": False,
+                "left_label":      left_species,
+                "left_confidence":  round(left_sp_conf, 4),
+                "right_label":     right_species,
+                "right_confidence": round(right_sp_conf, 4),
+            },
+            final_result="SPECIES MISMATCH",
+        ))
+
+    agreed_species = left_species
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 7 — Supported species check
+    # ═══════════════════════════════════════════════════════════════════════
+    if agreed_species not in SUPPORTED_SPECIES:
+        return _cache_and_return(_response(
+            "unsupported_species",
+            f"The species '{agreed_species}' is not supported by the grading model.",
+            per_image_validation=piv,
+            final_result=f"UNSUPPORTED: {agreed_species}",
+        ))
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 8 — Dual-image pipeline (both images verified — final prediction)
+    # ═══════════════════════════════════════════════════════════════════════
+
+    # Stage 1: Dual-image fish detection (backward-compatible response)
     s1_result = run_model(fish_session, left, right, use_tta=use_tta)
-    s1_label = BINARY_LABELS[s1_result["prediction_idx"]]
-    
-    # Adjust fish threshold based on image quality
-    adjusted_fish_threshold = FISH_THRESHOLD
-    if left_quality.get("is_screenshot", False) or right_quality.get("is_screenshot", False):
-        adjusted_fish_threshold = 0.55  # Lower threshold for screenshots
-    
-    # Prepare response
-    response = {
-        "request_id": hashlib.md5(str(time.time()).encode()).hexdigest()[:8],
-        "timestamp": datetime.now().isoformat(),
-        "processing_time": 0,
-        "image_quality": {
-            "left": left_quality,
-            "right": right_quality
+    s1_label  = BINARY_LABELS[s1_result["prediction_idx"]]
+
+    # Stage 2: Dual-image species (more accurate with both views)
+    s2_result    = run_model(species_session, left, right, use_tta=use_tta)
+    dual_species = SPECIES_LABELS[s2_result["prediction_idx"]]
+
+    response = _response(
+        "success",
+        "Prediction completed successfully.",
+        per_image_validation=piv,
+        pair_validation={
+            "matched": True,
+            "left_label":      left_species,
+            "left_confidence":  round(left_sp_conf, 4),
+            "right_label":     right_species,
+            "right_confidence": round(right_sp_conf, 4),
         },
-        "stage1": {
+        stage1={
             "label": s1_label,
             "confidence": s1_result["confidence"],
-            "threshold_used": adjusted_fish_threshold,
-            "threshold_met": s1_result["confidence"] >= adjusted_fish_threshold,
-            "probabilities": {BINARY_LABELS[i]: float(p) for i, p in enumerate(s1_result["probabilities"])},
+            "probabilities": {
+                BINARY_LABELS[i]: float(p)
+                for i, p in enumerate(s1_result["probabilities"])
+            },
             "uncertainty": s1_result["uncertainty"],
-            "method": s1_result["method"]
+            "method": s1_result["method"],
         },
-        "final_result": "NOT FISH",
-        "status": "rejected"
-    }
-    
-    # If not fish or low confidence, return early
-    if s1_label != "fish" or s1_result["confidence"] < adjusted_fish_threshold:
-        response["reason"] = "Not identified as fish or low confidence"
-        response["status"] = "rejected_at_stage1"
-        response["processing_time"] = time.time() - start_time
-        
-        # Cache the result
-        if cache_key:
-            prediction_cache[cache_key] = {
-                "timestamp": time.time(),
-                "result": response
-            }
-            # Limit cache size
-            if len(prediction_cache) > CACHE_SIZE:
-                oldest = min(prediction_cache.keys(), 
-                           key=lambda k: prediction_cache[k]["timestamp"])
-                del prediction_cache[oldest]
-        
-        return response
-    
-    # Stage 2: Species with TTA
-    s2_result = run_model(species_session, left, right, use_tta=use_tta)
-    species = SPECIES_LABELS[s2_result["prediction_idx"]]
-    
-    response["stage2"] = {
-        "label": species,
-        "confidence": s2_result["confidence"],
-        "threshold_met": s2_result["confidence"] >= SPECIES_THRESHOLD,
-        "probabilities": {SPECIES_LABELS[i]: float(p) for i, p in enumerate(s2_result["probabilities"])},
-        "uncertainty": s2_result["uncertainty"],
-        "method": s2_result["method"]
-    }
-    
-    # Check if species is known with confidence
-    is_known_species = s2_result["confidence"] >= UNKNOWN_SPECIES_THRESHOLD
-    
-    if not is_known_species:
-        response["species_status"] = "unknown"
-        response["final_result"] = f"UNKNOWN_SPECIES (closest: {species})"
-        response["status"] = "unknown_species"
-    else:
-        response["species_status"] = "known"
-        
-        # Stage 3: Grade (only for target species)
-        if species.lower() in [s.lower() for s in GRADE_SPECIES]:
-            s3_result = run_model(grade_session, left, right, use_tta=use_tta)
-            grade = GRADE_LABELS[s3_result["prediction_idx"]]
-            
-            response["stage3"] = {
-                "label": grade,
-                "confidence": s3_result["confidence"],
-                "threshold_met": s3_result["confidence"] >= GRADE_THRESHOLD,
-                "probabilities": {GRADE_LABELS[i]: float(p) for i, p in enumerate(s3_result["probabilities"])},
-                "uncertainty": s3_result["uncertainty"],
-                "method": s3_result["method"]
-            }
-            
-            response["final_result"] = f"{species}_{grade}"
-            response["status"] = "success"
-        else:
-            response["stage3"] = {
-                "label": "not_applicable",
-                "reason": f"Grade only available for: {GRADE_SPECIES}"
-            }
-            response["final_result"] = species
-            response["status"] = "success_no_grade"
-    
-    # Add warnings
-    warnings = []
-    if s1_result["uncertainty"] > 0.3:
-        warnings.append(f"High uncertainty in fish detection: {s1_result['uncertainty']:.2f}")
-    if s2_result["uncertainty"] > 0.3:
-        warnings.append(f"High uncertainty in species classification: {s2_result['uncertainty']:.2f}")
-    if left_quality.get("quality_issues") or right_quality.get("quality_issues"):
-        warnings.append("Image quality issues detected")
-    
-    if warnings:
-        response["warnings"] = warnings
-    
-    response["processing_time"] = time.time() - start_time
-    
-    # Cache the result
-    if cache_key:
-        prediction_cache[cache_key] = {
-            "timestamp": time.time(),
-            "result": response
+        stage2={
+            "label": dual_species,
+            "confidence": s2_result["confidence"],
+            "probabilities": {
+                SPECIES_LABELS[i]: float(p)
+                for i, p in enumerate(s2_result["probabilities"])
+            },
+            "uncertainty": s2_result["uncertainty"],
+            "method": s2_result["method"],
+        },
+        final_result=dual_species,
+    )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 9 — Grade classification (only for grade-supported species)
+    # ═══════════════════════════════════════════════════════════════════════
+    if agreed_species.lower() in [s.lower() for s in GRADE_SPECIES]:
+        s3_result  = run_model(grade_session, left, right, use_tta=use_tta)
+        grade      = GRADE_LABELS[s3_result["prediction_idx"]]
+        grade_conf = s3_result["confidence"]
+
+        response["stage3"] = {
+            "label": grade,
+            "confidence": grade_conf,
+            "probabilities": {
+                GRADE_LABELS[i]: float(p)
+                for i, p in enumerate(s3_result["probabilities"])
+            },
+            "uncertainty": s3_result["uncertainty"],
+            "method": s3_result["method"],
         }
-        # Limit cache size
-        if len(prediction_cache) > CACHE_SIZE:
-            oldest = min(prediction_cache.keys(), 
-                       key=lambda k: prediction_cache[k]["timestamp"])
-            del prediction_cache[oldest]
-    
-    return response
+
+        if grade_conf < FINAL_GRADE_THRESHOLD:
+            response["status"]  = "low_confidence"
+            response["message"] = (
+                f"Grade prediction confidence ({grade_conf:.0%}) is below "
+                f"the minimum threshold ({FINAL_GRADE_THRESHOLD:.0%})."
+            )
+            response["final_result"] = f"{dual_species} (grade uncertain)"
+        else:
+            response["final_result"] = f"{dual_species}_{grade}"
+    else:
+        response["stage3"] = {
+            "label": "not_applicable",
+            "reason": f"Grade classification only available for: {GRADE_SPECIES}",
+        }
+        response["status"] = "success_no_grade"
+
+    # Additional uncertainty warnings
+    if s1_result.get("uncertainty", 0) > 0.3:
+        warnings.append(f"High uncertainty in fish detection: {s1_result['uncertainty']:.2f}")
+    if s2_result.get("uncertainty", 0) > 0.3:
+        warnings.append(f"High uncertainty in species classification: {s2_result['uncertainty']:.2f}")
+    response["warnings"] = warnings
+
+    return _cache_and_return(response)
 
 
 @app.post("/predict/base64")
@@ -679,8 +823,12 @@ async def get_stats():
             "fish": FISH_THRESHOLD,
             "species": SPECIES_THRESHOLD,
             "grade": GRADE_THRESHOLD,
-            "unknown_species": UNKNOWN_SPECIES_THRESHOLD
+            "unknown_species": UNKNOWN_SPECIES_THRESHOLD,
+            "per_image_fish": PER_IMAGE_FISH_THRESHOLD,
+            "per_image_species": PER_IMAGE_SPECIES_THRESHOLD,
+            "final_grade": FINAL_GRADE_THRESHOLD
         },
+        "supported_species": SUPPORTED_SPECIES,
         "tta_enabled": USE_TTA,
         "model_paths": {
             "fish_detector": FISH_DETECTOR_ONNX,
