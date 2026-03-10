@@ -1,24 +1,25 @@
 {
-  "accuracy": 0.9998683690930631,
-  "avg_precision": 0.9999994767975405,
-  "brier_score": 0.00015973410556798737,
+  "accuracy": 0.9990785836514413,
+  "avg_precision": 0.9999896632918852,
+  "brier_score": 0.009488749945153788,
   "classes_": [
     0,
     1
   ],
   "data_path": "/Users/ravindujayaweera/Desktop/project/final_year_research/model/finding fish location/train/final_dataset_no_bathymetry.csv",
-  "f1": 0.9996380745566413,
+  "f1": 0.9974610083424011,
   "feature_columns": [
     "lat",
     "lon",
     "sst",
     "chlor_a",
     "water_u",
-    "water_v"
+    "water_v",
+    "depth"
   ],
   "filtered_land": true,
   "joblib": "1.5.3",
-  "log_loss": 0.0015490535896497298,
+  "log_loss": 0.08281566628152616,
   "model_params": {
     "bootstrap": true,
     "ccp_alpha": 0.0,
@@ -42,17 +43,17 @@
   },
   "model_path": "/Users/ravindujayaweera/Desktop/project/final_year_research/model/finding fish location/train/models/rf_fish_zone_model.pkl",
   "model_type": "RandomForestClassifier",
-  "n_features_in": 6,
+  "n_features_in": 7,
   "n_rows": 37984,
   "n_test": 7597,
-  "numpy": "2.4.0",
+  "numpy": "2.4.3",
   "pandas": "2.3.3",
   "platform": "macOS-15.6.1-arm64-arm-64bit",
   "precision": 1.0,
   "python": "3.12.3",
-  "recall": 0.9992764109985528,
-  "roc_auc": 0.9999998835737729,
+  "recall": 0.9949348769898697,
+  "roc_auc": 0.9999977879016849,
   "sklearn": "1.8.0",
   "target_column": "fish_presence",
-  "timestamp": "2026-01-07T01:28:06.806233Z"
+  "timestamp": "2026-03-10T15:42:16.565489Z"
 }

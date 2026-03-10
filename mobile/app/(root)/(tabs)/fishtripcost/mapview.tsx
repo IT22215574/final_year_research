@@ -96,7 +96,7 @@ const FISH_ZONES = [
     season: "Year-round",
     density: "Medium 🐟🐟",
   },
-  
+
   // Southern Coast Zones
   {
     id: 7,
@@ -146,7 +146,7 @@ const FISH_ZONES = [
     season: "Year-round",
     density: "Medium 🐟🐟",
   },
-  
+
   // Eastern Coast Zones
   {
     id: 11,
@@ -208,7 +208,7 @@ const FISH_ZONES = [
     season: "Year-round",
     density: "Medium 🐟🐟",
   },
-  
+
   // Northern Zones
   {
     id: 16,
@@ -258,7 +258,7 @@ const FISH_ZONES = [
     season: "Year-round",
     density: "Medium 🐟🐟",
   },
-  
+
   // Deep Sea International Zones
   {
     id: 20,
@@ -400,9 +400,12 @@ const MapViewScreen = () => {
       <View className="absolute top-0 left-0 right-0 z-20">
         <FishTripNavBar />
       </View>
-      
+
       {/* Top bar */}
-      <SafeAreaView className="absolute top-0 left-0 right-0 z-10 px-4 pt-2" style={{ marginTop: 60 }}>
+      <SafeAreaView
+        className="absolute top-0 left-0 right-0 z-10 px-4 pt-2"
+        style={{ marginTop: 60 }}
+      >
         <View className="flex-row justify-between items-center">
           <TouchableOpacity
             onPress={() => router.back()}
@@ -830,4 +833,3 @@ const MapViewScreen = () => {
 };
 
 export default MapViewScreen;
-

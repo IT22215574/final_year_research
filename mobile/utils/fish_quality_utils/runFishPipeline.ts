@@ -14,25 +14,28 @@ import {
 
 // Get the appropriate API base URL for different platforms
 const getApiBase = (): string => {
+  // Use environment variable if configured
   const configured = process.env.EXPO_PUBLIC_FISH_API_URL;
-  if (configured) return configured;
+  if (configured) {
+    return configured;
+  }
   
-  // Default for different platforms in development
+  // Fallback defaults for different platforms in development
   if (__DEV__) {
     // Android emulator
     if (Platform.OS === 'android') {
       return 'http://10.0.2.2:8000';
     }
-    // iOS simulator
+    // iOS simulator or physical iOS device on same network
     if (Platform.OS === 'ios') {
-      return 'http://127.0.0.1:8000';
+      return 'http://localhost:8000';
     }
-    // Physical device - use your computer's IP
-    return 'http://192.168.1.100:8000'; // CHANGE THIS TO YOUR COMPUTER'S IP
   }
   
-  // Production
-  return 'https://your-api-server.com';
+  // Production fallback
+  throw new Error(
+    'EXPO_PUBLIC_FISH_API_URL is not configured. Please set it in your .env file.'
+  );
 };
 
 const FISH_API_BASE = getApiBase();

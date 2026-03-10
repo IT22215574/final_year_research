@@ -26,13 +26,13 @@ export default function TotalCostCard({
   showBreakdown = true,
 }: Props) {
   // Debug logging
-  console.log('💳 TotalCostCard received:', {
+  console.log("💳 TotalCostCard received:", {
     fuelCost,
     operationalCost,
     externalCostTotal,
     totalCost,
     title,
-    showBreakdown
+    showBreakdown,
   });
 
   const hasCostData =
@@ -41,7 +41,7 @@ export default function TotalCostCard({
     typeof externalCostTotal === "number" ||
     typeof totalCost === "number";
 
-  console.log('💳 hasCostData:', hasCostData);
+  console.log("💳 hasCostData:", hasCostData);
 
   if (!hasCostData) {
     return (
@@ -138,7 +138,10 @@ export default function TotalCostCard({
               {formatCurrency(totalCost)}
             </Text>
           </View>
-          <View className="bg-white rounded-full p-3" style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}>
+          <View
+            className="bg-white rounded-full p-3"
+            style={{ backgroundColor: "rgba(255, 255, 255, 0.2)" }}
+          >
             <Ionicons name="calculator" size={24} color="white" />
           </View>
         </View>
@@ -173,4 +176,3 @@ export default function TotalCostCard({
     </View>
   );
 }
-

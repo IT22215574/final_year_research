@@ -8,7 +8,12 @@ import {
   Alert,
   Image,
   ActivityIndicator,
+  Platform,
 } from "react-native";
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from "@react-native-community/datetimepicker";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
@@ -34,6 +39,10 @@ import {
 } from "@/services/weatherService";
 
 const TripPlanner = () => {
+  // Trip Date
+  const [tripDate, setTripDate] = useState(new Date());
+  const [showTripDateIOS, setShowTripDateIOS] = useState(false);
+
   // OLD UI fields (keep)
   const [distance, setDistance] = useState("");
   const [engineHP, setEngineHP] = useState("");
@@ -93,7 +102,7 @@ const TripPlanner = () => {
   const [riskScore, setRiskScore] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const API_URL = process.env.EXPO_PUBLIC_API_URL;
+  const API_URL = process.env.EXPO_PUBLIC_API_KEY;
 
   // Fetch boats for horizontal carousel
   const fetchBoats = async () => {
@@ -179,6 +188,21 @@ const TripPlanner = () => {
   // ✅ helper: final engine hp
   const getFinalEngineHP = () =>
     useEngineHPDropdown ? selectedEngineHPFromDropdown : engineHP;
+
+  // Trip Date Picker Handler
+  const openTripDatePicker = () => {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: tripDate,
+        mode: "date",
+        onChange: (_, date) => {
+          if (date) setTripDate(date);
+        },
+      });
+    } else {
+      setShowTripDateIOS(true);
+    }
+  };
 
   // ✅ helper: build slider options
   const engineOptions = useMemo(() => {
@@ -315,10 +339,17 @@ const TripPlanner = () => {
       return;
     }
 
-    if (!coords) {
+    // ✅ Allow either coordinates OR manual distance
+    const hasCoords = coords !== null;
+    const hasManualDistance = distance && parseFloat(distance) > 0;
+
+    if (!hasCoords && !hasManualDistance) {
       Alert.alert(
-        "Missing Map Coordinates",
-        "Selected zones must contain coordinates (lat/lon or latitude/longitude).",
+        "Missing Route Information",
+        "Please either:\n\n" +
+          "1. Select fishing zones on the map, OR\n" +
+          "2. Enter distance manually (km)\n\n" +
+          "At least one method is required for prediction.",
       );
       return;
     }
@@ -336,7 +367,10 @@ const TripPlanner = () => {
 
       const body: DatciePredictBody = {
         boatId: boatMongoId.trim(),
-        ...coords,
+        // ✅ Include coordinates if available
+        ...(hasCoords ? coords : {}),
+        // ✅ Include manual distance if coordinates not available
+        ...(hasCoords ? {} : { distanceKm: parseFloat(distance) }),
 
         speed: parseFloat(speed || "10"),
         fishingHours: parseFloat(duration),
@@ -387,10 +421,15 @@ const TripPlanner = () => {
       Alert.alert("Boat required", "Select a boat first.");
       return;
     }
-    if (!coords) {
+
+    // ✅ Allow either coordinates OR manual distance
+    const hasCoords = coords !== null;
+    const hasManualDistance = distance && parseFloat(distance) > 0;
+
+    if (!hasCoords && !hasManualDistance) {
       Alert.alert(
-        "Missing Map Coordinates",
-        "Select zones with coordinates first.",
+        "Missing Route Information",
+        "Please either select fishing zones on the map OR enter distance manually.",
       );
       return;
     }
@@ -400,7 +439,10 @@ const TripPlanner = () => {
 
       const body: DatciePredictBody = {
         boatId: boatMongoId.trim(),
-        ...coords,
+        // ✅ Include coordinates if available
+        ...(hasCoords ? coords : {}),
+        // ✅ Include manual distance if coordinates not available
+        ...(hasCoords ? {} : { distanceKm: parseFloat(distance) }),
 
         // optional speed not passed here so backend will test [8,10,12,14]
         fishingHours: parseFloat(duration || "8"),
@@ -574,6 +616,49 @@ const TripPlanner = () => {
             </Text>
           </View>
 
+          {/* Trip Date - NEW! */}
+          <View className="mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1">
+                <View className="w-12 h-12 bg-blue-600 rounded-full items-center justify-center mr-3">
+                  <Ionicons name="calendar" size={24} color="#ffffff" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                    Trip Date
+                  </Text>
+                  <Text className="text-lg font-bold text-slate-800">
+                    {tripDate.toLocaleDateString("en-LK", {
+                      weekday: "short",
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={openTripDatePicker}
+                className="bg-blue-600 rounded-xl px-4 py-2.5"
+                activeOpacity={0.7}
+              >
+                <Text className="text-white font-semibold text-sm">Change</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {Platform.OS === "ios" && showTripDateIOS && (
+            <DateTimePicker
+              value={tripDate}
+              mode="date"
+              display="spinner"
+              onChange={(_, date) => {
+                setShowTripDateIOS(false);
+                if (date) setTripDate(date);
+              }}
+            />
+          )}
+
           {/* ✅ Horizontal Boat Carousel */}
           <View className="mb-4">
             <View className="flex-row justify-between items-center mb-3">
@@ -593,7 +678,7 @@ const TripPlanner = () => {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={() => router.push("/(root)/(tabs)/boats/add-boat")}
+                  onPress={() => router.push("/fishtripcost/boats/add-boat")}
                   className="bg-blue-600 rounded-lg px-3 py-1.5"
                   activeOpacity={0.7}
                 >
@@ -991,21 +1076,32 @@ const TripPlanner = () => {
 
           <View className="flex-row gap-3 mb-3">
             <View className="flex-1">
-              <Text className="text-xs text-slate-500 mb-1.5 font-medium">
-                Distance (km)
-              </Text>
+              <View className="flex-row items-center justify-between mb-1.5">
+                <Text className="text-xs text-slate-500 font-medium">
+                  Distance (km)
+                </Text>
+                {selectedZones.length > 0 && (
+                  <Text className="text-[10px] text-blue-600 font-semibold">
+                    📍 From Map
+                  </Text>
+                )}
+              </View>
               <TextInput
-                placeholder="0"
+                placeholder="e.g. 35"
                 keyboardType="decimal-pad"
                 value={distance}
                 onChangeText={setDistance}
-                editable={selectedZones.length === 0}
                 className={`border rounded-xl p-3.5 text-slate-800 ${
                   selectedZones.length > 0
-                    ? "bg-blue-50 border-blue-200 text-blue-700"
+                    ? "bg-blue-50 border-blue-200 text-blue-700 font-semibold"
                     : "bg-slate-50 border-slate-200"
                 }`}
               />
+              <Text className="text-[10px] text-slate-400 mt-1">
+                {selectedZones.length > 0
+                  ? "✓ Auto-calculated from map zones"
+                  : "💡 Enter manually or select zones on map"}
+              </Text>
             </View>
 
             <View className="flex-1">
@@ -1260,12 +1356,10 @@ const TripPlanner = () => {
         onClose={() => setShowBoatModal(false)}
         onSelectBoat={handleBoatSelect}
         selectedBoatMongoId={boatMongoId || undefined}
-        onAddBoat={() => router.push("/(root)/(tabs)/boats/add-boat")}
+        onAddBoat={() => router.push("/fishtripcost/boats/add-boat")}
       />
     </SafeAreaView>
   );
 };
 
 export default TripPlanner;
-
-

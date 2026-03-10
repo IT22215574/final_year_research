@@ -14,6 +14,7 @@ import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { getMyBoats, type Boat } from "@/services/boatService";
+import FishTripNavBar from "../components/FishTripNavBar";
 
 export default function BoatsListScreen() {
   const [boats, setBoats] = useState<Boat[]>([]);
@@ -55,6 +56,7 @@ export default function BoatsListScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
+      <FishTripNavBar />
       <ScrollView
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
@@ -73,7 +75,7 @@ export default function BoatsListScreen() {
         {/* Add Boat Button */}
         <View className="px-5 mb-4">
           <TouchableOpacity
-            onPress={() => router.push("/(root)/(tabs)/boats/add-boat" as any)}
+            onPress={() => router.push("/fishtripcost/boats/add-boat" as any)}
             className="bg-blue-600 rounded-xl py-4 flex-row items-center justify-center"
           >
             <Ionicons name="add-circle-outline" size={24} color="white" />
@@ -106,7 +108,7 @@ export default function BoatsListScreen() {
                 <TouchableOpacity
                   key={boat._id}
                   onPress={() =>
-                    router.push(`/(root)/(tabs)/boats/${boat._id}` as any)
+                    router.push(`/fishtripcost/boats/${boat._id}` as any)
                   }
                   className="bg-white rounded-2xl p-4 mb-3 shadow-sm border border-slate-100"
                   activeOpacity={0.7}
@@ -169,4 +171,3 @@ export default function BoatsListScreen() {
     </SafeAreaView>
   );
 }
-
