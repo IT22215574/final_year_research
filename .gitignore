@@ -111,10 +111,3 @@ instance/
 runs/
 outputs/
 checkpoints/
-# Expo (generated)
-.expo/
-
-# Environment examples
-.env.*
-!.env.example
-

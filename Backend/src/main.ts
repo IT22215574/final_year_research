@@ -4,9 +4,9 @@ import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import * as dns from 'dns';
 
-// Use Google public DNS so MongoDB Atlas SRV resolves correctly.
+// Use Google public DNS so MongoDB Atlas SRV records resolve correctly
+// even when the local network DNS doesn't forward external queries.
 dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
-
 
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
@@ -63,7 +63,7 @@ async function bootstrap() {
   // =========================
   app.enableCors({
     origin: [
-      'http://localhost:5173',
+      'http://localhost:5173', 
       'http://localhost:3000',
       'http://localhost:3001',
       'http://192.168.8.135:8081',
@@ -73,6 +73,8 @@ async function bootstrap() {
       // 'exp://localhost:19000',
     ],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-client-type'],
   });
 
   app.use(cookieParser());

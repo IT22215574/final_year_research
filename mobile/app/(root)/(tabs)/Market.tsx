@@ -6,20 +6,36 @@ import {
   ScrollView, 
   TouchableOpacity, 
   Dimensions,
+  SafeAreaView,
   RefreshControl,
   ActivityIndicator
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   LineChart, 
   BarChart
 } from 'react-native-chart-kit';
 
+type PredictionItem = { id: number; fishType: string; predictedPrice: number; confidence: number; trend: string };
+type DailyPriceItem = { id: number; fishType: string; currentPrice: number; change: string; volume: string };
+type TopSellingItem = { id: number; fishType: string; sales: number; color: string };
+type AlertItem = { id: number; type: string; message: string; time: string };
+type WeatherData = { temperature: number; condition: string; windSpeed: string; waveHeight: string; fishingCondition: string };
+type ChartData = { labels: string[]; datasets: { data: number[] }[]; legend?: string[] };
+type MarketData = {
+  predictions: PredictionItem[];
+  dailyPrices: DailyPriceItem[];
+  topSelling: TopSellingItem[];
+  marketTrends: { labels: string[]; datasets: { data: number[]; color?: (o: number) => string; strokeWidth?: number }[]; legend?: string[] };
+  barChartData: ChartData;
+  alerts: AlertItem[];
+  weather: WeatherData | null;
+};
+
 const Market = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState('Today');
-  const [marketData, setMarketData] = useState({
+  const [marketData, setMarketData] = useState<MarketData>({
     predictions: [],
     dailyPrices: [],
     topSelling: [],
@@ -27,8 +43,12 @@ const Market = () => {
       labels: [],
       datasets: []
     },
+    barChartData: {
+      labels: [],
+      datasets: []
+    },
     alerts: [],
-    weather: {}
+    weather: null
   });
 
   // FIXED: Proper dummy data structure for charts
@@ -111,6 +131,7 @@ const Market = () => {
 
   useEffect(() => {
     loadMarketData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadMarketData = () => {
@@ -128,6 +149,7 @@ const Market = () => {
       loadMarketData();
       setRefreshing(false);
     }, 1500);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const renderPriceTile = (item) => (
@@ -379,7 +401,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    marginBottom: 50,
   },
   loadingContainer: {
     flex: 1,

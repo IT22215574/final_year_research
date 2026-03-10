@@ -1,4 +1,4 @@
-﻿﻿// screens/Quality.tsx  — Hub screen
+// screens/Quality.tsx  — Hub screen
 
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
@@ -27,7 +27,7 @@ export default function Quality() {
         <TouchableOpacity
           style={s.card}
           activeOpacity={0.85}
-          onPress={() => router.push("/(root)/(tabs)/SpeciesDetection")}
+          onPress={() => router.push("/(root)/(tabs)/SpeciesDetection" as any)}
         >
           <LinearGradient colors={["#0057FF", "#00C6FF"]} style={s.cardIcon}>
             <MaterialIcons name="search" size={34} color="#fff" />
@@ -46,7 +46,7 @@ export default function Quality() {
         <TouchableOpacity
           style={s.card}
           activeOpacity={0.85}
-          onPress={() => router.push("/(root)/(tabs)/QualityGrading")}
+          onPress={() => router.push("/(root)/(tabs)/QualityGrading" as any)}
         >
           <LinearGradient colors={["#27ae60", "#2ecc71"]} style={s.cardIcon}>
             <MaterialIcons name="grade" size={34} color="#fff" />
