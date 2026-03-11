@@ -184,6 +184,57 @@ export async function runFishPipeline(
   const data = await res.json();
   console.log('[runFishPipeline] Prediction response:', JSON.stringify(data));
 
+  // ── Per-image validation: intercept failures before normal processing ──
+  const backendStatus: string = data.status ?? '';
+  const VALIDATION_FAILURES = [
+    'no_fish', 'invalid_pair', 'species_mismatch',
+    'unknown_species', 'unsupported_species',
+  ];
+
+  if (VALIDATION_FAILURES.includes(backendStatus)) {
+    const piv = data.per_image_validation;
+
+    const validationResult: PredictionResult = {
+      isFish: backendStatus !== 'no_fish',
+      fishLabel: data.stage1?.label ?? (piv?.left_fish_label ?? 'unknown'),
+      fishConfidence: data.stage1?.confidence ??
+        Math.max(piv?.left_fish_confidence ?? 0, piv?.right_fish_confidence ?? 0),
+      fishProbabilities: data.stage1?.probabilities ?? {},
+      validationStatus: backendStatus as PredictionResult['validationStatus'],
+      validationMessage: data.message ?? 'Validation failed.',
+      warnings: data.warnings ?? [],
+      imageQuality: data.image_quality
+        ? { left: data.image_quality.left, right: data.image_quality.right }
+        : undefined,
+      perImageValidation: piv
+        ? {
+            leftFishDetected: piv.left_fish_detected ?? false,
+            leftFishConfidence: piv.left_fish_confidence ?? 0,
+            rightFishDetected: piv.right_fish_detected ?? false,
+            rightFishConfidence: piv.right_fish_confidence ?? 0,
+            leftSpecies: piv.left_species,
+            leftSpeciesConfidence: piv.left_species_confidence,
+            rightSpecies: piv.right_species,
+            rightSpeciesConfidence: piv.right_species_confidence,
+          }
+        : undefined,
+    };
+
+    // Attach pair validation for species_mismatch
+    if (data.pair_validation) {
+      validationResult.pairValidation = {
+        matched: data.pair_validation.matched,
+        leftLabel: data.pair_validation.left_label,
+        leftConfidence: data.pair_validation.left_confidence,
+        rightLabel: data.pair_validation.right_label,
+        rightConfidence: data.pair_validation.right_confidence,
+      };
+    }
+
+    return validationResult;
+  }
+
+  // ── Normal processing (success / success_no_grade / low_confidence) ────
   const stage1 = data.stage1;
   const stage2 = data.stage2 ?? null;
   const stage3 = data.stage3 ?? null;
@@ -283,6 +334,25 @@ export async function runFishPipeline(
       leftConfidence: data.pair_validation.left_confidence,
       rightLabel: data.pair_validation.right_label,
       rightConfidence: data.pair_validation.right_confidence,
+    };
+  }
+
+  // Pass through backend validation status & per-image details
+  result.validationStatus =
+    (data.status ?? 'success') as PredictionResult['validationStatus'];
+  result.validationMessage = data.message;
+
+  if (data.per_image_validation) {
+    const piv = data.per_image_validation;
+    result.perImageValidation = {
+      leftFishDetected: piv.left_fish_detected ?? true,
+      leftFishConfidence: piv.left_fish_confidence ?? 0,
+      rightFishDetected: piv.right_fish_detected ?? true,
+      rightFishConfidence: piv.right_fish_confidence ?? 0,
+      leftSpecies: piv.left_species,
+      leftSpeciesConfidence: piv.left_species_confidence,
+      rightSpecies: piv.right_species,
+      rightSpeciesConfidence: piv.right_species_confidence,
     };
   }
 

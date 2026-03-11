@@ -306,11 +306,11 @@ const TabsLayout = () => {
 
   const bottomBarHeight: number = isDesktop
     ? Math.max(90, containerSize + 20 + 14 + verticalScale(8))
-    : Platform.select({
+    : (Platform.select({
         ios: verticalScale(60) + insets.bottom,
         android: verticalScale(65) + insets.bottom,
         default: verticalScale(70) + insets.bottom,
-      }) ?? verticalScale(70) + insets.bottom;
+      }) ?? verticalScale(70) + insets.bottom);
 
   return (
     <SafeAreaProvider style={styles.safe}>
@@ -474,6 +474,7 @@ const TabsLayout = () => {
             <Tabs.Screen
               name="GradingHistory"
               options={{
+                title: "Quality Details",
                 headerShown: true,
                 headerStyle: {
                   backgroundColor: "#0057FF",
@@ -508,6 +509,7 @@ const TabsLayout = () => {
           )}
         </View>
 
+        {/* Bottom Navigation - Unified for desktop & mobile */}
         {isDesktop ? (
           <View
             style={[

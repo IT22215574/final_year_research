@@ -279,12 +279,12 @@ export default function FishWeightCard({
             <Text style={s.formulaTitle}>Formula applied</Text>
             <Text style={s.formulaText}>
               {species === "skipjack_tuna"
-                ? "W = 0.00000497 × FL³·³⁹²⁹² (FL = fork length)"
+                ? "W(g) = 0.036211 × L²·⁷⁹ (L = fork length)"
                 : "W = 0.005975 × L³·¹⁶⁸⁰ (L = total length)"}
             </Text>
             <Text style={s.formulaSub}>
               {species === "skipjack_tuna"
-                ? "Katsuwonus pelamis — Froese & Pauly, FishBase"
+                ? "Skipjack tuna length-weight research formula"
                 : "Decapterus russelli — FishBase length-weight relation"}
             </Text>
           </View>
