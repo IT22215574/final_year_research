@@ -6,13 +6,13 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "prestart": "node ../scripts/update-env-ip.js && npx kill-port 3000",
+    "prestart": "node ../scripts/update-env-ip.js && node ../scripts/kill-port.js 3000",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "dev": "nest start --watch",
     "start": "nest start",
-    "start:dev": "npx kill-port 3000 && nest start --watch",
-    "start:debug": "npx kill-port 3000 && nest start --debug --watch",
+    "start:dev": "node ../scripts/kill-port.js 3000 && nest start --watch",
+    "start:debug": "node ../scripts/kill-port.js 3000 && nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix"
   },

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import csv from 'csv-parser';
+import * as readline from 'readline';
 
 export interface FishZone {
   lat: number;
@@ -76,24 +76,39 @@ export class FishZonesService {
   private async readCSV(filePath: string): Promise<FishZone[]> {
     return new Promise((resolve, reject) => {
       const results: FishZone[] = [];
+      let headers: string[] = [];
 
-      fs.createReadStream(filePath)
-        .pipe(csv())
-        .on('data', (data) => {
-          results.push({
-            lat: parseFloat(data.lat),
-            lon: parseFloat(data.lon),
-            sst: parseFloat(data.sst),
-            chlor_a: parseFloat(data.chlor_a),
-            water_u: parseFloat(data.water_u),
-            water_v: parseFloat(data.water_v),
-            fish_zone: parseInt(data.fish_zone),
-            fish_probability: parseFloat(data.fish_probability),
-            bathymetry: parseFloat(data.bathymetry || '0'),
-          });
-        })
-        .on('end', () => resolve(results))
-        .on('error', (error) => reject(error));
+      const rl = readline.createInterface({
+        input: fs.createReadStream(filePath),
+        crlfDelay: Infinity,
+      });
+
+      rl.on('line', (line) => {
+        if (!line.trim()) return;
+        const values = line.split(',');
+        if (headers.length === 0) {
+          headers = values.map((h) => h.trim());
+          return;
+        }
+        const row: Record<string, string> = {};
+        headers.forEach((h, i) => {
+          row[h] = (values[i] ?? '').trim();
+        });
+        results.push({
+          lat: parseFloat(row.lat),
+          lon: parseFloat(row.lon),
+          sst: parseFloat(row.sst),
+          chlor_a: parseFloat(row.chlor_a),
+          water_u: parseFloat(row.water_u),
+          water_v: parseFloat(row.water_v),
+          fish_zone: parseInt(row.fish_zone),
+          fish_probability: parseFloat(row.fish_probability),
+          bathymetry: parseFloat(row.bathymetry || '0'),
+        });
+      });
+
+      rl.on('close', () => resolve(results));
+      rl.on('error', (error) => reject(error));
     });
   }
 

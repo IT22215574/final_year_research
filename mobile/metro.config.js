@@ -4,6 +4,9 @@ const { withNativeWind } = require("nativewind/metro");
 
 const config = getDefaultConfig(__dirname);
 
+// Enable package.json "exports" field resolution (needed for pnpm + sub-path exports like react-native-css-interop/jsx-runtime)
+config.resolver.unstable_enablePackageExports = true;
+
 // Add .onnx to asset extensions so Metro can bundle them
 config.resolver.assetExts.push("onnx");
 

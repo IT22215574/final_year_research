@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "prestart": "node ../scripts/update-env-ip.js && npx kill-port 8081",
-    "start": "npx expo start --host lan",
+    "start": "cross-env EXPO_OFFLINE=1 npx expo start --host lan",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "cross-env CI=1 npx expo start --android --host lan",
     "ios": "cross-env CI=1 npx expo start --ios --host lan",
@@ -42,6 +42,7 @@
     "expo-notifications": "^0.32.16",
     "expo-router": "~6.0.21",
     "expo-secure-store": "~15.0.8",
+    "expo-sharing": "~14.0.8",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "expo-symbols": "~1.0.8",

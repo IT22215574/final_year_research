@@ -5,17 +5,23 @@ import {
   TouchableOpacity,
   View,
   StyleSheet,
+  Platform,
+  Pressable,
+  BackHandler,
+  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { icons } from "@/constants";
 import useAuthStore from "@/stores/authStore";
 import useNotificationStore from "@/stores/notificationStore";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Sidebar from "@/components/Sidebar";
 import Overlay from "@/components/Overlay";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
+
+const HEADER_GRADIENT: [string, string] = ["#005CFF", "#0057FF"];
 
 // Types
 type TabName =
@@ -24,11 +30,12 @@ type TabName =
   | "Quality"
   | "Notifications"
   | "profile"
-  | "Update_profile"
+  | "update_profile"
   | "SpeciesDetection"
   | "QualityGrading"
   | "GradingHistory"
-  | "GradingDetail";
+  | "GradingDetail"
+  | "TransferRequest";
 
 interface NavItemConfig {
   tabName: TabName;
@@ -149,8 +156,8 @@ const NavItem = ({
           resizeMode="contain"
         />
         {showBadge && badgeCount > 0 && (
-          <View style={styles.tabBadge}>
-            <Text style={styles.tabBadgeText}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>
               {badgeCount > 99 ? "99+" : badgeCount}
             </Text>
           </View>
@@ -232,7 +239,7 @@ const TabsLayout = () => {
       setActiveTab("Quality");
     } else if (pathname.includes("/Notifications")) {
       setActiveTab("Notifications");
-    } else if (pathname.includes("/profile") || pathname.includes("/Update_profile")) {
+    } else if (pathname.includes("/profile") || pathname.includes("/update_profile")) {
       setActiveTab("profile");
     } else {
       setActiveTab("home");
@@ -363,10 +370,6 @@ const TabsLayout = () => {
                   )}
                 </View>
               ),
-              tabBarShowLabel: false,
-              tabBarStyle: {
-                display: "none",
-              },
             }}
           >
             <Tabs.Screen
@@ -415,7 +418,7 @@ const TabsLayout = () => {
             />
 
             <Tabs.Screen
-              name="Update_profile"
+              name="update_profile"
               options={{
                 title: "Edit Profile",
                 headerShown: true,
@@ -501,41 +504,31 @@ const TabsLayout = () => {
         </View>
 
         {/* Bottom Navigation - Unified for desktop & mobile */}
-          {isDesktop ? (
-            <View
-              style={[
-                styles.customTabBar,
-                styles.tabBarDesktop,
-                { height: bottomBarHeight },
-              ]}
-            >
-              <View style={[styles.navItemsContainer, styles.navItemsDesktop]}>
-                {navItems.map((item) => (
-                  <NavItem
-                    key={item.tabName}
-                    icon={item.icon}
-                    label={item.label}
-                    isActive={activeTab === item.tabName}
-                    onPress={() => handleTabPress(item.tabName, item.route)}
-                    showBadge={item.showBadge}
-                    badgeCount={unreadCount}
-                    isDesktop={true}
-                    iconSize={iconSize}
-                    containerSize={containerSize}
-                    iconStyle={item.iconStyle}
-                  />
-                ))}
-              </View>
-              <Text
-                style={[
-                  styles.navText,
-                  activeTab === "Market" && styles.navTextActive,
-                ]}
-              >
-                Market
-              </Text>
-            </TouchableOpacity>
-          
+          <View
+            style={[
+              styles.customTabBar,
+              isDesktop ? styles.tabBarDesktop : styles.tabBarMobile,
+              { height: bottomBarHeight },
+            ]}
+          >
+            <View style={[styles.navItemsContainer, isDesktop && styles.navItemsDesktop]}>
+              {navItems.map((item) => (
+                <NavItem
+                  key={item.tabName}
+                  icon={item.icon}
+                  label={item.label}
+                  isActive={activeTab === item.tabName}
+                  onPress={() => handleTabPress(item.tabName, item.route)}
+                  showBadge={item.showBadge}
+                  badgeCount={unreadCount}
+                  isDesktop={isDesktop}
+                  iconSize={iconSize}
+                  containerSize={containerSize}
+                  iconStyle={item.iconStyle}
+                />
+              ))}
+            </View>
+          </View>
 
           {(currentUser?.role === "Teacher" ||
             currentUser?.role === "INTERNAL_TEACHER" ||
@@ -564,7 +557,7 @@ const TabsLayout = () => {
                   resizeMode="contain"
                 />
               </View>
-            )
+            </TouchableOpacity>
           )}
       </View>
     </SafeAreaView>
@@ -576,6 +569,50 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8fafc",
     marginTop: -45,
+  },
+  container: {
+    flex: 1,
+    paddingBottom: 90,
+  },
+  desktopWrapper: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  tabBarDesktop: {
+    position: "relative",
+    bottom: undefined,
+    left: undefined,
+    right: undefined,
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+  },
+  tabBarMobile: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+  },
+  navItemsDesktop: {
+    justifyContent: "flex-start",
+    flex: 1,
+    flexWrap: "wrap",
+  },
+  navItemDesktop: {
+    flex: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  iconContainerHovered: {
+    backgroundColor: "#DBEAFE",
   },
   customTabBar: {
     flexDirection: "row",
