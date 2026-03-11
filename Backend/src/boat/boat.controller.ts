@@ -56,6 +56,16 @@ export class BoatController {
     return this.boatService.getBoatTypes();
   }
 
+  @Get('fuel-baselines')
+  getFuelBaselines() {
+    return this.boatService.getFuelBaselines();
+  }
+
+  @Get('types-with-fuel-info')
+  getBoatTypesWithFuelInfo() {
+    return this.boatService.getBoatTypesWithFuelInfo();
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     if (!Types.ObjectId.isValid(id)) {

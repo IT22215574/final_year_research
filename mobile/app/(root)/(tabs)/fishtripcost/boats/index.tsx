@@ -14,7 +14,7 @@ import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { getMyBoats, type Boat } from "@/services/boatService";
-import FishTripNavBar from "../components/FishTripNavBar";
+import ScreenHeader from "../components/ScreenHeader";
 
 export default function BoatsListScreen() {
   const [boats, setBoats] = useState<Boat[]>([]);
@@ -56,7 +56,23 @@ export default function BoatsListScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
-      <FishTripNavBar />
+      <ScreenHeader
+        title="My Boats"
+        subtitle={`${boats.length} boat${boats.length !== 1 ? "s" : ""} ready for DATCIE prediction`}
+        rightComponent={
+          <TouchableOpacity
+            onPress={() =>
+              router.push("/(root)/(tabs)/fishtripcost/boats/add-boat" as any)
+            }
+            className="bg-blue-600 px-4 py-2 rounded-xl flex-row items-center"
+          >
+            <Ionicons name="add-circle" size={18} color="white" />
+            <Text className="text-white font-semibold ml-2 text-sm">
+              Add Boat
+            </Text>
+          </TouchableOpacity>
+        }
+      />
       <ScrollView
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
@@ -64,18 +80,18 @@ export default function BoatsListScreen() {
         }
       >
         {/* Header */}
-        <View className="px-5 pt-6 pb-4">
-          <Text className="text-2xl font-bold text-slate-900">My Boats</Text>
-          <Text className="text-sm text-slate-600 mt-1">
-            {boats.length} boat{boats.length !== 1 ? "s" : ""} ready for DATCIE
-            prediction
+        <View className="px-5 pt-4 pb-4">
+          <Text className="text-sm text-slate-600">
+            Manage your fishing vessels for accurate cost predictions
           </Text>
         </View>
 
-        {/* Add Boat Button */}
+        {/* Add Boat Button - Duplicate for visibility */}
         <View className="px-5 mb-4">
           <TouchableOpacity
-            onPress={() => router.push("/fishtripcost/boats/add-boat" as any)}
+            onPress={() =>
+              router.push("/(root)/(tabs)/fishtripcost/boats/add-boat" as any)
+            }
             className="bg-blue-600 rounded-xl py-4 flex-row items-center justify-center"
           >
             <Ionicons name="add-circle-outline" size={24} color="white" />

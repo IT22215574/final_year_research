@@ -96,7 +96,7 @@ export class CostEngineService {
       dto.startLat != null &&
       dto.startLon != null &&
       dto.endLat != null &&
-      dto.endLon != null   
+      dto.endLon != null
     ) {
       baseDistanceKm = haversineDistanceKm(
         dto.startLat,
@@ -151,6 +151,7 @@ export class CostEngineService {
       const fuelRes = await firstValueFrom(
         this.http.post(`${baseUrl}/predict/fuel`, {
           boatId: dto.boatId,
+          boatType: boat.boatType, // ✅ Send boat type for fuel baseline
           distanceKm: predictedDistanceKm,
           speed: dto.speed,
           engineHP: boat.engineHorsePower ?? 85,

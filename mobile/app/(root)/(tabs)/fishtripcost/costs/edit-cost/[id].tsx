@@ -8,15 +8,17 @@ import {
   Alert,
   Modal,
   FlatList,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 
 import {
-  createCostPreference,
-  type CreateCostPreferenceBody,
+  getCostPreferenceById,
+  updateCostPreference,
+  type UpdateCostPreferenceBody,
 } from "@/services/costPreferenceService";
 
 const CATEGORIES = [
@@ -52,7 +54,10 @@ const COST_ICONS = [
   { name: "receipt-outline", label: "Receipt" },
 ];
 
-export default function AddCostPreferenceScreen() {
+export default function EditCostPreferenceScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Harbor");
   const [selectedIcon, setSelectedIcon] = useState("cash-outline");
@@ -76,6 +81,32 @@ export default function AddCostPreferenceScreen() {
   useEffect(() => {
     calculateAmount();
   }, [quantity, pricePerUnit]);
+
+  useEffect(() => {
+    loadCostPreference();
+  }, [id]);
+
+  const loadCostPreference = async () => {
+    try {
+      setLoading(true);
+      const data = await getCostPreferenceById(String(id));
+
+      setName(data.name || "");
+      setCategory(data.category || "Harbor");
+      setSelectedIcon(data.icon || "cash-outline");
+      setQuantity(String(data.quantity || 1));
+      setPricePerUnit(String(data.pricePerUnit || 0));
+      setAmount(String(data.amount || 0));
+      setDescription(data.description || "");
+      setAutoApply(data.autoApply ?? true);
+      setIsActive(data.isActive ?? true);
+    } catch (error: any) {
+      Alert.alert("Error", error?.message || "Failed to load cost preference");
+      router.back();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -110,7 +141,7 @@ export default function AddCostPreferenceScreen() {
     try {
       setSaving(true);
 
-      const body: CreateCostPreferenceBody = {
+      const body: UpdateCostPreferenceBody = {
         name: name.trim(),
         category,
         icon: selectedIcon,
@@ -122,9 +153,9 @@ export default function AddCostPreferenceScreen() {
         isActive,
       };
 
-      await createCostPreference(body);
+      await updateCostPreference(String(id), body);
 
-      Alert.alert("Success", "External cost preference created", [
+      Alert.alert("Success", "Cost preference updated successfully", [
         {
           text: "OK",
           onPress: () => router.back(),
@@ -133,50 +164,59 @@ export default function AddCostPreferenceScreen() {
     } catch (error: any) {
       Alert.alert(
         "Error",
-        error?.message || "Failed to create cost preference",
+        error?.message || "Failed to update cost preference",
       );
     } finally {
       setSaving(false);
     }
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-slate-50 items-center justify-center">
+        <ActivityIndicator size="large" color="#2563eb" />
+        <Text className="text-slate-500 mt-3">Loading cost preference...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
-      <ScrollView
-        className="px-5 pt-4"
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        {/* Info Card */}
-        <View className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-200">
-          <View className="flex-row items-start">
-            <Ionicons name="bulb" size={20} color="#3B82F6" />
-            <Text className="text-xs text-blue-700 ml-2 flex-1">
-              Create reusable external costs with quantity-based pricing. Enable
-              auto-apply to include them automatically in all trip predictions.
-            </Text>
-          </View>
-        </View>
+      {/* Header */}
+      <View className="px-5 pt-3 pb-4 bg-white border-b border-slate-100 flex-row justify-between items-center rounded-b-2xl shadow-sm">
+        <Text className="text-xl font-bold text-slate-900">Edit Cost</Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="bg-slate-100 rounded-full px-3 py-2"
+        >
+          <Text className="text-slate-700 font-semibold">Cancel</Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* Cost Name */}
-        <View className="mb-4">
-          <Text className="text-sm font-semibold text-slate-700 mb-2">
-            Cost Name *
+      <ScrollView
+        className="px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Basic Details */}
+        <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
+          <Text className="text-sm font-semibold text-slate-800 mb-3">
+            Basic Details
           </Text>
+
+          {/* Cost Name */}
+          <Text className="text-xs text-slate-500 mb-1">Cost Name *</Text>
           <TextInput
             value={name}
             onChangeText={setName}
             placeholder="e.g., Harbor Fee - Galle"
-            className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900"
+            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 mb-3 text-slate-900"
             placeholderTextColor="#94A3B8"
           />
-        </View>
 
-        {/* Category */}
-        <View className="mb-4">
-          <Text className="text-sm font-semibold text-slate-700 mb-2">
-            Category *
-          </Text>
-          <View className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          {/* Category */}
+          <Text className="text-xs text-slate-500 mb-1">Category *</Text>
+          <View className="bg-slate-50 border border-slate-200 rounded-xl mb-3 overflow-hidden">
             <Picker
               selectedValue={category}
               onValueChange={setCategory}
@@ -187,16 +227,12 @@ export default function AddCostPreferenceScreen() {
               ))}
             </Picker>
           </View>
-        </View>
 
-        {/* Icon Selection */}
-        <View className="mb-4">
-          <Text className="text-sm font-semibold text-slate-700 mb-2">
-            Icon *
-          </Text>
+          {/* Icon Selection */}
+          <Text className="text-xs text-slate-500 mb-1">Icon *</Text>
           <TouchableOpacity
             onPress={() => setShowIconPicker(true)}
-            className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex-row items-center justify-between"
+            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 flex-row items-center justify-between"
           >
             <View className="flex-row items-center">
               <Ionicons name={selectedIcon as any} size={24} color="#475569" />
@@ -209,7 +245,7 @@ export default function AddCostPreferenceScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Quantity and Price Per Unit */}
+        {/* Pricing Details */}
         <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
           <Text className="text-sm font-semibold text-slate-800 mb-3">
             Pricing Details
@@ -263,7 +299,7 @@ export default function AddCostPreferenceScreen() {
           </View>
         </View>
 
-        {/* Description */}
+        {/* Additional Info */}
         <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
           <Text className="text-sm font-semibold text-slate-800 mb-3">
             Additional Info
@@ -284,9 +320,14 @@ export default function AddCostPreferenceScreen() {
           />
         </View>
 
-        {/* Auto-Apply Toggle */}
-        <View className="mb-4">
-          <View className="bg-white border border-slate-200 rounded-xl p-4">
+        {/* Settings */}
+        <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
+          <Text className="text-sm font-semibold text-slate-800 mb-3">
+            Settings
+          </Text>
+
+          {/* Auto-Apply Toggle */}
+          <View className="mb-4">
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-row items-center">
                 <Ionicons name="flash" size={20} color="#6366F1" />
@@ -312,11 +353,9 @@ export default function AddCostPreferenceScreen() {
               Automatically include this cost in all trip predictions
             </Text>
           </View>
-        </View>
 
-        {/* Active Toggle */}
-        <View className="mb-6">
-          <View className="bg-white border border-slate-200 rounded-xl p-4">
+          {/* Active Toggle */}
+          <View>
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-row items-center">
                 <Ionicons
@@ -357,7 +396,7 @@ export default function AddCostPreferenceScreen() {
           }`}
         >
           <Text className="text-white font-bold text-base">
-            {saving ? "Saving..." : "Create Cost Preference"}
+            {saving ? "Updating..." : "Update Cost Preference"}
           </Text>
         </TouchableOpacity>
       </ScrollView>

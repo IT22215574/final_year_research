@@ -35,7 +35,8 @@ type TabName =
   | "SpeciesDetection"
   | "QualityGrading"
   | "GradingHistory"
-  | "GradingDetail";
+  | "GradingDetail"
+  | "fishtripcost";
 
 interface NavItemConfig {
   tabName: TabName;
@@ -242,6 +243,8 @@ const TabsLayout = () => {
       pathname.includes("/Update_profile")
     ) {
       setActiveTab("profile");
+    } else if (pathname.includes("/fishtripcost")) {
+      setActiveTab("fishtripcost");
     } else {
       setActiveTab("home");
     }
@@ -373,10 +376,6 @@ const TabsLayout = () => {
                   )}
                 </View>
               ),
-              tabBarShowLabel: false,
-              tabBarStyle: {
-                display: "none",
-              },
             }}
           >
             <Tabs.Screen
@@ -394,6 +393,7 @@ const TabsLayout = () => {
                 headerShown: true,
               }}
             />
+
             <Tabs.Screen
               name="Quality"
               options={{
@@ -405,6 +405,7 @@ const TabsLayout = () => {
                 },
               }}
             />
+
             <Tabs.Screen
               name="Notifications"
               options={{
@@ -412,6 +413,7 @@ const TabsLayout = () => {
                 headerShown: true,
               }}
             />
+
             <Tabs.Screen
               name="profile"
               options={{
@@ -430,9 +432,6 @@ const TabsLayout = () => {
                 title: "Edit Profile",
                 headerShown: true,
                 headerTitleAlign: "center",
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
                 href: null,
               }}
             />
@@ -456,16 +455,14 @@ const TabsLayout = () => {
                 title: "Quality Grading",
                 headerShown: true,
                 headerTitleAlign: "center",
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
                 href: null,
               }}
             />
+
             <Tabs.Screen
-              name="GradingHistory"
+              name="fishtripcost"
               options={{
-                title: "My Grading History",
+                title: "Fish Trip Cost",
                 headerShown: true,
                 headerStyle: {
                   backgroundColor: "#0057FF",
@@ -473,8 +470,9 @@ const TabsLayout = () => {
                 href: null,
               }}
             />
+
             <Tabs.Screen
-              name="GradingDetail"
+              name="GradingHistory"
               options={{
                 title: "Quality Details",
                 headerShown: true,
@@ -486,9 +484,8 @@ const TabsLayout = () => {
             />
 
             <Tabs.Screen
-              name="fishtripcost"
+              name="GradingDetail"
               options={{
-                title: "Fish Trip Cost",
                 headerShown: true,
                 headerStyle: {
                   backgroundColor: "#0057FF",
