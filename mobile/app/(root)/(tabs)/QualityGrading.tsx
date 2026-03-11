@@ -1027,7 +1027,8 @@ const MeasurementSection = ({
     !isGradable ||
     !result?.species ||
     !resolveSpecies(result.species) ||
-    !leftImage
+    !leftImage ||
+    result.species.toLowerCase().trim() === "makerel"
   ) {
     return null;
   }

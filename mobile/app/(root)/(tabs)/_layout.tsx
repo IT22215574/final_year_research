@@ -465,7 +465,7 @@ const TabsLayout = () => {
             <Tabs.Screen
               name="GradingHistory"
               options={{
-                title: "Quality History",
+                title: "My Grading History",
                 headerShown: true,
                 headerStyle: {
                   backgroundColor: "#0057FF",
