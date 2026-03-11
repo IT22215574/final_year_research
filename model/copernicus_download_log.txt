@@ -200,3 +200,164 @@
 2026-03-10 08:58:46 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
 2026-03-10 08:58:46 | INFO |   Variables: analysed_sst
 2026-03-10 08:58:46 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:36:02 | INFO | ================================================================================
+2026-03-11 00:36:02 | INFO | Copernicus Marine Service Daily Data Fetcher
+2026-03-11 00:36:02 | INFO | ================================================================================
+2026-03-11 00:36:02 | INFO | Run started at: 2026-03-11 06:06:02.688282
+2026-03-11 00:36:02 | INFO | Mode: Download LATEST available data only
+2026-03-11 00:36:02 | INFO | ================================================================================
+2026-03-11 00:36:02 | INFO | Downloading latest available data for each dataset...
+2026-03-11 00:36:02 | INFO | ================================================================================
+2026-03-11 00:36:02 | INFO | Trying Sea Surface Temperature for 2026-03-11...
+2026-03-11 00:36:02 | INFO | Downloading Sea Surface Temperature for 2026-03-11...
+2026-03-11 00:36:02 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-03-11 00:36:02 | INFO |   Variables: analysed_sst
+2026-03-11 00:36:02 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:36:06 | ERROR | ✗ Failed to download Sea Surface Temperature: Some of your subset selection [2026-03-11 00:00:00+00:00, 2026-03-11 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2024-01-17 00:00:00+00:00, 2026-03-09 00:00:00+00:00]
+2026-03-11 00:36:06 | INFO | Trying Sea Surface Temperature for 2026-03-10...
+2026-03-11 00:36:06 | INFO | Downloading Sea Surface Temperature for 2026-03-10...
+2026-03-11 00:36:06 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-03-11 00:36:06 | INFO |   Variables: analysed_sst
+2026-03-11 00:36:06 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:36:10 | ERROR | ✗ Failed to download Sea Surface Temperature: Some of your subset selection [2026-03-10 00:00:00+00:00, 2026-03-10 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2024-01-17 00:00:00+00:00, 2026-03-09 00:00:00+00:00]
+2026-03-11 00:36:10 | INFO | Trying Sea Surface Temperature for 2026-03-09...
+2026-03-11 00:36:10 | INFO | Downloading Sea Surface Temperature for 2026-03-09...
+2026-03-11 00:36:10 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-03-11 00:36:10 | INFO |   Variables: analysed_sst
+2026-03-11 00:36:10 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:36:18 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-03-11 00:36:18 | INFO |   File: sst_data/sst_2026-03-09.nc
+2026-03-11 00:36:18 | INFO |   Size: 38.14 KB
+2026-03-11 00:36:18 | INFO | Deleted old file: sst_2026-03-08_(2).nc
+2026-03-11 00:36:18 | ERROR | ✗ Failed to download Sea Surface Temperature: name 'directory' is not defined
+2026-03-11 00:36:18 | INFO | Trying Sea Surface Temperature for 2026-03-08...
+2026-03-11 00:36:18 | INFO | Downloading Sea Surface Temperature for 2026-03-08...
+2026-03-11 00:36:18 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-03-11 00:36:18 | INFO |   Variables: analysed_sst
+2026-03-11 00:36:18 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:36:25 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-03-11 00:36:25 | INFO |   File: sst_data/sst_2026-03-08.nc
+2026-03-11 00:36:25 | INFO |   Size: 38.14 KB
+2026-03-11 00:36:25 | INFO | Deleted old file: sst_2026-03-08.nc
+2026-03-11 00:36:25 | ERROR | ✗ Failed to download Sea Surface Temperature: name 'directory' is not defined
+2026-03-11 00:36:25 | INFO | Trying Sea Surface Temperature for 2026-03-07...
+2026-03-11 00:36:25 | INFO | Downloading Sea Surface Temperature for 2026-03-07...
+2026-03-11 00:36:25 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-03-11 00:36:25 | INFO |   Variables: analysed_sst
+2026-03-11 00:36:25 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:36:33 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-03-11 00:36:33 | INFO |   File: sst_data/sst_2026-03-07.nc
+2026-03-11 00:36:33 | INFO |   Size: 38.14 KB
+2026-03-11 00:36:33 | INFO | Deleted old file: sst_2026-03-07.nc
+2026-03-11 00:36:33 | ERROR | ✗ Failed to download Sea Surface Temperature: name 'directory' is not defined
+2026-03-11 00:36:33 | ERROR | ✗ Failed to download Sea Surface Temperature for any recent date
+2026-03-11 00:36:33 | INFO | Trying Ocean Currents for 2026-03-11...
+2026-03-11 00:36:33 | INFO | Downloading Ocean Currents for 2026-03-11...
+2026-03-11 00:36:33 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
+2026-03-11 00:36:33 | INFO |   Variables: uo, vo
+2026-03-11 00:36:33 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:40:36 | INFO | ✓ Successfully downloaded Ocean Currents
+2026-03-11 00:40:36 | INFO |   File: ocean_currents/currents_2026-03-11.nc
+2026-03-11 00:40:36 | INFO |   Size: 907.51 KB
+2026-03-11 00:40:36 | INFO | Deleted old file: currents_2026-03-10.nc
+2026-03-11 00:40:36 | INFO | Deleted old file: currents_2026-03-09.nc
+2026-03-11 00:40:36 | INFO | Deleted old file: currents_2026-03-08.nc
+2026-03-11 00:40:36 | ERROR | ✗ Failed to download Ocean Currents: name 'directory' is not defined
+2026-03-11 00:40:36 | INFO | Trying Ocean Currents for 2026-03-10...
+2026-03-11 00:40:36 | INFO | Downloading Ocean Currents for 2026-03-10...
+2026-03-11 00:40:36 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
+2026-03-11 00:40:36 | INFO |   Variables: uo, vo
+2026-03-11 00:40:36 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:44:34 | INFO | ✓ Successfully downloaded Ocean Currents
+2026-03-11 00:44:34 | INFO |   File: ocean_currents/currents_2026-03-10.nc
+2026-03-11 00:44:34 | INFO |   Size: 907.51 KB
+2026-03-11 00:44:34 | INFO | Deleted old file: currents_2026-03-10.nc
+2026-03-11 00:44:34 | ERROR | ✗ Failed to download Ocean Currents: name 'directory' is not defined
+2026-03-11 00:44:34 | INFO | Trying Ocean Currents for 2026-03-09...
+2026-03-11 00:44:34 | INFO | Downloading Ocean Currents for 2026-03-09...
+2026-03-11 00:44:34 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
+2026-03-11 00:44:34 | INFO |   Variables: uo, vo
+2026-03-11 00:44:34 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:48:26 | INFO | ✓ Successfully downloaded Ocean Currents
+2026-03-11 00:48:26 | INFO |   File: ocean_currents/currents_2026-03-09.nc
+2026-03-11 00:48:26 | INFO |   Size: 907.51 KB
+2026-03-11 00:48:26 | INFO | Deleted old file: currents_2026-03-09.nc
+2026-03-11 00:48:26 | ERROR | ✗ Failed to download Ocean Currents: name 'directory' is not defined
+2026-03-11 00:48:26 | INFO | Trying Ocean Currents for 2026-03-08...
+2026-03-11 00:48:26 | INFO | Downloading Ocean Currents for 2026-03-08...
+2026-03-11 00:48:26 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
+2026-03-11 00:48:26 | INFO |   Variables: uo, vo
+2026-03-11 00:48:26 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:52:09 | INFO | ✓ Successfully downloaded Ocean Currents
+2026-03-11 00:52:09 | INFO |   File: ocean_currents/currents_2026-03-08.nc
+2026-03-11 00:52:09 | INFO |   Size: 907.51 KB
+2026-03-11 00:52:09 | INFO | Deleted old file: currents_2026-03-08.nc
+2026-03-11 00:52:09 | ERROR | ✗ Failed to download Ocean Currents: name 'directory' is not defined
+2026-03-11 00:52:09 | INFO | Trying Ocean Currents for 2026-03-07...
+2026-03-11 00:52:09 | INFO | Downloading Ocean Currents for 2026-03-07...
+2026-03-11 00:52:09 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
+2026-03-11 00:52:09 | INFO |   Variables: uo, vo
+2026-03-11 00:52:09 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:58:06 | INFO | ================================================================================
+2026-03-11 00:58:06 | INFO | Copernicus Marine Service Daily Data Fetcher
+2026-03-11 00:58:06 | INFO | ================================================================================
+2026-03-11 00:58:06 | INFO | Run started at: 2026-03-11 06:28:06.673714
+2026-03-11 00:58:06 | INFO | Mode: Download LATEST available data only
+2026-03-11 00:58:06 | ERROR | Copernicus credentials not configured!
+2026-03-11 00:58:06 | ERROR | Set COPERNICUS_USER and COPERNICUS_PASS environment variables
+2026-03-11 00:58:15 | INFO | ================================================================================
+2026-03-11 00:58:15 | INFO | Copernicus Marine Service Daily Data Fetcher
+2026-03-11 00:58:15 | INFO | ================================================================================
+2026-03-11 00:58:15 | INFO | Run started at: 2026-03-11 06:28:15.909336
+2026-03-11 00:58:15 | INFO | Mode: Download LATEST available data only
+2026-03-11 00:58:15 | INFO | ================================================================================
+2026-03-11 00:58:15 | INFO | Downloading latest available data for each dataset...
+2026-03-11 00:58:15 | INFO | ================================================================================
+2026-03-11 00:58:15 | INFO | Trying Sea Surface Temperature for 2026-03-11...
+2026-03-11 00:58:15 | INFO | Downloading Sea Surface Temperature for 2026-03-11...
+2026-03-11 00:58:15 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-03-11 00:58:15 | INFO |   Variables: analysed_sst
+2026-03-11 00:58:15 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:58:19 | ERROR | ✗ Failed to download Sea Surface Temperature: Some of your subset selection [2026-03-11 00:00:00+00:00, 2026-03-11 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2024-01-17 00:00:00+00:00, 2026-03-09 00:00:00+00:00]
+2026-03-11 00:58:19 | INFO | Trying Sea Surface Temperature for 2026-03-10...
+2026-03-11 00:58:19 | INFO | Downloading Sea Surface Temperature for 2026-03-10...
+2026-03-11 00:58:19 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-03-11 00:58:19 | INFO |   Variables: analysed_sst
+2026-03-11 00:58:19 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:58:22 | ERROR | ✗ Failed to download Sea Surface Temperature: Some of your subset selection [2026-03-10 00:00:00+00:00, 2026-03-10 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2024-01-17 00:00:00+00:00, 2026-03-09 00:00:00+00:00]
+2026-03-11 00:58:22 | INFO | Trying Sea Surface Temperature for 2026-03-09...
+2026-03-11 00:58:22 | INFO | Downloading Sea Surface Temperature for 2026-03-09...
+2026-03-11 00:58:22 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-03-11 00:58:22 | INFO |   Variables: analysed_sst
+2026-03-11 00:58:22 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:58:30 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-03-11 00:58:30 | INFO |   File: sst_data/sst_2026-03-09.nc
+2026-03-11 00:58:30 | INFO |   Size: 38.14 KB
+2026-03-11 00:58:30 | INFO | Deleted old file: sst_2026-03-09.nc
+2026-03-11 00:58:30 | ERROR | ✗ Failed to download Sea Surface Temperature: name 'directory' is not defined
+2026-03-11 00:58:30 | INFO | Trying Sea Surface Temperature for 2026-03-08...
+2026-03-11 00:58:30 | INFO | Downloading Sea Surface Temperature for 2026-03-08...
+2026-03-11 00:58:30 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-03-11 00:58:30 | INFO |   Variables: analysed_sst
+2026-03-11 00:58:30 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:58:37 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-03-11 00:58:37 | INFO |   File: sst_data/sst_2026-03-08.nc
+2026-03-11 00:58:37 | INFO |   Size: 38.14 KB
+2026-03-11 00:58:37 | INFO | Deleted old file: sst_2026-03-08.nc
+2026-03-11 00:58:37 | ERROR | ✗ Failed to download Sea Surface Temperature: name 'directory' is not defined
+2026-03-11 00:58:37 | INFO | Trying Sea Surface Temperature for 2026-03-07...
+2026-03-11 00:58:37 | INFO | Downloading Sea Surface Temperature for 2026-03-07...
+2026-03-11 00:58:37 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-03-11 00:58:37 | INFO |   Variables: analysed_sst
+2026-03-11 00:58:37 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-03-11 00:58:45 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-03-11 00:58:45 | INFO |   File: sst_data/sst_2026-03-07.nc
+2026-03-11 00:58:45 | INFO |   Size: 38.14 KB
+2026-03-11 00:58:45 | INFO | Deleted old file: sst_2026-03-07.nc
+2026-03-11 00:58:45 | ERROR | ✗ Failed to download Sea Surface Temperature: name 'directory' is not defined
+2026-03-11 00:58:45 | ERROR | ✗ Failed to download Sea Surface Temperature for any recent date
+2026-03-11 00:58:45 | INFO | Trying Ocean Currents for 2026-03-11...
+2026-03-11 00:58:45 | INFO | Downloading Ocean Currents for 2026-03-11...
+2026-03-11 00:58:45 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
+2026-03-11 00:58:45 | INFO |   Variables: uo, vo
+2026-03-11 00:58:45 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
