@@ -1107,7 +1107,7 @@ const ActionButtons = ({
             color="#fff"
           />
           <Text style={s.actionButtonText}>
-            {saveSuccess ? "Saved!" : "Save Result"}
+            {saveSuccess ? "Saved!" : "Save"}
           </Text>
         </>
       )}
