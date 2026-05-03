@@ -41,7 +41,7 @@ const COST_CATEGORIES = [
 
 type Props = {
   externalCosts: ExternalCostItem[];
-  onChange: (costs: ExternalCostItem[]) => void;
+  onChange: React.Dispatch<React.SetStateAction<ExternalCostItem[]>>;
   title?: string;
 };
 
@@ -290,35 +290,46 @@ export default function ExternalCostForm({
   return (
     <View className="bg-white rounded-2xl border border-slate-100 p-4">
       {/* Header */}
-      <View className="flex-row justify-between items-center mb-4">
-        <View>
-          <Text className="text-lg font-bold text-slate-800">{title}</Text>
-          <Text className="text-sm text-slate-500 mt-1">
-            {externalCosts.length} item{externalCosts.length !== 1 ? "s" : ""} •
-            Rs. {totalAmount.toLocaleString()}
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-2">
+      <View className="mb-4">
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-1 pr-3">
+            <Text
+              className="text-lg font-bold text-slate-900"
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+            <Text className="text-sm text-slate-500 mt-1" numberOfLines={1}>
+              {externalCosts.length} item
+              {externalCosts.length !== 1 ? "s" : ""} • Rs.{" "}
+              {totalAmount.toLocaleString()}
+            </Text>
+          </View>
           <TouchableOpacity
-            onPress={loadCostPreferences}
-            className="bg-blue-50 rounded-xl p-2"
+            onPress={() => loadCostPreferences()}
+            className="bg-blue-50 rounded-xl w-11 h-11 items-center justify-center"
+            activeOpacity={0.75}
           >
             <Ionicons name="refresh" size={20} color="#3b82f6" />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setShowForm(!showForm)}
-            className="bg-emerald-500 rounded-xl py-2 px-4 flex-row items-center"
-          >
-            <Ionicons
-              name={showForm ? "close" : "add"}
-              size={18}
-              color="white"
-            />
-            <Text className="text-white font-semibold ml-1">
-              {showForm ? "Cancel" : "Add"}
-            </Text>
-          </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          onPress={() => setShowForm(!showForm)}
+          className={`rounded-2xl py-3.5 px-4 flex-row items-center justify-center ${
+            showForm ? "bg-slate-900" : "bg-emerald-600"
+          }`}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={showForm ? "close" : "add-circle"}
+            size={20}
+            color="white"
+          />
+          <Text className="text-white font-bold ml-2">
+            {showForm ? "Close Cost Form" : "Add Manual Cost"}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Saved Preferences Section */}
@@ -418,8 +429,8 @@ export default function ExternalCostForm({
 
                     {/* Right: Amount with quantity editing */}
                     {isEnabled ? (
-                      <View className="items-end">
-                        <View className="flex-row items-center gap-2">
+                      <View className="items-end ml-2">
+                        <View className="flex-row items-center">
                           {isEditingQuantity ? (
                             <>
                               <Text className="text-xs text-slate-500">
@@ -444,7 +455,7 @@ export default function ExternalCostForm({
                                     editingQuantities[pref._id],
                                   )
                                 }
-                                className="bg-blue-500 rounded-lg p-1"
+                                className="bg-blue-500 rounded-lg p-1 ml-1"
                               >
                                 <Ionicons
                                   name="checkmark"
@@ -463,7 +474,7 @@ export default function ExternalCostForm({
                                       currentCost?.quantity.toString() || "1",
                                   }))
                                 }
-                                className="bg-blue-50 rounded-lg px-2 py-1"
+                                className="bg-blue-50 rounded-lg px-2 py-1 mr-2"
                               >
                                 <Text className="text-xs text-blue-600 font-semibold">
                                   Qty: {currentCost?.quantity || 1}
@@ -532,7 +543,7 @@ export default function ExternalCostForm({
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              className="flex-row gap-2"
+              contentContainerStyle={{ gap: 8, paddingRight: 8 }}
             >
               {COST_CATEGORIES.map((cat) => (
                 <TouchableOpacity
@@ -557,8 +568,8 @@ export default function ExternalCostForm({
           </View>
 
           {/* Quantity and Price Per Unit */}
-          <View className="flex-row gap-3 mb-3">
-            <View className="flex-1">
+          <View className="mb-3">
+            <View className="mb-3">
               <Text className="text-sm font-semibold text-slate-700 mb-2">
                 Quantity *
               </Text>
@@ -570,9 +581,9 @@ export default function ExternalCostForm({
                 keyboardType="decimal-pad"
               />
             </View>
-            <View className="flex-1">
+            <View>
               <Text className="text-sm font-semibold text-slate-700 mb-2">
-                Price per Unit (Rs) *
+                Unit Price (Rs) *
               </Text>
               <TextInput
                 className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800"
@@ -620,9 +631,13 @@ export default function ExternalCostForm({
           {/* Add Button */}
           <TouchableOpacity
             onPress={handleAdd}
-            className="bg-emerald-500 rounded-xl py-3"
+            className="bg-emerald-600 rounded-2xl py-4 flex-row items-center justify-center"
+            activeOpacity={0.8}
           >
-            <Text className="text-white font-bold text-center">Add Cost</Text>
+            <Ionicons name="add-circle" size={20} color="#ffffff" />
+            <Text className="text-white font-bold text-center ml-2">
+              Add Cost
+            </Text>
           </TouchableOpacity>
         </View>
       )}

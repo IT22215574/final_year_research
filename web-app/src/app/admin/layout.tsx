@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BarChart3, Fish, LayoutDashboard, LogOut, Menu, Ship, Store, Users, X } from "lucide-react";
+import { BarChart3, Compass, Fish, LayoutDashboard, LogOut, Menu, Ship, Store, Users, X } from "lucide-react";
 
 import { signOut } from "@/lib/authApi";
 import type { ApiError } from "@/lib/api";
+import { isFisherAdminRole } from "@/lib/authRoles";
 import { useAuthStore } from "@/stores/authStore";
 
 import SignInPage from "../sign-in/page";
@@ -21,17 +22,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canManageFishTrips = isFisherAdminRole(user?.role);
 
   const navItems = useMemo(
-    () => [
-      { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/admin/users", label: "Users", icon: Users },
-      { href: "/admin/fish-categories", label: "Fish Categories", icon: Fish },
-      { href: "/admin/fish-market", label: "Fish Market", icon: Store },
-      { href: "/admin/activity", label: "Activity", icon: BarChart3 },
-      { href: "/admin/Boats", label: "Boats", icon: Ship },
-    ],
-    [],
+    () =>
+      [
+        { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/admin/users", label: "Users", icon: Users },
+        { href: "/admin/fish-categories", label: "Fish Categories", icon: Fish },
+        { href: "/admin/fish-market", label: "Fish Market", icon: Store },
+        { href: "/admin/activity", label: "Activity", icon: BarChart3 },
+        { href: "/admin/Boats", label: "Boats", icon: Ship },
+        canManageFishTrips
+          ? { href: "/admin/fish-trip", label: "Fish Trip", icon: Compass }
+          : null,
+        canManageFishTrips
+          ? { href: "/admin/fish-trip/analytics", label: "Trip Analytics", icon: BarChart3 }
+          : null,
+      ].filter((item): item is NonNullable<typeof item> => item !== null),
+    [canManageFishTrips],
   );
 
   if (!user) return <SignInPage />;
@@ -56,7 +65,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <nav className="space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;
           return (
             <Link

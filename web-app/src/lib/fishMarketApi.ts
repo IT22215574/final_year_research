@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { getStoredAccessToken } from "@/lib/api";
 import type { ApiError } from "@/lib/api";
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
@@ -48,8 +49,14 @@ function joinUrl(base: string, p: string) {
 }
 
 async function apiFetchForm<T>(path: string, options: RequestInit): Promise<T> {
+  const accessToken = getStoredAccessToken();
+
   const res = await fetch(joinUrl(env.apiBaseUrl, path), {
     ...options,
+    headers: {
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...(options.headers ?? {}),
+    },
     credentials: "include",
   });
 
@@ -59,7 +66,10 @@ async function apiFetchForm<T>(path: string, options: RequestInit): Promise<T> {
     : undefined;
 
   if (!res.ok) {
-    const raw = (payload as any)?.message;
+    const raw =
+      payload && typeof payload === "object" && "message" in payload
+        ? (payload as { message?: unknown }).message
+        : undefined;
     const message = Array.isArray(raw)
       ? raw.join(", ")
       : typeof raw === "string"

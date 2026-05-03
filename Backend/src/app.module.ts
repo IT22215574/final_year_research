@@ -16,6 +16,9 @@ import { FishCategoryModule } from './fish-category/fish-category.module';
 import { FishMarketModule } from './fish-market/fish-market.module';
 import { GradingRecordsModule } from './grading-records/grading-records.module';
 import { FishZonesModule } from './fish-zones/fish-zones.module';
+import { TrainingCandidatesModule } from './training-candidates/training-candidates.module';
+import { TrainingJobsModule } from './training-jobs/training-jobs.module';
+import { ModelRegistryModule } from './model-registry/model-registry.module';
 
 @Module({
   imports: [
@@ -51,6 +54,9 @@ import { FishZonesModule } from './fish-zones/fish-zones.module';
     FishMarketModule,
     GradingRecordsModule,
     FishZonesModule,
+    TrainingCandidatesModule,
+    TrainingJobsModule,
+    ModelRegistryModule,
   ],
 })
 export class AppModule {}

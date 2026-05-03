@@ -47,18 +47,18 @@ export class BoatTypeCoefficientService {
    * Based on research data and BOAT_FUEL_BASELINES
    */
   private readonly BOAT_TYPE_PROFILES: Record<string, BoatTypeFuelProfile> = {
-    IMUL: {
+    IMUI: {
       name: 'Indigenous Multi-Day Ultra Light',
-      code: 'IMUL',
+      code: 'IMUI',
       baselineFuelPerKm: 2.25,
       efficiencyVarianceThreshold: 20, // ±20% acceptable for small boats
       category: 'small',
       typicalDistanceRange: { min: 10, max: 100 },
       typicalFuelRange: { min: 20, max: 300 },
     },
-    IDAY: {
+    IDAT: {
       name: 'Indigenous Day Boats',
-      code: 'IDAY',
+      code: 'IDAT',
       baselineFuelPerKm: 2.0,
       efficiencyVarianceThreshold: 18,
       category: 'small',
@@ -74,9 +74,9 @@ export class BoatTypeCoefficientService {
       typicalDistanceRange: { min: 100, max: 500 },
       typicalFuelRange: { min: 100, max: 1000 },
     },
-    MTRB: {
+    MTRP: {
       name: 'Multi-day Trawler/Boat',
-      code: 'MTRB',
+      code: 'MTRP',
       baselineFuelPerKm: 0.43,
       efficiencyVarianceThreshold: 15,
       category: 'medium',

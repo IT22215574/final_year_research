@@ -13,17 +13,36 @@ function joinUrl(baseUrl: string, path: string) {
   return `${base}${p}`;
 }
 
+export function getStoredAccessToken() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem("auth-storage");
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as {
+      state?: { user?: { access_token?: string; token?: string } };
+    };
+
+    return parsed.state?.user?.access_token ?? parsed.state?.user?.token ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
   options?: Omit<RequestInit, "headers"> & { headers?: Record<string, string> },
 ): Promise<T> {
   const isFormData =
     typeof FormData !== "undefined" && options?.body instanceof FormData;
+  const accessToken = getStoredAccessToken();
 
   const res = await fetch(joinUrl(env.apiBaseUrl, path), {
     ...options,
     headers: {
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(options?.headers ?? {}),
     },
     credentials: "include",

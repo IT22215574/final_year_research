@@ -64,8 +64,9 @@ const LogActualScreen = () => {
       lastSavedTrip?.boat?.boatType || lastSavedTrip?.boatType || "N/A";
 
     const engineHP =
-      lastSavedTrip?.boat?.engineHorsePower ||
       lastSavedTrip?.engineHorsePower ||
+      lastSavedTrip?.engineHP ||
+      lastSavedTrip?.boat?.engineHorsePower ||
       "N/A";
 
     const distance =
@@ -519,7 +520,7 @@ const LogActualScreen = () => {
                   </Text>
                   <DetailRow
                     label="Wind Speed"
-                    value={`${summary.windSpeed} knots`}
+                    value={`${summary.windSpeed} km/h`}
                   />
                   <DetailRow
                     label="Wave Height"

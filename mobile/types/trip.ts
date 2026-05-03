@@ -10,13 +10,37 @@ export interface Trip {
   _id: string;
   userId: string;
   boatId?: string;
-  status: "planned" | "in-progress" | "completed" | "cancelled";
+  status: "planned" | "completed" | "cancelled";
 
   // Timestamps
-  departureTime?: string;
-  returnTime?: string;
+  departureTime: string;
+  returnTime: string;
   createdAt?: string;
   updatedAt?: string;
+
+  // Route and input values
+  tripDate?: string;
+  startLat?: number;
+  startLon?: number;
+  endLat?: number;
+  endLon?: number;
+  distanceKm?: number;
+  engineHorsePower?: number;
+  engineHP?: number;
+  boatType?: string;
+  windSpeed?: number;
+  waveHeight?: number;
+  rainMmPerHour?: number;
+  weatherCondition?: string;
+  fuelUsedLiters?: number;
+  fuelPricePerLiter?: number;
+  marketPrice?: number;
+  speed?: number;
+  averageSpeed?: number;
+  crewCount?: number;
+  fishingHours?: number;
+  numberOfDays?: number;
+  mode?: "island" | "international";
 
   // ==================== PREDICTED VALUES (from ML/DATCIE) ====================
 
@@ -69,8 +93,10 @@ export interface Trip {
 
   /** Actual external costs breakdown */
   actualExternalCosts?: Array<{
+    name: string;
     category: string;
     amount: number;
+    description?: string;
     notes?: string;
   }>;
 
@@ -145,12 +171,12 @@ export interface Trip {
   /** ML variance percentage from learned patterns */
   mlVariancePercent?: number;
 
-  /** Boat type code used for normalization (e.g., 'IMUL', 'OFRP') */
+  /** Boat type code used for normalization (e.g., 'IMUI', 'OFRP') */
   boatTypeUsedForMetrics?: string;
 
-  // Legacy fields (backward compatibility)
-  distanceKm?: number;
-  fuelUsedLiters?: number;
+  // Legacy calculated fields
+  fuelCost?: number;
+  totalCost?: number;
 }
 
 /**

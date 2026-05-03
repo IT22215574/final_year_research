@@ -24,6 +24,10 @@ import {
 import { Boat, BoatDocument } from '../schemas/boat.schema';
 import { UpdateActualsDto } from './dto/update-actuals.dto';
 import { TripMetricsService } from './services/trip-metrics.service';
+import {
+  TrainingCandidate,
+  TrainingCandidateDocument,
+} from '../schemas/training-candidate.schema';
 
 @Injectable()
 export class TripsService {
@@ -32,6 +36,8 @@ export class TripsService {
     @InjectModel(Boat.name) private boatModel: Model<BoatDocument>,
     @InjectModel(TripCoefficient.name)
     private tripCoeffModel: Model<TripCoefficientDocument>,
+    @InjectModel(TrainingCandidate.name)
+    private candidateModel: Model<TrainingCandidateDocument>, // <-- ADD THIS LINE
     private readonly http: HttpService,
     private readonly config: ConfigService,
     private readonly tripMetricsService: TripMetricsService,
@@ -42,8 +48,11 @@ export class TripsService {
   // =========================
   async create(
     userId: string,
+    isAdmin: boolean,
     createTripDto: CreateTripDto,
   ): Promise<TripDocument> {
+    let tripOwnerId = userId;
+
     if (createTripDto.boatId) {
       const boat = await this.boatModel.findById(createTripDto.boatId).exec();
 
@@ -51,16 +60,19 @@ export class TripsService {
         throw new NotFoundException('Boat not found');
       }
 
-      if (String(boat.userId) !== String(userId)) {
+      if (!isAdmin && String(boat.userId) !== String(userId)) {
         throw new ForbiddenException(
           'You are not allowed to create a trip with this boat',
         );
       }
+
+      // When admin creates a trip using a fisherman's boat, keep trip ownership with that fisherman.
+      tripOwnerId = String(boat.userId || userId);
     }
 
     const newTrip = new this.tripModel({
       ...createTripDto,
-      userId,
+      userId: tripOwnerId,
       status: createTripDto.status || 'planned',
       mode: createTripDto.mode || 'island',
       predictedExternalCosts: createTripDto.predictedExternalCosts || [],
@@ -238,6 +250,7 @@ export class TripsService {
   async logActualData(tripId: string, dto: LogActualDto, req: ExpressRequest) {
     const user = (req as any)?.user ?? {};
     const userId = user?.userId || user?.id || user?._id || user?.sub;
+    const isAdmin = !!user?.isAdmin;
 
     if (!userId) {
       throw new BadRequestException('Unauthorized');
@@ -248,7 +261,7 @@ export class TripsService {
       throw new NotFoundException('Trip not found');
     }
 
-    if (String(trip.userId) !== String(userId)) {
+    if (!isAdmin && String(trip.userId) !== String(userId)) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -374,6 +387,51 @@ export class TripsService {
     if (!boat) {
       throw new NotFoundException('Boat not found');
     }
+    const tripEngineHP =
+      trip.engineHP || trip.engineHorsePower || boat.engineHorsePower || 85;
+
+    // 🛡️ GOVERNANCE PIPELINE INTERCEPTION
+    // Reads the flag from your .env file
+    if (
+      this.config.get<string>('ENABLE_GOVERNED_TRAINING_PIPELINE') === 'true'
+    ) {
+      try {
+        const sourceTripId = trip._id.toString();
+        await this.candidateModel.updateOne(
+          { sourceTripId },
+          {
+            $set: {
+              sourceTripId,
+              boatId: trip.boatId.toString(),
+              boatType: boat.boatType || 'unknown',
+              featuresSnapshot: {
+                speed: trip.averageSpeed || trip.speed || 10,
+                weatherSeverityIndex: trip.weatherSeverityIndex || 0,
+                distanceKm: trip.distanceKm || 0,
+                engineHP: tripEngineHP,
+                fishingHours: trip.fishingHours || 8,
+                numberOfDays: trip.numberOfDays || 1,
+                predictedFuelLiters: trip.predictedFuelLiters || 0,
+              },
+              labelSnapshot: {
+                actualFuelLiters: dto.actualFuelLiters,
+                actualCost:
+                  actualFuelCost +
+                  actualOperationalCost +
+                  actualExternalCostTotal,
+              },
+              status: 'PENDING',
+              reviewReason: null,
+              reviewedAt: null,
+            },
+          },
+          { upsert: true },
+        );
+      } catch (err) {
+        // If candidate creation fails, the trip log still succeeds! Non-breaking.
+        console.error('Failed to create training candidate:', err);
+      }
+    }
 
     const baseUrl =
       this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
@@ -392,7 +450,7 @@ export class TripsService {
           speed: trip.averageSpeed || trip.speed || 10,
           weatherSeverityIndex: trip.weatherSeverityIndex || 0,
           distanceKm: trip.distanceKm || 0,
-          engineHP: boat.engineHorsePower || 85,
+          engineHP: tripEngineHP,
           fishingHours: trip.fishingHours || 8,
           numberOfDays: trip.numberOfDays || 1,
         }),
@@ -482,12 +540,15 @@ export class TripsService {
   // =========================
   // BATCH TRAIN TRIPS
   // =========================
-  async batchTrainTrips(userId: string, dto: BatchTrainDto) {
-    // Fetch selected trips
+  async batchTrainTrips(dto: BatchTrainDto) {
+    if (!Array.isArray(dto.tripIds) || dto.tripIds.length === 0) {
+      throw new BadRequestException('tripIds is required for batch training');
+    }
+
+    // Admin training: selected trips can belong to any fisherman.
     const trips = await this.tripModel
       .find({
         _id: { $in: dto.tripIds },
-        userId: userId, // Security: only user's trips
         actualFuelLiters: { $exists: true }, // Only logged trips
       })
       .exec();
@@ -526,7 +587,8 @@ export class TripsService {
         speed: trip.averageSpeed || trip.speed || 10,
         weatherSeverityIndex: trip.weatherSeverityIndex || 0,
         distanceKm: trip.distanceKm || 0,
-        engineHP: boat.engineHorsePower || 85,
+        engineHP:
+          trip.engineHP || trip.engineHorsePower || boat.engineHorsePower || 85,
         fishingHours: trip.fishingHours || 8,
         numberOfDays: trip.numberOfDays || 1,
         tripId: String(trip._id),
@@ -850,15 +912,15 @@ export class TripsService {
   // (Research lifecycle: reset, retrain, backups)
   // =========================
 
-  async resetBoatModel(userId: string, boatId: string) {
-    // Verify user owns this boat
+  async resetBoatModel(userId: string, isAdmin: boolean, boatId: string) {
+    // Admin can reset any boat. Non-admin can only reset own boat.
     const boat = await this.boatModel.findById(boatId).exec();
 
     if (!boat) {
       throw new NotFoundException('Boat not found');
     }
 
-    if (String(boat.userId) !== String(userId)) {
+    if (!isAdmin && String(boat.userId) !== String(userId)) {
       throw new ForbiddenException('You do not own this boat');
     }
 
@@ -886,17 +948,18 @@ export class TripsService {
 
   async retrainBoatModel(
     userId: string,
+    isAdmin: boolean,
     boatId: string,
     options: { errorThreshold?: number; maxDays?: number },
   ) {
-    // Verify ownership
+    // Admin can retrain any boat. Non-admin can only retrain own boat.
     const boat = await this.boatModel.findById(boatId).exec();
 
     if (!boat) {
       throw new NotFoundException('Boat not found');
     }
 
-    if (String(boat.userId) !== String(userId)) {
+    if (!isAdmin && String(boat.userId) !== String(userId)) {
       throw new ForbiddenException('You do not own this boat');
     }
 
@@ -961,15 +1024,15 @@ export class TripsService {
     }
   }
 
-  async getBoatBackups(userId: string, boatId: string) {
-    // Verify ownership
+  async getBoatBackups(userId: string, isAdmin: boolean, boatId: string) {
+    // Admin can view any boat backups. Non-admin can only view own boat backups.
     const boat = await this.boatModel.findById(boatId).exec();
 
     if (!boat) {
       throw new NotFoundException('Boat not found');
     }
 
-    if (String(boat.userId) !== String(userId)) {
+    if (!isAdmin && String(boat.userId) !== String(userId)) {
       throw new ForbiddenException('You do not own this boat');
     }
 

@@ -47,12 +47,22 @@ export class AuthService {
 
     const token = this.jwtService.sign({
       id: user._id,
-      isAdmin: user.isAdmin,
+      isAdmin:
+        user.isAdmin ||
+        String(user.role || '')
+          .toLowerCase()
+          .includes('admin'),
+      role: user.role,
     });
 
     const userObject = user.toObject();
     delete userObject.password;
     delete userObject.verifytoken;
+    userObject.isAdmin =
+      userObject.isAdmin ||
+      String(userObject.role || '')
+        .toLowerCase()
+        .includes('admin');
 
     return {
       ...userObject,
@@ -309,7 +319,11 @@ export class AuthService {
     await transporter.sendMail(mailOptions);
   }
 
-  async verifyPasswordResetOtp(emailOrPhone: string, isEmail: boolean, otp: string) {
+  async verifyPasswordResetOtp(
+    emailOrPhone: string,
+    isEmail: boolean,
+    otp: string,
+  ) {
     let user;
 
     if (isEmail) {
@@ -336,11 +350,15 @@ export class AuthService {
     }
 
     if (!user.otp || !user.otpExpires) {
-      throw new BadRequestException('No active OTP found. Please request a new one.');
+      throw new BadRequestException(
+        'No active OTP found. Please request a new one.',
+      );
     }
 
     if (new Date() > user.otpExpires) {
-      throw new BadRequestException('OTP has expired. Please request a new one.');
+      throw new BadRequestException(
+        'OTP has expired. Please request a new one.',
+      );
     }
 
     if (user.otp !== otp) {
