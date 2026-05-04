@@ -99,7 +99,7 @@ export default function Quality() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f0f4f8" },
   header: {
-    paddingVertical: 18,
+    paddingVertical: 10,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,

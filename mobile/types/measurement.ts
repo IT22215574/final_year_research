@@ -106,48 +106,6 @@ export const REFERENCE_OBJECTS: {
     description: "Half-size ruler",
     icon: "straighten",
   },
-  {
-    key: "a4_width",
-    label: "A4 Paper (width)",
-    sizeCm: 21.0,
-    description: "Width of A4 paper",
-    icon: "description",
-  },
-  {
-    key: "a4_height",
-    label: "A4 Paper (height)",
-    sizeCm: 29.7,
-    description: "Height of A4 paper",
-    icon: "description",
-  },
-  {
-    key: "credit_card_width",
-    label: "Credit Card (width)",
-    sizeCm: 8.56,
-    description: "Standard credit/debit card width",
-    icon: "credit-card",
-  },
-  {
-    key: "coin_10_rupee",
-    label: "10 Rupee Coin",
-    sizeCm: 2.7,
-    description: "Sri Lankan 10 rupee coin diameter",
-    icon: "monetization-on",
-  },
-  {
-    key: "fishing_crate",
-    label: "Standard Fish Crate",
-    sizeCm: 60,
-    description: "Standard fishing crate length (~60 cm)",
-    icon: "inventory-2",
-  },
-  {
-    key: "custom",
-    label: "Custom Size",
-    sizeCm: 0,
-    description: "Enter your own reference size",
-    icon: "edit",
-  },
 ];
 
 /** Species-specific measurement guide information. */

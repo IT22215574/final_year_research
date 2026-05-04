@@ -636,69 +636,110 @@ async def predict(
     )
 
     # ═══════════════════════════════════════════════════════════════════════
-    # STEP 5 — Unknown species (low confidence on either side)
+    # STEP 5 — Per-image species confidence check (NON-BLOCKING)
+    # run_single_image duplicates the same image as both left & right which
+    # can confuse the dual-input model, so per-image species predictions are
+    # treated as advisory only.  The dual-image pipeline (Step 7) is the
+    # authoritative source for species identification.
     # ═══════════════════════════════════════════════════════════════════════
     if left_sp_conf < PER_IMAGE_SPECIES_THRESHOLD or right_sp_conf < PER_IMAGE_SPECIES_THRESHOLD:
         low_side = "left" if left_sp_conf <= right_sp_conf else "right"
         low_conf = min(left_sp_conf, right_sp_conf)
-        return _cache_and_return(_response(
-            "unknown_species",
-            f"Fish species could not be recognised confidently. "
-            f"The {low_side} image had low species confidence ({low_conf:.0%}).",
-            per_image_validation=piv,
-            final_result="UNKNOWN SPECIES",
-        ))
+        warnings.append(
+            f"Per-image species confidence is low on the {low_side} side "
+            f"({low_conf:.0%}). Proceeding with dual-image classification."
+        )
+        logger.info(
+            f"[predict] Low per-image species confidence ({low_side}={low_conf:.2f}), "
+            f"continuing to dual-image pipeline"
+        )
 
     # ═══════════════════════════════════════════════════════════════════════
-    # STEP 6 — Species mismatch
+    # STEP 6 — Per-image species mismatch (NON-BLOCKING)
     # ═══════════════════════════════════════════════════════════════════════
     if left_species != right_species:
-        return _cache_and_return(_response(
-            "species_mismatch",
-            "The two images appear to belong to different fish species. "
-            "Please upload left and right images of the same fish.",
-            per_image_validation=piv,
-            pair_validation={
-                "matched": False,
-                "left_label":      left_species,
-                "left_confidence":  round(left_sp_conf, 4),
-                "right_label":     right_species,
-                "right_confidence": round(right_sp_conf, 4),
-            },
-            final_result="SPECIES MISMATCH",
-        ))
-
-    agreed_species = left_species
+        warnings.append(
+            f"Per-image species predictions disagree "
+            f"(left={left_species}, right={right_species}). "
+            f"Dual-image prediction will be used as the definitive result."
+        )
+        logger.info(
+            f"[predict] Per-image species mismatch: {left_species} vs {right_species}, "
+            f"continuing to dual-image pipeline"
+        )
 
     # ═══════════════════════════════════════════════════════════════════════
-    # STEP 7 — Supported species check
-    # ═══════════════════════════════════════════════════════════════════════
-    if agreed_species not in SUPPORTED_SPECIES:
-        return _cache_and_return(_response(
-            "unsupported_species",
-            f"The species '{agreed_species}' is not supported by the grading model.",
-            per_image_validation=piv,
-            final_result=f"UNSUPPORTED: {agreed_species}",
-        ))
-
-    # ═══════════════════════════════════════════════════════════════════════
-    # STEP 8 — Dual-image pipeline (both images verified — final prediction)
+    # STEP 7 — Dual-image pipeline + ensemble species prediction
+    # Combine dual-image and per-image species probabilities for a more
+    # robust result.  Dual-image gets extra weight (×2) because it uses
+    # proper left+right views as designed during training.
     # ═══════════════════════════════════════════════════════════════════════
 
     # Stage 1: Dual-image fish detection (backward-compatible response)
     s1_result = run_model(fish_session, left, right, use_tta=use_tta)
     s1_label  = BINARY_LABELS[s1_result["prediction_idx"]]
 
-    # Stage 2: Dual-image species (more accurate with both views)
+    # Stage 2: Dual-image species
     s2_result    = run_model(species_session, left, right, use_tta=use_tta)
-    dual_species = SPECIES_LABELS[s2_result["prediction_idx"]]
+    dual_species_raw = SPECIES_LABELS[s2_result["prediction_idx"]]
+    dual_sp_conf_raw = s2_result["confidence"]
+
+    # ── Ensemble: weighted average of per-image + dual-image probabilities ─
+    # Weights: dual-image ×2, left per-image ×1, right per-image ×1
+    ensemble_probs = (
+        left_sp["probabilities"]
+        + right_sp["probabilities"]
+        + 2.0 * s2_result["probabilities"]
+    ) / 4.0
+    ensemble_idx  = int(np.argmax(ensemble_probs))
+    ensemble_conf = float(ensemble_probs[ensemble_idx])
+    dual_species  = SPECIES_LABELS[ensemble_idx]
+    dual_sp_conf  = ensemble_conf
+
+    logger.info(
+        f"[predict] Dual-image raw species: {dual_species_raw} ({dual_sp_conf_raw:.2f})"
+    )
+    logger.info(
+        f"[predict] Ensemble species: {dual_species} ({dual_sp_conf:.2f}) "
+        f"[left={left_species}({left_sp_conf:.2f}), "
+        f"right={right_species}({right_sp_conf:.2f}), "
+        f"dual={dual_species_raw}({dual_sp_conf_raw:.2f})]"
+    )
+
+    # Update s2_result probabilities to reflect the ensemble for downstream use
+    s2_result_ensemble = dict(s2_result)
+    s2_result_ensemble["probabilities"] = ensemble_probs
+    s2_result_ensemble["prediction_idx"] = ensemble_idx
+    s2_result_ensemble["confidence"] = ensemble_conf
+    s2_result_ensemble["method"] = s2_result.get("method", "single") + "+ensemble"
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 8 — Reject only if ensemble species confidence is too low
+    # ═══════════════════════════════════════════════════════════════════════
+    if dual_sp_conf < SPECIES_THRESHOLD:
+        return _cache_and_return(_response(
+            "unknown_species",
+            f"Fish species could not be recognised confidently. "
+            f"Ensemble species confidence was {dual_sp_conf:.0%}.",
+            per_image_validation=piv,
+            final_result="UNKNOWN SPECIES",
+        ))
+
+    # Supported species check (using authoritative dual-image species)
+    if dual_species not in SUPPORTED_SPECIES:
+        return _cache_and_return(_response(
+            "unsupported_species",
+            f"The species '{dual_species}' is not supported by the grading model.",
+            per_image_validation=piv,
+            final_result=f"UNSUPPORTED: {dual_species}",
+        ))
 
     response = _response(
         "success",
         "Prediction completed successfully.",
         per_image_validation=piv,
         pair_validation={
-            "matched": True,
+            "matched": left_species == right_species,
             "left_label":      left_species,
             "left_confidence":  round(left_sp_conf, 4),
             "right_label":     right_species,
@@ -716,21 +757,22 @@ async def predict(
         },
         stage2={
             "label": dual_species,
-            "confidence": s2_result["confidence"],
+            "confidence": s2_result_ensemble["confidence"],
             "probabilities": {
                 SPECIES_LABELS[i]: float(p)
-                for i, p in enumerate(s2_result["probabilities"])
+                for i, p in enumerate(s2_result_ensemble["probabilities"])
             },
-            "uncertainty": s2_result["uncertainty"],
-            "method": s2_result["method"],
+            "uncertainty": s2_result.get("uncertainty", 0),
+            "method": s2_result_ensemble["method"],
         },
         final_result=dual_species,
     )
 
     # ═══════════════════════════════════════════════════════════════════════
     # STEP 9 — Grade classification (only for grade-supported species)
+    # Uses dual_species (authoritative) for grading decision
     # ═══════════════════════════════════════════════════════════════════════
-    if agreed_species.lower() in [s.lower() for s in GRADE_SPECIES]:
+    if dual_species.lower() in [s.lower() for s in GRADE_SPECIES]:
         s3_result  = run_model(grade_session, left, right, use_tta=use_tta)
         grade      = GRADE_LABELS[s3_result["prediction_idx"]]
         grade_conf = s3_result["confidence"]

@@ -17,10 +17,16 @@ import {
 import { signOut } from "@/lib/authApi";
 import type { ApiError } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
+import SFLLogo from "../../../../mobile/assets/images/SFLLogo.png";
 
 import SignInPage from "../sign-in/page";
+import Image from "next/image";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -86,7 +92,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   : "text-gray-700 hover:bg-gray-50"
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? "text-blue-600" : "text-gray-500"}`} />
+              <Icon
+                className={`w-5 h-5 ${isActive ? "text-blue-600" : "text-gray-500"}`}
+              />
               <span className="font-medium">{item.label}</span>
             </Link>
           );
@@ -115,10 +123,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         <div className="h-full flex flex-col">
           <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
-            <div>
-              <div className="text-lg font-bold text-gray-900">Smart Fisher Lanka</div>
-              <div className="text-xs text-gray-500">Admin panel</div>
+            <div className="flex flex-row gap-2">
+              <div>
+                <Image
+                  src={SFLLogo}
+                  alt="Smart Fisher Lanka Logo"
+                  width={128}
+                  height={128}
+                  className="relative rounded-xl"
+                />
+              </div>
+              <div>
+                <div className="text-lg font-bold text-gray-900">
+                  Smart Fisher Lanka
+                </div>
+                <div className="text-xs text-gray-500">Admin panel</div>
+              </div>
             </div>
+
             <button
               type="button"
               className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
@@ -152,7 +174,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <LogOut className="w-4 h-4" />
               {pending ? "Signing out..." : "Sign out"}
             </button>
-            {error ? <p className="text-xs text-red-600 mt-3">{error}</p> : null}
+            {error ? (
+              <p className="text-xs text-red-600 mt-3">{error}</p>
+            ) : null}
           </div>
         </div>
       </aside>
@@ -171,7 +195,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Menu className="w-5 h-5 text-gray-700" />
               </button>
               <div className="text-sm text-gray-600">
-                Welcome, <span className="font-semibold">{user.firstName ?? user.username ?? "Admin"}</span>
+                Welcome,{" "}
+                <span className="font-semibold">
+                  {user.firstName ?? user.username ?? "Admin"}
+                </span>
               </div>
             </div>
 

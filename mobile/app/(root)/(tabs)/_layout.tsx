@@ -560,6 +560,7 @@ const TabsLayout = () => {
             <Tabs.Screen
               name="GradingHistory"
               options={{
+                title: "Quality Details",
                 headerShown: true,
                 headerStyle: {
                   backgroundColor: "#0057FF",
@@ -602,6 +603,7 @@ const TabsLayout = () => {
           )}
         </View>
 
+        {/* Bottom Navigation - Unified for desktop & mobile */}
         {isDesktop ? (
           <View
             style={[

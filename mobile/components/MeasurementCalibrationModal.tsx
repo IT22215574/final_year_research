@@ -443,6 +443,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     alignItems: "stretch",
+    marginBottom: 16,
   },
   undoBtn: {
     flexDirection: "row",
