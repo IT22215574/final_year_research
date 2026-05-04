@@ -219,7 +219,7 @@ const SignIn = () => {
       console.log("🌐 API Base URL:", API);
       
       // Use direct fetch for sign-in since we don't have token yet
-      const response = await fetch(`${API}/api/v1/auth/signin`, {
+      const response = await fetch(`${API}/auth/signin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -361,3 +361,165 @@
 2026-03-11 00:58:45 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
 2026-03-11 00:58:45 | INFO |   Variables: uo, vo
 2026-03-11 00:58:45 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 10:50:01 | INFO | ================================================================================
+2026-05-04 10:50:01 | INFO | Copernicus Marine Service Daily Data Fetcher
+2026-05-04 10:50:01 | INFO | ================================================================================
+2026-05-04 10:50:01 | INFO | Run started at: 2026-05-04 16:20:01.461050
+2026-05-04 10:50:01 | INFO | Mode: Download LATEST available data only
+2026-05-04 10:50:01 | ERROR | Copernicus credentials not configured!
+2026-05-04 10:50:01 | ERROR | Set COPERNICUS_USER and COPERNICUS_PASS environment variables
+2026-05-04 11:09:22 | INFO | ================================================================================
+2026-05-04 11:09:22 | INFO | Copernicus Marine Service Daily Data Fetcher
+2026-05-04 11:09:22 | INFO | ================================================================================
+2026-05-04 11:09:22 | INFO | Run started at: 2026-05-04 16:39:22.006945
+2026-05-04 11:09:22 | INFO | Mode: Download LATEST available data only
+2026-05-04 11:09:22 | ERROR | Copernicus credentials not configured!
+2026-05-04 11:09:22 | ERROR | Set COPERNICUS_USER and COPERNICUS_PASS environment variables
+2026-05-04 11:14:16 | INFO | ================================================================================
+2026-05-04 11:14:16 | INFO | Copernicus Marine Service Daily Data Fetcher
+2026-05-04 11:14:16 | INFO | ================================================================================
+2026-05-04 11:14:16 | INFO | Run started at: 2026-05-04 16:44:16.902838
+2026-05-04 11:14:16 | INFO | Mode: Download LATEST available data only
+2026-05-04 11:14:16 | INFO | ================================================================================
+2026-05-04 11:14:16 | INFO | Downloading latest available data for each dataset...
+2026-05-04 11:14:16 | INFO | ================================================================================
+2026-05-04 11:14:16 | INFO | Trying Sea Surface Temperature for 2026-05-04...
+2026-05-04 11:14:16 | INFO | Downloading Sea Surface Temperature for 2026-05-04...
+2026-05-04 11:14:16 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-04 11:14:16 | INFO |   Variables: analysed_sst
+2026-05-04 11:14:16 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:14:23 | ERROR | ✗ Failed to download Sea Surface Temperature: Some of your subset selection [2026-05-04 00:00:00+00:00, 2026-05-04 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2024-01-17 00:00:00+00:00, 2026-05-03 00:00:00+00:00]
+2026-05-04 11:14:23 | INFO | Trying Sea Surface Temperature for 2026-05-03...
+2026-05-04 11:14:23 | INFO | Downloading Sea Surface Temperature for 2026-05-03...
+2026-05-04 11:14:23 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-04 11:14:23 | INFO |   Variables: analysed_sst
+2026-05-04 11:14:23 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:14:37 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-05-04 11:14:37 | INFO |   File: sst_data/sst_2026-05-03.nc
+2026-05-04 11:14:37 | INFO |   Size: 38.14 KB
+2026-05-04 11:14:37 | INFO | Deleted old file: sst_2026-03-09_(1).nc
+2026-05-04 11:14:37 | ERROR | ✗ Failed to download Sea Surface Temperature: name 'directory' is not defined
+2026-05-04 11:14:37 | INFO | Trying Sea Surface Temperature for 2026-05-02...
+2026-05-04 11:14:37 | INFO | Downloading Sea Surface Temperature for 2026-05-02...
+2026-05-04 11:14:37 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-04 11:14:37 | INFO |   Variables: analysed_sst
+2026-05-04 11:14:37 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:14:51 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-05-04 11:14:51 | INFO |   File: sst_data/sst_2026-05-02.nc
+2026-05-04 11:14:51 | INFO |   Size: 38.14 KB
+2026-05-04 11:14:51 | INFO | Deleted old file: sst_2026-05-02.nc
+2026-05-04 11:14:51 | ERROR | ✗ Failed to download Sea Surface Temperature: name 'directory' is not defined
+2026-05-04 11:14:51 | INFO | Trying Sea Surface Temperature for 2026-05-01...
+2026-05-04 11:14:51 | INFO | Downloading Sea Surface Temperature for 2026-05-01...
+2026-05-04 11:14:51 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-04 11:14:51 | INFO |   Variables: analysed_sst
+2026-05-04 11:14:51 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:15:00 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-05-04 11:15:00 | INFO |   File: sst_data/sst_2026-05-01.nc
+2026-05-04 11:15:00 | INFO |   Size: 38.14 KB
+2026-05-04 11:15:00 | INFO | Deleted old file: sst_2026-05-01.nc
+2026-05-04 11:15:00 | ERROR | ✗ Failed to download Sea Surface Temperature: name 'directory' is not defined
+2026-05-04 11:15:00 | INFO | Trying Sea Surface Temperature for 2026-04-30...
+2026-05-04 11:15:00 | INFO | Downloading Sea Surface Temperature for 2026-04-30...
+2026-05-04 11:15:00 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-04 11:15:00 | INFO |   Variables: analysed_sst
+2026-05-04 11:15:00 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:15:11 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-05-04 11:15:11 | INFO |   File: sst_data/sst_2026-04-30.nc
+2026-05-04 11:15:11 | INFO |   Size: 38.14 KB
+2026-05-04 11:15:11 | INFO | Deleted old file: sst_2026-04-30.nc
+2026-05-04 11:15:11 | ERROR | ✗ Failed to download Sea Surface Temperature: name 'directory' is not defined
+2026-05-04 11:15:11 | ERROR | ✗ Failed to download Sea Surface Temperature for any recent date
+2026-05-04 11:15:11 | INFO | Trying Ocean Currents for 2026-05-04...
+2026-05-04 11:15:11 | INFO | Downloading Ocean Currents for 2026-05-04...
+2026-05-04 11:15:11 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
+2026-05-04 11:15:11 | INFO |   Variables: uo, vo
+2026-05-04 11:15:11 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:19:19 | INFO | ✓ Successfully downloaded Ocean Currents
+2026-05-04 11:19:19 | INFO |   File: ocean_currents/currents_2026-05-04.nc
+2026-05-04 11:19:19 | INFO |   Size: 907.52 KB
+2026-05-04 11:19:19 | INFO | Deleted old file: currents_2026-03-11.nc
+2026-05-04 11:19:19 | ERROR | ✗ Failed to download Ocean Currents: name 'directory' is not defined
+2026-05-04 11:19:19 | INFO | Trying Ocean Currents for 2026-05-03...
+2026-05-04 11:19:19 | INFO | Downloading Ocean Currents for 2026-05-03...
+2026-05-04 11:19:19 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
+2026-05-04 11:19:19 | INFO |   Variables: uo, vo
+2026-05-04 11:19:19 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:21:42 | INFO | ✓ Successfully downloaded Ocean Currents
+2026-05-04 11:21:42 | INFO |   File: ocean_currents/currents_2026-05-03.nc
+2026-05-04 11:21:42 | INFO |   Size: 907.52 KB
+2026-05-04 11:21:42 | INFO | Deleted old file: currents_2026-05-03.nc
+2026-05-04 11:21:42 | ERROR | ✗ Failed to download Ocean Currents: name 'directory' is not defined
+2026-05-04 11:21:42 | INFO | Trying Ocean Currents for 2026-05-02...
+2026-05-04 11:21:42 | INFO | Downloading Ocean Currents for 2026-05-02...
+2026-05-04 11:21:42 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
+2026-05-04 11:21:42 | INFO |   Variables: uo, vo
+2026-05-04 11:21:42 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:23:36 | INFO | ================================================================================
+2026-05-04 11:23:36 | INFO | Copernicus Marine Service Daily Data Fetcher
+2026-05-04 11:23:36 | INFO | ================================================================================
+2026-05-04 11:23:36 | INFO | Run started at: 2026-05-04 16:53:36.070211
+2026-05-04 11:23:36 | INFO | Mode: Download LATEST available data only
+2026-05-04 11:23:36 | INFO | ================================================================================
+2026-05-04 11:23:36 | INFO | Downloading latest available data for each dataset...
+2026-05-04 11:23:36 | INFO | ================================================================================
+2026-05-04 11:23:36 | INFO | Trying Sea Surface Temperature for 2026-05-04...
+2026-05-04 11:23:36 | INFO | Downloading Sea Surface Temperature for 2026-05-04...
+2026-05-04 11:23:36 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-04 11:23:36 | INFO |   Variables: analysed_sst
+2026-05-04 11:23:36 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:23:40 | ERROR | ✗ Failed to download Sea Surface Temperature: Some of your subset selection [2026-05-04 00:00:00+00:00, 2026-05-04 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2024-01-17 00:00:00+00:00, 2026-05-03 00:00:00+00:00]
+2026-05-04 11:23:40 | INFO | Trying Sea Surface Temperature for 2026-05-03...
+2026-05-04 11:23:40 | INFO | Downloading Sea Surface Temperature for 2026-05-03...
+2026-05-04 11:23:40 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-04 11:23:40 | INFO |   Variables: analysed_sst
+2026-05-04 11:23:40 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:23:52 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-05-04 11:23:52 | INFO |   File: sst_data/sst_2026-05-03.nc
+2026-05-04 11:23:52 | INFO |   Size: 38.14 KB
+2026-05-04 11:23:52 | INFO | Deleted old file: sst_2026-05-03.nc
+2026-05-04 11:23:52 | INFO | ✓ Got latest Sea Surface Temperature: 2026-05-03
+2026-05-04 11:23:52 | INFO | Trying Ocean Currents for 2026-05-04...
+2026-05-04 11:23:52 | INFO | Downloading Ocean Currents for 2026-05-04...
+2026-05-04 11:23:52 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
+2026-05-04 11:23:52 | INFO |   Variables: uo, vo
+2026-05-04 11:23:52 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:26:54 | INFO | ✓ Successfully downloaded Ocean Currents
+2026-05-04 11:26:54 | INFO |   File: ocean_currents/currents_2026-05-04.nc
+2026-05-04 11:26:54 | INFO |   Size: 907.52 KB
+2026-05-04 11:26:54 | INFO | Deleted old file: currents_2026-05-04.nc
+2026-05-04 11:26:54 | INFO | ✓ Got latest Ocean Currents: 2026-05-04
+2026-05-04 11:26:54 | INFO | Trying Chlorophyll Concentration for 2026-05-04...
+2026-05-04 11:26:54 | INFO | Downloading Chlorophyll Concentration for 2026-05-04...
+2026-05-04 11:26:54 | INFO |   Dataset ID: cmems_obs-oc_glo_bgc-plankton_nrt_l4-gapfree-multi-4km_P1D
+2026-05-04 11:26:54 | INFO |   Variables: CHL
+2026-05-04 11:26:54 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:27:01 | ERROR | ✗ Failed to download Chlorophyll Concentration: Some of your subset selection [2026-05-04 00:00:00+00:00, 2026-05-04 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2026-04-18 00:00:00+00:00, 2026-05-02 00:00:00+00:00]
+2026-05-04 11:27:01 | INFO | Trying Chlorophyll Concentration for 2026-05-03...
+2026-05-04 11:27:01 | INFO | Downloading Chlorophyll Concentration for 2026-05-03...
+2026-05-04 11:27:01 | INFO |   Dataset ID: cmems_obs-oc_glo_bgc-plankton_nrt_l4-gapfree-multi-4km_P1D
+2026-05-04 11:27:01 | INFO |   Variables: CHL
+2026-05-04 11:27:01 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:27:06 | ERROR | ✗ Failed to download Chlorophyll Concentration: Some of your subset selection [2026-05-03 00:00:00+00:00, 2026-05-03 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2026-04-18 00:00:00+00:00, 2026-05-02 00:00:00+00:00]
+2026-05-04 11:27:06 | INFO | Trying Chlorophyll Concentration for 2026-05-02...
+2026-05-04 11:27:06 | INFO | Downloading Chlorophyll Concentration for 2026-05-02...
+2026-05-04 11:27:06 | INFO |   Dataset ID: cmems_obs-oc_glo_bgc-plankton_nrt_l4-gapfree-multi-4km_P1D
+2026-05-04 11:27:06 | INFO |   Variables: CHL
+2026-05-04 11:27:06 | INFO |   Region: Lat[5.0, 10.0] Lon[79.0, 82.0]
+2026-05-04 11:27:22 | INFO | ✓ Successfully downloaded Chlorophyll Concentration
+2026-05-04 11:27:22 | INFO |   File: chlorophyll_data/chlorophyll_2026-05-02.nc
+2026-05-04 11:27:22 | INFO |   Size: 69.90 KB
+2026-05-04 11:27:22 | INFO | Deleted old file: chlorophyll_2026-03-09_(1).nc
+2026-05-04 11:27:22 | INFO | Deleted old file: chlorophyll_2026-03-09.nc
+2026-05-04 11:27:22 | INFO | Deleted old file: chlorophyll_2026-03-08.nc
+2026-05-04 11:27:22 | INFO | ✓ Got latest Chlorophyll Concentration: 2026-05-02
+2026-05-04 11:27:22 | INFO | ================================================================================
+2026-05-04 11:27:22 | INFO | DOWNLOAD SUMMARY
+2026-05-04 11:27:22 | INFO | ================================================================================
+2026-05-04 11:27:22 | INFO | Sea Surface Temperature: ✓ SUCCESS
+2026-05-04 11:27:22 | INFO | Ocean Currents:          ✓ SUCCESS
+2026-05-04 11:27:22 | INFO | Chlorophyll:             ✓ SUCCESS
+2026-05-04 11:27:22 | INFO | ================================================================================
+2026-05-04 11:27:22 | INFO | ✓ ALL DATASETS DOWNLOADED SUCCESSFULLY
+2026-05-04 11:27:22 | INFO | Run completed at: 2026-05-04 16:57:22.524194
+2026-05-04 11:27:22 | INFO | 

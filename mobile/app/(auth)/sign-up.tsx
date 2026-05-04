@@ -245,10 +245,10 @@ const handleSignUp = async () => {
 
     };
 
-    console.log("📤 Sending signup request to:", `${API}/api/v1/auth/complete-signup`);
+    console.log("📤 Sending signup request to:", `${API}/auth/complete-signup`);
     console.log("📦 Request body:", JSON.stringify(requestBody, null, 2));
 
-    const response = await fetch(`${API}/api/v1/auth/complete-signup`, {
+    const response = await fetch(`${API}/auth/complete-signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

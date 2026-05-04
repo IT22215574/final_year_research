@@ -120,7 +120,6 @@ def cleanup_old_files(folder: str, filename_prefix: str) -> None:
                 logger.info(f"Deleted old file: {old_file.name}")
     except Exception as e:
         logger.warning(f"Could not cleanup old files in {folder}: {e}")
-    logger.debug(f"Ensured directory exists: {directory}")
 
 
 def get_date_range(days_back: int = 0) -> Tuple[str, str]:
