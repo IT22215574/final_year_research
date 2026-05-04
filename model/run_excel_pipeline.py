@@ -41,6 +41,7 @@ def main():
 
     # Script files
     fetch_excel_script = scripts_dir / "fetch_latest_fish_prices.py"
+    fetch_fuel_script = scripts_dir / "fetch_fuel_prices.py"
     xl_converter = scripts_dir / "xl_to_csv_converter.py"
     festival_generator = scripts_dir / "festival_master_generator.py"
     weather_fetcher = scripts_dir / "fetch_weather_data.py"  # use existing daily weather fetcher
@@ -61,6 +62,12 @@ def main():
         run_python(fetch_excel_script)
     else:
         print("\n⚠️ fetch_latest_fish_prices.py not found — skipping web scraping step")
+
+    # -0.5) Fetch Latest Fuel prices
+    if fetch_fuel_script.exists():
+        run_python(fetch_fuel_script)
+    else:
+        print("\n⚠️ fetch_fuel_prices.py not found — skipping fuel price scraping step")
 
     # 0) Convert Excel to CSV (if exists)
     run_python(xl_converter, critical=False)
