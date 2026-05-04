@@ -245,10 +245,10 @@ const handleSignUp = async () => {
 
     };
 
-    console.log("📤 Sending signup request to:", `${API}/api/v1/auth/complete-signup`);
+    console.log("📤 Sending signup request to:", `${API}/auth/complete-signup`);
     console.log("📦 Request body:", JSON.stringify(requestBody, null, 2));
 
-    const response = await fetch(`${API}/api/v1/auth/complete-signup`, {
+    const response = await fetch(`${API}/auth/complete-signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -346,12 +346,9 @@ const handleSignUp = async () => {
   }
 };
 
-  // Pick only the icons you want
-  const selectedIcons: ImageSourcePropType[] = [
-    icons.Icon1, icons.Icon2, icons.Icon3, icons.Icon4, icons.Icon5, icons.Icon6,
-    icons.Icon1, icons.Icon3, icons.Icon2, icons.Icon4, icons.Icon3, icons.Icon5,
-    icons.Icon1, icons.Icon6, icons.Icon2,
-  ];
+  // Icons are missing - using empty array to prevent errors
+  // TODO: Add icon assets or use Expo vector icons
+  const selectedIcons: ImageSourcePropType[] = [];
 
   const getPredefinedPositions = () => {
     const positions = [

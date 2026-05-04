@@ -94,17 +94,64 @@ export class TripsService {
   // FIND BY USER
   // =========================
   async findByUser(userId: string): Promise<TripDocument[]> {
-    return await this.tripModel
+    const trips = await this.tripModel
       .find({ userId })
       .sort({ departureTime: -1 })
+      .lean()
       .exec();
+
+    // Populate boat info for each trip
+    const enrichedTrips = await Promise.all(
+      trips.map(async (trip) => {
+        if (trip.boatId) {
+          const boat = await this.boatModel
+            .findById(trip.boatId)
+            .select('boatName boatType')
+            .lean()
+            .exec();
+
+          return {
+            ...trip,
+            boat: boat || null,
+          };
+        }
+        return { ...trip, boat: null };
+      }),
+    );
+
+    return enrichedTrips as any;
   }
 
   // =========================
   // FIND ALL
   // =========================
   async findAll(): Promise<TripDocument[]> {
-    return await this.tripModel.find().sort({ departureTime: -1 }).exec();
+    const trips = await this.tripModel
+      .find()
+      .sort({ departureTime: -1 })
+      .lean()
+      .exec();
+
+    // Populate boat info for each trip
+    const enrichedTrips = await Promise.all(
+      trips.map(async (trip) => {
+        if (trip.boatId) {
+          const boat = await this.boatModel
+            .findById(trip.boatId)
+            .select('boatName boatType')
+            .lean()
+            .exec();
+
+          return {
+            ...trip,
+            boat: boat || null,
+          };
+        }
+        return { ...trip, boat: null };
+      }),
+    );
+
+    return enrichedTrips as any;
   }
 
   // =========================
@@ -423,9 +470,7 @@ export class TripsService {
       : trips;
 
     if (!filteredTrips.length) {
-      throw new BadRequestException(
-        'No trips found for the specified boat.',
-      );
+      throw new BadRequestException('No trips found for the specified boat.');
     }
 
     // Prepare batch learning data
@@ -467,7 +512,7 @@ export class TripsService {
     try {
       console.log(`🚀 Calling ML service at: ${baseUrl}/learning/batch-update`);
       console.log(`📦 Sending ${learningData.length} trips for training`);
-      
+
       const response = await firstValueFrom(
         this.http.post(`${baseUrl}/learning/batch-update`, {
           trips: learningData,
@@ -514,7 +559,7 @@ export class TripsService {
         code: e?.code,
         tripsCount: learningData.length,
       });
-      
+
       // Provide more specific error message
       let errorMessage = 'Failed to train model';
       if (e?.code === 'ECONNREFUSED') {
@@ -524,7 +569,7 @@ export class TripsService {
       } else if (e?.message) {
         errorMessage = e.message;
       }
-      
+
       throw new BadRequestException(errorMessage);
     }
   }
@@ -532,6 +577,96 @@ export class TripsService {
   // =========================
   // USER STATS
   // =========================
+  // =========================
+  // EXPORT TRIPS AS CSV
+  // =========================
+  async generateCSV(
+    trips: TripDocument[],
+    dataType: string = 'mixed',
+  ): Promise<string> {
+    // CSV Headers - matching train.py requirements
+    const headers = [
+      'distanceKm',
+      'engineHorsePower',
+      'windSpeed',
+      'waveHeight',
+      'tripDurationHours',
+      'fuelPricePerLiter',
+      'fuelUsedLiters',
+      'totalCost',
+    ];
+
+    const rows = trips
+      .filter((trip) => {
+        if (dataType === 'actual') {
+          // Only trips with actual logged data
+          return (
+            trip.actualFuelLiters &&
+            trip.actualTotalCost &&
+            trip.distanceKm &&
+            trip.engineHorsePower
+          );
+        } else if (dataType === 'predicted') {
+          // Only trips with predicted data (no actual data logged)
+          return (
+            !trip.actualFuelLiters &&
+            trip.predictedFuelLiters &&
+            trip.predictedTotalCost &&
+            (trip.distanceKm || trip.predictedDistanceKm) &&
+            trip.engineHorsePower
+          );
+        } else {
+          // Mixed: Include trips with either actual OR predicted data
+          const hasDistance = trip.distanceKm || trip.predictedDistanceKm;
+          const hasHorsePower = trip.engineHorsePower || trip.engineHP;
+          const hasFuel =
+            trip.fuelUsedLiters ||
+            trip.actualFuelLiters ||
+            trip.predictedFuelLiters;
+          const hasCost =
+            trip.actualTotalCost || trip.totalCost || trip.predictedTotalCost;
+
+          return hasDistance && hasHorsePower && hasFuel && hasCost;
+        }
+      })
+      .map((trip) => {
+        const durationHours =
+          trip.tripDurationHours ||
+          (new Date(trip.returnTime).getTime() -
+            new Date(trip.departureTime).getTime()) /
+            (1000 * 60 * 60);
+
+        // Use actual data first, fall back to predicted for mixed/predicted
+        const distance =
+          dataType === 'predicted'
+            ? trip.predictedDistanceKm || trip.distanceKm
+            : trip.distanceKm || trip.predictedDistanceKm;
+        const fuel =
+          dataType === 'predicted'
+            ? trip.predictedFuelLiters || trip.actualFuelLiters
+            : trip.actualFuelLiters ||
+              trip.fuelUsedLiters ||
+              trip.predictedFuelLiters;
+        const cost =
+          dataType === 'predicted'
+            ? trip.predictedTotalCost || trip.actualTotalCost
+            : trip.actualTotalCost || trip.totalCost || trip.predictedTotalCost;
+
+        return [
+          distance || 0,
+          trip.engineHorsePower || trip.engineHP || 0,
+          trip.windSpeed || 0,
+          trip.waveHeight || 0,
+          durationHours,
+          trip.fuelPricePerLiter || 0,
+          fuel || 0,
+          cost || 0,
+        ].join(',');
+      });
+
+    return [headers.join(','), ...rows].join('\n');
+  }
+
   async getUserStats(userId: string) {
     const trips = await this.findByUser(userId);
 

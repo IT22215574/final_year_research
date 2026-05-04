@@ -1,11 +1,92 @@
 # Dependencies
-**/node_modules/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Build outputs
-**/dist/
+dist/
+build/
 
 # Local environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 Backend/.env
+
+# Logs
+logs
+*.log
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Runtime data
+coverage/
+.nyc_output/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# NestJS specific
+*.tsbuildinfo
+
+# Uploads directory (if you're using file uploads)
+uploads/
+
+# Temporary files
+*.tmp
+*.temp
 
 # Android / Gradle caches
 mobile/android/.gradle/
+
+# Expo
+.expo/
+!.expo/types/
+!.expo/types/router.d.ts
+web-build/
+
+# Python / AI / ML Ignore Rules
+venv/
+.venv/
+env/
+*/venv/
+*/.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+models/
+*.h5
+*.keras
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.csv
+*.xlsx
+*.jsonl
+data/
+.ipynb_checkpoints/
+*.egg-info/
+instance/
+# Training outputs
+runs/
+outputs/
+checkpoints/
