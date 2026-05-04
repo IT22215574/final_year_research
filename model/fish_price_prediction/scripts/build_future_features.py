@@ -5,9 +5,9 @@ from datetime import datetime
 
 # Paths
 script_dir = Path(__file__).resolve().parent
-# Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+# Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/
 project_root = script_dir.parent.parent.parent
-backend_dir = project_root / "Backend"
+backend_dir = project_root / "model"
 
 processed_dir = backend_dir / "dataset" / "processed"
 forecast_path = processed_dir / "weather_forecast.csv"

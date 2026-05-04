@@ -4,7 +4,7 @@ FISH PRICE PREDICTION - DATA REFERENCE MANIFEST
 =============================================================================
 
 This document describes all datasets available for the fish price prediction 
-model. All paths are relative to: Backend/dataset/
+model. All paths are relative to: model/dataset/
 
 Generated: 2026-05-04
 Location: model/fish_price_prediction/
@@ -16,7 +16,7 @@ Location: model/fish_price_prediction/
 RAW_DATA_SOURCES = {
     # Fish Price Data (Excel files with weekly market prices)
     "fish_prices_xl": {
-        "path": "Backend/dataset/raw/xl/",
+        "path": "model/dataset/raw/xl/",
         "format": "Excel (.xlsx, .xls)",
         "description": "Weekly fish market prices from Colombo fish market",
         "files": [
@@ -32,7 +32,7 @@ RAW_DATA_SOURCES = {
     
     # Holiday & Festival Calendar
     "festivals_raw": {
-        "path": "Backend/dataset/raw/festivals/",
+        "path": "model/dataset/raw/festivals/",
         "format": "CSV",
         "description": "Sri Lankan holidays, festivals, poya days for 2020-2026",
         "files": ["festivals_2020_2026.csv"],
@@ -43,7 +43,7 @@ RAW_DATA_SOURCES = {
     
     # Fuel Price Data
     "fuel_prices_raw": {
-        "path": "Backend/dataset/raw/fuel_price/",
+        "path": "model/dataset/raw/fuel_price/",
         "format": "Excel (.xlsx)",
         "description": "Daily Lanka Kerosene (LK) fuel prices",
         "files": ["Fuel Price.xlsx"],
@@ -54,7 +54,7 @@ RAW_DATA_SOURCES = {
     
     # CSV Conversions (from Excel)
     "fish_prices_csv": {
-        "path": "Backend/dataset/raw/csv/",
+        "path": "model/dataset/raw/csv/",
         "format": "CSV",
         "description": "Converted CSV versions of Excel price files",
         "files": [
@@ -72,7 +72,7 @@ RAW_DATA_SOURCES = {
 PROCESSED_DATA = {
     # Weather Data
     "weather_historical": {
-        "path": "Backend/dataset/processed/weather_dataset.csv",
+        "path": "model/dataset/processed/weather_dataset.csv",
         "description": "Historical daily weather for Sri Lankan ports (2024-present)",
         "columns": [
             "date", "city", "temp_c", "humidity", 
@@ -85,7 +85,7 @@ PROCESSED_DATA = {
     },
     
     "weather_forecast": {
-        "path": "Backend/dataset/processed/weather_forecast.csv",
+        "path": "model/dataset/processed/weather_forecast.csv",
         "description": "14-day weather forecast for Sri Lankan ports",
         "columns": [
             "date", "city", "temp_c", "humidity",
@@ -98,7 +98,7 @@ PROCESSED_DATA = {
     
     # Fuel Price Data
     "fuel_price_daily": {
-        "path": "Backend/dataset/processed/fuel_price_daily.csv",
+        "path": "model/dataset/processed/fuel_price_daily.csv",
         "description": "Daily fuel price with lag features (forward-filled)",
         "columns": [
             "date", "lk_price", "lk_price_lag1", "lk_price_lag2",
@@ -111,7 +111,7 @@ PROCESSED_DATA = {
     
     # Fish Names Database
     "fish_names": {
-        "path": "Backend/dataset/processed/fish_names.csv",
+        "path": "model/dataset/processed/fish_names.csv",
         "description": "Unique fish species with Sinhala and English names",
         "columns": ["fish_id", "sinhala_name", "common_name"],
         "rows": "30+",
@@ -124,7 +124,7 @@ PROCESSED_DATA = {
     
     # Merged Festival Features
     "festival_features": {
-        "path": "Backend/dataset/processed/merged_festival_features.csv",
+        "path": "model/dataset/processed/merged_festival_features.csv",
         "description": "Fish prices merged with festival windows and effects",
         "columns": [
             "date", "fish_id", "sinhala_name", "common_name", "price",
@@ -137,7 +137,7 @@ PROCESSED_DATA = {
     
     # Final Merged Dataset
     "merged_dataset": {
-        "path": "Backend/dataset/processed/final_merged_dataset.csv",
+        "path": "model/dataset/processed/final_merged_dataset.csv",
         "description": "Complete dataset: prices + fuel + weather + festivals",
         "columns": [
             "date", "fish_id", "sinhala_name", "common_name", "price",
@@ -151,7 +151,7 @@ PROCESSED_DATA = {
     
     # Feature Engineering Dataset
     "features_dataset": {
-        "path": "Backend/dataset/processed/features_dataset.csv",
+        "path": "model/dataset/processed/features_dataset.csv",
         "description": "Engineered features for ML model training (30+ features)",
         "columns": [
             "date", "fish_id", "price",  # Target & identifiers
@@ -170,7 +170,7 @@ PROCESSED_DATA = {
     
     # Future Features (for predictions)
     "future_features": {
-        "path": "Backend/dataset/processed/future_features.csv",
+        "path": "model/dataset/processed/future_features.csv",
         "description": "Forecasted features for next 14 days",
         "columns": [
             "date", "day_of_week", "month", "year",
@@ -185,7 +185,7 @@ PROCESSED_DATA = {
     
     # Model Predictions
     "future_predictions": {
-        "path": "Backend/dataset/processed/future_price_predictions.csv",
+        "path": "model/dataset/processed/future_price_predictions.csv",
         "description": "Predicted fish prices for next 14 days, all species",
         "columns": ["date", "fish_id", "sinhala_name", "common_name", "predicted_price"],
         "rows": "400+ (14 days × 30 species)",

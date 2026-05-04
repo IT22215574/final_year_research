@@ -49,13 +49,13 @@ class FishPriceModelTrainer:
         """Load the processed features dataset"""
         if backend_dir is None:
             # Look for dataset in parent directories
-            backend_dir = Path(__file__).parent.parent.parent.parent / "Backend"
+            backend_dir = Path(__file__).parent.parent.parent.parent / "model"
         
         features_path = Path(backend_dir) / "dataset" / "processed" / "features_dataset.csv"
         
         if not features_path.exists():
             print(f"❌ Features dataset not found: {features_path}")
-            print("Please run the pipeline: python Backend/run_excel_pipeline.py")
+            print("Please run the pipeline: python model/run_excel_pipeline.py")
             return None
         
         try:
@@ -123,8 +123,12 @@ class FishPriceModelTrainer:
         # Encode fish names
         self.le_sinhala = LabelEncoder()
         
-        if 'sinhala_name' in df_processed.columns:
-            df_processed['fish_encoded'] = self.le_sinhala.fit_transform(df_processed['sinhala_name'])
+        # Support both column names
+        sinhala_col = 'sinhala_name' if 'sinhala_name' in df_processed.columns else \
+                      'fish_name_sinhala' if 'fish_name_sinhala' in df_processed.columns else None
+
+        if sinhala_col:
+            df_processed['fish_encoded'] = self.le_sinhala.fit_transform(df_processed[sinhala_col])
             print(f"✅ Encoded {len(self.le_sinhala.classes_)} unique fish species")
             print(f"   Species: {', '.join(self.le_sinhala.classes_[:10])}")
         else:
@@ -132,11 +136,17 @@ class FishPriceModelTrainer:
             self.le_sinhala = None
 
         # Prepare features (all numeric columns except target)
-        exclude_cols = ['date', 'sinhala_name', 'common_name', 'wholesale_price']
+        exclude_cols = ['date', 'sinhala_name', 'fish_name_sinhala', 'common_name', 'wholesale_price']
         feature_cols = [col for col in df_processed.columns if col not in exclude_cols and pd.api.types.is_numeric_dtype(df_processed[col])]
-        
+
         X = df_processed[feature_cols]
-        y = df_processed['wholesale_price'] if 'wholesale_price' in df_processed.columns else df_processed.get('price', df_processed.iloc[:, -1])
+        # Support both price column names
+        if 'wholesale_price' in df_processed.columns:
+            y = df_processed['wholesale_price']
+        elif 'price' in df_processed.columns:
+            y = df_processed['price']
+        else:
+            y = df_processed.iloc[:, -1]
         
         # Handle missing values
         X = X.fillna(X.mean())
@@ -219,6 +229,7 @@ class FishPriceModelTrainer:
             with open(LE_SINHALA_PATH, "wb") as f:
                 pickle.dump(self.le_sinhala, f)
             print(f"✅ Saved Sinhala name encoder: {LE_SINHALA_PATH}")
+            print(f"   Encoder knows {len(self.le_sinhala.classes_)} species from training data")
 
     def run_training_pipeline(self, backend_dir=None):
         """Run the complete training pipeline"""

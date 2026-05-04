@@ -1,3 +1,6 @@
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 import os
 import pandas as pd
 from pathlib import Path
@@ -12,8 +15,8 @@ def convert_xl_to_csv():
     project_root = script_dir.parent.parent.parent  # Go up three levels: scripts/ → fish_price_prediction/ → model/ → final_year_research/
     
     # Define folder paths relative to project root
-    xl_folder = project_root / "Backend" / "dataset" / "raw" / "xl"
-    csv_folder = project_root / "Backend" / "dataset" / "raw" / "csv"
+    xl_folder = project_root / "model" / "dataset" / "raw" / "xl"
+    csv_folder = project_root / "model" / "dataset" / "raw" / "csv"
     
     # Create csv folder if it doesn't exist
     csv_folder.mkdir(parents=True, exist_ok=True)

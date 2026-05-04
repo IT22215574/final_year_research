@@ -1,3 +1,6 @@
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
@@ -10,9 +13,9 @@ from hijridate import Hijri
 # PATHS
 # ----------------------------------
 SCRIPT_DIR = Path(__file__).parent
-# Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+# Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/
 PROJECT_ROOT = SCRIPT_DIR.parent.parent.parent
-BACKEND_DIR = PROJECT_ROOT / "Backend"
+BACKEND_DIR = PROJECT_ROOT / "model"
 
 OUTPUT_DIR = BACKEND_DIR / "dataset" / "raw" / "festivals"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

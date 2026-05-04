@@ -1,7 +1,6 @@
 # process_fuel_price.py
-# Loads the Fuel Price Excel, extracts LK (Lanka Kerosene) column,
-# forward-fills it to a continuous daily time-series, and saves it
-# as processed/fuel_price_daily.csv.
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 import pandas as pd
 from pathlib import Path
@@ -9,9 +8,9 @@ from pathlib import Path
 
 def process_fuel_price():
     script_dir = Path(__file__).resolve().parent
-    # Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+    # Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/
     project_root = script_dir.parent.parent.parent
-    backend_dir = project_root / "Backend"
+    backend_dir = project_root / "model"
     
     fuel_xlsx = backend_dir / "dataset" / "raw" / "fuel_price" / "Fuel Price.xlsx"
     processed_dir = backend_dir / "dataset" / "processed"
@@ -36,28 +35,38 @@ def process_fuel_price():
     print(f"📋 Raw columns: {list(df_raw.columns)}")
     print(df_raw.head(5))
 
-    # ── Normalise column names (strip whitespace, lower)
-    df_raw.columns = [str(c).strip() for c in df_raw.columns]
+    # ── Normalise column names (strip whitespace, newlines, lower)
+    df_raw.columns = [str(c).strip().replace('\n', ' ').replace('\r', ' ') for c in df_raw.columns]
+
+    print(f"📋 Normalised columns: {list(df_raw.columns)}")
 
     # ── Locate the date column (flexible matching)
     date_col = None
     for col in df_raw.columns:
-        if col.lower() in ("date", "effective date", "effective_date", "period", "month"):
+        if col.lower().replace(' ', '_') in ("date", "effective_date", "effective date", "period", "month"):
             date_col = col
             break
     if date_col is None:
-        # Fallback: first column is usually the date
         date_col = df_raw.columns[0]
         print(f"⚠ Date column not detected – using first column: '{date_col}'")
 
     # ── Locate the LK (Lanka Kerosene) column
+    # Handles multi-line headers like "LK\n(\u0dbd\u0d82\u0d9a\u0dcf\u0dba\n\u0d9a\u0dda\u0dbb\u0ddd\u0dc3\u0dd3\u0db1\u0dca)"
     lk_col = None
     for col in df_raw.columns:
-        if "lk" in col.lower() or "kerosene" in col.lower():
+        col_clean = col.lower().replace(' ', '')
+        if col_clean.startswith('lk') or 'kerosene' in col_clean or 'kerosine' in col_clean:
             lk_col = col
             break
+    # Broader fallback: column named exactly 'LK' or contains LK at word boundary
+    if lk_col is None:
+        for col in df_raw.columns:
+            if col.strip().upper() == 'LK' or col.strip().upper().startswith('LK '):
+                lk_col = col
+                break
     if lk_col is None:
         print(f"❌ LK / Kerosene column not found.  Available columns: {list(df_raw.columns)}")
+        print("   ⚠ Please ensure the column name contains 'LK' or 'Kerosene'")
         return
 
     print(f"✅ Using date column  : '{date_col}'")

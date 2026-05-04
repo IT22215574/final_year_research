@@ -1,19 +1,26 @@
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 import pandas as pd
 import numpy as np
 import pickle
 from pathlib import Path
 
 script_dir = Path(__file__).resolve().parent
-# Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+# Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/
 project_root = script_dir.parent.parent.parent
-backend_dir = project_root / "Backend"
+backend_dir  = project_root / "model"
+module_dir   = script_dir.parent  # fish_price_prediction/
 
 processed_dir = backend_dir / "dataset" / "processed"
-# Model files are directly in Backend, not in models subdirectory
-models_dir = backend_dir
+models_dir    = module_dir / "models"       # fish_price_prediction/models/
+data_dir      = module_dir / "data"         # fish_price_prediction/data/
 
 FUTURE_FEATURES = processed_dir / "future_features.csv"
-FISH_NAMES = processed_dir / "fish_names.csv"
+# Look for fish_names in data/ first, then processed/ as fallback
+FISH_NAMES = data_dir / "fish_names.csv"
+if not FISH_NAMES.exists():
+    FISH_NAMES = processed_dir / "fish_names.csv"
 OUT_FILE = processed_dir / "future_price_predictions.csv"
 
 
@@ -34,8 +41,13 @@ def build_prediction_frame(future_df, fish_df, le_sinhala):
     future_df = future_df.copy()
     fish_df = fish_df.copy()
 
-    # Encode fish names using trained encoder
-    fish_df["fish_encoded"] = le_sinhala.transform(fish_df["sinhala_name"])
+    # Encode fish names — use known classes; unseen species get code 0
+    known = set(le_sinhala.classes_)
+    def safe_encode(name):
+        if name in known:
+            return le_sinhala.transform([name])[0]
+        return 0
+    fish_df["fish_encoded"] = fish_df["sinhala_name"].apply(safe_encode)
 
     future_df["key"] = 1
     fish_df["key"] = 1

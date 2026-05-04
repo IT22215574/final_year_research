@@ -1,4 +1,7 @@
 # merge_all_data.py
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 import pandas as pd
 from pathlib import Path
 import re
@@ -94,9 +97,9 @@ def extract_fish_prices_from_csv(csv_folder):
 
 def merge_all():
     script_dir = Path(__file__).resolve().parent
-    # Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+    # Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/
     project_root = script_dir.parent.parent.parent
-    backend_dir = project_root / "Backend"
+    backend_dir = project_root / "model"
     
     processed = backend_dir / "dataset" / "processed"
     raw_csv = backend_dir / "dataset" / "raw" / "csv"

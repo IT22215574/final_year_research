@@ -1,3 +1,6 @@
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 import datetime
 import requests
 import pandas as pd
@@ -6,9 +9,9 @@ import socket
 
 # Paths
 script_dir = Path(__file__).parent            # fish_price_prediction/scripts
-# Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+# Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/
 project_root = script_dir.parent.parent.parent
-backend_dir = project_root / "Backend"
+backend_dir = project_root / "model"
 
 # Output CSV path
 OUT_FILE = backend_dir / "dataset" / "processed" / "weather_dataset.csv"
