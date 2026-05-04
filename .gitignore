@@ -91,3 +91,18 @@ checkpoints/
 
 # Fish trip cost docs folder
 documentation/fish-trip-cost/
+
+# Generated documentation and reports
+*.md
+!README.md
+!documentation/**/*.md
+
+# Generated output files from models
+*.geojson
+*.png
+*.txt
+!README.txt
+prediction_log.txt
+summary_*.txt
+fish_zones_*.geojson
+fish_zones_heatmap_*.png
