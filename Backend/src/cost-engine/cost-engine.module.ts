@@ -9,6 +9,7 @@ import { CostPreferencesModule } from '../cost-preferences/cost-preferences.modu
 
 import { CostEngineController } from './cost-engine.controller';
 import { CostEngineService } from './cost-engine.service';
+import { ModelRegistryModule } from '../model-registry/model-registry.module';
 
 @Module({
   imports: [
@@ -17,9 +18,10 @@ import { CostEngineService } from './cost-engine.service';
     BoatModule,
     AuthModule,
     CostPreferencesModule,
+    ModelRegistryModule,
   ],
   controllers: [CostEngineController],
   providers: [CostEngineService],
   exports: [CostEngineService],
 })
-export class CostEngineModule {}
+export class CostEngineModule { }

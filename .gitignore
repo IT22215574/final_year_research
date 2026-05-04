@@ -90,3 +90,6 @@ instance/
 runs/
 outputs/
 checkpoints/
+
+# Fish trip cost docs folder
+documentation/fish-trip-cost/

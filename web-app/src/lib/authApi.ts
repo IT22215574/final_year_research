@@ -18,13 +18,27 @@ export type AuthUser = {
   medium?: string;
   isVerified?: boolean;
   isAdmin?: boolean;
+  access_token?: string;
 };
 
 export async function signIn(body: SignInBody) {
-  return apiFetch<AuthUser>("/auth/signin", {
+  const response = await apiFetch<
+    AuthUser | { success?: boolean; data?: AuthUser }
+  >("/auth/signin", {
     method: "POST",
     body: JSON.stringify(body),
   });
+
+  if (
+    response &&
+    typeof response === "object" &&
+    "data" in response &&
+    response.data
+  ) {
+    return response.data;
+  }
+
+  return response as AuthUser;
 }
 
 export async function signOut() {

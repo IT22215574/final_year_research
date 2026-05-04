@@ -92,6 +92,12 @@ export class CreateTripDto {
   waveHeight?: number;
 
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  rainMmPerHour?: number;
+
+  @IsOptional()
   @IsString()
   weatherCondition?: string;
 

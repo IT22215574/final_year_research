@@ -68,7 +68,7 @@ export const resetBoatModel = async (
   boatId: string,
   token: string
 ): Promise<ResetModelResponse> => {
-  const response = await apiFetch(`/api/trips/boats/${boatId}/reset-model`, {
+  const response = await apiFetch(`/api/v1/trips/boats/${boatId}/reset-model`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -91,7 +91,7 @@ export const retrainBoatModel = async (
   options: { errorThreshold?: number; maxDays?: number },
   token: string
 ): Promise<RetrainModelResponse> => {
-  const response = await apiFetch(`/api/trips/boats/${boatId}/retrain`, {
+  const response = await apiFetch(`/api/v1/trips/boats/${boatId}/retrain`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -110,7 +110,7 @@ export const getBoatBackups = async (
   boatId: string,
   token: string
 ): Promise<BackupsResponse> => {
-  const response = await apiFetch(`/api/trips/boats/${boatId}/backups`, {
+  const response = await apiFetch(`/api/v1/trips/boats/${boatId}/backups`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -123,7 +123,7 @@ export const getBoatBackups = async (
  * Admin only: Reset all boat models
  */
 export const resetAllModels = async (token: string): Promise<any> => {
-  const response = await apiFetch('/api/trips/boats/reset-all', {
+  const response = await apiFetch('/api/v1/trips/boats/reset-all', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,

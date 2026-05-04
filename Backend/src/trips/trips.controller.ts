@@ -55,13 +55,19 @@ export class TripsController {
     @Body() createTripDto: CreateTripDto,
   ) {
     const userId = this.getUserId(req);
-    return await this.tripsService.create(userId, createTripDto);
+    const isAdmin = this.isAdmin(req);
+    return await this.tripsService.create(userId, isAdmin, createTripDto);
   }
 
   @Post('batch-train')
   async batchTrain(@Req() req: ExpressRequest, @Body() dto: BatchTrainDto) {
-    const userId = this.getUserId(req);
-    return await this.tripsService.batchTrainTrips(userId, dto);
+    const isAdmin = this.isAdmin(req);
+
+    if (!isAdmin) {
+      throw new ForbiddenException('Only admins can train models');
+    }
+
+    return await this.tripsService.batchTrainTrips(dto);
   }
 
   @Get('my-trips')
@@ -74,6 +80,12 @@ export class TripsController {
   async getMyStats(@Req() req: ExpressRequest) {
     const userId = this.getUserId(req);
     return await this.tripsService.getUserStats(userId);
+  }
+
+  @Get('my-stats/debug')
+  async getMyStatsDebug(@Req() req: ExpressRequest) {
+    const userId = this.getUserId(req);
+    return await this.tripsService.getStatsDebug(userId);
   }
 
   @Get()
@@ -193,7 +205,8 @@ export class TripsController {
     @Param('boatId') boatId: string,
   ) {
     const userId = this.getUserId(req);
-    return await this.tripsService.resetBoatModel(userId, boatId);
+    const isAdmin = this.isAdmin(req);
+    return await this.tripsService.resetBoatModel(userId, isAdmin, boatId);
   }
 
   @Post('boats/:boatId/retrain')
@@ -203,7 +216,13 @@ export class TripsController {
     @Body() dto: { errorThreshold?: number; maxDays?: number },
   ) {
     const userId = this.getUserId(req);
-    return await this.tripsService.retrainBoatModel(userId, boatId, dto);
+    const isAdmin = this.isAdmin(req);
+    return await this.tripsService.retrainBoatModel(
+      userId,
+      isAdmin,
+      boatId,
+      dto,
+    );
   }
 
   @Post('boats/reset-all')
@@ -223,6 +242,7 @@ export class TripsController {
     @Param('boatId') boatId: string,
   ) {
     const userId = this.getUserId(req);
-    return await this.tripsService.getBoatBackups(userId, boatId);
+    const isAdmin = this.isAdmin(req);
+    return await this.tripsService.getBoatBackups(userId, isAdmin, boatId);
   }
 }

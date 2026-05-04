@@ -12,7 +12,7 @@ export default function CostsLayout() {
         }}
       />
       <Stack.Screen
-        name="edit/[id]"
+        name="edit-cost/[id]"
         options={{
           title: "Edit External Cost",
           headerStyle: { backgroundColor: "#F8FAFC" },

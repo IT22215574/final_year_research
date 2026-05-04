@@ -33,15 +33,15 @@ const PrevTrip = () => {
 
   // ================= Render Each Trip =================
   const renderItem = ({ item }: { item: Trip }) => {
-    const departure = new Date(item.departureTime);
-    const returnTime = new Date(item.returnTime);
+    const departure = item.departureTime ? new Date(item.departureTime) : null;
+    const returnTime = item.returnTime ? new Date(item.returnTime) : null;
 
     return (
       <View className="bg-white p-4 mb-3 rounded-2xl shadow">
         <Text className="text-lg font-bold">{item.boatType || "Boat Trip"}</Text>
 
-        <Text className="text-gray-600">Departure: {departure.toLocaleString()}</Text>
-        <Text className="text-gray-600">Return: {returnTime.toLocaleString()}</Text>
+        <Text className="text-gray-600">Departure: {departure?.toLocaleString() ?? "N/A"}</Text>
+        <Text className="text-gray-600">Return: {returnTime?.toLocaleString() ?? "N/A"}</Text>
         <Text className="text-gray-600">Duration: {item.tripDurationHours ?? 0} hrs</Text>
         <Text className="text-gray-600">Distance: {item.distanceKm ?? 0} km</Text>
 

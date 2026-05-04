@@ -23,6 +23,11 @@ import {
 } from '../schemas/trip-coefficient.schema';
 import { Boat, BoatDocument } from '../schemas/boat.schema';
 import { UpdateActualsDto } from './dto/update-actuals.dto';
+import { TripMetricsService } from './services/trip-metrics.service';
+import {
+  TrainingCandidate,
+  TrainingCandidateDocument,
+} from '../schemas/training-candidate.schema';
 
 @Injectable()
 export class TripsService {
@@ -31,8 +36,11 @@ export class TripsService {
     @InjectModel(Boat.name) private boatModel: Model<BoatDocument>,
     @InjectModel(TripCoefficient.name)
     private tripCoeffModel: Model<TripCoefficientDocument>,
+    @InjectModel(TrainingCandidate.name)
+    private candidateModel: Model<TrainingCandidateDocument>, // <-- ADD THIS LINE
     private readonly http: HttpService,
     private readonly config: ConfigService,
+    private readonly tripMetricsService: TripMetricsService,
   ) {}
 
   // =========================
@@ -40,8 +48,11 @@ export class TripsService {
   // =========================
   async create(
     userId: string,
+    isAdmin: boolean,
     createTripDto: CreateTripDto,
   ): Promise<TripDocument> {
+    let tripOwnerId = userId;
+
     if (createTripDto.boatId) {
       const boat = await this.boatModel.findById(createTripDto.boatId).exec();
 
@@ -49,16 +60,19 @@ export class TripsService {
         throw new NotFoundException('Boat not found');
       }
 
-      if (String(boat.userId) !== String(userId)) {
+      if (!isAdmin && String(boat.userId) !== String(userId)) {
         throw new ForbiddenException(
           'You are not allowed to create a trip with this boat',
         );
       }
+
+      // When admin creates a trip using a fisherman's boat, keep trip ownership with that fisherman.
+      tripOwnerId = String(boat.userId || userId);
     }
 
     const newTrip = new this.tripModel({
       ...createTripDto,
-      userId,
+      userId: tripOwnerId,
       status: createTripDto.status || 'planned',
       mode: createTripDto.mode || 'island',
       predictedExternalCosts: createTripDto.predictedExternalCosts || [],
@@ -236,6 +250,7 @@ export class TripsService {
   async logActualData(tripId: string, dto: LogActualDto, req: ExpressRequest) {
     const user = (req as any)?.user ?? {};
     const userId = user?.userId || user?.id || user?._id || user?.sub;
+    const isAdmin = !!user?.isAdmin;
 
     if (!userId) {
       throw new BadRequestException('Unauthorized');
@@ -246,7 +261,7 @@ export class TripsService {
       throw new NotFoundException('Trip not found');
     }
 
-    if (String(trip.userId) !== String(userId)) {
+    if (!isAdmin && String(trip.userId) !== String(userId)) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -318,6 +333,38 @@ export class TripsService {
     trip.externalCostDifference = externalCostDifference;
     trip.profitDifference = profitDifference;
 
+    // Calculate and store comparison metrics using TripMetricsService
+    const metrics = this.tripMetricsService.calculateTripMetrics(trip);
+
+    // Assign standard comparison metrics
+    trip.fuelErrorLiters = metrics.fuelErrorLiters;
+    trip.fuelErrorPercent = metrics.fuelErrorPercent;
+    trip.fuelVarianceLiters = metrics.fuelVarianceLiters;
+    trip.isFuelPredictionAccurate = metrics.isFuelPredictionAccurate;
+    trip.costErrorAmount = metrics.costErrorAmount;
+    trip.costErrorPercent = metrics.costErrorPercent;
+    trip.costVarianceAmount = metrics.costVarianceAmount;
+    trip.isCostPredictionAccurate = metrics.isCostPredictionAccurate;
+    trip.fuelCostErrorAmount = metrics.fuelCostErrorAmount;
+    trip.fuelCostErrorPercent = metrics.fuelCostErrorPercent;
+    trip.comparisonEligible = metrics.comparisonEligible;
+    trip.accuracyThresholdUsed = metrics.accuracyThresholdUsed;
+    trip.comparisonCalculatedAt = metrics.comparisonCalculatedAt;
+
+    // ✅ NEW: Assign boat type-based normalized metrics
+    if (metrics.normalizedFuelMetrics) {
+      trip.expectedFuelForBoatType =
+        metrics.normalizedFuelMetrics.expectedFuelForBoatType;
+      trip.normalizedVariancePercent =
+        metrics.normalizedFuelMetrics.normalizedVariancePercent;
+      trip.efficiencyScore = metrics.normalizedFuelMetrics.efficiencyScore;
+      trip.varianceRating = metrics.normalizedFuelMetrics.varianceRating;
+      trip.mlAdjustedExpectedFuel =
+        metrics.normalizedFuelMetrics.mlAdjustedExpectedFuel;
+      trip.mlVariancePercent = metrics.normalizedFuelMetrics.mlVariancePercent;
+      trip.boatTypeUsedForMetrics = metrics.normalizedFuelMetrics.boatTypeUsed;
+    }
+
     trip.status = 'completed';
 
     await trip.save();
@@ -340,6 +387,51 @@ export class TripsService {
     if (!boat) {
       throw new NotFoundException('Boat not found');
     }
+    const tripEngineHP =
+      trip.engineHP || trip.engineHorsePower || boat.engineHorsePower || 85;
+
+    // 🛡️ GOVERNANCE PIPELINE INTERCEPTION
+    // Reads the flag from your .env file
+    if (
+      this.config.get<string>('ENABLE_GOVERNED_TRAINING_PIPELINE') === 'true'
+    ) {
+      try {
+        const sourceTripId = trip._id.toString();
+        await this.candidateModel.updateOne(
+          { sourceTripId },
+          {
+            $set: {
+              sourceTripId,
+              boatId: trip.boatId.toString(),
+              boatType: boat.boatType || 'unknown',
+              featuresSnapshot: {
+                speed: trip.averageSpeed || trip.speed || 10,
+                weatherSeverityIndex: trip.weatherSeverityIndex || 0,
+                distanceKm: trip.distanceKm || 0,
+                engineHP: tripEngineHP,
+                fishingHours: trip.fishingHours || 8,
+                numberOfDays: trip.numberOfDays || 1,
+                predictedFuelLiters: trip.predictedFuelLiters || 0,
+              },
+              labelSnapshot: {
+                actualFuelLiters: dto.actualFuelLiters,
+                actualCost:
+                  actualFuelCost +
+                  actualOperationalCost +
+                  actualExternalCostTotal,
+              },
+              status: 'PENDING',
+              reviewReason: null,
+              reviewedAt: null,
+            },
+          },
+          { upsert: true },
+        );
+      } catch (err) {
+        // If candidate creation fails, the trip log still succeeds! Non-breaking.
+        console.error('Failed to create training candidate:', err);
+      }
+    }
 
     const baseUrl =
       this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
@@ -358,7 +450,7 @@ export class TripsService {
           speed: trip.averageSpeed || trip.speed || 10,
           weatherSeverityIndex: trip.weatherSeverityIndex || 0,
           distanceKm: trip.distanceKm || 0,
-          engineHP: boat.engineHorsePower || 85,
+          engineHP: tripEngineHP,
           fishingHours: trip.fishingHours || 8,
           numberOfDays: trip.numberOfDays || 1,
         }),
@@ -448,12 +540,15 @@ export class TripsService {
   // =========================
   // BATCH TRAIN TRIPS
   // =========================
-  async batchTrainTrips(userId: string, dto: BatchTrainDto) {
-    // Fetch selected trips
+  async batchTrainTrips(dto: BatchTrainDto) {
+    if (!Array.isArray(dto.tripIds) || dto.tripIds.length === 0) {
+      throw new BadRequestException('tripIds is required for batch training');
+    }
+
+    // Admin training: selected trips can belong to any fisherman.
     const trips = await this.tripModel
       .find({
         _id: { $in: dto.tripIds },
-        userId: userId, // Security: only user's trips
         actualFuelLiters: { $exists: true }, // Only logged trips
       })
       .exec();
@@ -492,7 +587,8 @@ export class TripsService {
         speed: trip.averageSpeed || trip.speed || 10,
         weatherSeverityIndex: trip.weatherSeverityIndex || 0,
         distanceKm: trip.distanceKm || 0,
-        engineHP: boat.engineHorsePower || 85,
+        engineHP:
+          trip.engineHP || trip.engineHorsePower || boat.engineHorsePower || 85,
         fishingHours: trip.fishingHours || 8,
         numberOfDays: trip.numberOfDays || 1,
         tripId: String(trip._id),
@@ -673,36 +769,118 @@ export class TripsService {
     if (trips.length === 0) {
       return {
         totalTrips: 0,
-        totalCost: 0,
-        averageCost: 0,
+        completedTrips: 0,
+        predictionsWithActuals: 0,
+        fuelAccuracyRate: 0,
+        costAccuracyRate: 0,
+        averagePredictedCost: 0,
+        averageActualCost: 0,
+        averageFuelErrorPercent: 0,
+        averageCostErrorPercent: 0,
+        totalPredictedFuel: 0,
+        totalActualFuel: 0,
+        totalFuelVariance: 0,
+        totalPredictedCost: 0,
+        totalActualCost: 0,
+        totalCostVariance: 0,
         totalFuelUsed: 0,
         totalDistance: 0,
       };
     }
 
-    const totalCost = trips.reduce(
-      (sum, trip) =>
-        sum + Number(trip.actualTotalCost || trip.predictedTotalCost || 0),
-      0,
+    // Use TripMetricsService to calculate comprehensive dashboard stats
+    return this.tripMetricsService.calculateDashboardStats(trips);
+  }
+
+  /**
+   * Debug endpoint: Get detailed breakdown of trip metrics
+   * Shows which trips are included/excluded and why
+   */
+  async getStatsDebug(userId: string) {
+    const trips = await this.findByUser(userId);
+
+    const breakdown = {
+      totalTrips: trips.length,
+      completed: trips.filter((t) => t.status === 'completed').length,
+      withPredictions: trips.filter((t) => t.predictedFuelLiters != null)
+        .length,
+      withActuals: trips.filter((t) => t.actualFuelLiters != null).length,
+      eligible: 0,
+      filtered: 0,
+      reasons: {
+        noPrediction: 0,
+        noActual: 0,
+        invalidValues: 0,
+        extremeOutlier: 0,
+      },
+      worstOffenders: [] as any[],
+    };
+
+    const problematicTrips = [];
+
+    for (const trip of trips) {
+      const predicted = trip.predictedFuelLiters;
+      const actual = trip.actualFuelLiters;
+
+      // Check eligibility
+      if (predicted == null) {
+        breakdown.reasons.noPrediction++;
+        breakdown.filtered++;
+        continue;
+      }
+
+      if (actual == null) {
+        breakdown.reasons.noActual++;
+        breakdown.filtered++;
+        continue;
+      }
+
+      if (predicted <= 0 || actual < 0) {
+        breakdown.reasons.invalidValues++;
+        breakdown.filtered++;
+        problematicTrips.push({
+          id: trip._id,
+          predicted,
+          actual,
+          reason: 'Invalid values (zero or negative)',
+        });
+        continue;
+      }
+
+      const fuelRatio = actual > 0 ? predicted / actual : 0;
+      if (fuelRatio > 10 || fuelRatio < 0.1) {
+        breakdown.reasons.extremeOutlier++;
+        breakdown.filtered++;
+        const errorPercent = Math.abs(((actual - predicted) / predicted) * 100);
+        problematicTrips.push({
+          id: trip._id,
+          predicted,
+          actual,
+          variance: actual - predicted,
+          errorPercent: Math.round(errorPercent),
+          ratio: Math.round(fuelRatio * 100) / 100,
+          reason: `Extreme outlier (${fuelRatio > 10 ? 'prediction 10x+ actual' : 'actual 10x+ prediction'})`,
+        });
+        continue;
+      }
+
+      breakdown.eligible++;
+    }
+
+    // Sort problematic trips by absolute variance
+    problematicTrips.sort(
+      (a, b) => Math.abs(b.variance || 0) - Math.abs(a.variance || 0),
     );
 
-    const totalFuelUsed = trips.reduce(
-      (sum, trip) =>
-        sum + Number(trip.actualFuelLiters || trip.fuelUsedLiters || 0),
-      0,
-    );
-
-    const totalDistance = trips.reduce(
-      (sum, trip) => sum + Number(trip.distanceKm || 0),
-      0,
-    );
+    breakdown.worstOffenders = problematicTrips.slice(0, 10);
 
     return {
-      totalTrips: trips.length,
-      totalCost: Math.round(totalCost * 100) / 100,
-      averageCost: Math.round((totalCost / trips.length) * 100) / 100,
-      totalFuelUsed: Math.round(totalFuelUsed * 100) / 100,
-      totalDistance: Math.round(totalDistance * 100) / 100,
+      ...breakdown,
+      stats: this.tripMetricsService.calculateDashboardStats(trips),
+      message:
+        breakdown.filtered > 0
+          ? `${breakdown.filtered} trips filtered out due to data quality issues. See worstOffenders for details.`
+          : 'All trips passed data quality checks.',
     };
   }
 
@@ -734,15 +912,15 @@ export class TripsService {
   // (Research lifecycle: reset, retrain, backups)
   // =========================
 
-  async resetBoatModel(userId: string, boatId: string) {
-    // Verify user owns this boat
+  async resetBoatModel(userId: string, isAdmin: boolean, boatId: string) {
+    // Admin can reset any boat. Non-admin can only reset own boat.
     const boat = await this.boatModel.findById(boatId).exec();
 
     if (!boat) {
       throw new NotFoundException('Boat not found');
     }
 
-    if (String(boat.userId) !== String(userId)) {
+    if (!isAdmin && String(boat.userId) !== String(userId)) {
       throw new ForbiddenException('You do not own this boat');
     }
 
@@ -770,17 +948,18 @@ export class TripsService {
 
   async retrainBoatModel(
     userId: string,
+    isAdmin: boolean,
     boatId: string,
     options: { errorThreshold?: number; maxDays?: number },
   ) {
-    // Verify ownership
+    // Admin can retrain any boat. Non-admin can only retrain own boat.
     const boat = await this.boatModel.findById(boatId).exec();
 
     if (!boat) {
       throw new NotFoundException('Boat not found');
     }
 
-    if (String(boat.userId) !== String(userId)) {
+    if (!isAdmin && String(boat.userId) !== String(userId)) {
       throw new ForbiddenException('You do not own this boat');
     }
 
@@ -845,15 +1024,15 @@ export class TripsService {
     }
   }
 
-  async getBoatBackups(userId: string, boatId: string) {
-    // Verify ownership
+  async getBoatBackups(userId: string, isAdmin: boolean, boatId: string) {
+    // Admin can view any boat backups. Non-admin can only view own boat backups.
     const boat = await this.boatModel.findById(boatId).exec();
 
     if (!boat) {
       throw new NotFoundException('Boat not found');
     }
 
-    if (String(boat.userId) !== String(userId)) {
+    if (!isAdmin && String(boat.userId) !== String(userId)) {
       throw new ForbiddenException('You do not own this boat');
     }
 

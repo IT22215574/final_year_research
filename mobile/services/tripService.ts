@@ -1,4 +1,5 @@
 import { apiFetch } from "@/utils/api";
+import { Trip, DashboardStats } from "@/types/trip";
 
 export type ExternalCostItem = {
   name: string;
@@ -19,12 +20,15 @@ export type DatciePredictBody = {
   distanceKm?: number;
   windSpeed: number;
   waveHeight: number;
+  rainMmPerHour?: number;
   fuelPrice: number;
   expectedCatch: number;
   marketPrice: number;
   fishingHours: number;
   numberOfDays: number;
   crewCount: number;
+  engineHorsePower?: number;
+  engineHP?: number;
   speed?: number; // Optional: backend tests multiple speeds if not provided
   mode?: "island" | "international";
   manualExternalCosts?: ExternalCostItem[];
@@ -61,6 +65,7 @@ export type CreateTripDto = {
   boatType?: string;
   windSpeed?: number;
   waveHeight?: number;
+  rainMmPerHour?: number;
   weatherCondition?: string;
   fuelUsedLiters?: number;
   fuelPricePerLiter?: number;
@@ -99,14 +104,11 @@ export type CreateTripDto = {
   clientRequestId?: string;
 };
 
-export type Trip = any;
-export type TripStats = {
-  totalTrips: number;
-  totalCost: number;
-  averageCost: number;
-  totalFuelUsed: number;
-  totalDistance: number;
-};
+// Re-export types from centralized types file
+export type { Trip, DashboardStats, LogActualDto } from "@/types/trip";
+
+// Deprecated: Use DashboardStats instead
+export type TripStats = DashboardStats;
 
 export const createTrip = async (tripData: CreateTripDto): Promise<Trip> => {
   const response = await apiFetch("/api/v1/trips", {
@@ -135,7 +137,22 @@ export const getMyTrips = async (): Promise<Trip[]> => {
   return await response.json();
 };
 
-export const getMyStats = async (): Promise<TripStats> => {
+export const getTripsForTraining = async (isAdmin: boolean): Promise<Trip[]> => {
+  const endpoint = isAdmin ? "/api/v1/trips" : "/api/v1/trips/my-trips";
+
+  const response = await apiFetch(endpoint, {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to fetch trips");
+  }
+
+  return await response.json();
+};
+
+export const getMyStats = async (): Promise<DashboardStats> => {
   const response = await apiFetch("/api/v1/trips/my-stats", {
     method: "GET",
   });

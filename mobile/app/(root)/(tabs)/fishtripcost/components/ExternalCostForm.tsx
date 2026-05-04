@@ -18,10 +18,13 @@ import {
 export type ExternalCostItem = {
   name: string;
   category: string;
+  quantity: number;
+  pricePerUnit: number;
   amount: number;
   source?: "manual" | "preference";
   preferenceId?: string;
   description?: string;
+  icon?: string;
 };
 
 const COST_CATEGORIES = [
@@ -38,7 +41,7 @@ const COST_CATEGORIES = [
 
 type Props = {
   externalCosts: ExternalCostItem[];
-  onChange: (costs: ExternalCostItem[]) => void;
+  onChange: React.Dispatch<React.SetStateAction<ExternalCostItem[]>>;
   title?: string;
 };
 
@@ -49,6 +52,8 @@ export default function ExternalCostForm({
 }: Props) {
   const [formName, setFormName] = useState("");
   const [formCategory, setFormCategory] = useState("Harbor Fee");
+  const [formQuantity, setFormQuantity] = useState("1");
+  const [formPricePerUnit, setFormPricePerUnit] = useState("");
   const [formAmount, setFormAmount] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -56,47 +61,83 @@ export default function ExternalCostForm({
   // Cost Preferences state
   const [preferences, setPreferences] = useState<CostPreference[]>([]);
   const [loadingPreferences, setLoadingPreferences] = useState(true);
-  const [editingAmounts, setEditingAmounts] = useState<Record<string, string>>(
-    {},
-  );
+  const [editingQuantities, setEditingQuantities] = useState<
+    Record<string, string>
+  >({});
+
+  // Auto-calculate amount when quantity or price changes
+  const calculateAmount = () => {
+    const qty = Number(formQuantity) || 0;
+    const price = Number(formPricePerUnit) || 0;
+    const total = qty * price;
+    setFormAmount(total.toString());
+  };
+
+  useEffect(() => {
+    calculateAmount();
+  }, [formQuantity, formPricePerUnit]);
 
   // Load cost preferences on mount
   useEffect(() => {
-    loadCostPreferences();
-  }, []);
+    let isMounted = true; // Prevent state updates after unmount
+    loadCostPreferences(isMounted);
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Keep empty deps - we want this to run only once
 
-  const loadCostPreferences = async () => {
+  const loadCostPreferences = async (isMounted = true) => {
     try {
+      if (!isMounted) return;
       setLoadingPreferences(true);
       const data = await getCostPreferences();
+
+      if (!isMounted) return; // Check after async operation
       setPreferences(data.filter((p) => p.isActive));
 
-      // Auto-apply preferences
+      // Auto-apply preferences - but only on initial load, not during state changes
+      // This prevents infinite loops by checking if we're in initial state
       const autoApplyPrefs = data.filter((p) => p.isActive && p.autoApply);
       const autoApplyCosts: ExternalCostItem[] = autoApplyPrefs.map((pref) => ({
         name: pref.name,
         category: pref.category,
+        quantity: pref.quantity || 1,
+        pricePerUnit: pref.pricePerUnit || 0,
         amount: pref.amount,
         description: pref.description,
         source: "preference",
         preferenceId: pref._id,
+        icon: pref.icon,
       }));
 
-      // Only add auto-apply costs if they're not already in externalCosts
-      const existingPrefIds = externalCosts
-        .filter((c) => c.source === "preference")
-        .map((c) => c.preferenceId);
-      const newAutoApplyCosts = autoApplyCosts.filter(
-        (c) => !existingPrefIds.includes(c.preferenceId),
-      );
-
-      if (newAutoApplyCosts.length > 0) {
-        onChange([...externalCosts, ...newAutoApplyCosts]);
+      // FIXED: Use functional update to get latest externalCosts
+      // This prevents stale closure issues
+      if (autoApplyCosts.length > 0) {
+        onChange((currentCosts) => {
+          const existingPrefIds = currentCosts
+            .filter((c) => c.source === "preference")
+            .map((c) => c.preferenceId);
+          const newAutoApplyCosts = autoApplyCosts.filter(
+            (c) => !existingPrefIds.includes(c.preferenceId),
+          );
+          return newAutoApplyCosts.length > 0
+            ? [...currentCosts, ...newAutoApplyCosts]
+            : currentCosts;
+        });
       }
     } catch (error: any) {
       console.error("Failed to load cost preferences:", error);
+      if (isMounted) {
+        // Only show alert if component is still mounted
+        Alert.alert(
+          "Error",
+          "Failed to load cost preferences. Please try again.",
+        );
+      }
     } finally {
-      setLoadingPreferences(false);
+      if (isMounted) {
+        setLoadingPreferences(false);
+      }
     }
   };
 
@@ -106,15 +147,30 @@ export default function ExternalCostForm({
       return;
     }
 
+    if (!formQuantity.trim() || !formPricePerUnit.trim()) {
+      Alert.alert("Validation", "Quantity and price per unit are required");
+      return;
+    }
+
+    const quantity = parseFloat(formQuantity);
+    const pricePerUnit = parseFloat(formPricePerUnit);
     const amount = parseFloat(formAmount);
-    if (Number.isNaN(amount) || amount < 0) {
-      Alert.alert("Validation", "Enter a valid amount (e.g., 3000)");
+
+    if (Number.isNaN(quantity) || quantity <= 0) {
+      Alert.alert("Validation", "Enter a valid quantity");
+      return;
+    }
+
+    if (Number.isNaN(pricePerUnit) || pricePerUnit < 0) {
+      Alert.alert("Validation", "Enter a valid price per unit");
       return;
     }
 
     const newCost: ExternalCostItem = {
       name: formName.trim(),
       category: formCategory,
+      quantity,
+      pricePerUnit,
       amount,
       source: "manual",
       description: formDescription.trim() || undefined,
@@ -125,6 +181,8 @@ export default function ExternalCostForm({
     // Reset form
     setFormName("");
     setFormCategory("Harbor Fee");
+    setFormQuantity("1");
+    setFormPricePerUnit("");
     setFormAmount("");
     setFormDescription("");
     setShowForm(false);
@@ -135,31 +193,77 @@ export default function ExternalCostForm({
     onChange(updated);
   };
 
-  // Toggle preference on/off
+  // Toggle preference on/off with error handling
   const togglePreference = (pref: CostPreference) => {
-    const isEnabled = externalCosts.some(
-      (c) => c.source === "preference" && c.preferenceId === pref._id,
-    );
+    try {
+      onChange((currentCosts) => {
+        const isEnabled = currentCosts.some(
+          (c) => c.source === "preference" && c.preferenceId === pref._id,
+        );
 
-    if (isEnabled) {
-      // Remove preference
-      const updated = externalCosts.filter((c) => c.preferenceId !== pref._id);
-      onChange(updated);
-    } else {
-      // Add preference
-      const newCost: ExternalCostItem = {
-        name: pref.name,
-        category: pref.category,
-        amount: pref.amount,
-        description: pref.description,
-        source: "preference",
-        preferenceId: pref._id,
-      };
-      onChange([...externalCosts, newCost]);
+        if (isEnabled) {
+          // Remove preference
+          return currentCosts.filter((c) => c.preferenceId !== pref._id);
+        } else {
+          // Add preference
+          const newCost: ExternalCostItem = {
+            name: pref.name,
+            category: pref.category,
+            quantity: pref.quantity || 1,
+            pricePerUnit: pref.pricePerUnit || 0,
+            amount: pref.amount,
+            description: pref.description,
+            source: "preference",
+            preferenceId: pref._id,
+            icon: pref.icon,
+          };
+          return [...currentCosts, newCost];
+        }
+      });
+    } catch (error: any) {
+      console.error("Error toggling preference:", error);
+      Alert.alert("Error", "Failed to update preference. Please try again.");
     }
   };
 
-  // Update preference amount
+  // Update preference quantity with error handling
+  const updatePreferenceQuantity = (
+    preferenceId: string,
+    newQuantity: string,
+  ) => {
+    try {
+      const quantity = parseFloat(newQuantity);
+      if (Number.isNaN(quantity) || quantity <= 0) {
+        Alert.alert(
+          "Invalid Quantity",
+          "Please enter a valid quantity greater than 0",
+        );
+        return;
+      }
+
+      // Use functional update to prevent stale closure
+      onChange((currentCosts) => {
+        return currentCosts.map((cost) => {
+          if (cost.preferenceId === preferenceId) {
+            const newAmount = quantity * (cost.pricePerUnit || 0);
+            return { ...cost, quantity, amount: newAmount };
+          }
+          return cost;
+        });
+      });
+
+      setEditingQuantities((prev) => {
+        const next = { ...prev };
+        delete next[preferenceId];
+        return next;
+      });
+    } catch (error: any) {
+      console.error("Error updating preference quantity:", error);
+      Alert.alert("Error", "Failed to update quantity. Please try again.");
+    }
+  };
+
+  // Update preference amount (legacy support)
   const updatePreferenceAmount = (preferenceId: string, newAmount: string) => {
     const amount = parseFloat(newAmount);
     if (Number.isNaN(amount) || amount < 0) {
@@ -170,7 +274,7 @@ export default function ExternalCostForm({
       cost.preferenceId === preferenceId ? { ...cost, amount } : cost,
     );
     onChange(updated);
-    setEditingAmounts((prev) => {
+    setEditingQuantities((prev) => {
       const next = { ...prev };
       delete next[preferenceId];
       return next;
@@ -186,35 +290,46 @@ export default function ExternalCostForm({
   return (
     <View className="bg-white rounded-2xl border border-slate-100 p-4">
       {/* Header */}
-      <View className="flex-row justify-between items-center mb-4">
-        <View>
-          <Text className="text-lg font-bold text-slate-800">{title}</Text>
-          <Text className="text-sm text-slate-500 mt-1">
-            {externalCosts.length} item{externalCosts.length !== 1 ? "s" : ""} •
-            Rs. {totalAmount.toLocaleString()}
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-2">
+      <View className="mb-4">
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-1 pr-3">
+            <Text
+              className="text-lg font-bold text-slate-900"
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+            <Text className="text-sm text-slate-500 mt-1" numberOfLines={1}>
+              {externalCosts.length} item
+              {externalCosts.length !== 1 ? "s" : ""} • Rs.{" "}
+              {totalAmount.toLocaleString()}
+            </Text>
+          </View>
           <TouchableOpacity
-            onPress={loadCostPreferences}
-            className="bg-blue-50 rounded-xl p-2"
+            onPress={() => loadCostPreferences()}
+            className="bg-blue-50 rounded-xl w-11 h-11 items-center justify-center"
+            activeOpacity={0.75}
           >
             <Ionicons name="refresh" size={20} color="#3b82f6" />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setShowForm(!showForm)}
-            className="bg-emerald-500 rounded-xl py-2 px-4 flex-row items-center"
-          >
-            <Ionicons
-              name={showForm ? "close" : "add"}
-              size={18}
-              color="white"
-            />
-            <Text className="text-white font-semibold ml-1">
-              {showForm ? "Cancel" : "Add"}
-            </Text>
-          </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          onPress={() => setShowForm(!showForm)}
+          className={`rounded-2xl py-3.5 px-4 flex-row items-center justify-center ${
+            showForm ? "bg-slate-900" : "bg-emerald-600"
+          }`}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name={showForm ? "close" : "add-circle"}
+            size={20}
+            color="white"
+          />
+          <Text className="text-white font-bold ml-2">
+            {showForm ? "Close Cost Form" : "Add Manual Cost"}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Saved Preferences Section */}
@@ -244,7 +359,8 @@ export default function ExternalCostForm({
               const currentCost = preferenceCosts.find(
                 (c) => c.preferenceId === pref._id,
               );
-              const isEditing = editingAmounts[pref._id] !== undefined;
+              const isEditingQuantity =
+                editingQuantities[pref._id] !== undefined;
 
               return (
                 <View
@@ -272,6 +388,14 @@ export default function ExternalCostForm({
                       </TouchableOpacity>
                       <View className="flex-1">
                         <View className="flex-row items-center">
+                          {/* Custom Icon */}
+                          <View className="w-6 h-6 rounded-lg bg-white items-center justify-center mr-2">
+                            <Ionicons
+                              name={(pref.icon || "cash-outline") as any}
+                              size={14}
+                              color={isEnabled ? "#3b82f6" : "#94a3b8"}
+                            />
+                          </View>
                           <Text
                             className={`font-semibold ${
                               isEnabled ? "text-blue-900" : "text-slate-500"
@@ -287,64 +411,92 @@ export default function ExternalCostForm({
                             </View>
                           )}
                         </View>
-                        <Text className="text-xs text-slate-500 mt-0.5">
-                          {pref.category}
-                        </Text>
+                        <View className="flex-row items-center mt-1">
+                          <Text className="text-xs text-slate-500 mr-3">
+                            {pref.category}
+                          </Text>
+                          {isEnabled && currentCost && (
+                            <Text className="text-xs text-blue-600">
+                              {currentCost.quantity} × Rs{" "}
+                              {Number(
+                                currentCost.pricePerUnit,
+                              ).toLocaleString()}
+                            </Text>
+                          )}
+                        </View>
                       </View>
                     </View>
 
-                    {/* Right: Amount (editable if enabled) */}
+                    {/* Right: Amount with quantity editing */}
                     {isEnabled ? (
-                      isEditing ? (
-                        <View className="flex-row items-center gap-2">
-                          <TextInput
-                            className="bg-white border border-blue-300 rounded-lg px-3 py-1 text-sm w-24 text-right"
-                            value={editingAmounts[pref._id]}
-                            onChangeText={(val) =>
-                              setEditingAmounts((prev) => ({
-                                ...prev,
-                                [pref._id]: val,
-                              }))
-                            }
-                            keyboardType="decimal-pad"
-                            autoFocus
-                          />
-                          <TouchableOpacity
-                            onPress={() =>
-                              updatePreferenceAmount(
-                                pref._id,
-                                editingAmounts[pref._id],
-                              )
-                            }
-                            className="bg-blue-500 rounded-lg p-1.5"
-                          >
-                            <Ionicons
-                              name="checkmark"
-                              size={16}
-                              color="white"
-                            />
-                          </TouchableOpacity>
+                      <View className="items-end ml-2">
+                        <View className="flex-row items-center">
+                          {isEditingQuantity ? (
+                            <>
+                              <Text className="text-xs text-slate-500">
+                                Qty:
+                              </Text>
+                              <TextInput
+                                className="bg-white border border-blue-300 rounded-lg px-2 py-1 text-sm w-16 text-center"
+                                value={editingQuantities[pref._id]}
+                                onChangeText={(val) =>
+                                  setEditingQuantities((prev) => ({
+                                    ...prev,
+                                    [pref._id]: val,
+                                  }))
+                                }
+                                keyboardType="decimal-pad"
+                                autoFocus
+                              />
+                              <TouchableOpacity
+                                onPress={() =>
+                                  updatePreferenceQuantity(
+                                    pref._id,
+                                    editingQuantities[pref._id],
+                                  )
+                                }
+                                className="bg-blue-500 rounded-lg p-1 ml-1"
+                              >
+                                <Ionicons
+                                  name="checkmark"
+                                  size={14}
+                                  color="white"
+                                />
+                              </TouchableOpacity>
+                            </>
+                          ) : (
+                            <>
+                              <TouchableOpacity
+                                onPress={() =>
+                                  setEditingQuantities((prev) => ({
+                                    ...prev,
+                                    [pref._id]:
+                                      currentCost?.quantity.toString() || "1",
+                                  }))
+                                }
+                                className="bg-blue-50 rounded-lg px-2 py-1 mr-2"
+                              >
+                                <Text className="text-xs text-blue-600 font-semibold">
+                                  Qty: {currentCost?.quantity || 1}
+                                </Text>
+                              </TouchableOpacity>
+                              <Text className="font-bold text-blue-600">
+                                Rs {currentCost?.amount.toLocaleString()}
+                              </Text>
+                            </>
+                          )}
                         </View>
-                      ) : (
-                        <TouchableOpacity
-                          onPress={() =>
-                            setEditingAmounts((prev) => ({
-                              ...prev,
-                              [pref._id]: currentCost?.amount.toString() || "",
-                            }))
-                          }
-                          className="flex-row items-center"
-                        >
-                          <Text className="font-bold text-blue-600 mr-1">
-                            Rs. {currentCost?.amount.toLocaleString()}
-                          </Text>
-                          <Ionicons name="create" size={14} color="#3b82f6" />
-                        </TouchableOpacity>
-                      )
+                      </View>
                     ) : (
-                      <Text className="font-bold text-slate-400">
-                        Rs. {pref.amount.toLocaleString()}
-                      </Text>
+                      <View className="items-end">
+                        <Text className="font-bold text-slate-400 mb-1">
+                          Rs {pref.amount.toLocaleString()}
+                        </Text>
+                        <Text className="text-xs text-slate-400">
+                          {pref.quantity || 1} × Rs{" "}
+                          {Number(pref.pricePerUnit || 0).toLocaleString()}
+                        </Text>
+                      </View>
                     )}
                   </View>
                 </View>
@@ -391,7 +543,7 @@ export default function ExternalCostForm({
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              className="flex-row gap-2"
+              contentContainerStyle={{ gap: 8, paddingRight: 8 }}
             >
               {COST_CATEGORIES.map((cat) => (
                 <TouchableOpacity
@@ -415,18 +567,52 @@ export default function ExternalCostForm({
             </ScrollView>
           </View>
 
-          {/* Amount */}
+          {/* Quantity and Price Per Unit */}
           <View className="mb-3">
-            <Text className="text-sm font-semibold text-slate-700 mb-2">
-              Amount (Rs) *
+            <View className="mb-3">
+              <Text className="text-sm font-semibold text-slate-700 mb-2">
+                Quantity *
+              </Text>
+              <TextInput
+                className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800"
+                placeholder="e.g., 2"
+                value={formQuantity}
+                onChangeText={setFormQuantity}
+                keyboardType="decimal-pad"
+              />
+            </View>
+            <View>
+              <Text className="text-sm font-semibold text-slate-700 mb-2">
+                Unit Price (Rs) *
+              </Text>
+              <TextInput
+                className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800"
+                placeholder="e.g., 1500"
+                value={formPricePerUnit}
+                onChangeText={setFormPricePerUnit}
+                keyboardType="decimal-pad"
+              />
+            </View>
+          </View>
+
+          {/* Calculated Total */}
+          <View className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-3">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center">
+                <Ionicons name="calculator-outline" size={18} color="#059669" />
+                <Text className="text-sm font-semibold text-emerald-700 ml-2">
+                  Total Amount
+                </Text>
+              </View>
+              <Text className="text-lg font-bold text-emerald-700">
+                Rs {Number(formAmount || 0).toLocaleString()}
+              </Text>
+            </View>
+            <Text className="text-xs text-emerald-600 mt-2">
+              {formQuantity || 0} × Rs{" "}
+              {Number(formPricePerUnit || 0).toLocaleString()} = Rs{" "}
+              {Number(formAmount || 0).toLocaleString()}
             </Text>
-            <TextInput
-              className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800"
-              placeholder="e.g., 3000"
-              value={formAmount}
-              onChangeText={setFormAmount}
-              keyboardType="decimal-pad"
-            />
           </View>
 
           {/* Description (optional) */}
@@ -445,9 +631,13 @@ export default function ExternalCostForm({
           {/* Add Button */}
           <TouchableOpacity
             onPress={handleAdd}
-            className="bg-emerald-500 rounded-xl py-3"
+            className="bg-emerald-600 rounded-2xl py-4 flex-row items-center justify-center"
+            activeOpacity={0.8}
           >
-            <Text className="text-white font-bold text-center">Add Cost</Text>
+            <Ionicons name="add-circle" size={20} color="#ffffff" />
+            <Text className="text-white font-bold text-center ml-2">
+              Add Cost
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -478,9 +668,15 @@ export default function ExternalCostForm({
                   <Text className="font-semibold text-slate-800">
                     {cost.name}
                   </Text>
-                  <Text className="text-xs text-slate-500 mt-1">
-                    {cost.category}
-                  </Text>
+                  <View className="flex-row items-center mt-1">
+                    <Text className="text-xs text-slate-500 mr-3">
+                      {cost.category}
+                    </Text>
+                    <Text className="text-xs text-emerald-600">
+                      {cost.quantity || 1} × Rs{" "}
+                      {Number(cost.pricePerUnit || 0).toLocaleString()}
+                    </Text>
+                  </View>
                   {cost.description && (
                     <Text className="text-xs text-slate-600 mt-1">
                       {cost.description}

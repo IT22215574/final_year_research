@@ -7,7 +7,10 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -61,7 +64,7 @@ type Trip = {
   weatherSeverityIndex?: number;
   economicStressIndex?: number;
   profitabilityProbability?: number;
-  riskCategory?: "low" | "medium" | "high";
+  riskCategory?: string;
   carbonEmissionKg?: number;
   carbonPerKgCatch?: number;
   predictedFuelCost?: number;
@@ -208,6 +211,7 @@ const Row = ({ label, value }: { label: string; value: React.ReactNode }) => (
 
 export default function TripDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
 
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
@@ -237,7 +241,7 @@ export default function TripDetailsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadTrip();
-    }, [id])
+    }, [id]),
   );
 
   const handleDelete = () => {
@@ -276,7 +280,9 @@ export default function TripDetailsScreen() {
           }}
         >
           <ActivityIndicator size="large" color="#111827" />
-          <Text style={{ marginTop: 12, color: "#6b7280" }}>Loading trip details...</Text>
+          <Text style={{ marginTop: 12, color: "#6b7280" }}>
+            Loading trip details...
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -333,10 +339,17 @@ export default function TripDetailsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#f9fafb" }}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: "#f9fafb" }}
+      edges={["top"]}
+    >
       <FishTripNavBar />
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 8,
+          paddingBottom: 20,
+        }}
         showsVerticalScrollIndicator={false}
       >
         <View
@@ -404,9 +417,15 @@ export default function TripDetailsScreen() {
         </View>
 
         <Section title="Trip Overview">
-          <Row label="Boat ID" value={trip.boatId ? getShortId(trip.boatId) : "Not assigned"} />
+          <Row
+            label="Boat ID"
+            value={trip.boatId ? getShortId(trip.boatId) : "Not assigned"}
+          />
           <Row label="Mode" value={trip.mode || "island"} />
-          <Row label="Departure Time" value={formatDateTime(trip.departureTime)} />
+          <Row
+            label="Departure Time"
+            value={formatDateTime(trip.departureTime)}
+          />
           <Row label="Return Time" value={formatDateTime(trip.returnTime)} />
           <Row
             label="Duration"
@@ -441,37 +460,106 @@ export default function TripDetailsScreen() {
               trip.predictedDistanceKm != null
                 ? `${formatNumber(trip.predictedDistanceKm)} km`
                 : trip.distanceKm != null
-                ? `${formatNumber(trip.distanceKm)} km`
+                  ? `${formatNumber(trip.distanceKm)} km`
+                  : "N/A"
+            }
+          />
+          <Row
+            label="Speed"
+            value={
+              trip.speed != null ? `${formatNumber(trip.speed)} km/h` : "N/A"
+            }
+          />
+          <Row
+            label="Fishing Hours"
+            value={
+              trip.fishingHours != null
+                ? `${formatNumber(trip.fishingHours)} hrs`
                 : "N/A"
             }
           />
-          <Row label="Speed" value={trip.speed != null ? `${formatNumber(trip.speed)} km/h` : "N/A"} />
-          <Row
-            label="Fishing Hours"
-            value={trip.fishingHours != null ? `${formatNumber(trip.fishingHours)} hrs` : "N/A"}
-          />
           <Row
             label="Number of Days"
-            value={trip.numberOfDays != null ? `${trip.numberOfDays} day${trip.numberOfDays > 1 ? 's' : ''}` : "N/A"}
+            value={
+              trip.numberOfDays != null
+                ? `${trip.numberOfDays} day${trip.numberOfDays > 1 ? "s" : ""}`
+                : "N/A"
+            }
           />
-          <Row label="Crew Count" value={trip.crewCount != null ? String(trip.crewCount) : "N/A"} />
+          <Row
+            label="Crew Count"
+            value={trip.crewCount != null ? String(trip.crewCount) : "N/A"}
+          />
         </Section>
 
         <Section title="Weather">
-          <Row label="Wind Speed" value={trip.windSpeed != null ? `${formatNumber(trip.windSpeed)} km/h` : "N/A"} />
-          <Row label="Wave Height" value={trip.waveHeight != null ? `${formatNumber(trip.waveHeight)} m` : "N/A"} />
-          <Row label="Weather Severity Index" value={trip.weatherSeverityIndex != null ? formatNumber(trip.weatherSeverityIndex) : "N/A"} />
-          <Row label="Weather Condition" value={trip.weatherCondition || "N/A"} />
+          <Row
+            label="Wind Speed"
+            value={
+              trip.windSpeed != null
+                ? `${formatNumber(trip.windSpeed)} km/h`
+                : "N/A"
+            }
+          />
+          <Row
+            label="Wave Height"
+            value={
+              trip.waveHeight != null
+                ? `${formatNumber(trip.waveHeight)} m`
+                : "N/A"
+            }
+          />
+          <Row
+            label="Weather Severity Index"
+            value={
+              trip.weatherSeverityIndex != null
+                ? formatNumber(trip.weatherSeverityIndex)
+                : "N/A"
+            }
+          />
+          <Row
+            label="Weather Condition"
+            value={trip.weatherCondition || "N/A"}
+          />
         </Section>
 
         <Section title="Prediction Summary">
-          <Row label="Predicted Fuel" value={trip.predictedFuelLiters != null ? `${formatNumber(trip.predictedFuelLiters)} L` : "N/A"} />
-          <Row label="Predicted Fuel Cost" value={formatCurrency(trip.predictedFuelCost)} />
-          <Row label="Predicted Crew Cost" value={formatCurrency(trip.predictedCrewCost)} />
-          <Row label="Predicted Operational Cost" value={formatCurrency(trip.predictedOperationalCost)} />
-          <Row label="Predicted External Cost Total" value={formatCurrency(trip.predictedExternalCostTotal)} />
-          <Row label="Predicted Total Cost" value={formatCurrency(trip.predictedTotalCost)} />
-          <Row label="Economic Stress Index" value={trip.economicStressIndex != null ? formatNumber(trip.economicStressIndex) : "N/A"} />
+          <Row
+            label="Predicted Fuel"
+            value={
+              trip.predictedFuelLiters != null
+                ? `${formatNumber(trip.predictedFuelLiters)} L`
+                : "N/A"
+            }
+          />
+          <Row
+            label="Predicted Fuel Cost"
+            value={formatCurrency(trip.predictedFuelCost)}
+          />
+          <Row
+            label="Predicted Crew Cost"
+            value={formatCurrency(trip.predictedCrewCost)}
+          />
+          <Row
+            label="Predicted Operational Cost"
+            value={formatCurrency(trip.predictedOperationalCost)}
+          />
+          <Row
+            label="Predicted External Cost Total"
+            value={formatCurrency(trip.predictedExternalCostTotal)}
+          />
+          <Row
+            label="Predicted Total Cost"
+            value={formatCurrency(trip.predictedTotalCost)}
+          />
+          <Row
+            label="Economic Stress Index"
+            value={
+              trip.economicStressIndex != null
+                ? formatNumber(trip.economicStressIndex)
+                : "N/A"
+            }
+          />
           <Row
             label="Profitability Probability"
             value={
@@ -480,12 +568,27 @@ export default function TripDetailsScreen() {
                 : "N/A"
             }
           />
-          <Row label="Carbon Emission" value={trip.carbonEmissionKg != null ? `${formatNumber(trip.carbonEmissionKg)} kg` : "N/A"} />
-          <Row label="Carbon per Kg Catch" value={trip.carbonPerKgCatch != null ? formatNumber(trip.carbonPerKgCatch) : "N/A"} />
+          <Row
+            label="Carbon Emission"
+            value={
+              trip.carbonEmissionKg != null
+                ? `${formatNumber(trip.carbonEmissionKg)} kg`
+                : "N/A"
+            }
+          />
+          <Row
+            label="Carbon per Kg Catch"
+            value={
+              trip.carbonPerKgCatch != null
+                ? formatNumber(trip.carbonPerKgCatch)
+                : "N/A"
+            }
+          />
         </Section>
 
         <Section title="Predicted External Costs">
-          {trip.predictedExternalCosts && trip.predictedExternalCosts.length > 0 ? (
+          {trip.predictedExternalCosts &&
+          trip.predictedExternalCosts.length > 0 ? (
             trip.predictedExternalCosts.map((item, index) => (
               <View
                 key={`${item.name}-${index}`}
@@ -495,47 +598,112 @@ export default function TripDetailsScreen() {
                   borderBottomColor: "#f3f4f6",
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: "700", color: "#111827" }}>
+                <Text
+                  style={{ fontSize: 14, fontWeight: "700", color: "#111827" }}
+                >
                   {item.name}
                 </Text>
                 <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
                   {item.category} • {formatCurrency(item.amount)}
                 </Text>
                 {item.description ? (
-                  <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                  <Text
+                    style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}
+                  >
                     {item.description}
                   </Text>
                 ) : null}
               </View>
             ))
           ) : (
-            <Text style={{ color: "#6b7280" }}>No predicted external costs available.</Text>
+            <Text style={{ color: "#6b7280" }}>
+              No predicted external costs available.
+            </Text>
           )}
         </Section>
 
         <Section title="Actual Results">
-          <Row label="Actual Logged At" value={formatDateTime(trip.actualLoggedAt)} />
-          <Row label="Actual Fuel" value={trip.actualFuelLiters != null ? `${formatNumber(trip.actualFuelLiters)} L` : "N/A"} />
-          <Row label="Actual Catch" value={trip.actualCatchKg != null ? `${formatNumber(trip.actualCatchKg)} kg` : "N/A"} />
-          <Row label="Actual Fuel Cost" value={formatCurrency(trip.actualFuelCost)} />
-          <Row label="Actual Operational Cost" value={formatCurrency(trip.actualOperationalCost)} />
-          <Row label="Actual External Cost Total" value={formatCurrency(trip.actualExternalCostTotal)} />
-          <Row label="Actual Total Cost" value={formatCurrency(trip.actualTotalCost)} />
-          <Row label="Actual Revenue" value={formatCurrency(trip.actualRevenue)} />
-          <Row label="Actual Profit" value={formatCurrency(trip.actualProfit)} />
+          <Row
+            label="Actual Logged At"
+            value={formatDateTime(trip.actualLoggedAt)}
+          />
+          <Row
+            label="Actual Fuel"
+            value={
+              trip.actualFuelLiters != null
+                ? `${formatNumber(trip.actualFuelLiters)} L`
+                : "N/A"
+            }
+          />
+          <Row
+            label="Actual Catch"
+            value={
+              trip.actualCatchKg != null
+                ? `${formatNumber(trip.actualCatchKg)} kg`
+                : "N/A"
+            }
+          />
+          <Row
+            label="Actual Fuel Cost"
+            value={formatCurrency(trip.actualFuelCost)}
+          />
+          <Row
+            label="Actual Operational Cost"
+            value={formatCurrency(trip.actualOperationalCost)}
+          />
+          <Row
+            label="Actual External Cost Total"
+            value={formatCurrency(trip.actualExternalCostTotal)}
+          />
+          <Row
+            label="Actual Total Cost"
+            value={formatCurrency(trip.actualTotalCost)}
+          />
+          <Row
+            label="Actual Revenue"
+            value={formatCurrency(trip.actualRevenue)}
+          />
+          <Row
+            label="Actual Profit"
+            value={formatCurrency(trip.actualProfit)}
+          />
           <Row label="Actual Notes" value={trip.actualNotes || "N/A"} />
         </Section>
 
         <Section title="Prediction vs Actual Comparison">
-          <Row label="Fuel Difference" value={trip.fuelDifference != null ? `${formatNumber(trip.fuelDifference)} L` : "N/A"} />
-          <Row label="Fuel Prediction Error" value={trip.fuelPredictionError != null ? `${formatNumber(trip.fuelPredictionError)}%` : "N/A"} />
-          <Row label="Total Cost Difference" value={formatCurrency(trip.totalCostDifference)} />
-          <Row label="External Cost Difference" value={formatCurrency(trip.externalCostDifference)} />
-          <Row label="Profit Difference" value={formatCurrency(trip.profitDifference)} />
+          <Row
+            label="Fuel Difference"
+            value={
+              trip.fuelDifference != null
+                ? `${formatNumber(trip.fuelDifference)} L`
+                : "N/A"
+            }
+          />
+          <Row
+            label="Fuel Prediction Error"
+            value={
+              trip.fuelPredictionError != null
+                ? `${formatNumber(trip.fuelPredictionError)}%`
+                : "N/A"
+            }
+          />
+          <Row
+            label="Total Cost Difference"
+            value={formatCurrency(trip.totalCostDifference)}
+          />
+          <Row
+            label="External Cost Difference"
+            value={formatCurrency(trip.externalCostDifference)}
+          />
+          <Row
+            label="Profit Difference"
+            value={formatCurrency(trip.profitDifference)}
+          />
         </Section>
 
         <Section title="Optimization Recommendations">
-          {trip.optimizationRecommendations && trip.optimizationRecommendations.length > 0 ? (
+          {trip.optimizationRecommendations &&
+          trip.optimizationRecommendations.length > 0 ? (
             trip.optimizationRecommendations.map((item, index) => (
               <View
                 key={`${item}-${index}`}
@@ -546,15 +714,31 @@ export default function TripDetailsScreen() {
                 }}
               >
                 <Text style={{ marginRight: 8, color: "#111827" }}>•</Text>
-                <Text style={{ flex: 1, color: "#374151", lineHeight: 22 }}>{item}</Text>
+                <Text style={{ flex: 1, color: "#374151", lineHeight: 22 }}>
+                  {item}
+                </Text>
               </View>
             ))
           ) : (
-            <Text style={{ color: "#6b7280" }}>No recommendations available.</Text>
+            <Text style={{ color: "#6b7280" }}>
+              No recommendations available.
+            </Text>
           )}
         </Section>
+      </ScrollView>
 
-        <View style={{ flexDirection: "row", gap: 12, marginTop: 4 }}>
+      {/* Fixed Button Container */}
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: Math.max(insets.bottom, 12),
+          backgroundColor: "#f9fafb",
+          borderTopWidth: 1,
+          borderTopColor: "#e5e7eb",
+        }}
+      >
+        <View style={{ flexDirection: "row", gap: 12 }}>
           <TouchableOpacity
             onPress={() =>
               router.push(`/(root)/(tabs)/fishtripcost/edit-trip/${trip._id}`)
@@ -585,11 +769,13 @@ export default function TripDetailsScreen() {
             {deleteLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={{ color: "#fff", fontWeight: "700" }}>Delete Trip</Text>
+              <Text style={{ color: "#fff", fontWeight: "700" }}>
+                Delete Trip
+              </Text>
             )}
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
