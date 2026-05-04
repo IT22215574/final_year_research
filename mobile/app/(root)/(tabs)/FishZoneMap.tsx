@@ -10,7 +10,7 @@ import {
   ScrollView,
   Modal,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import MapView, { Marker, Circle, PROVIDER_GOOGLE } from "react-native-maps";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -131,6 +131,7 @@ const GEOGRAPHIC_ZONES: GeographicZone[] = [
 ];
 
 export default function FishZoneMapScreen() {
+  const insets = useSafeAreaInsets();
   const [fishZones, setFishZones] = useState<FishZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [metadata, setMetadata] = useState<FishZoneResponse["metadata"] | null>(
@@ -142,6 +143,7 @@ export default function FishZoneMapScreen() {
     GEOGRAPHIC_ZONES.map((z) => z.id) // All zones selected by default
   );
   const [showZoneSelector, setShowZoneSelector] = useState(false);
+  const [showMapControls, setShowMapControls] = useState(true);
 
   // Sri Lanka center for map
   const SRI_LANKA_CENTER = {
@@ -275,36 +277,86 @@ export default function FishZoneMapScreen() {
         </View>
       </View>
 
-      {/* Zone Selector Button - Prominent placement */}
-      <View style={styles.zoneSelectorButtonContainer}>
+      <View style={styles.controlsToggleContainer}>
         <TouchableOpacity
-          onPress={() => setShowZoneSelector(true)}
-          style={styles.zoneSelectorButton}
+          onPress={() => setShowMapControls((prev) => !prev)}
+          style={styles.controlsToggleButton}
+          activeOpacity={0.85}
         >
-          <Ionicons name="map" size={20} color="#FFF" />
-          <Text style={styles.zoneSelectorButtonText}>
-            Select Fishing Zones ({selectedGeographicZones.length}/{GEOGRAPHIC_ZONES.length})
+          <Ionicons
+            name={showMapControls ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#0EA5E9"
+          />
+          <Text style={styles.controlsToggleText}>
+            {showMapControls ? "Hide controls" : "Show controls"}
           </Text>
-          <Ionicons name="chevron-forward" size={20} color="#FFF" />
         </TouchableOpacity>
       </View>
 
-      {/* Metadata Bar */}
-      {metadata && (
-        <View style={styles.metadataBar}>
-          <View style={styles.metadataItem}>
-            <Text style={styles.metadataLabel}>Date</Text>
-            <Text style={styles.metadataValue}>{metadata.date}</Text>
+      {showMapControls && (
+        <>
+          {/* Zone Selector Button - Prominent placement */}
+          <View style={styles.zoneSelectorButtonContainer}>
+            <TouchableOpacity
+              onPress={() => setShowZoneSelector(true)}
+              style={styles.zoneSelectorButton}
+            >
+              <Ionicons name="map" size={20} color="#FFF" />
+              <Text style={styles.zoneSelectorButtonText}>
+                Select Fishing Zones ({selectedGeographicZones.length}/{GEOGRAPHIC_ZONES.length})
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#FFF" />
+            </TouchableOpacity>
           </View>
-          <View style={styles.metadataItem}>
-            <Text style={styles.metadataLabel}>Showing</Text>
-            <Text style={styles.metadataValue}>{filteredFishZones.length}</Text>
+
+          {/* Metadata Bar */}
+          {metadata && (
+            <View style={styles.metadataBar}>
+              <View style={styles.metadataItem}>
+                <Text style={styles.metadataLabel}>Date</Text>
+                <Text style={styles.metadataValue}>{metadata.date}</Text>
+              </View>
+              <View style={styles.metadataItem}>
+                <Text style={styles.metadataLabel}>Showing</Text>
+                <Text style={styles.metadataValue}>{filteredFishZones.length}</Text>
+              </View>
+              <View style={styles.metadataItem}>
+                <Text style={styles.metadataLabel}>Total Available</Text>
+                <Text style={styles.metadataValue}>{fishZones.length}</Text>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.controlsStack}>
+            {/* Probability Filter */}
+            <View style={styles.filterContainer}>
+              <Text style={styles.filterLabel}>Minimum Fish Probability:</Text>
+              <Text style={styles.filterHint}>Shows zones with at least this probability</Text>
+              <View style={styles.filterButtons}>
+                {[0, 0.3, 0.5, 0.7].map((value) => (
+                  <TouchableOpacity
+                    key={value}
+                    style={[
+                      styles.filterButton,
+                      minProbability === value && styles.filterButtonActive,
+                    ]}
+                    onPress={() => handleFilterChange(value)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterButtonText,
+                        minProbability === value && styles.filterButtonTextActive,
+                      ]}
+                    >
+                      {value === 0 ? "All" : `≥${(value * 100).toFixed(0)}%`}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </View>
-          <View style={styles.metadataItem}>
-            <Text style={styles.metadataLabel}>Total Available</Text>
-            <Text style={styles.metadataValue}>{fishZones.length}</Text>
-          </View>
-        </View>
+        </>
       )}
 
       {/* Map */}
@@ -342,55 +394,32 @@ export default function FishZoneMapScreen() {
         ))}
       </MapView>
 
-      {/* Probability Filter */}
-      <View style={styles.filterContainer}>
-        <Text style={styles.filterLabel}>Minimum Fish Probability:</Text>
-        <Text style={styles.filterHint}>Shows zones with at least this probability</Text>
-        <View style={styles.filterButtons}>
-          {[0, 0.3, 0.5, 0.7].map((value) => (
-            <TouchableOpacity
-              key={value}
-              style={[
-                styles.filterButton,
-                minProbability === value && styles.filterButtonActive,
-              ]}
-              onPress={() => handleFilterChange(value)}
-            >
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  minProbability === value && styles.filterButtonTextActive,
-                ]}
-              >
-                {value === 0 ? "All" : `≥${(value * 100).toFixed(0)}%`}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Legend */}
-      <View style={styles.legendContainer}>
-        <Text style={styles.legendTitle}>Fish Probability</Text>
-        <View style={styles.legendItems}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#DC2626" }]} />
-            <Text style={styles.legendText}>Very High (80%+)</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#EA580C" }]} />
-            <Text style={styles.legendText}>High (60-80%)</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#F59E0B" }]} />
-            <Text style={styles.legendText}>Medium (40-60%)</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#10B981" }]} />
-            <Text style={styles.legendText}>Low (&lt;40%)</Text>
+      {/* Legend Overlay */}
+      {!selectedZone && (
+        <View style={styles.legendOverlay}>
+          <View style={styles.legendContainer}>
+            <Text style={styles.legendTitle}>Fish Probability</Text>
+            <View style={styles.legendItems}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: "#DC2626" }]} />
+                <Text style={styles.legendText}>Very High (80%+)</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: "#EA580C" }]} />
+                <Text style={styles.legendText}>High (60-80%)</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: "#F59E0B" }]} />
+                <Text style={styles.legendText}>Medium (40-60%)</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: "#10B981" }]} />
+                <Text style={styles.legendText}>Low (&lt;40%)</Text>
+              </View>
+            </View>
           </View>
         </View>
-      </View>
+      )}
 
       {/* Zone Selector Modal */}
       <Modal
@@ -481,8 +510,16 @@ export default function FishZoneMapScreen() {
 
       {/* Selected Zone Details */}
       {selectedZone && (
-        <View style={styles.detailsContainer}>
-          <ScrollView>
+        <View
+          style={[
+            styles.detailsContainer,
+            { bottom: Math.max(88, insets.bottom + 72) },
+          ]}
+        >
+          <ScrollView
+            contentContainerStyle={styles.detailsScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.detailsHeader}>
               <Text style={styles.detailsTitle}>Fish Zone Details</Text>
               <TouchableOpacity onPress={() => setSelectedZone(null)}>
@@ -619,6 +656,29 @@ const styles = StyleSheet.create({
   refreshButton: {
     padding: 8,
   },
+  controlsToggleContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 6,
+    backgroundColor: "#F9FAFB",
+  },
+  controlsToggleButton: {
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
+  },
+  controlsToggleText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#0284C7",
+  },
   zoneSelectorButtonContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -672,11 +732,14 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
+  controlsStack: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+    gap: 12,
+    backgroundColor: "#F9FAFB",
+  },
   filterContainer: {
-    position: "absolute",
-    top: 240,
-    left: 16,
-    right: 16,
     backgroundColor: "#FFF",
     borderRadius: 12,
     padding: 12,
@@ -723,45 +786,49 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   legendContainer: {
-    position: "absolute",
-    bottom: 16,
-    left: 16,
     backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    maxWidth: 200,
+    maxWidth: 170,
+  },
+  legendOverlay: {
+    position: "absolute",
+    left: 12,
+    bottom: 96,
+    zIndex: 20,
+    elevation: 20,
   },
   legendTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#111827",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   legendItems: {
-    gap: 6,
+    gap: 4,
   },
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
   },
   legendColor: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginRight: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 6,
   },
   legendText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#6B7280",
   },
   detailsContainer: {
     position: "absolute",
-    bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: "#FFF",
@@ -770,12 +837,15 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingHorizontal: 16,
     paddingBottom: 32,
-    maxHeight: "50%",
+    maxHeight: "58%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
+  },
+  detailsScrollContent: {
+    paddingBottom: 24,
   },
   detailsHeader: {
     flexDirection: "row",
