@@ -11,7 +11,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Image
+  Image,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,16 +23,16 @@ const ResetPassword = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { emailOrPhone, isEmail, resetToken, userId } = params;
-  
+
   const [formData, setFormData] = useState({
     newPassword: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [secureText, setSecureText] = useState({
     newPassword: true,
-    confirmPassword: true
+    confirmPassword: true,
   });
   const [tokenValid, setTokenValid] = useState(false);
 
@@ -49,7 +49,7 @@ const ResetPassword = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          resetToken: resetToken
+          resetToken: resetToken,
         }),
       });
 
@@ -60,26 +60,25 @@ const ResetPassword = () => {
       }
 
       setTokenValid(true);
-
     } catch (error: any) {
       console.error("Verify token error:", error);
       Alert.alert(
-        "Error", 
+        "Error",
         error.message || "This reset link is invalid or has expired.",
         [
           {
             text: "OK",
-            onPress: () => router.replace("/(auth)/forgetpassword")
-          }
-        ]
+            onPress: () => router.replace("/(auth)/forgetpassword"),
+          },
+        ],
       );
     }
   };
 
   const handleChange = (name: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
     // Clear error when user starts typing
     if (error) {
@@ -106,59 +105,58 @@ const ResetPassword = () => {
     return true;
   };
 
+  const handleResetPassword = async () => {
+    if (!validateForm()) return;
 
-const handleResetPassword = async () => {
-  if (!validateForm()) return;
+    setLoading(true);
+    setError("");
 
-  setLoading(true);
-  setError("");
+    try {
+      const response = await fetch(`${API}/api/auth/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resetToken: resetToken,
+          newPassword: formData.newPassword,
+          confirmPassword: formData.confirmPassword,
+        }),
+      });
 
-  try {
-    const response = await fetch(`${API}/api/auth/reset-password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        resetToken: resetToken,
-        newPassword: formData.newPassword,
-        confirmPassword: formData.confirmPassword
-      }),
-    });
+      const result = await response.json();
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || "Failed to reset password");
-    }
-
-    // Password reset successful - Navigate to success screen
-    router.replace({
-      pathname: "/(auth)/success",
-      params: { 
-        emailOrPhone: emailOrPhone,
-        isEmail: isEmail
+      if (!response.ok) {
+        throw new Error(result.message || "Failed to reset password");
       }
-    });
 
-  } catch (error: any) {
-    console.error("Reset password error:", error);
-    setError(error.message || "Failed to reset password. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+      // Password reset successful - Navigate to success screen
+      router.replace({
+        pathname: "/(auth)/success",
+        params: {
+          emailOrPhone: emailOrPhone,
+          isEmail: isEmail,
+        },
+      });
+    } catch (error: any) {
+      console.error("Reset password error:", error);
+      setError(error.message || "Failed to reset password. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const toggleSecureText = (field: 'newPassword' | 'confirmPassword') => {
-    setSecureText(prev => ({
+  const toggleSecureText = (field: "newPassword" | "confirmPassword") => {
+    setSecureText((prev) => ({
       ...prev,
-      [field]: !prev[field]
+      [field]: !prev[field],
     }));
   };
 
-  const maskedEmailOrPhone = isEmail === "true" 
-    ? emailOrPhone 
-    : (emailOrPhone as string).replace(/(\d{3})\d{4}(\d{3})/, '$1****$2');
+  const maskedEmailOrPhone =
+    isEmail === "true"
+      ? emailOrPhone
+      : (emailOrPhone as string).replace(/(\d{3})\d{4}(\d{3})/, "$1****$2");
 
   if (!tokenValid) {
     return (
@@ -172,11 +170,11 @@ const handleResetPassword = async () => {
   }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -191,10 +189,10 @@ const handleResetPassword = async () => {
         </TouchableOpacity>
 
         {/* Illustration */}
-        <Image 
-          source={images.Forgot3} 
-          style={styles.illustration} 
-          resizeMode="contain" 
+        <Image
+          source={images.Forgot3}
+          style={styles.illustration}
+          resizeMode="contain"
         />
 
         {/* Title */}
@@ -212,11 +210,11 @@ const handleResetPassword = async () => {
             New Password <Text style={styles.required}>*</Text>
           </Text>
           <View style={styles.inputWrapper}>
-            <Ionicons 
-              name="lock-closed-outline" 
-              size={20} 
-              color="#9BA3AB" 
-              style={styles.icon} 
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color="#9BA3AB"
+              style={styles.icon}
             />
             <TextInput
               placeholder="Enter new password"
@@ -227,9 +225,11 @@ const handleResetPassword = async () => {
               secureTextEntry={secureText.newPassword}
               autoCapitalize="none"
             />
-            <TouchableOpacity onPress={() => toggleSecureText('newPassword')}>
+            <TouchableOpacity onPress={() => toggleSecureText("newPassword")}>
               <Ionicons
-                name={secureText.newPassword ? "eye-off-outline" : "eye-outline"}
+                name={
+                  secureText.newPassword ? "eye-off-outline" : "eye-outline"
+                }
                 size={20}
                 color="#9BA3AB"
               />
@@ -243,11 +243,11 @@ const handleResetPassword = async () => {
             Confirm Password <Text style={styles.required}>*</Text>
           </Text>
           <View style={styles.inputWrapper}>
-            <Ionicons 
-              name="lock-closed-outline" 
-              size={20} 
-              color="#9BA3AB" 
-              style={styles.icon} 
+            <Ionicons
+              name="lock-closed-outline"
+              size={20}
+              color="#9BA3AB"
+              style={styles.icon}
             />
             <TextInput
               placeholder="Confirm new password"
@@ -258,9 +258,13 @@ const handleResetPassword = async () => {
               secureTextEntry={secureText.confirmPassword}
               autoCapitalize="none"
             />
-            <TouchableOpacity onPress={() => toggleSecureText('confirmPassword')}>
+            <TouchableOpacity
+              onPress={() => toggleSecureText("confirmPassword")}
+            >
               <Ionicons
-                name={secureText.confirmPassword ? "eye-off-outline" : "eye-outline"}
+                name={
+                  secureText.confirmPassword ? "eye-off-outline" : "eye-outline"
+                }
                 size={20}
                 color="#9BA3AB"
               />
@@ -268,16 +272,11 @@ const handleResetPassword = async () => {
           </View>
         </View>
 
-        {error ? (
-          <Text style={styles.errorText}>{error}</Text>
-        ) : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* Reset Button */}
-        <TouchableOpacity 
-          style={[
-            styles.resetBtn, 
-            loading && styles.disabledButton
-          ]} 
+        <TouchableOpacity
+          style={[styles.resetBtn, loading && styles.disabledButton]}
           activeOpacity={0.8}
           disabled={loading}
           onPress={handleResetPassword}
@@ -288,7 +287,6 @@ const handleResetPassword = async () => {
             <Text style={styles.resetText}>Update Password</Text>
           )}
         </TouchableOpacity>
-
       </ScrollView>
     </KeyboardAvoidingView>
   );
