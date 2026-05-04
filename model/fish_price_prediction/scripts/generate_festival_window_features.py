@@ -9,7 +9,9 @@ def generate_festival_features(
 ):
     # Setup paths relative to script location
     script_dir = Path(__file__).resolve().parent
-    backend_dir = script_dir.parent
+    # Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+    project_root = script_dir.parent.parent.parent
+    backend_dir = project_root / "Backend"
     processed_dir = backend_dir / "dataset" / "processed"
     
     # Default paths
@@ -78,22 +80,3 @@ def generate_festival_features(
 
     # On Poya day, decrease stock and increase price
     poya_mask = df["festival_name"].str.lower().str.contains("poya", na=False)
-    df.loc[poya_mask, "stock"] -= 20
-    df.loc[poya_mask, "price"] += 10
-
-    # As any festival approaches, increase stock and decrease price
-    before_mask = df["before_festival_window"] == 1
-    df.loc[before_mask, "stock"] += (
-        window_size - df.loc[before_mask, "days_to_festival"]
-    )
-    df.loc[before_mask, "price"] -= (
-        window_size - df.loc[before_mask, "days_to_festival"]
-    ) * 0.5
-
-    df.to_csv(output_file, index=False)
-    print("✅ Festival features added →", output_file)
-    print(df[["date", "festival_name", "is_festival_day", "days_to_festival", "stock", "price"]].head(20))
-    print(df[["date", "festival_name", "is_festival_day", "days_to_festival", "stock", "price"]].tail(20))
-
-if __name__ == "__main__":
-    generate_festival_features()

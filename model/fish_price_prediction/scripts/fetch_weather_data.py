@@ -5,8 +5,10 @@ from pathlib import Path
 import socket
 
 # Paths
-script_dir = Path(__file__).parent            # backend/scripts
-backend_dir = script_dir.parent               # backend/
+script_dir = Path(__file__).parent            # fish_price_prediction/scripts
+# Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+project_root = script_dir.parent.parent.parent
+backend_dir = project_root / "Backend"
 
 # Output CSV path
 OUT_FILE = backend_dir / "dataset" / "processed" / "weather_dataset.csv"
@@ -202,4 +204,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

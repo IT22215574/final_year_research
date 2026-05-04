@@ -6,7 +6,9 @@ import re
 def extract_fish_names_from_csv():
     """Extract fish names from all CSV files in raw/csv folder"""
     script_dir = Path(__file__).resolve().parent
-    backend_dir = script_dir.parent
+    # Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+    project_root = script_dir.parent.parent.parent
+    backend_dir = project_root / "Backend"
     raw_csv_dir = backend_dir / "dataset" / "raw" / "csv"
     processed_dir = backend_dir / "dataset" / "processed"
     
@@ -91,7 +93,9 @@ def add_sri_lankan_seasons(df: "pd.DataFrame") -> "pd.DataFrame":
 
 def add_features():
     script_dir = Path(__file__).resolve().parent
-    backend_dir = script_dir.parent
+    # Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+    project_root = script_dir.parent.parent.parent
+    backend_dir = project_root / "Backend"
     processed_dir = backend_dir / "dataset" / "processed"
 
     IN = processed_dir / "merged_festival_features.csv"

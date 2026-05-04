@@ -15,13 +15,6 @@ import { AuthTokenGuard } from '../common/guards/auth-token.guard';
 
 type AuthedRequest = Request & { user?: { id?: string; _id?: string } };
 
-/**
- * Route prefix: /fish-favorites
- * සම්පූර්ණ route set:
- *   GET    /api/v1/fish-favorites          → logged-in user ගේ favourites ගන්නවා
- *   POST   /api/v1/fish-favorites          → favourite එකක් add කරනවා
- *   DELETE /api/v1/fish-favorites/:fishId  → favourite එකක් remove කරනවා
- */
 @Controller('fish-favorites')
 @UseGuards(AuthTokenGuard)
 export class FavoriteFishController {

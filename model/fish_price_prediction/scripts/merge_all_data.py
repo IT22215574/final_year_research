@@ -94,7 +94,10 @@ def extract_fish_prices_from_csv(csv_folder):
 
 def merge_all():
     script_dir = Path(__file__).resolve().parent
-    backend_dir = script_dir.parent
+    # Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+    project_root = script_dir.parent.parent.parent
+    backend_dir = project_root / "Backend"
+    
     processed = backend_dir / "dataset" / "processed"
     raw_csv = backend_dir / "dataset" / "raw" / "csv"
     festivals_path = backend_dir / "dataset" / "raw" / "festivals" / "festivals_2020_2026.csv"

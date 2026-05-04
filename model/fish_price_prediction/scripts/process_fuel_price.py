@@ -9,7 +9,10 @@ from pathlib import Path
 
 def process_fuel_price():
     script_dir = Path(__file__).resolve().parent
-    backend_dir = script_dir.parent
+    # Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+    project_root = script_dir.parent.parent.parent
+    backend_dir = project_root / "Backend"
+    
     fuel_xlsx = backend_dir / "dataset" / "raw" / "fuel_price" / "Fuel Price.xlsx"
     processed_dir = backend_dir / "dataset" / "processed"
     out_path = processed_dir / "fuel_price_daily.csv"

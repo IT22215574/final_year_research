@@ -3,9 +3,13 @@ import numpy as np
 import pickle
 from pathlib import Path
 
-backend_dir = Path(__file__).parent.parent
+script_dir = Path(__file__).resolve().parent
+# Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+project_root = script_dir.parent.parent.parent
+backend_dir = project_root / "Backend"
+
 processed_dir = backend_dir / "dataset" / "processed"
-# Model files are directly in backend_dir, not in models subdirectory
+# Model files are directly in Backend, not in models subdirectory
 models_dir = backend_dir
 
 FUTURE_FEATURES = processed_dir / "future_features.csv"

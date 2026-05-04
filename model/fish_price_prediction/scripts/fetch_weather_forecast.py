@@ -7,7 +7,10 @@ import sys
 
 # Support running as a script (no package context)
 script_dir = Path(__file__).resolve().parent
-backend_dir = script_dir.parent
+# Navigate: scripts/ → fish_price_prediction/ → model/ → final_year_research/ → Backend/
+project_root = script_dir.parent.parent.parent
+backend_dir = project_root / "Backend"
+
 if str(backend_dir) not in sys.path:
     sys.path.append(str(backend_dir))
 
@@ -25,7 +28,6 @@ except Exception:
         "Kalpitiya": (8.4020, 79.7557)
     }
 
-backend_dir = Path(__file__).parent.parent
 OUT_FILE = backend_dir / "dataset" / "processed" / "weather_forecast.csv"
 
 

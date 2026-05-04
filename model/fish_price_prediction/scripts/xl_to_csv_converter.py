@@ -4,16 +4,16 @@ from pathlib import Path
 
 def convert_xl_to_csv():
     """
-    Convert Excel files from dataset/xl to CSV files in dataset/csv.
+    Convert Excel files from Backend/dataset/raw/xl to Backend/dataset/raw/csv.
     Skips files that have already been converted.
     """
     # Get the script's directory and navigate to project root
     script_dir = Path(__file__).parent
-    project_root = script_dir.parent.parent  # Go up two levels from scripts/
+    project_root = script_dir.parent.parent.parent  # Go up three levels: scripts/ → fish_price_prediction/ → model/ → final_year_research/
     
     # Define folder paths relative to project root
-    xl_folder = project_root / "backend" / "dataset" / "raw" / "xl"
-    csv_folder = project_root / "backend" / "dataset" / "raw" / "csv"
+    xl_folder = project_root / "Backend" / "dataset" / "raw" / "xl"
+    csv_folder = project_root / "Backend" / "dataset" / "raw" / "csv"
     
     # Create csv folder if it doesn't exist
     csv_folder.mkdir(parents=True, exist_ok=True)
