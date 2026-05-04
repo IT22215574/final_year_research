@@ -19,6 +19,7 @@ import { FishZonesModule } from './fish-zones/fish-zones.module';
 import { TrainingCandidatesModule } from './training-candidates/training-candidates.module';
 import { TrainingJobsModule } from './training-jobs/training-jobs.module';
 import { ModelRegistryModule } from './model-registry/model-registry.module';
+import { TrainingUploadsModule } from './training-uploads/training-uploads.module';
 
 @Module({
   imports: [
@@ -36,7 +37,8 @@ import { ModelRegistryModule } from './model-registry/model-registry.module';
       storage: diskStorage({
         destination: './uploads',
         filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = path.extname(file.originalname);
           cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
         },
@@ -57,6 +59,7 @@ import { ModelRegistryModule } from './model-registry/model-registry.module';
     TrainingCandidatesModule,
     TrainingJobsModule,
     ModelRegistryModule,
+    TrainingUploadsModule,
   ],
 })
 export class AppModule {}

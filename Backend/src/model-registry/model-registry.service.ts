@@ -12,6 +12,25 @@ import {
   ModelVersionDocument,
 } from '../schemas/model-version.schema';
 
+type ArtifactSummaryRow = {
+  scope: 'GLOBAL' | 'BOAT_TYPE';
+  boatType: string | null;
+  modelPath: string;
+  metadataPath: string;
+  modelExists: boolean;
+  selectedModel: string | null;
+  rowsUsed: number;
+  dataset: string | null;
+  target: string | null;
+  metrics: {
+    mape: number | null;
+    mae: number | null;
+    rmse: number | null;
+    r2: number | null;
+  };
+  updatedAt: string | null;
+};
+
 @Injectable()
 export class ModelRegistryService {
   constructor(
@@ -54,6 +73,121 @@ export class ModelRegistryService {
 
     fs.mkdirSync(target, { recursive: true });
     return target;
+  }
+
+  private getFishTripCostModelRoot() {
+    const backendRoot = process.cwd();
+    const repoRoot =
+      path.basename(backendRoot).toLowerCase() === 'backend'
+        ? path.resolve(backendRoot, '..')
+        : backendRoot;
+
+    return path.resolve(
+      repoRoot,
+      'model',
+      'cost_prediction',
+      'models',
+      'fishtripcost',
+    );
+  }
+
+  private asNumberOrNull(value: unknown) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private readArtifactSummary(
+    scope: 'GLOBAL' | 'BOAT_TYPE',
+    artifactDir: string,
+    boatType: string | null,
+  ): ArtifactSummaryRow | null {
+    const metadataPath = path.join(artifactDir, 'metadata.json');
+    const modelPath = path.join(artifactDir, 'fuel_model.pkl');
+
+    if (!fs.existsSync(metadataPath) && !fs.existsSync(modelPath)) {
+      return null;
+    }
+
+    let metadata: any = {};
+    if (fs.existsSync(metadataPath)) {
+      try {
+        metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+      } catch {
+        metadata = {};
+      }
+    }
+
+    const selectedModel =
+      metadata.selected_model ||
+      metadata.best_model ||
+      metadata.algorithm ||
+      null;
+    const ranking = Array.isArray(metadata.ranking) ? metadata.ranking : [];
+    const selectedRanking =
+      ranking.find((row: any) => row?.model === selectedModel) ||
+      ranking[0] ||
+      {};
+
+    const statsPath = fs.existsSync(metadataPath)
+      ? metadataPath
+      : fs.existsSync(modelPath)
+        ? modelPath
+        : null;
+
+    return {
+      scope,
+      boatType,
+      modelPath,
+      metadataPath,
+      modelExists: fs.existsSync(modelPath),
+      selectedModel,
+      rowsUsed: Number(metadata.rows_used || metadata.dataset_rows || 0),
+      dataset: metadata.dataset || null,
+      target: metadata.target || null,
+      metrics: {
+        mape: this.asNumberOrNull(selectedRanking.MAPE ?? selectedRanking.mape),
+        mae: this.asNumberOrNull(selectedRanking.MAE ?? selectedRanking.mae),
+        rmse: this.asNumberOrNull(selectedRanking.RMSE ?? selectedRanking.rmse),
+        r2: this.asNumberOrNull(selectedRanking.R2 ?? selectedRanking.r2),
+      },
+      updatedAt: statsPath ? fs.statSync(statsPath).mtime.toISOString() : null,
+    };
+  }
+
+  async getArtifactSummary() {
+    const root = this.getFishTripCostModelRoot();
+    const artifacts: ArtifactSummaryRow[] = [];
+
+    const globalArtifact = this.readArtifactSummary(
+      'GLOBAL',
+      path.join(root, 'global', 'best_model'),
+      null,
+    );
+    if (globalArtifact) {
+      artifacts.push(globalArtifact);
+    }
+
+    const boatTypeRoot = path.join(root, 'boat_type');
+    if (fs.existsSync(boatTypeRoot)) {
+      fs.readdirSync(boatTypeRoot, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .forEach((entry) => {
+          const artifact = this.readArtifactSummary(
+            'BOAT_TYPE',
+            path.join(boatTypeRoot, entry.name, 'best_model'),
+            entry.name.toUpperCase(),
+          );
+
+          if (artifact) {
+            artifacts.push(artifact);
+          }
+        });
+    }
+
+    return {
+      root,
+      artifacts,
+    };
   }
 
   async registerModelsFromTraining(

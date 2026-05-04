@@ -38,9 +38,12 @@ export default function ModelRegistryScreen() {
   }, []);
 
   const handlePromote = async (id: string) => {
+    const target = versions.find((item) => item?._id === id);
+    const scope = String(target?.scope || "GLOBAL").toUpperCase();
+    const boatType = target?.boatType ? ` (${target.boatType})` : "";
     Alert.alert(
       "Promote Model",
-      "This will make this model the ACTIVE prediction model for all fishermen. Proceed?",
+      `This will make this ${scope}${boatType} model ACTIVE for matching predictions. Proceed?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -100,6 +103,8 @@ export default function ModelRegistryScreen() {
     const status = String(item?.status || "CANDIDATE").toUpperCase();
     const quality = String(item?.quality || "UNKNOWN").toUpperCase();
     const algorithmType = item?.algorithmType || "Unknown Algorithm";
+    const scope = String(item?.scope || "GLOBAL").toUpperCase();
+    const boatType = item?.boatType || null;
     const selectionRank = item?.selectionRank ?? "-";
     const selectionScore =
       typeof item?.selectionScore === "number"
@@ -130,6 +135,10 @@ export default function ModelRegistryScreen() {
           <Text style={{ color: quality === "GOOD" ? "green" : "red" }}>
             {quality}
           </Text>
+        </Text>
+        <Text style={styles.detail}>
+          Scope: {scope}
+          {boatType ? ` • Boat Type: ${boatType}` : ""}
         </Text>
         <Text style={styles.detail}>MAPE Score: {selectionScore}</Text>
         <Text style={styles.date}>{createdAt}</Text>

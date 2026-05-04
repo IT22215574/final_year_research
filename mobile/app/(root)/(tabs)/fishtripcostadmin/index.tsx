@@ -38,6 +38,12 @@ export default function FisherAdminIndex() {
       route: "/(root)/(tabs)/fishtripcostadmin/dataset",
     },
     {
+      icon: "📤",
+      title: "Uploaded Datasets",
+      description: "View and approve CSV/JSON file uploads",
+      route: "/(root)/(tabs)/fishtripcostadmin/uploaded-datasets",
+    },
+    {
       icon: "⚙️",
       title: "Model Training",
       description: "Trigger ML training pipeline",

@@ -27,6 +27,35 @@ export type DatasetCsvFileInfo = {
   updatedAt: string;
 };
 
+export type BoatwiseDatasetStats = {
+  boatType: string;
+  boatTypeSlug: string;
+  manualTripRows: number;
+  uploadedDatasetRows: number;
+  totalRows: number;
+  readyForTraining: boolean;
+};
+
+export type ModelArtifact = {
+  scope: "GLOBAL" | "BOAT_TYPE";
+  boatType: string | null;
+  modelExists: boolean;
+  selectedModel: string | null;
+  rowsUsed: number;
+  metrics: {
+    mape: number | null;
+    mae: number | null;
+    rmse: number | null;
+    r2: number | null;
+  };
+  updatedAt: string | null;
+};
+
+export type ModelArtifactSummary = {
+  root: string;
+  artifacts: ModelArtifact[];
+};
+
 export const getPendingCandidates = async (): Promise<TrainingCandidate[]> => {
   // Try sending it with /api/v1 if you have a global prefix, else just /api/v1/training-candidates/pending
   const response = await apiFetch("/api/v1/training-candidates/pending", {
@@ -99,6 +128,42 @@ export const getBoatTypeTrainingAnalytics = async () => {
 
   const payload = await response.json();
   return unwrapPayload<any>(payload);
+};
+
+export const getBoatwiseDatasetStats = async (): Promise<BoatwiseDatasetStats[]> => {
+  const response = await apiFetch(
+    "/api/v1/training-candidates/datasets/stats/boatwise",
+    {
+      method: "GET",
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to fetch boat-wise dataset stats");
+  }
+
+  const payload = await response.json();
+  const data = unwrapPayload<BoatwiseDatasetStats[]>(payload);
+  return Array.isArray(data) ? data : [];
+};
+
+export const getModelArtifactSummary = async (): Promise<ModelArtifactSummary> => {
+  const response = await apiFetch("/api/v1/model-registry/artifacts/summary", {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to fetch model artifact summary");
+  }
+
+  const payload = await response.json();
+  const data = unwrapPayload<ModelArtifactSummary>(payload);
+  return {
+    root: data?.root || "",
+    artifacts: Array.isArray(data?.artifacts) ? data.artifacts : [],
+  };
 };
 
 export const getDatasetCsvFiles = async (): Promise<DatasetCsvFileInfo[]> => {

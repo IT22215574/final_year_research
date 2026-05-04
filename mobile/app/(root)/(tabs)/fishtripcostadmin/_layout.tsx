@@ -8,6 +8,7 @@ export default function FisherAdminModulesLayout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="boat-analytics" options={{ headerShown: false }} />
       <Stack.Screen name="dataset" options={{ headerShown: false }} />
+      <Stack.Screen name="uploaded-datasets" options={{ headerShown: false }} />
       <Stack.Screen name="boattypes" options={{ headerShown: false }} />
       <Stack.Screen name="modeltrain" options={{ headerShown: false }} />
       <Stack.Screen name="modelregistry" options={{ headerShown: false }} />

@@ -5,6 +5,11 @@ export type ApiError = {
   message: string;
   field?: string;
   details?: unknown;
+  url?: string;
+};
+
+type ApiErrorMeta = Omit<ApiError, "message"> & {
+  name: string;
 };
 
 function joinUrl(baseUrl: string, path: string) {
@@ -38,15 +43,32 @@ export async function apiFetch<T>(
     typeof FormData !== "undefined" && options?.body instanceof FormData;
   const accessToken = getStoredAccessToken();
 
-  const res = await fetch(joinUrl(env.apiBaseUrl, path), {
-    ...options,
-    headers: {
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...(options?.headers ?? {}),
-    },
-    credentials: "include",
-  });
+  const url = joinUrl(env.apiBaseUrl, path);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: {
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(options?.headers ?? {}),
+      },
+      credentials: "include",
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? `Network request failed: ${error.message}`
+        : "Network request failed";
+
+    throw Object.assign(new Error(message), {
+      name: "ApiError",
+      status: 0,
+      details: error,
+      url,
+    } satisfies ApiErrorMeta);
+  }
 
   const contentType = res.headers.get("content-type") ?? "";
   const isJson = contentType.includes("application/json");
@@ -71,12 +93,13 @@ export async function apiFetch<T>(
 
     const message = messageFromPayload || res.statusText || "Request failed";
 
-    const err: ApiError = {
+    const err = Object.assign(new Error(message), {
+      name: "ApiError",
       status: res.status,
-      message,
       field: fieldFromPayload,
       details: payload,
-    };
+      url,
+    } satisfies ApiErrorMeta);
 
     throw err;
   }

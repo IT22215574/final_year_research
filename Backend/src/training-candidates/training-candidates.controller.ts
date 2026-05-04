@@ -1,7 +1,9 @@
 import {
   Controller,
+  Delete,
   Get,
   Post,
+  Put,
   Body,
   Param,
   UseGuards,
@@ -42,6 +44,37 @@ export class TrainingCandidatesController {
   @Get('datasets/files')
   getDatasetFiles() {
     return this.candidatesService.listDatasetCsvFiles();
+  }
+
+  // 🛡️ ADMIN ONLY - get detailed boat-wise dataset statistics (manual trips + uploaded)
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get('datasets/stats/boatwise')
+  getBoatwiseStats() {
+    return this.candidatesService.getBoatwiseDatasetStats();
+  }
+
+  // 🛡️ ADMIN ONLY - get editable rows with stable row keys
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get('datasets/table/:boatType')
+  getDatasetTableRows(@Param('boatType') boatType: string) {
+    return this.candidatesService.getDatasetTableRows(boatType);
+  }
+
+  // 🛡️ ADMIN ONLY - update one dataset row and rebuild CSV artifacts
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Put('datasets/rows/:rowKey')
+  updateDatasetRow(
+    @Param('rowKey') rowKey: string,
+    @Body('values') values: Record<string, unknown>,
+  ) {
+    return this.candidatesService.updateDatasetTableRow(rowKey, values || {});
+  }
+
+  // 🛡️ ADMIN ONLY - delete one dataset row and rebuild CSV artifacts
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Delete('datasets/rows/:rowKey')
+  deleteDatasetRow(@Param('rowKey') rowKey: string) {
+    return this.candidatesService.deleteDatasetTableRow(rowKey);
   }
 
   // 🛡️ ADMIN ONLY - view full CSV file content in-app for dataset audits

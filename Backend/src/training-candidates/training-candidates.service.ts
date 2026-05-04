@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as fs from 'fs/promises';
@@ -7,10 +11,25 @@ import {
   TrainingCandidate,
   TrainingCandidateDocument,
 } from '../schemas/training-candidate.schema';
+import {
+  UploadedDataset,
+  UploadedDatasetDocument,
+} from '../schemas/uploaded-dataset.schema';
 import { parse } from 'json2csv';
 
 type ExportRow = Record<string, string | number | boolean | null>;
 type DatasetScope = 'ALL' | 'BOAT_TYPE';
+type DatasetRowSource = 'manual' | 'upload';
+
+type DatasetTableRow = ExportRow & {
+  __rowKey: string;
+  __sourceType: DatasetRowSource;
+};
+
+type DatasetTablePayload = {
+  columns: string[];
+  rows: DatasetTableRow[];
+};
 
 export type DatasetCsvFileInfo = {
   filename: string;
@@ -37,6 +56,8 @@ export class TrainingCandidatesService {
   constructor(
     @InjectModel(TrainingCandidate.name)
     private candidateModel: Model<TrainingCandidateDocument>,
+    @InjectModel(UploadedDataset.name)
+    private uploadModel: Model<UploadedDatasetDocument>,
   ) {}
 
   // Mobile App will call this to populate the Data Queue list
@@ -87,7 +108,7 @@ export class TrainingCandidatesService {
     );
   }
 
-  private buildFlattenedRows(
+  private buildFlattenedRowsFromCandidates(
     candidates: Array<
       TrainingCandidateDocument & {
         createdAt?: Date;
@@ -159,17 +180,323 @@ export class TrainingCandidatesService {
     };
   }
 
+  /**
+   * Build flattened rows from uploaded datasets
+   * For uploads, source_trip_id is null, but we track uploadSourceId
+   */
+  private buildFlattenedRowsFromUploads(
+    uploads: Array<
+      UploadedDatasetDocument & {
+        createdAt?: Date;
+        updatedAt?: Date;
+      }
+    >,
+  ) {
+    const rows: ExportRow[] = [];
+    const fieldSet = new Set<string>([
+      'boat_type',
+      'source_trip_id',
+      'boat_id',
+    ]);
+
+    uploads.forEach((upload) => {
+      const records = upload.records || [];
+      records
+        .filter((r) => r.validationStatus === 'VALID')
+        .forEach((record) => {
+          const features = (record.featuresSnapshot || {}) as Record<
+            string,
+            any
+          >;
+          const labels = (record.labelSnapshot || {}) as Record<string, any>;
+
+          const row: ExportRow = {
+            boat_type: record.boatType,
+            source_trip_id: null, // Uploads don't have trip IDs
+            boat_id: record.boatId,
+          };
+
+          Object.keys(features).forEach((key) => {
+            const column = `feature_${key}`;
+            row[column] = features[key] ?? null;
+            fieldSet.add(column);
+          });
+
+          Object.keys(labels).forEach((key) => {
+            const column = `label_${key}`;
+            row[column] = labels[key] ?? null;
+            fieldSet.add(column);
+          });
+
+          rows.push(row);
+        });
+    });
+
+    return {
+      rows,
+      fields: Array.from(fieldSet),
+    };
+  }
+
+  private appendFlattenedSnapshotFields(
+    row: ExportRow,
+    fieldSet: Set<string>,
+    features?: Record<string, any>,
+    labels?: Record<string, any>,
+  ) {
+    Object.keys(features || {}).forEach((key) => {
+      const column = `feature_${key}`;
+      row[column] = features?.[key] ?? null;
+      fieldSet.add(column);
+    });
+
+    Object.keys(labels || {}).forEach((key) => {
+      const column = `label_${key}`;
+      row[column] = labels?.[key] ?? null;
+      fieldSet.add(column);
+    });
+  }
+
+  async getDatasetTableRows(boatType?: string): Promise<DatasetTablePayload> {
+    const query = this.buildExportQuery(boatType);
+    const candidates = await this.candidateModel.find(query).lean().exec();
+
+    const uploadQuery: any = { status: { $in: ['APPROVED', 'TRAINED'] } };
+    if (boatType) {
+      uploadQuery.boatType = {
+        $regex: `^${String(boatType)
+          .trim()
+          .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+        $options: 'i',
+      };
+    }
+    const uploads = await this.uploadModel.find(uploadQuery).lean().exec();
+
+    const fieldSet = new Set<string>([
+      'boat_type',
+      'source_trip_id',
+      'boat_id',
+    ]);
+    const rows: DatasetTableRow[] = [];
+
+    (candidates as any[]).forEach((doc) => {
+      const row: DatasetTableRow = {
+        __rowKey: `manual:${String(doc._id)}`,
+        __sourceType: 'manual',
+        boat_type: doc.boatType,
+        source_trip_id: doc.sourceTripId,
+        boat_id: doc.boatId,
+      };
+
+      this.appendFlattenedSnapshotFields(
+        row,
+        fieldSet,
+        doc.featuresSnapshot || {},
+        doc.labelSnapshot || {},
+      );
+
+      rows.push(row);
+    });
+
+    (uploads as any[]).forEach((upload) => {
+      (upload.records || []).forEach((record, index) => {
+        if (record.validationStatus !== 'VALID') {
+          return;
+        }
+
+        const row: DatasetTableRow = {
+          __rowKey: `upload:${String(upload._id)}:${index}`,
+          __sourceType: 'upload',
+          boat_type: record.boatType,
+          source_trip_id: null,
+          boat_id: record.boatId,
+        };
+
+        this.appendFlattenedSnapshotFields(
+          row,
+          fieldSet,
+          record.featuresSnapshot || {},
+          record.labelSnapshot || {},
+        );
+
+        rows.push(row);
+      });
+    });
+
+    return {
+      columns: Array.from(fieldSet),
+      rows,
+    };
+  }
+
+  private parseEditableNumber(value: unknown) {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) {
+      throw new BadRequestException(`Invalid numeric value: ${value}`);
+    }
+
+    return parsed;
+  }
+
+  private applyDatasetRowUpdates(
+    target: {
+      boatId?: string;
+      featuresSnapshot?: Record<string, any>;
+      labelSnapshot?: Record<string, any>;
+    },
+    values: Record<string, unknown>,
+  ) {
+    Object.entries(values || {}).forEach(([column, value]) => {
+      if (column === 'boat_id') {
+        const boatId = String(value || '').trim();
+        if (!boatId) {
+          throw new BadRequestException('boat_id cannot be empty.');
+        }
+        target.boatId = boatId;
+        return;
+      }
+
+      if (column.startsWith('feature_')) {
+        const key = column.replace(/^feature_/, '');
+        target.featuresSnapshot = target.featuresSnapshot || {};
+        target.featuresSnapshot[key] = this.parseEditableNumber(value);
+        return;
+      }
+
+      if (column.startsWith('label_')) {
+        const key = column.replace(/^label_/, '');
+        target.labelSnapshot = target.labelSnapshot || {};
+        target.labelSnapshot[key] = this.parseEditableNumber(value);
+      }
+    });
+  }
+
+  private parseRowKey(rowKey: string) {
+    const [sourceType, id, recordIndex] = String(rowKey || '').split(':');
+    if (sourceType !== 'manual' && sourceType !== 'upload') {
+      throw new BadRequestException('Invalid dataset row key.');
+    }
+
+    if (!id) {
+      throw new BadRequestException('Dataset row id is required.');
+    }
+
+    return {
+      sourceType: sourceType as DatasetRowSource,
+      id,
+      recordIndex:
+        recordIndex !== undefined ? Number.parseInt(recordIndex, 10) : null,
+    };
+  }
+
+  async updateDatasetTableRow(rowKey: string, values: Record<string, unknown>) {
+    const parsedKey = this.parseRowKey(rowKey);
+
+    if (parsedKey.sourceType === 'manual') {
+      const candidate = await this.candidateModel.findById(parsedKey.id).exec();
+      if (!candidate) {
+        throw new NotFoundException('Manual training row not found.');
+      }
+
+      this.applyDatasetRowUpdates(candidate as any, values);
+      candidate.markModified('featuresSnapshot');
+      candidate.markModified('labelSnapshot');
+      await candidate.save();
+      await this.syncDatasetCsvArtifacts();
+      return { message: 'Dataset row updated.' };
+    }
+
+    if (parsedKey.recordIndex === null || Number.isNaN(parsedKey.recordIndex)) {
+      throw new BadRequestException('Upload record index is required.');
+    }
+
+    const upload = await this.uploadModel.findById(parsedKey.id).exec();
+    if (!upload || !upload.records?.[parsedKey.recordIndex]) {
+      throw new NotFoundException('Uploaded dataset row not found.');
+    }
+
+    const record = upload.records[parsedKey.recordIndex] as any;
+    this.applyDatasetRowUpdates(record, values);
+    upload.markModified('records');
+    await upload.save();
+    await this.syncDatasetCsvArtifacts();
+    return { message: 'Dataset row updated.' };
+  }
+
+  async deleteDatasetTableRow(rowKey: string) {
+    const parsedKey = this.parseRowKey(rowKey);
+
+    if (parsedKey.sourceType === 'manual') {
+      const deleted = await this.candidateModel
+        .findByIdAndDelete(parsedKey.id)
+        .exec();
+      if (!deleted) {
+        throw new NotFoundException('Manual training row not found.');
+      }
+
+      await this.syncDatasetCsvArtifacts();
+      return { message: 'Dataset row deleted.' };
+    }
+
+    if (parsedKey.recordIndex === null || Number.isNaN(parsedKey.recordIndex)) {
+      throw new BadRequestException('Upload record index is required.');
+    }
+
+    const upload = await this.uploadModel.findById(parsedKey.id).exec();
+    if (!upload || !upload.records?.[parsedKey.recordIndex]) {
+      throw new NotFoundException('Uploaded dataset row not found.');
+    }
+
+    upload.records.splice(parsedKey.recordIndex, 1);
+    upload.rowCount = upload.records.length;
+    upload.processedCount = upload.records.filter(
+      (record) => record.validationStatus === 'VALID',
+    ).length;
+    upload.errorCount = upload.records.filter(
+      (record) => record.validationStatus === 'INVALID',
+    ).length;
+    upload.markModified('records');
+    await upload.save();
+    await this.syncDatasetCsvArtifacts();
+    return { message: 'Dataset row deleted.' };
+  }
+
   // Export approved+trained training candidates as CSV for ML training datasets
   async exportApprovedAsCSV(boatType?: string): Promise<string> {
     const query = this.buildExportQuery(boatType);
     const candidates = await this.candidateModel.find(query).lean().exec();
-    const { rows, fields } = this.buildFlattenedRows(candidates as any);
 
-    if (rows.length === 0) {
+    // Also get approved uploaded datasets
+    const uploadQuery: any = { status: { $in: ['APPROVED', 'TRAINED'] } };
+    if (boatType) {
+      uploadQuery.boatType = {
+        $regex: `^${String(boatType)
+          .trim()
+          .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+        $options: 'i',
+      };
+    }
+    const uploads = await this.uploadModel.find(uploadQuery).lean().exec();
+
+    // Flatten manual candidates
+    const manualRows = this.buildFlattenedRowsFromCandidates(candidates as any);
+
+    // Flatten uploaded records
+    const uploadedRows = this.buildFlattenedRowsFromUploads(uploads as any);
+
+    // Merge rows
+    const allRows = [...manualRows.rows, ...uploadedRows.rows];
+    const allFields = new Set([...manualRows.fields, ...uploadedRows.fields]);
+
+    if (allRows.length === 0) {
       return 'boat_type,source_trip_id,boat_id\n';
     }
 
-    return parse(rows, { fields });
+    return parse(allRows, { fields: Array.from(allFields) });
   }
 
   async syncDatasetCsvArtifacts() {
@@ -185,11 +512,21 @@ export class TrainingCandidatesService {
       'utf8',
     );
 
-    const distinctBoatTypes = await this.candidateModel.distinct('boatType', {
+    // Get distinct boat types from BOTH candidates and uploads
+    const candidateBoatTypes = await this.candidateModel.distinct('boatType', {
       status: { $in: ['APPROVED', 'TRAINED'] },
     });
 
-    for (const rawBoatType of distinctBoatTypes) {
+    const uploadBoatTypes = await this.uploadModel.distinct('boatType', {
+      status: { $in: ['APPROVED', 'TRAINED'] },
+    });
+
+    const allBoatTypes = new Set<string>([
+      ...(candidateBoatTypes || []),
+      ...(uploadBoatTypes || []),
+    ]);
+
+    for (const rawBoatType of allBoatTypes) {
       const boatType = String(rawBoatType || '').trim();
       if (!boatType) {
         continue;
@@ -200,6 +537,18 @@ export class TrainingCandidatesService {
       const filename = `training_data_${slug}.csv`;
       canonicalFiles.add(filename);
       await fs.writeFile(path.join(outputDir, filename), csv, 'utf8');
+
+      // Mark uploads as synced
+      await this.uploadModel.updateMany(
+        {
+          boatType,
+          status: { $in: ['APPROVED', 'TRAINED'] },
+        },
+        {
+          synced: true,
+          syncedAt: new Date(),
+        },
+      );
     }
 
     // Remove stale per-boat files so repeated syncs do not leave duplicate variants.
@@ -214,6 +563,86 @@ export class TrainingCandidatesService {
     await Promise.all(
       staleBoatFiles.map((file) => fs.unlink(path.join(outputDir, file))),
     );
+  }
+
+  async getBoatwiseDatasetStats() {
+    // Get distinct boat types from both sources
+    const candidateBoatTypes = await this.candidateModel.distinct('boatType', {
+      status: { $in: ['APPROVED', 'TRAINED'] },
+    });
+
+    const uploadBoatTypes = await this.uploadModel.distinct('boatType', {
+      status: { $in: ['APPROVED', 'TRAINED'] },
+    });
+
+    const allBoatTypes = new Set<string>([
+      ...(candidateBoatTypes || []),
+      ...(uploadBoatTypes || []),
+    ]);
+
+    const stats = await Promise.all(
+      Array.from(allBoatTypes).map(async (boatType) => {
+        const normalized = String(boatType || '').trim();
+        if (!normalized) return null;
+
+        const [manualCount, uploadedCount] = await Promise.all([
+          this.candidateModel.countDocuments({
+            boatType: normalized,
+            status: { $in: ['APPROVED', 'TRAINED'] },
+          }),
+          this.uploadModel
+            .find({
+              boatType: normalized,
+              status: { $in: ['APPROVED', 'TRAINED'] },
+            })
+            .lean()
+            .then((uploads) =>
+              uploads.reduce(
+                (count, upload: any) =>
+                  count +
+                  (upload.records || []).filter(
+                    (record) => record.validationStatus === 'VALID',
+                  ).length,
+                0,
+              ),
+            ),
+        ]);
+
+        const slug = slugifyBoatType(normalized);
+        const filename = `training_data_${slug}.csv`;
+        const filePath = path.join(this.getDatasetOutputDir(), filename);
+
+        let csvRowCount = 0;
+        let csvSize = 0;
+        let csvUpdatedAt = null;
+
+        try {
+          const stats = await fs.stat(filePath);
+          const content = await fs.readFile(filePath, 'utf8');
+          const trimmed = content.trim();
+          csvRowCount = trimmed ? trimmed.split(/\r?\n/).length - 1 : 0;
+          csvSize = stats.size;
+          csvUpdatedAt = stats.mtime.toISOString();
+        } catch {
+          // File doesn't exist yet, that's ok
+        }
+
+        return {
+          boatType: normalized,
+          boatTypeSlug: slug,
+          csvFile: filename,
+          csvSize: csvSize,
+          csvRowCount: Math.max(csvRowCount, 0),
+          csvUpdatedAt: csvUpdatedAt,
+          manualTripRows: manualCount,
+          uploadedDatasetRows: uploadedCount,
+          totalRows: manualCount + uploadedCount,
+          readyForTraining: manualCount + uploadedCount > 0,
+        };
+      }),
+    );
+
+    return stats.filter((s) => s !== null);
   }
 
   async refreshDatasetCsvArtifacts(boatType?: string) {

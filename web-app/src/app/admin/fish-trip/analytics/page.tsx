@@ -71,6 +71,32 @@ type BoatTypeAnalyticsResponse = {
   boatTypes: BoatTypeAnalyticsRow[];
 };
 
+type BoatwiseDatasetStats = {
+  boatType: string;
+  manualTripRows: number;
+  uploadedDatasetRows: number;
+  totalRows: number;
+};
+
+type ModelArtifact = {
+  scope: "GLOBAL" | "BOAT_TYPE";
+  boatType: string | null;
+  modelExists: boolean;
+  selectedModel: string | null;
+  rowsUsed: number;
+  metrics: {
+    mape: number | null;
+    mae: number | null;
+    rmse: number | null;
+    r2: number | null;
+  };
+  updatedAt: string | null;
+};
+
+type ModelArtifactSummary = {
+  artifacts: ModelArtifact[];
+};
+
 type ModelMetrics = {
   mape?: number;
   MAPE?: number;
@@ -104,6 +130,10 @@ type BoatTypeView = {
   boatCount: number;
   tripCount: number;
   actualTripCount: number;
+  trainingRows: number;
+  manualTrainingRows: number;
+  uploadedTrainingRows: number;
+  artifactRowsUsed: number;
   modelAccuracy: number;
   mape: number;
   mae: number;
@@ -118,6 +148,7 @@ type BoatTypeView = {
   highRiskTrips: number;
   algorithm: string;
   modelStatus: string;
+  modelSource: string;
 };
 
 const colors = ["#2563eb", "#059669", "#d97706", "#0891b2", "#7c3aed", "#dc2626"];
@@ -173,6 +204,8 @@ export default function FishTripAnalyticsPage() {
   const [models, setModels] = useState<ModelVersion[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [boats, setBoats] = useState<Boat[]>([]);
+  const [datasetStats, setDatasetStats] = useState<BoatwiseDatasetStats[]>([]);
+  const [modelArtifacts, setModelArtifacts] = useState<ModelArtifact[]>([]);
   const [selectedBoatType, setSelectedBoatType] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,17 +216,33 @@ export default function FishTripAnalyticsPage() {
     setError(null);
     setIsLoading(true);
     try {
-      const [analyticsData, modelData, tripData, boatData] = await Promise.all([
+      const datasetStatsRequest = apiFetch<BoatwiseDatasetStats[]>(
+        "/training-candidates/datasets/stats/boatwise",
+      ).catch((e) => {
+        console.warn("Training dataset stats unavailable:", (e as ApiError).message);
+        return [];
+      });
+      const artifactSummaryRequest = apiFetch<ModelArtifactSummary>(
+        "/model-registry/artifacts/summary",
+      ).catch((e) => {
+        console.warn("Model artifact metadata unavailable:", (e as ApiError).message);
+        return { artifacts: [] };
+      });
+      const [analyticsData, modelData, tripData, boatData, datasetData, artifactData] = await Promise.all([
         apiFetch<BoatTypeAnalyticsResponse>("/training-jobs/analytics/boat-types"),
         apiFetch<ModelVersion[]>("/model-registry/versions"),
         apiFetch<Trip[]>("/trips"),
         getAllBoatsForAdmin(),
+        datasetStatsRequest,
+        artifactSummaryRequest,
       ]);
 
       setAnalytics(analyticsData);
       setModels(Array.isArray(modelData) ? modelData : []);
       setTrips(Array.isArray(tripData) ? tripData : []);
       setBoats(Array.isArray(boatData) ? boatData : []);
+      setDatasetStats(Array.isArray(datasetData) ? datasetData : []);
+      setModelArtifacts(Array.isArray(artifactData?.artifacts) ? artifactData.artifacts : []);
     } catch (e) {
       const err = e as ApiError;
       setError(err.message ?? "Failed to load trip analytics");
@@ -215,6 +264,12 @@ export default function FishTripAnalyticsPage() {
     analytics?.boatTypes.forEach((row) => keys.add(normalizeBoatType(row.boatType)));
     trips.forEach((trip) => keys.add(normalizeBoatType(trip.boatType)));
     boats.forEach((boat) => keys.add(normalizeBoatType(boat.boatType)));
+    datasetStats.forEach((stat) => keys.add(normalizeBoatType(stat.boatType)));
+    modelArtifacts.forEach((artifact) => {
+      if (artifact.scope === "BOAT_TYPE") {
+        keys.add(normalizeBoatType(artifact.boatType || ""));
+      }
+    });
 
     return Array.from(keys)
       .filter(Boolean)
@@ -224,6 +279,12 @@ export default function FishTripAnalyticsPage() {
         );
         const boatTypeTrips = trips.filter((trip) => normalizeBoatType(trip.boatType) === key);
         const boatTypeBoats = boats.filter((boat) => normalizeBoatType(boat.boatType) === key);
+        const datasetRow = datasetStats.find((stat) => normalizeBoatType(stat.boatType) === key);
+        const artifactRow = modelArtifacts.find(
+          (artifact) =>
+            artifact.scope === "BOAT_TYPE" &&
+            normalizeBoatType(artifact.boatType || "") === key,
+        );
         const bestModel = models
           .filter((model) => model.scope === "BOAT_TYPE" && normalizeBoatType(model.boatType) === key)
           .sort((a, b) => {
@@ -231,32 +292,47 @@ export default function FishTripAnalyticsPage() {
             if (b.status === "ACTIVE" && a.status !== "ACTIVE") return 1;
             return Number(a.selectionRank || 99) - Number(b.selectionRank || 99);
           })[0];
+        const artifactAccuracy =
+          artifactRow?.metrics.mape != null
+            ? Math.max(0, Math.min(100, 100 - artifactRow.metrics.mape))
+            : 0;
+        const registryAccuracy = modelAccuracy(bestModel);
 
         return {
           boatType: key,
-          displayName: analyticsRow?.displayName || boatTypeBoats[0]?.boatType || key,
+          displayName: analyticsRow?.displayName || datasetRow?.boatType || boatTypeBoats[0]?.boatType || key,
           imageUrl: imageUrl(boatTypeBoats.find((boat) => boat.boatImage)?.boatImage),
           boatCount: boatTypeBoats.length,
           tripCount: boatTypeTrips.length,
           actualTripCount: boatTypeTrips.filter((trip) => Number(trip.actualFuelLiters || 0) > 0).length,
-          modelAccuracy: modelAccuracy(bestModel),
-          mape: metricValue(bestModel?.metrics, "mape", "MAPE", "averagePredictionError"),
-          mae: metricValue(bestModel?.metrics, "mae", "MAE"),
-          rmse: metricValue(bestModel?.metrics, "rmse", "RMSE"),
-          r2: metricValue(bestModel?.metrics, "r2", "R2"),
+          trainingRows: datasetRow?.totalRows || 0,
+          manualTrainingRows: datasetRow?.manualTripRows || 0,
+          uploadedTrainingRows: datasetRow?.uploadedDatasetRows || 0,
+          artifactRowsUsed: artifactRow?.rowsUsed || 0,
+          modelAccuracy: artifactAccuracy || registryAccuracy,
+          mape: artifactRow?.metrics.mape || metricValue(bestModel?.metrics, "mape", "MAPE", "averagePredictionError") || 0,
+          mae: artifactRow?.metrics.mae || metricValue(bestModel?.metrics, "mae", "MAE") || 0,
+          rmse: artifactRow?.metrics.rmse || metricValue(bestModel?.metrics, "rmse", "RMSE") || 0,
+          r2: artifactRow?.metrics.r2 || metricValue(bestModel?.metrics, "r2", "R2") || 0,
           coveragePercent: analyticsRow?.coveragePercent || 0,
           jobSuccessRate: analyticsRow?.jobSuccessRate || 0,
           trainingJobs: analyticsRow?.trainingJobs || 0,
           recordsProcessed: analyticsRow?.recordsProcessed || 0,
           backlog: analyticsRow?.backlog || 0,
-          lastTrainingAt: analyticsRow?.lastTrainingAt || null,
+          lastTrainingAt: artifactRow?.updatedAt || analyticsRow?.lastTrainingAt || null,
           highRiskTrips: boatTypeTrips.filter((trip) => trip.riskCategory === "high").length,
-          algorithm: bestModel?.algorithmType || "No model",
-          modelStatus: bestModel?.status || "NONE",
+          algorithm: artifactRow?.selectedModel || bestModel?.algorithmType || "No model",
+          modelStatus: artifactRow?.modelExists ? "ARTIFACT" : bestModel?.status || "NONE",
+          modelSource: artifactRow?.modelExists ? "Colab artifact" : bestModel ? "Registry" : "None",
         };
       })
-      .sort((a, b) => b.tripCount - a.tripCount || a.displayName.localeCompare(b.displayName));
-  }, [analytics, boats, models, trips]);
+      .sort(
+        (a, b) =>
+          b.trainingRows - a.trainingRows ||
+          b.tripCount - a.tripCount ||
+          a.displayName.localeCompare(b.displayName),
+      );
+  }, [analytics, boats, datasetStats, modelArtifacts, models, trips]);
 
   const visibleRows = selectedBoatType === "all"
     ? rows
@@ -266,7 +342,7 @@ export default function FishTripAnalyticsPage() {
     () => ({
       boatTypes: visibleRows.length,
       trips: visibleRows.reduce((sum, row) => sum + row.tripCount, 0),
-      records: visibleRows.reduce((sum, row) => sum + row.recordsProcessed, 0),
+      trainingRows: visibleRows.reduce((sum, row) => sum + row.trainingRows, 0),
       avgAccuracy:
         visibleRows.length > 0
           ? visibleRows.reduce((sum, row) => sum + row.modelAccuracy, 0) / visibleRows.length
@@ -331,8 +407,8 @@ export default function FishTripAnalyticsPage() {
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard icon={Anchor} label="Boat types" value={totals.boatTypes.toLocaleString()} />
-        <MetricCard icon={Database} label="Trips counted" value={totals.trips.toLocaleString()} />
-        <MetricCard icon={Brain} label="Training records" value={totals.records.toLocaleString()} />
+        <MetricCard icon={Database} label="App trips" value={totals.trips.toLocaleString()} />
+        <MetricCard icon={Brain} label="Training rows" value={totals.trainingRows.toLocaleString()} />
         <MetricCard icon={Gauge} label="Avg model accuracy" value={formatPercent(totals.avgAccuracy)} />
       </section>
 
@@ -360,7 +436,8 @@ export default function FishTripAnalyticsPage() {
               <XAxis dataKey="boatType" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Line type="monotone" dataKey="tripCount" stroke="#2563eb" strokeWidth={3} name="Trips" />
+              <Line type="monotone" dataKey="tripCount" stroke="#2563eb" strokeWidth={3} name="App trips" />
+              <Line type="monotone" dataKey="trainingRows" stroke="#d97706" strokeWidth={3} name="Training rows" />
               <Line
                 type="monotone"
                 dataKey="coveragePercent"
@@ -398,7 +475,7 @@ export default function FishTripAnalyticsPage() {
                   <div>
                     <h2 className="text-xl font-bold text-gray-900">{row.displayName}</h2>
                     <p className="text-sm text-gray-500 mt-1">
-                      {row.algorithm} • {row.modelStatus} • Last training {formatDate(row.lastTrainingAt)}
+                      {row.algorithm} • {row.modelStatus} • {row.modelSource} • Last training {formatDate(row.lastTrainingAt)}
                     </p>
                   </div>
                   <div className="text-left md:text-right">
@@ -409,9 +486,13 @@ export default function FishTripAnalyticsPage() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
                   <MiniStat label="Boats" value={row.boatCount.toLocaleString()} />
-                  <MiniStat label="Trips" value={row.tripCount.toLocaleString()} />
+                  <MiniStat label="App trips" value={row.tripCount.toLocaleString()} />
                   <MiniStat label="Actual logs" value={row.actualTripCount.toLocaleString()} />
                   <MiniStat label="High risk" value={row.highRiskTrips.toLocaleString()} />
+                  <MiniStat label="Training rows" value={row.trainingRows.toLocaleString()} />
+                  <MiniStat label="Uploaded rows" value={row.uploadedTrainingRows.toLocaleString()} />
+                  <MiniStat label="Manual rows" value={row.manualTrainingRows.toLocaleString()} />
+                  <MiniStat label="Rows used" value={row.artifactRowsUsed.toLocaleString()} />
                   <MiniStat label="MAPE" value={formatPercent(row.mape)} />
                   <MiniStat label="MAE" value={formatNumber(row.mae)} />
                   <MiniStat label="RMSE" value={formatNumber(row.rmse)} />

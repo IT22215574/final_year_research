@@ -7,7 +7,7 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 @UseGuards(JwtAuthGuard, AdminGuard)
 @Controller('model-registry')
 export class ModelRegistryController {
-  constructor(private readonly registryService: ModelRegistryService) { }
+  constructor(private readonly registryService: ModelRegistryService) {}
 
   @Get('versions')
   getAllVersions() {
@@ -22,6 +22,11 @@ export class ModelRegistryController {
   @Get('active')
   getActiveModel() {
     return this.registryService.getActiveModel();
+  }
+
+  @Get('artifacts/summary')
+  getArtifactSummary() {
+    return this.registryService.getArtifactSummary();
   }
 
   @Post('versions/:id/promote')

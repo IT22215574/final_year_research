@@ -11,7 +11,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { getBoatTypeTrainingAnalytics } from "@/services/trainingCandidateService";
+import {
+  getBoatTypeTrainingAnalytics,
+  getBoatwiseDatasetStats,
+  getModelArtifactSummary,
+  type BoatwiseDatasetStats,
+  type ModelArtifact,
+} from "@/services/trainingCandidateService";
 import useAuthStore from "@/stores/authStore";
 
 type BoatTypeAnalyticsRow = {
@@ -27,6 +33,14 @@ type BoatTypeAnalyticsRow = {
   successfulJobs: number;
   failedJobs: number;
   recordsProcessed: number;
+  trainingRows?: number;
+  manualTrainingRows?: number;
+  uploadedTrainingRows?: number;
+  artifactRowsUsed?: number;
+  modelAlgorithm?: string | null;
+  modelMape?: number | null;
+  modelR2?: number | null;
+  modelSource?: string;
   backlog: number;
   coveragePercent: number;
   jobSuccessRate: number;
@@ -85,6 +99,9 @@ const formatPercent = (value?: number) => {
   if (typeof value !== "number" || Number.isNaN(value)) return "0%";
   return `${value.toFixed(1)}%`;
 };
+
+const normalizeBoatType = (value?: string | null) =>
+  String(value || "").trim().toUpperCase();
 
 const MetricCard = ({
   title,
@@ -207,6 +224,10 @@ const BoatTypeRow = ({ item }: { item: BoatTypeAnalyticsRow }) => {
           ["Trained", item.trainedCandidates],
           ["Pending", item.pendingCandidates],
           ["Rejected", item.rejectedCandidates],
+          ["Training rows", item.trainingRows ?? 0],
+          ["Uploaded rows", item.uploadedTrainingRows ?? 0],
+          ["Manual rows", item.manualTrainingRows ?? 0],
+          ["Rows used", item.artifactRowsUsed ?? 0],
           ["Jobs", item.trainingJobs],
           ["Records", item.recordsProcessed],
         ].map(([label, value]) => (
@@ -284,6 +305,14 @@ const BoatTypeRow = ({ item }: { item: BoatTypeAnalyticsRow }) => {
         Backlog: {item.backlog} • Last training:{" "}
         {formatDate(item.lastTrainingAt)}
       </Text>
+      {item.modelAlgorithm || item.modelSource ? (
+        <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 6 }}>
+          Model: {item.modelAlgorithm || "N/A"} • Source:{" "}
+          {item.modelSource || "N/A"} • MAPE:{" "}
+          {item.modelMape != null ? formatPercent(item.modelMape) : "N/A"} •
+          R2: {item.modelR2 != null ? item.modelR2.toFixed(3) : "N/A"}
+        </Text>
+      ) : null}
     </View>
   );
 };
@@ -295,6 +324,8 @@ export default function BoatTypeAnalyticsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [data, setData] = useState<BoatTypeAnalyticsPayload | null>(null);
+  const [datasetStats, setDatasetStats] = useState<BoatwiseDatasetStats[]>([]);
+  const [modelArtifacts, setModelArtifacts] = useState<ModelArtifact[]>([]);
   const [selectedBoatType, setSelectedBoatType] = useState(ALL_BOAT_TYPES);
 
   const horizontalPadding = 16;
@@ -313,8 +344,20 @@ export default function BoatTypeAnalyticsScreen() {
     try {
       setLoading(true);
       setError("");
-      const payload = await getBoatTypeTrainingAnalytics();
+      const [payload, stats, artifactSummary] = await Promise.all([
+        getBoatTypeTrainingAnalytics(),
+        getBoatwiseDatasetStats().catch((err) => {
+          console.warn("Dataset stats unavailable:", err?.message || err);
+          return [];
+        }),
+        getModelArtifactSummary().catch((err) => {
+          console.warn("Model artifacts unavailable:", err?.message || err);
+          return { root: "", artifacts: [] };
+        }),
+      ]);
       setData(payload);
+      setDatasetStats(stats);
+      setModelArtifacts(artifactSummary.artifacts);
     } catch (err: any) {
       setError(err?.message || "Failed to load boat type analytics");
     } finally {
@@ -332,7 +375,84 @@ export default function BoatTypeAnalyticsScreen() {
   }, [isFisherAdmin]);
 
   const summary = useMemo(() => data?.summary, [data]);
-  const rows = data?.boatTypes || [];
+  const rows = useMemo(() => {
+    const sourceRows = data?.boatTypes || [];
+    const rowMap = new Map<string, BoatTypeAnalyticsRow>();
+
+    sourceRows.forEach((row) => {
+      rowMap.set(normalizeBoatType(row.boatType), { ...row });
+    });
+
+    datasetStats.forEach((stat) => {
+      const key = normalizeBoatType(stat.boatType);
+      if (!key) return;
+
+      const existing = rowMap.get(key);
+      rowMap.set(key, {
+        ...(existing || {
+          boatType: key,
+          displayName: stat.boatType,
+          isConfigured: false,
+          totalCandidates: 0,
+          approvedCandidates: 0,
+          trainedCandidates: 0,
+          pendingCandidates: 0,
+          rejectedCandidates: 0,
+          trainingJobs: 0,
+          successfulJobs: 0,
+          failedJobs: 0,
+          recordsProcessed: 0,
+          backlog: 0,
+          coveragePercent: 0,
+          jobSuccessRate: 0,
+          lastTrainingAt: null,
+        }),
+        trainingRows: stat.totalRows,
+        manualTrainingRows: stat.manualTripRows,
+        uploadedTrainingRows: stat.uploadedDatasetRows,
+      });
+    });
+
+    modelArtifacts.forEach((artifact) => {
+      if (artifact.scope !== "BOAT_TYPE") return;
+      const key = normalizeBoatType(artifact.boatType);
+      if (!key) return;
+
+      const existing = rowMap.get(key);
+      rowMap.set(key, {
+        ...(existing || {
+          boatType: key,
+          displayName: key,
+          isConfigured: false,
+          totalCandidates: 0,
+          approvedCandidates: 0,
+          trainedCandidates: 0,
+          pendingCandidates: 0,
+          rejectedCandidates: 0,
+          trainingJobs: 0,
+          successfulJobs: 0,
+          failedJobs: 0,
+          recordsProcessed: 0,
+          backlog: 0,
+          coveragePercent: 0,
+          jobSuccessRate: 0,
+          lastTrainingAt: null,
+        }),
+        artifactRowsUsed: artifact.rowsUsed,
+        modelAlgorithm: artifact.selectedModel,
+        modelMape: artifact.metrics.mape,
+        modelR2: artifact.metrics.r2,
+        modelSource: artifact.modelExists ? "Colab artifact" : "Metadata",
+        lastTrainingAt: existing?.lastTrainingAt || artifact.updatedAt,
+      });
+    });
+
+    return Array.from(rowMap.values()).sort(
+      (a, b) =>
+        Number(b.trainingRows || 0) - Number(a.trainingRows || 0) ||
+        a.displayName.localeCompare(b.displayName),
+    );
+  }, [data?.boatTypes, datasetStats, modelArtifacts]);
   const isAllSelected = selectedBoatType === ALL_BOAT_TYPES;
   const selectedRow =
     rows.find((item) => item.boatType === selectedBoatType) || rows[0] || null;
@@ -341,6 +461,10 @@ export default function BoatTypeAnalyticsScreen() {
     { boatType: ALL_BOAT_TYPES, displayName: "All boat types" },
     ...rows,
   ];
+  const totalTrainingRows = rows.reduce(
+    (sum, row) => sum + Number(row.trainingRows || 0),
+    0,
+  );
 
   useEffect(() => {
     if (!rows.length) {
@@ -642,9 +766,9 @@ export default function BoatTypeAnalyticsScreen() {
               width={metricWidth}
             />
             <MetricCard
-              title="TRAINED"
-              value={String(summary?.trainedCandidates ?? 0)}
-              subtitle="Approved rows already marked trained"
+              title="TRAINING ROWS"
+              value={String(totalTrainingRows)}
+              subtitle="Rows available in boat-wise CSV datasets"
               icon="school-outline"
               accent={colors.blue}
               accentSoft="#dbeafe"

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BarChart3, Compass, Fish, LayoutDashboard, LogOut, Menu, Ship, Store, Users, X } from "lucide-react";
+import { BarChart3, Compass, Database, Fish, LayoutDashboard, LogOut, Menu, Ship, Store, Upload, Users, X } from "lucide-react";
 
 import { signOut } from "@/lib/authApi";
 import type { ApiError } from "@/lib/api";
@@ -39,6 +39,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         canManageFishTrips
           ? { href: "/admin/fish-trip/analytics", label: "Trip Analytics", icon: BarChart3 }
           : null,
+        canManageFishTrips
+          ? { href: "/admin/dataset-uploads", label: "Dataset Uploads", icon: Upload }
+          : null,
+        canManageFishTrips
+          ? { href: "/admin/dataset-uploads/manage", label: "Manage Uploads", icon: Database }
+          : null,
+        canManageFishTrips
+          ? { href: "/admin/dataset-data", label: "View Dataset Data", icon: BarChart3 }
+          : null,
       ].filter((item): item is NonNullable<typeof item> => item !== null),
     [canManageFishTrips],
   );
@@ -50,12 +59,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setPending(true);
     try {
       await signOut();
-      clear();
-      router.replace("/");
     } catch (e) {
       const err = e as ApiError;
-      setError(err.message ?? "Failed to sign out");
+      if (err.status !== 401) {
+        console.warn("Server sign-out failed:", err.message ?? "Failed to sign out");
+      }
     } finally {
+      clear();
+      router.replace("/");
       setPending(false);
       setSidebarOpen(false);
     }
