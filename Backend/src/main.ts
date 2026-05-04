@@ -2,34 +2,27 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
-
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 
-import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
-
 async function bootstrap() {
-  // ✅ Use NestExpressApplication so we can serve static files
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create(AppModule);
 
-  // =========================
-  // MongoDB connection logging (keep your logic)
-  // =========================
+  // Get MongoDB connection
   const connection = app.get<Connection>(getConnectionToken());
-
+  
+  // Check current connection state
   const checkConnection = () => {
     const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
     console.log(`MongoDB connection state: ${states[connection.readyState]}`);
-
+    
     if (connection.readyState === 1) {
       console.log('MongoDB connected successfully');
-      console.log(
-        `Database: ${connection.db?.databaseName || 'connecting...'}`,
-      );
+      console.log(`Database: ${connection.db?.databaseName || 'connecting...'}`);
     }
   };
 
+  // Listen for connection events
   connection.on('connected', () => {
     console.log('MongoDB connected successfully');
     console.log(`Database: ${connection.db?.databaseName}`);
@@ -43,59 +36,28 @@ async function bootstrap() {
     console.log('MongoDB disconnected');
   });
 
+  // Initial check
   checkConnection();
 
-  // =========================
-  // ✅ Serve uploaded images publicly
-  // URL: http://localhost:5000/uploads/boats/xxx.png
-  // =========================
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/',
-  });
-
-  // =========================
-  // CORS
-  // =========================
   app.enableCors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://192.168.8.135:3000',
-      'http://192.168.8.135:8081',
-      'exp://192.168.8.135:8081',
-      // ✅ Optional: add Expo dev URLs if you use them
-      // 'http://localhost:19006',
-      // 'exp://localhost:19000',
-    ],
+    origin: true, // Allow all origins (mobile apps need this)
     credentials: true,
   });
 
   app.use(cookieParser());
 
-  // =========================
-  // Validation Pipe
-  // =========================
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      transformOptions: { enableImplicitConversion: true },
-      forbidNonWhitelisted: true,
     }),
   );
 
-  // =========================
-  // Global API Prefix
-  // =========================
   app.setGlobalPrefix('api/v1');
 
   const port = process.env.PORT || 5000;
-  await app.listen(port, '0.0.0.0');
-
+  await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Network: http://192.168.8.135:${port}`);
-  console.log(`Uploads served at: http://localhost:${port}/uploads/`);
 }
 
 bootstrap();
