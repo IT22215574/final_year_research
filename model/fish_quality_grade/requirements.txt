@@ -7,13 +7,14 @@ uvicorn[standard]>=0.29.0
 python-multipart>=0.0.9        # required for UploadFile
 
 # ── ML / inference ─────────────────────────────────────────────────────────────
-onnxruntime>=1.17.0
-numpy>=1.24.0
+onnxruntime>=1.18.0  # Supports NumPy 2.x
+numpy>=2.0.0
+opencv-python-headless>=4.9.0  # Requires NumPy 2.x
 
 # ── Image processing ───────────────────────────────────────────────────────────
 Pillow>=10.0.0
 pillow-heif>=0.16.0            # HEIC / HEIF support (iPhone photos)
-opencv-python-headless>=4.9.0  # CV pipeline for /measure endpoint (no GUI deps)
+
 
 # ── Utilities ──────────────────────────────────────────────────────────────────
 python-dotenv>=1.0.0           # optional .env support
