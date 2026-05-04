@@ -1,7 +1,7 @@
 // utils/api.ts
 import * as SecureStore from "expo-secure-store";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_KEY;
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
