@@ -1,5 +1,14 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Image } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  Alert,
+  Platform,
+} from "react-native";
+import * as SecureStore from "expo-secure-store";
 import { useRouter, type Href } from "expo-router";
 import useAuthStore from "@/stores/authStore";
 import { icons } from "@/constants";
@@ -11,7 +20,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
   const router = useRouter();
-  const { currentUser, isSignedIn } = useAuthStore();
+  const { currentUser, isSignedIn, signOut } = useAuthStore();
 
   if (!isVisible) return null;
 
@@ -20,27 +29,80 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
     router.push(path as any);
   };
 
-  const menuItems = [
-    { name: "Home", path: "/(tabs)/home", icon: icons.nav_home },
-    { name: "Market", path: "/(tabs)/Market", icon: icons.HouseSale },
-    { name: "Quality", path: "/(tabs)/Quality", icon: icons.Digital },
+  const handleLogout = async () => {
+    Alert.alert("Sign out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign out",
+        style: "destructive",
+        onPress: async () => {
+          onClose();
+          await SecureStore.deleteItemAsync("access_token");
+          await SecureStore.deleteItemAsync("refresh_token");
+          await signOut();
+          router.replace("/(auth)/sign-in");
+        },
+      },
+    ]);
+  };
+
+  let menuItems: {
+    name: string;
+    path?: Href;
+    icon: any;
+    action?: () => void;
+    isDanger?: boolean;
+  }[] = [
+    { name: "Home", path: "/(root)/(tabs)/home", icon: icons.nav_home },
+    { name: "Market", path: "/(root)/(tabs)/Market", icon: icons.HouseSale },
+    { name: "Quality", path: "/(root)/(tabs)/Quality", icon: icons.Digital },
     {
       name: "Notifications",
-      path: "/(tabs)/Notifications",
+      path: "/(root)/(tabs)/Notifications",
       icon: icons.notification,
     },
-    { name: "Profile", path: "/(tabs)/profile", icon: icons.nav_user },
-    { name: "Trip Cost", path: "/(tabs)/fishtripcost", icon: icons.BackArrow },
+    { name: "Profile", path: "/(root)/(tabs)/profile", icon: icons.nav_user },
+    {
+      name: "Trip Cost",
+      path: "/(root)/(tabs)/fishtripcost",
+      icon: icons.BackArrow,
+    },
   ];
+
+  // ADD THIS BLOCK right after the array closes:
+  if (currentUser?.role === "fisher admin") {
+    menuItems.push(
+      // Just ONE button for the sidebar
+      {
+        name: "Fisher Admin", // <--- This will show in the sidebar!
+        path: "/(root)/(tabs)/fishtripcostadmin",
+        icon: icons.Digital,
+      },
+    );
+  }
 
   // Default avatar if user doesn't have one
   const defaultAvatar = icons.nav_user;
+
+  // Helper function to get image source
+  const getImageSource = (icon: any) => {
+    if (!icon) return null;
+    if (typeof icon === "object" && icon.uri) {
+      return { uri: icon.uri };
+    }
+    if (typeof icon === "number") {
+      return icon;
+    }
+    if (typeof icon === "string") {
+      return { uri: icon };
+    }
+    return icon;
+  };
 
   return (
     <View style={styles.sidebar}>
       {/* User Info Section */}
       <View style={styles.userSection}>
-        {/* Profile Avatar */}
         <View style={styles.avatarContainer}>
           <Image
             source={
@@ -66,12 +128,34 @@ const Sidebar: React.FC<SidebarProps> = ({ isVisible, onClose }) => {
           <TouchableOpacity
             key={index}
             style={styles.menuItem}
-            onPress={() => handleNavigation(item.path)}
+            onPress={() =>
+              item.action
+                ? item.action()
+                : item.path && handleNavigation(item.path)
+            }
+            activeOpacity={0.7}
           >
-            <Image source={item.icon} style={styles.menuIcon} />
+            <Image source={getImageSource(item.icon)} style={styles.menuIcon} />
             <Text style={styles.menuText}>{item.name}</Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      {/* Logout Button */}
+      <View style={styles.logoutContainer}>
+        <TouchableOpacity
+          style={styles.logoutItem}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
+          <Image
+            source={require("../assets/icons/logout.png")}
+            style={styles.logoutIcon}
+            // Android fix: Force image to not use default tint
+            defaultSource={require("../assets/icons/logout.png")}
+          />
+          <Text style={styles.logoutText}>Sign Out</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -83,17 +167,30 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     width: 280,
-    height: "120%",
+    height: "100%",
     backgroundColor: "white",
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
+    paddingBottom: Platform.OS === "ios" ? 34 : 24,
     zIndex: 1000,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
   },
   userSection: {
     marginBottom: 30,
     paddingBottom: 20,
-    marginTop: 100, // Reduced marginTop to accommodate avatar
+    marginTop: Platform.OS === "ios" ? 20 : 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#374151",
+    borderBottomColor: "#E5E7EB",
   },
   avatarContainer: {
     marginBottom: 16,
@@ -103,17 +200,17 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 2,
-    borderColor: "#e5e7eb",
+    borderColor: "#E5E7EB",
   },
   userName: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "black",
+    color: "#000000",
     marginBottom: 4,
   },
   userEmail: {
-    fontSize: 16,
-    color: "#9ca3af",
+    fontSize: 14,
+    color: "#6B7280",
   },
   menuItems: {
     flex: 1,
@@ -127,17 +224,55 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   menuIcon: {
-    width: 20,
-    height: 20,
+    width: 22,
+    height: 22,
     marginRight: 12,
-    tintColor: "#4b5563",
+    tintColor: "#4B5563",
+    resizeMode: "contain",
   },
   menuText: {
-    color: "black",
+    color: "#000000",
     fontSize: 16,
     fontWeight: "500",
+  },
+  logoutContainer: {
+    marginTop: 20,
+    marginBottom: Platform.OS === "ios" ? 10 : 5,
+  },
+  logoutItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: "#FFF1F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    gap: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#EF4444",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  logoutIcon: {
+    width: 22,
+    tintColor: "#EF4444",
+    height: 22,
+    resizeMode: "contain",
+  },
+  logoutText: {
+    color: "#EF4444",
+    fontSize: 16,
+    fontWeight: "600",
+    flex: 1,
   },
 });
 
 export default Sidebar;
-

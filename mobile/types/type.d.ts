@@ -145,20 +145,34 @@ declare interface DriverCardProps {
 declare interface Trip {
   _id: string;
   userId: string;
+  boatId?: string;
+  status?: "planned" | "in-progress" | "completed" | "cancelled";
   
   // Trip Duration
-  departureTime: string | Date;
-  returnTime: string | Date;
+  departureTime?: string | Date;
+  returnTime?: string | Date;
   tripDurationHours?: number;
   
   // Travel & Engine
+  startLat?: number;
+  startLon?: number;
+  endLat?: number;
+  endLon?: number;
   distanceKm?: number;
   engineHorsePower?: number;
+  engineHP?: number;
   boatType?: string;
+  speed?: number;
+  averageSpeed?: number;
+  crewCount?: number;
+  fishingHours?: number;
+  numberOfDays?: number;
+  mode?: "island" | "international";
   
   // Weather Factors
   windSpeed?: number;
   waveHeight?: number;
+  rainMmPerHour?: number;
   weatherCondition?: string;
   
   // Fuel
@@ -173,6 +187,33 @@ declare interface Trip {
   maintenanceCost?: number;
   otherCost?: number;
   totalCost?: number;
+
+  // DATCIE predicted values
+  predictedFuelLiters?: number;
+  predictedTotalCost?: number;
+  predictedFuelCost?: number;
+  predictedCrewCost?: number;
+  predictedOperationalCost?: number;
+  predictedExternalCostTotal?: number;
+  predictedDistanceKm?: number;
+  weatherSeverityIndex?: number;
+  economicStressIndex?: number;
+  profitabilityProbability?: number;
+  riskCategory?: string;
+  carbonEmissionKg?: number;
+  carbonPerKgCatch?: number;
+  optimizationRecommendations?: string[];
+
+  // DATCIE actual values
+  actualFuelLiters?: number;
+  actualCatchKg?: number;
+  actualFuelCost?: number;
+  actualOperationalCost?: number;
+  actualExternalCostTotal?: number;
+  actualTotalCost?: number;
+  actualRevenue?: number;
+  actualProfit?: number;
+  actualNotes?: string;
   
   // Timestamps
   createdAt?: string;
@@ -187,6 +228,7 @@ declare interface CreateTripDto {
   boatType?: string;
   windSpeed?: number;
   waveHeight?: number;
+  rainMmPerHour?: number;
   weatherCondition?: string;
   fuelUsedLiters?: number;
   fuelPricePerLiter?: number;
@@ -199,8 +241,22 @@ declare interface CreateTripDto {
 
 declare interface TripStats {
   totalTrips: number;
-  totalCost: number;
-  averageCost: number;
+  totalCost?: number;
+  averageCost?: number;
+  completedTrips?: number;
+  predictionsWithActuals?: number;
+  fuelAccuracyRate?: number;
+  costAccuracyRate?: number;
+  averagePredictedCost?: number;
+  averageActualCost?: number;
+  averageFuelErrorPercent?: number;
+  averageCostErrorPercent?: number;
+  totalPredictedFuel?: number;
+  totalActualFuel?: number;
+  totalFuelVariance?: number;
+  totalPredictedCost?: number;
+  totalActualCost?: number;
+  totalCostVariance?: number;
   totalFuelUsed: number;
   totalDistance: number;
 }

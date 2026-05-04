@@ -42,6 +42,15 @@ export class GradingRecordsService {
       imagePaths,
       notes: dto.notes ?? '',
       marketStatus: dto.marketStatus ?? 'saved',
+      // ── Measurement & size classification fields ───────────────────────
+      // These are stored for future reporting and analytics.
+      // Old records without these fields remain valid (all optional in schema).
+      measuredLengthCm: dto.measuredLengthCm,
+      estimatedWeightKg: dto.estimatedWeightKg,
+      estimatedWeightGrams: dto.estimatedWeightGrams,
+      sizeCategory: dto.sizeCategory ?? null,
+      measurementMethod: dto.measurementMethod ?? '',
+      measurementConfidence: dto.measurementConfidence,
     });
 
     return doc.save();

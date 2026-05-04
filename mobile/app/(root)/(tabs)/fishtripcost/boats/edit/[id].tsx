@@ -33,10 +33,6 @@ export default function EditBoatScreen() {
   const [boatLength, setBoatLength] = useState("");
   const [boatWidth, setBoatWidth] = useState("");
   const [boatValue, setBoatValue] = useState("");
-  const [fuelEfficiencyFactor, setFuelEfficiencyFactor] = useState("");
-  const [engineDegradationFactor, setEngineDegradationFactor] = useState("");
-  const [averageFuelPredictionError, setAverageFuelPredictionError] =
-    useState("");
   const [mode, setMode] = useState<BoatMode>("island");
 
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -70,21 +66,6 @@ export default function EditBoatScreen() {
       setBoatLength(boat.boatLength != null ? String(boat.boatLength) : "");
       setBoatWidth(boat.boatWidth != null ? String(boat.boatWidth) : "");
       setBoatValue(boat.boatValue != null ? String(boat.boatValue) : "");
-      setFuelEfficiencyFactor(
-        boat.fuelEfficiencyFactor != null
-          ? String(boat.fuelEfficiencyFactor)
-          : "",
-      );
-      setEngineDegradationFactor(
-        boat.engineDegradationFactor != null
-          ? String(boat.engineDegradationFactor)
-          : "",
-      );
-      setAverageFuelPredictionError(
-        boat.averageFuelPredictionError != null
-          ? String(boat.averageFuelPredictionError)
-          : "",
-      );
       setMode((boat.mode as BoatMode) || "island");
       setBoatTypes(Array.isArray(types) ? types : []);
 
@@ -166,11 +147,6 @@ export default function EditBoatScreen() {
         boatLength: toOptionalNumber(boatLength),
         boatWidth: toOptionalNumber(boatWidth),
         boatValue: toOptionalNumber(boatValue),
-        fuelEfficiencyFactor: toOptionalNumber(fuelEfficiencyFactor),
-        engineDegradationFactor: toOptionalNumber(engineDegradationFactor),
-        averageFuelPredictionError: toOptionalNumber(
-          averageFuelPredictionError,
-        ),
         mode,
       };
 
@@ -183,7 +159,7 @@ export default function EditBoatScreen() {
       Alert.alert("Success", "Boat updated successfully", [
         {
           text: "OK",
-          onPress: () => router.replace(`/fishtripcost/boats/${id}`),
+          onPress: () => router.replace(`../boats/${id}`),
         },
       ]);
     } catch (error: any) {
@@ -204,7 +180,7 @@ export default function EditBoatScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
-      <View className="px-5 pt-3 pb-3 bg-white border-b border-slate-100 flex-row justify-between items-center">
+      <View className="px-5 pt-3 pb-4 bg-white border-b border-slate-100 flex-row justify-between items-center rounded-b-2xl shadow-sm">
         <Text className="text-xl font-bold text-slate-900">Edit Boat</Text>
 
         <TouchableOpacity
@@ -217,7 +193,8 @@ export default function EditBoatScreen() {
 
       <ScrollView
         className="px-4 pt-4"
-        contentContainerStyle={{ paddingBottom: 30 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
       >
         <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
           <Text className="text-sm font-semibold text-slate-800 mb-3">
@@ -376,39 +353,13 @@ export default function EditBoatScreen() {
         </View>
 
         <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
-          <Text className="text-sm font-semibold text-slate-800 mb-3">
-            Learning / Calibration Fields
+          <Text className="text-sm font-semibold text-slate-800 mb-2">
+            Learning Calibration
           </Text>
-
-          <Text className="text-xs text-slate-500 mb-1">
-            Fuel Efficiency Factor
+          <Text className="text-xs text-slate-500">
+            Calibration values are system-managed from trip learning and cannot
+            be edited manually.
           </Text>
-          <TextInput
-            value={fuelEfficiencyFactor}
-            onChangeText={setFuelEfficiencyFactor}
-            keyboardType="decimal-pad"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
-          />
-
-          <Text className="text-xs text-slate-500 mb-1">
-            Engine Degradation Factor
-          </Text>
-          <TextInput
-            value={engineDegradationFactor}
-            onChangeText={setEngineDegradationFactor}
-            keyboardType="decimal-pad"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3"
-          />
-
-          <Text className="text-xs text-slate-500 mb-1">
-            Average Fuel Prediction Error
-          </Text>
-          <TextInput
-            value={averageFuelPredictionError}
-            onChangeText={setAverageFuelPredictionError}
-            keyboardType="decimal-pad"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5"
-          />
         </View>
 
         <TouchableOpacity

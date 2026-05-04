@@ -21,11 +21,12 @@ import { cacheDirectory, writeAsStringAsync } from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
 import {
-  getMyTrips,
+  getTripsForTraining,
   batchTrainTrips,
   exportTripsCSV,
 } from "@/services/tripService";
-import FishTripNavBar from "./components/FishTripNavBar";
+import useAuthStore from "@/stores/authStore";
+import ScreenHeader from "./components/ScreenHeader";
 
 type ExternalCostItem = {
   name: string;
@@ -84,7 +85,7 @@ type Trip = {
   weatherSeverityIndex?: number;
   economicStressIndex?: number;
   profitabilityProbability?: number;
-  riskCategory?: "low" | "medium" | "high";
+  riskCategory?: string;
 
   carbonEmissionKg?: number;
   carbonPerKgCatch?: number;
@@ -564,6 +565,9 @@ const TripCard = ({
 };
 
 export default function PastTripsScreen() {
+  const currentUser = useAuthStore((state) => state.currentUser);
+  const isAdmin = !!currentUser?.isAdmin;
+
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -586,7 +590,7 @@ export default function PastTripsScreen() {
       if (showLoader) setLoading(true);
       setError("");
 
-      const data = await getMyTrips();
+      const data = await getTripsForTraining(isAdmin);
       setTrips(Array.isArray(data) ? data : []);
     } catch (err: any) {
       console.error("Error fetching trips:", err);
@@ -601,7 +605,7 @@ export default function PastTripsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadTrips(true);
-    }, []),
+    }, [isAdmin]),
   );
 
   const onRefresh = async () => {
@@ -918,7 +922,10 @@ export default function PastTripsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f9fafb" }}>
-      <FishTripNavBar />
+      <ScreenHeader
+        title={isAdmin ? "Training Trips" : "My Trips"}
+        subtitle={`${tripCountText}${isAdmin && trainableTripsCount > 0 ? ` • ${trainableTripsCount} trainable` : ""}`}
+      />
 
       <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 }}>
         <View
@@ -929,17 +936,10 @@ export default function PastTripsScreen() {
           }}
         >
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 26, fontWeight: "700", color: "#111827" }}>
-              My Trips
-            </Text>
-            <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 6 }}>
-              {tripCountText}
-              {trainableTripsCount > 0 ? (
-                <Text style={{ color: "#15803d", fontWeight: "600" }}>
-                  {" "}
-                  • {trainableTripsCount} trainable
-                </Text>
-              ) : null}
+            <Text style={{ fontSize: 16, fontWeight: "600", color: "#374151" }}>
+              {isAdmin
+                ? "Select completed trips with actual data to train shared models"
+                : "Track and manage your fishing trips"}
             </Text>
           </View>
 
@@ -1003,29 +1003,31 @@ export default function PastTripsScreen() {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={() => setSelectionMode(true)}
-                style={{
-                  backgroundColor: "#3b82f6",
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 12,
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-              >
-                <Ionicons
-                  name="checkbox-outline"
-                  size={18}
-                  color="#ffffff"
-                  style={{ marginRight: 6 }}
-                />
-                <Text
-                  style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}
+              {isAdmin && (
+                <TouchableOpacity
+                  onPress={() => setSelectionMode(true)}
+                  style={{
+                    backgroundColor: "#3b82f6",
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
                 >
-                  Select
-                </Text>
-              </TouchableOpacity>
+                  <Ionicons
+                    name="checkbox-outline"
+                    size={18}
+                    color="#ffffff"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text
+                    style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}
+                  >
+                    Select
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <View>
@@ -1110,6 +1112,24 @@ export default function PastTripsScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          )}
+
+          {!isAdmin && (
+            <View
+              style={{
+                marginTop: 12,
+                backgroundColor: "#eff6ff",
+                borderWidth: 1,
+                borderColor: "#bfdbfe",
+                borderRadius: 10,
+                paddingHorizontal: 10,
+                paddingVertical: 8,
+              }}
+            >
+              <Text style={{ color: "#1d4ed8", fontSize: 12, fontWeight: "600" }}>
+                Model training is managed by admins. Your trips continue improving predictions when actual data is logged.
+              </Text>
             </View>
           )}
         </View>
@@ -1704,7 +1724,7 @@ export default function PastTripsScreen() {
           renderItem={({ item }) => (
             <TripCard
               trip={item}
-              selectionMode={selectionMode}
+              selectionMode={isAdmin && selectionMode}
               isSelected={selectedTripIds.includes(item._id)}
               onToggleSelect={toggleTripSelection}
             />

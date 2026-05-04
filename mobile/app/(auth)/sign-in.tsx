@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   StyleSheet,
   Animated,
   ImageSourcePropType,
-  Alert
+  Alert,
 } from "react-native";
 import { Controller, useForm } from "react-hook-form";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -34,6 +34,7 @@ const SignIn = () => {
     control,
     handleSubmit,
     formState: { errors },
+    setError,
     clearErrors,
   } = useForm<FormValues>({
     defaultValues: { email: "", password: "" },
@@ -45,13 +46,17 @@ const SignIn = () => {
     email: "",
     password: "",
   });
-  
+
   const router = useRouter();
   const params = useLocalSearchParams();
   const { signIn } = useAuthStore();
 
   // Animation values for icons - FIXED: Create refs for animated values
-  const animatedValues = useRef(Array(15).fill(0).map(() => new Animated.Value(0))).current;
+  const animatedValues = useRef(
+    Array(15)
+      .fill(0)
+      .map(() => new Animated.Value(0)),
+  ).current;
   const animationRefs = useRef<Animated.CompositeAnimation[]>([]);
 
   // Log role if present (optional)
@@ -64,16 +69,16 @@ const SignIn = () => {
   // Animation functions
   const startAnimations = useCallback(() => {
     // Clear any existing animations
-    animationRefs.current.forEach(animation => animation.stop());
+    animationRefs.current.forEach((animation) => animation.stop());
     animationRefs.current = [];
 
     // Reset all animated values to start position
-    animatedValues.forEach(value => value.setValue(0));
+    animatedValues.forEach((value) => value.setValue(0));
 
     // Start floating animations for all icons
     const iconAnimations = animatedValues.map((animValue, index) => {
       const delay = index * 150 + Math.random() * 400;
-      
+
       // Create a continuous floating animation
       const animation = Animated.loop(
         Animated.sequence([
@@ -91,9 +96,9 @@ const SignIn = () => {
             duration: 3000 + Math.random() * 2000,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
-      
+
       animationRefs.current.push(animation);
       return animation;
     });
@@ -118,9 +123,9 @@ const SignIn = () => {
 
   // Clear API errors when user starts typing
   const clearApiErrors = (field: keyof FormValues) => {
-    setApiErrors(prev => ({
+    setApiErrors((prev) => ({
       ...prev,
-      [field]: ""
+      [field]: "",
     }));
     clearErrors(field);
   };
@@ -131,38 +136,62 @@ const SignIn = () => {
   };
 
   const selectedIcons: ImageSourcePropType[] = [
-    icons.Icon1, icons.Icon2, icons.Icon3, icons.Icon4, icons.Icon5, icons.Icon6,
-    icons.Icon1, icons.Icon3, icons.Icon2, icons.Icon4, icons.Icon3, icons.Icon5,
-    icons.Icon1, icons.Icon6, icons.Icon2,
+    icons.Icon1,
+    icons.Icon2,
+    icons.Icon3,
+    icons.Icon4,
+    icons.Icon5,
+    icons.Icon6,
+    icons.Icon1,
+    icons.Icon3,
+    icons.Icon2,
+    icons.Icon4,
+    icons.Icon3,
+    icons.Icon5,
+    icons.Icon1,
+    icons.Icon6,
+    icons.Icon2,
   ];
 
   const getPredefinedPositions = () => {
     const positions = [
-      { top: 25, left: 10 }, { top: 25, left: 50 }, { top: 25, left: 90 },
-      { top: 60, left: 20 }, { top: 60, left: 80 },
-      { top: 95, left: 5 }, { top: 95, left: 35 }, { top: 95, left: 65 }, { top: 95, left: 95 },
-      { top: 130, left: 15 }, { top: 130, left: 50 }, { top: 130, left: 85 },
-      { top: 165, left: 25 }, { top: 165, left: 75 },
-      { top: 200, left: 5 }, { top: 200, left: 40 }, { top: 200, left: 60 }, { top: 200, left: 95 },
+      { top: 25, left: 10 },
+      { top: 25, left: 50 },
+      { top: 25, left: 90 },
+      { top: 60, left: 20 },
+      { top: 60, left: 80 },
+      { top: 95, left: 5 },
+      { top: 95, left: 35 },
+      { top: 95, left: 65 },
+      { top: 95, left: 95 },
+      { top: 130, left: 15 },
+      { top: 130, left: 50 },
+      { top: 130, left: 85 },
+      { top: 165, left: 25 },
+      { top: 165, left: 75 },
+      { top: 200, left: 5 },
+      { top: 200, left: 40 },
+      { top: 200, left: 60 },
+      { top: 200, left: 95 },
     ];
     return positions;
   };
 
   const renderDistributedIcons = () => {
     const predefinedPositions = getPredefinedPositions();
-    
+
     return selectedIcons.map((icon, index) => {
       let position;
-      
+
       if (index < predefinedPositions.length) {
         position = predefinedPositions[index];
       } else {
         position = {
           top: 30 + Math.random() * 140,
-          left: 15 + Math.random() * 70
+          left: 15 + Math.random() * 70,
         };
       }
-      
+
       const randomOpacity = 0.8 + Math.random() * 0.2;
       const randomSize = 20 + Math.random() * 12;
       const randomRotation = Math.random() * 20 - 10;
@@ -220,7 +249,7 @@ const SignIn = () => {
   const onSubmit = async (data: FormValues) => {
     setLoading(true);
     setApiErrors({ email: "", password: "" });
-    
+
     try {
       console.log("📧 Form data:", data);
       console.log("🌐 API Base URL candidates:", getAuthApiBaseUrls());
@@ -239,22 +268,55 @@ const SignIn = () => {
       });
 
       console.log("📡 Response Status:", response.status);
-      
-      const result = await response.json();
+
+      const rawResponse = await response.text();
+      let result: any = {};
+
+      if (rawResponse) {
+        try {
+          result = JSON.parse(rawResponse);
+        } catch {
+          result = { message: rawResponse };
+        }
+      }
+
       console.log("📱 FULL API Response:", result);
 
       if (!response.ok) {
-        throw new Error(result.message || "Sign in failed");
+        const serverMessage =
+          (typeof result?.message === "string" && result.message) ||
+          (typeof result?.error === "string" && result.error) ||
+          "";
+
+        const fallbackMessage =
+          response.status === 401 || response.status === 403
+            ? "Invalid email or password"
+            : "Sign in failed";
+
+        throw new Error(serverMessage || fallbackMessage);
+      }
+
+      if (!rawResponse || Object.keys(result).length === 0) {
+        throw new Error("Invalid server response. Please try again.");
       }
 
       // ✅ STORE TOKENS IN SECURE STORE
-      if (result.data?.accessToken) {
-        await SecureStore.setItemAsync("access_token", result.data.accessToken);
+      const accessToken =
+        result.data?.access_token ||
+        result.data?.accessToken ||
+        result.access_token ||
+        result.accessToken;
+
+      if (accessToken) {
+        await SecureStore.setItemAsync("access_token", accessToken);
         console.log("✅ Access token stored");
       }
-      
-      if (result.data?.refreshToken) {
-        await SecureStore.setItemAsync("refresh_token", result.data.refreshToken);
+
+      if (result.data?.refreshToken || result.refreshToken) {
+        await SecureStore.setItemAsync(
+          "refresh_token",
+          result.data?.refreshToken || result.refreshToken,
+        );
         console.log("✅ Refresh token stored");
       }
 
@@ -268,7 +330,12 @@ const SignIn = () => {
         username: result.data?.username || result.username,
         phone: result.data?.phone || result.phone,
         role: result.data?.role || "Fisher man", // Use actual role from API
-        isAdmin: result.data?.isAdmin || result.isAdmin || false,
+        isAdmin:
+          result.data?.isAdmin ||
+          result.isAdmin ||
+          String(result.data?.role || result.role || "")
+            .toLowerCase()
+            .includes("admin"),
         profilePicture: result.data?.profilePicture || result.profilePicture,
         // Add fishery-specific fields if they exist
         specialization: result.data?.specialization,
@@ -278,22 +345,35 @@ const SignIn = () => {
       };
 
       console.log("✅ Transformed user data for authStore:", userData);
-      
+
       // Now call signIn with the transformed data
       await signIn(userData);
-      
+
       Alert.alert("Success", "Signed in successfully!");
-      
-      // Navigate to home with refresh parameter
+
       router.replace({
         pathname: "/(root)/(tabs)/home",
-        params: { refresh: Date.now() }
+        params: { refresh: Date.now() },
       });
-
+      // Navigate to home with refresh parameter
+      //      if (userData.role === "fisher admin") {
+      //   router.replace({
+      //     pathname: "/(fisheradmin)/(tabs)/home",
+      //     params: { refresh: Date.now() }
+      //   });
+      // } else {
+      //   router.replace({
+      //     pathname: "/(root)/(tabs)/home",
+      //     params: { refresh: Date.now() }
+      //   });
+      // }
     } catch (error: any) {
       console.error("❌ Sign in error:", error);
-      
-      if (error.message.includes("User not found") || error.message.includes("Invalid credentials")) {
+
+      if (
+        error.message.includes("User not found") ||
+        error.message.includes("Invalid credentials")
+      ) {
         setApiErrors({
           email: "Invalid email or password",
           password: "Invalid email or password",
@@ -304,7 +384,10 @@ const SignIn = () => {
           `Cannot reach the backend. Tried: ${getAuthApiBaseUrls().join(", ")}`
         );
       } else {
-        Alert.alert("Error", error.message || "Sign in failed. Please try again.");
+        Alert.alert(
+          "Error",
+          error.message || "Sign in failed. Please try again.",
+        );
       }
     } finally {
       setLoading(false);
@@ -397,14 +480,18 @@ const SignIn = () => {
                 <Text style={styles.label}>
                   Email <Text style={styles.required}>*</Text>
                 </Text>
-                <View style={[
-                  styles.inputWrapper,
-                  { borderColor: getInputBorderColor("email") }
-                ]}>
-                  <Ionicons 
-                    name="mail-outline" 
-                    size={18} 
-                    color={errors.email || apiErrors.email ? "#ef4444" : "#0B3D91"} 
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { borderColor: getInputBorderColor("email") },
+                  ]}
+                >
+                  <Ionicons
+                    name="mail-outline"
+                    size={18}
+                    color={
+                      errors.email || apiErrors.email ? "#ef4444" : "#0B3D91"
+                    }
                   />
                   <TextInput
                     placeholder="fisher@example.com"
@@ -422,7 +509,7 @@ const SignIn = () => {
                 </View>
                 {(errors.email || apiErrors.email) && (
                   <Text style={styles.errorText}>
-                    {errors.email?.message as string || apiErrors.email}
+                    {(errors.email?.message as string) || apiErrors.email}
                   </Text>
                 )}
               </View>
@@ -439,14 +526,20 @@ const SignIn = () => {
                 <Text style={styles.label}>
                   Password <Text style={styles.required}>*</Text>
                 </Text>
-                <View style={[
-                  styles.inputWrapper,
-                  { borderColor: getInputBorderColor("password") }
-                ]}>
-                  <Ionicons 
-                    name="lock-closed-outline" 
-                    size={18} 
-                    color={errors.password || apiErrors.password ? "#ef4444" : "#0B3D91"} 
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { borderColor: getInputBorderColor("password") },
+                  ]}
+                >
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={18}
+                    color={
+                      errors.password || apiErrors.password
+                        ? "#ef4444"
+                        : "#0B3D91"
+                    }
                   />
                   <TextInput
                     placeholder="Enter your password"
@@ -464,13 +557,17 @@ const SignIn = () => {
                     <Ionicons
                       name={secureText ? "eye-off-outline" : "eye-outline"}
                       size={20}
-                      color={errors.password || apiErrors.password ? "#ef4444" : "#0B3D91"}
+                      color={
+                        errors.password || apiErrors.password
+                          ? "#ef4444"
+                          : "#0B3D91"
+                      }
                     />
                   </TouchableOpacity>
                 </View>
                 {(errors.password || apiErrors.password) && (
                   <Text style={styles.errorText}>
-                    {errors.password?.message as string || apiErrors.password}
+                    {(errors.password?.message as string) || apiErrors.password}
                   </Text>
                 )}
               </View>

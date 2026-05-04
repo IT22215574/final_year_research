@@ -71,6 +71,18 @@ export class PredictCostDto {
   @Min(1)
   crewCount: number;
 
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  engineHorsePower?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  engineHP?: number;
+
   @Type(() => Number)
   @IsNumber()
   @Min(0)
@@ -80,6 +92,12 @@ export class PredictCostDto {
   @IsNumber()
   @Min(0)
   waveHeight: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  rainMmPerHour?: number;
 
   @Type(() => Number)
   @IsNumber()

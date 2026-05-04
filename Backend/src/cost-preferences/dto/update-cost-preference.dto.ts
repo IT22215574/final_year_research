@@ -15,6 +15,18 @@ export class UpdateCostPreferenceDto {
   category?: string;
 
   @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  quantity?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  pricePerUnit?: string;
+
+  @IsOptional()
   @IsNumberString()
   amount?: string;
 

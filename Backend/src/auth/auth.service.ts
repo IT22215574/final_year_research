@@ -47,12 +47,22 @@ export class AuthService {
 
     const token = this.jwtService.sign({
       id: user._id,
-      isAdmin: user.isAdmin,
+      isAdmin:
+        user.isAdmin ||
+        String(user.role || '')
+          .toLowerCase()
+          .includes('admin'),
+      role: user.role,
     });
 
     const userObject = user.toObject();
     delete userObject.password;
     delete userObject.verifytoken;
+    userObject.isAdmin =
+      userObject.isAdmin ||
+      String(userObject.role || '')
+        .toLowerCase()
+        .includes('admin');
 
     return {
       ...userObject,

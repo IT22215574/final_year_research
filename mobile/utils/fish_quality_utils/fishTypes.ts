@@ -11,6 +11,22 @@ export interface ImageQualityInfo {
   quality_issues: string[];
 }
 
+/**
+ * Status codes returned by the per-image validation pipeline.
+ * The backend validates each image independently before running the
+ * dual-image prediction, returning one of these status strings.
+ */
+export type PredictionStatus =
+  | 'success'
+  | 'success_no_grade'
+  | 'invalid_pair'
+  | 'no_fish'
+  | 'species_mismatch'
+  | 'unknown_species'
+  | 'unsupported_species'
+  | 'low_confidence'
+  | 'rejected_at_stage1';
+
 export interface PredictionResult {
   // Basic info
   isFish: boolean;
@@ -58,6 +74,23 @@ export interface PredictionResult {
   
   // Warnings
   warnings?: string[];
+
+  // ── Per-image validation (populated by the backend pipeline) ──────────
+  /** Pipeline validation status (e.g. "success", "species_mismatch") */
+  validationStatus?: PredictionStatus;
+  /** Human-readable validation message from the backend */
+  validationMessage?: string;
+  /** Per-image fish detection & species prediction details */
+  perImageValidation?: {
+    leftFishDetected: boolean;
+    leftFishConfidence: number;
+    rightFishDetected: boolean;
+    rightFishConfidence: number;
+    leftSpecies?: string;
+    leftSpeciesConfidence?: number;
+    rightSpecies?: string;
+    rightSpeciesConfidence?: number;
+  };
 }
 
 export interface SpeciesPrediction {

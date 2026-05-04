@@ -66,6 +66,7 @@ async function bootstrap() {
       'http://localhost:5173',
       'http://localhost:3000',
       'http://localhost:3001',
+      'http://192.168.8.135:3000',
       'http://192.168.8.135:8081',
       'exp://192.168.8.135:8081',
       // ✅ Optional: add Expo dev URLs if you use them

@@ -15,6 +15,18 @@ export class CreateCostPreferenceDto {
   @IsString()
   category: string;
 
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  quantity?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  pricePerUnit?: string;
+
   // FormData / frontend can send as string
   @IsNotEmpty()
   @IsNumberString()

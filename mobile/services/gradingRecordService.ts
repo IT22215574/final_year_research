@@ -12,6 +12,21 @@ export type GradingRecord = {
   imagePaths: string[];
   notes?: string;
   marketStatus: 'saved' | 'used_in_market';
+  /** Measured fish length in centimetres (stored for reporting & analytics) */
+  measuredLengthCm?: number;
+  /** Estimated weight in kilograms */
+  estimatedWeightKg?: number;
+  /** Estimated weight in grams */
+  estimatedWeightGrams?: number;
+  /**
+   * Size category — only for Skipjack Tuna.
+   * Based on estimated weight: >3 kg → large, 1–3 kg → medium, <1 kg → small.
+   */
+  sizeCategory?: 'small' | 'medium' | 'large' | null;
+  /** Method used for weight estimation (e.g. "research-length-weight") */
+  measurementMethod?: string;
+  /** Confidence score (0–1) for the measurement */
+  measurementConfidence?: number;
   createdAt: string;
   updatedAt?: string;
 };
@@ -25,6 +40,23 @@ export type SaveGradingPayload = {
   notes?: string;
   /** optional: left and/or right image local URIs to upload */
   imageUris?: string[];
+  // ── Measurement & size classification fields ────────────────────────────
+  // Stored for future reporting and analytics.
+  /** Measured fish length in centimetres */
+  measuredLengthCm?: number;
+  /** Estimated weight in kilograms */
+  estimatedWeightKg?: number;
+  /** Estimated weight in grams */
+  estimatedWeightGrams?: number;
+  /**
+   * Size category (Skipjack Tuna only).
+   * >3 kg → large, 1–3 kg → medium, <1 kg → small.
+   */
+  sizeCategory?: 'small' | 'medium' | 'large' | null;
+  /** Method used (e.g. "research-length-weight", "length-only") */
+  measurementMethod?: string;
+  /** Measurement confidence 0–1 */
+  measurementConfidence?: number;
 };
 
 /** Build a FormData body — avoids Content-Type collision for multipart */
@@ -42,6 +74,21 @@ function buildForm(payload: SaveGradingPayload): FormData {
     form.append('speciesConfidence', String(payload.speciesConfidence));
   if (payload.notes)
     form.append('notes', payload.notes);
+
+  // ── Measurement & size classification fields ───────────────────────────
+  // These are stored for future reporting and analytics.
+  if (payload.measuredLengthCm != null)
+    form.append('measuredLengthCm', String(payload.measuredLengthCm));
+  if (payload.estimatedWeightKg != null)
+    form.append('estimatedWeightKg', String(payload.estimatedWeightKg));
+  if (payload.estimatedWeightGrams != null)
+    form.append('estimatedWeightGrams', String(payload.estimatedWeightGrams));
+  if (payload.sizeCategory)
+    form.append('sizeCategory', payload.sizeCategory);
+  if (payload.measurementMethod)
+    form.append('measurementMethod', payload.measurementMethod);
+  if (payload.measurementConfidence != null)
+    form.append('measurementConfidence', String(payload.measurementConfidence));
 
   for (const uri of payload.imageUris ?? []) {
     const filename = uri.split('/').pop() ?? 'image.jpg';
