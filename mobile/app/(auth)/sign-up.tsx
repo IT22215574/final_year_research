@@ -58,7 +58,7 @@ const districts = Object.keys(districtZoneData);
 const mediums = ["Sinhala", "Tamil", "English"];
 const roles = ["customer", "Fisher man", "Boat owner"];
 
-const API = process.env.EXPO_PUBLIC_API_KEY;
+const API = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.8.135:5000';
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
