@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BarChart3, Fish, LayoutDashboard, LogOut, Menu, Store, Users, X } from "lucide-react";
+import { BarChart3, Compass, Database, Fish, LayoutDashboard, LogOut, Menu, Ship, Store, Upload, Users, X } from "lucide-react";
 
 import { signOut } from "@/lib/authApi";
 import type { ApiError } from "@/lib/api";
+import { isFisherAdminRole } from "@/lib/authRoles";
 import { useAuthStore } from "@/stores/authStore";
+import SFLLogo from "../../../../mobile/assets/images/SFLLogo.png";
 
 import SignInPage from "../sign-in/page";
+import Image from "next/image";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -21,16 +24,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const canManageFishTrips = isFisherAdminRole(user?.role);
 
   const navItems = useMemo(
-    () => [
-      { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/admin/users", label: "Users", icon: Users },
-      { href: "/admin/fish-categories", label: "Fish Categories", icon: Fish },
-      { href: "/admin/fish-market", label: "Fish Market", icon: Store },
-      { href: "/admin/activity", label: "Activity", icon: BarChart3 },
-    ],
-    [],
+    () =>
+      [
+        { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/admin/users", label: "Users", icon: Users },
+        { href: "/admin/fish-categories", label: "Fish Categories", icon: Fish },
+        { href: "/admin/fish-market", label: "Fish Market", icon: Store },
+        { href: "/admin/activity", label: "Activity", icon: BarChart3 },
+        { href: "/admin/Boats", label: "Boats", icon: Ship },
+        canManageFishTrips
+          ? { href: "/admin/fish-trip", label: "Fish Trip", icon: Compass }
+          : null,
+        canManageFishTrips
+          ? { href: "/admin/fish-trip/analytics", label: "Trip Analytics", icon: BarChart3 }
+          : null,
+        canManageFishTrips
+          ? { href: "/admin/dataset-uploads", label: "Dataset Uploads", icon: Upload }
+          : null,
+        canManageFishTrips
+          ? { href: "/admin/dataset-uploads/manage", label: "Manage Uploads", icon: Database }
+          : null,
+        canManageFishTrips
+          ? { href: "/admin/dataset-data", label: "View Dataset Data", icon: BarChart3 }
+          : null,
+      ].filter((item): item is NonNullable<typeof item> => item !== null),
+    [canManageFishTrips],
   );
 
   if (!user) return <SignInPage />;
@@ -40,12 +61,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setPending(true);
     try {
       await signOut();
-      clear();
-      router.replace("/");
     } catch (e) {
       const err = e as ApiError;
-      setError(err.message ?? "Failed to sign out");
+      if (err.status !== 401) {
+        console.warn("Server sign-out failed:", err.message ?? "Failed to sign out");
+      }
     } finally {
+      clear();
+      router.replace("/");
       setPending(false);
       setSidebarOpen(false);
     }
@@ -55,7 +78,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <nav className="space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;
           return (
             <Link
@@ -93,9 +118,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         <div className="h-full flex flex-col">
           <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
-            <div>
-              <div className="text-lg font-bold text-gray-900">Smart Fisher Lanka</div>
-              <div className="text-xs text-gray-500">Admin panel</div>
+            <div className="flex flex-row justify-start ">
+              <div className="w-1/3">
+                <Image
+                  src={SFLLogo}
+                  alt="Smart Fisher Lanka Logo"
+                  width={96}
+                  height={96}
+                  className="relative rounded-xl"
+                />
+              </div>
+              <div className="w-2/3">
+                <div className="text-lg font-bold text-gray-900">
+                  Smart Fisher Lanka
+                </div>
+                <div className="text-xs text-gray-500">Admin panel</div>
+              </div>
             </div>
             <button
               type="button"

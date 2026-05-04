@@ -64,8 +64,9 @@ const LogActualScreen = () => {
       lastSavedTrip?.boat?.boatType || lastSavedTrip?.boatType || "N/A";
 
     const engineHP =
-      lastSavedTrip?.boat?.engineHorsePower ||
       lastSavedTrip?.engineHorsePower ||
+      lastSavedTrip?.engineHP ||
+      lastSavedTrip?.boat?.engineHorsePower ||
       "N/A";
 
     const distance =
@@ -215,10 +216,10 @@ const LogActualScreen = () => {
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ 
-            paddingHorizontal: 20, 
-            paddingTop: 16, 
-            paddingBottom: 32 
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: 32,
           }}
         >
           {/* Header Section */}
@@ -240,7 +241,8 @@ const LogActualScreen = () => {
               Log Actuals
             </Text>
             <Text className="text-base text-gray-600 leading-6">
-              Record your actual trip results to improve future predictions and train your boat's AI model.
+              Record your actual trip results to improve future predictions and
+              train your boat's AI model.
             </Text>
           </View>
 
@@ -267,7 +269,10 @@ const LogActualScreen = () => {
                 </Text>
                 <View className="space-y-3">
                   <StepRow number="1" text="Go to Trip Planner" />
-                  <StepRow number="2" text="Enter trip details & predict cost" />
+                  <StepRow
+                    number="2"
+                    text="Enter trip details & predict cost"
+                  />
                   <StepRow number="3" text="Open the Result screen" />
                   <StepRow number="4" text='Tap "Save Trip"' />
                   <StepRow number="5" text="Return here to log actuals" />
@@ -339,7 +344,9 @@ const LogActualScreen = () => {
                 </Text>
                 <Text className="text-2xl font-bold text-emerald-700 mb-1">
                   {summary.predictedTotal !== null
-                    ? Math.round(Number(summary.predictedTotal)).toLocaleString()
+                    ? Math.round(
+                        Number(summary.predictedTotal),
+                      ).toLocaleString()
                     : "-"}
                 </Text>
                 <Text className="text-xs text-emerald-500">LKR</Text>
@@ -371,7 +378,9 @@ const LogActualScreen = () => {
                     How This Trains AI
                   </Text>
                   <Text className="text-sm text-gray-500 mt-0.5">
-                    {expandedSections.mlInfo ? "Tap to collapse" : "Tap to learn more"}
+                    {expandedSections.mlInfo
+                      ? "Tap to collapse"
+                      : "Tap to learn more"}
                   </Text>
                 </View>
               </View>
@@ -404,7 +413,8 @@ const LogActualScreen = () => {
                 </View>
                 <View className="mt-4 bg-indigo-50 rounded-xl p-4">
                   <Text className="text-indigo-700 text-sm">
-                    💡 The more trips you log, the smarter your boat's AI becomes!
+                    💡 The more trips you log, the smarter your boat's AI
+                    becomes!
                   </Text>
                 </View>
               </View>
@@ -428,7 +438,9 @@ const LogActualScreen = () => {
                       Boat Specifications
                     </Text>
                     <Text className="text-sm text-gray-500 mt-0.5">
-                      {expandedSections.boatSpecs ? "Hide details" : "Show details"}
+                      {expandedSections.boatSpecs
+                        ? "Hide details"
+                        : "Show details"}
                     </Text>
                   </View>
                 </View>
@@ -443,7 +455,11 @@ const LogActualScreen = () => {
                 <View className="mt-4 pt-4 border-t border-gray-100">
                   <DetailRow label="Boat Name" value={summary.boatName} />
                   <DetailRow label="Boat Type" value={summary.boatType} />
-                  <DetailRow label="Engine Power" value={`${summary.engineHP} HP`} isLast />
+                  <DetailRow
+                    label="Engine Power"
+                    value={`${summary.engineHP} HP`}
+                    isLast
+                  />
                 </View>
               )}
             </TouchableOpacity>
@@ -466,7 +482,9 @@ const LogActualScreen = () => {
                       Trip Details
                     </Text>
                     <Text className="text-sm text-gray-500 mt-0.5">
-                      {expandedSections.tripDetails ? "Hide details" : "Show details"}
+                      {expandedSections.tripDetails
+                        ? "Hide details"
+                        : "Show details"}
                     </Text>
                   </View>
                 </View>
@@ -479,21 +497,39 @@ const LogActualScreen = () => {
 
               {expandedSections.tripDetails && (
                 <View className="mt-4 pt-4 border-t border-gray-100">
-                  <DetailRow label="Distance" value={`${Number(summary.distance).toFixed(1)} km`} />
+                  <DetailRow
+                    label="Distance"
+                    value={`${Number(summary.distance).toFixed(1)} km`}
+                  />
                   <DetailRow label="Speed" value={`${summary.speed} knots`} />
-                  <DetailRow label="Fishing Hours" value={`${summary.fishingHours} hrs`} />
-                  <DetailRow label="Trip Days" value={`${summary.numberOfDays} day(s)`} />
-                  <DetailRow label="Crew Count" value={`${summary.crewCount} people`} />
+                  <DetailRow
+                    label="Fishing Hours"
+                    value={`${summary.fishingHours} hrs`}
+                  />
+                  <DetailRow
+                    label="Trip Days"
+                    value={`${summary.numberOfDays} day(s)`}
+                  />
+                  <DetailRow
+                    label="Crew Count"
+                    value={`${summary.crewCount} people`}
+                  />
 
                   <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wider mt-4 mb-3">
                     Weather Conditions
                   </Text>
-                  <DetailRow label="Wind Speed" value={`${summary.windSpeed} knots`} />
-                  <DetailRow label="Wave Height" value={`${summary.waveHeight} m`} />
-                  <DetailRow 
-                    label="Severity Index" 
-                    value={(summary.weatherSeverity * 100).toFixed(0) + "%"} 
-                    isLast 
+                  <DetailRow
+                    label="Wind Speed"
+                    value={`${summary.windSpeed} km/h`}
+                  />
+                  <DetailRow
+                    label="Wave Height"
+                    value={`${summary.waveHeight} m`}
+                  />
+                  <DetailRow
+                    label="Severity Index"
+                    value={(summary.weatherSeverity * 100).toFixed(0) + "%"}
+                    isLast
                   />
                 </View>
               )}
@@ -604,7 +640,8 @@ const LogActualScreen = () => {
 
             <View className="mt-4 bg-indigo-50 rounded-xl p-4">
               <Text className="text-indigo-700 text-sm leading-5">
-                🤖 These actual values will be used to train your boat-specific AI model, making future predictions more accurate.
+                🤖 These actual values will be used to train your boat-specific
+                AI model, making future predictions more accurate.
               </Text>
             </View>
           </View>
@@ -648,7 +685,8 @@ const LogActualScreen = () => {
             </TouchableOpacity>
 
             <Text className="text-xs text-gray-500 text-center mt-4 leading-5">
-              Your boat's learning coefficients will update automatically based on the difference between predicted and actual results.
+              Your boat's learning coefficients will update automatically based
+              on the difference between predicted and actual results.
             </Text>
           </View>
         </ScrollView>
@@ -685,7 +723,9 @@ const DetailRow = ({
   value: string;
   isLast?: boolean;
 }) => (
-  <View className={`flex-row justify-between py-2.5 ${!isLast ? "border-b border-gray-100" : ""}`}>
+  <View
+    className={`flex-row justify-between py-2.5 ${!isLast ? "border-b border-gray-100" : ""}`}
+  >
     <Text className="text-gray-600 text-sm">{label}</Text>
     <Text className="text-gray-900 font-medium text-sm">{value}</Text>
   </View>

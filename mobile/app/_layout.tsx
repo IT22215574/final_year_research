@@ -34,14 +34,15 @@ export default function RootLayout() {
   // Render the navigation stack
   return (
     <>
-      <StatusBar 
-        style="light" 
-        backgroundColor="#3b82f6" 
+      <StatusBar
+        style="light"
+        backgroundColor="#3b82f6"
         translucent={false}
       />
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(root)" options={{ headerShown: false }} />
+        <Stack.Screen name="(fisheradmin)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>

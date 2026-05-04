@@ -7,6 +7,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Boat, BoatDocument } from '../schemas/boat.schema';
+import { BoatType, BoatTypeDocument } from '../schemas/boat-type.schema';
 import { Trip, TripDocument } from '../schemas/trip.schema';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -14,7 +15,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 
-import { BOAT_TYPES } from './dto/create-boat.dto';
+import { BOAT_TYPES, BOAT_FUEL_BASELINES } from './dto/create-boat.dto';
 
 @Injectable()
 export class BoatService {
@@ -25,12 +26,171 @@ export class BoatService {
     @InjectModel(Trip.name)
     private tripModel: Model<TripDocument>,
 
+    @InjectModel(BoatType.name)
+    private boatTypeModel: Model<BoatTypeDocument>,
+
     private readonly http: HttpService,
     private readonly config: ConfigService,
   ) {}
 
-  getBoatTypes() {
-    return BOAT_TYPES;
+  private normalizeBoatTypeName(name: string): string {
+    return String(name || '')
+      .trim()
+      .replace(/\s+/g, ' ');
+  }
+
+  private async getAllowedBoatTypeNames(): Promise<string[]> {
+    const adminTypes = await this.boatTypeModel
+      .find({ active: true })
+      .sort({ name: 1 })
+      .lean()
+      .exec();
+
+    if (adminTypes.length > 0) {
+      return adminTypes.map((t) => this.normalizeBoatTypeName(t.name));
+    }
+
+    // Safe fallback for environments where admin has not configured boat types yet.
+    return [...BOAT_TYPES];
+  }
+
+  async getBoatTypes() {
+    return await this.getAllowedBoatTypeNames();
+  }
+
+  getFuelBaselines() {
+    return BOAT_FUEL_BASELINES;
+  }
+
+  async getBoatTypesWithFuelInfo() {
+    const types = await this.getAllowedBoatTypeNames();
+    return types.map((boatType) => ({
+      boatType,
+      fuelInfo: (BOAT_FUEL_BASELINES as any)[boatType] || null,
+    }));
+  }
+
+  async getAdminBoatTypes() {
+    return await this.boatTypeModel.find().sort({ name: 1 }).exec();
+  }
+
+  async createAdminBoatType(
+    body: { name?: string; description?: string; fuelPerKm?: number },
+    adminId: string,
+  ) {
+    const name = this.normalizeBoatTypeName(body?.name || '');
+    if (!name) {
+      throw new BadRequestException('Boat type name is required');
+    }
+
+    const exists = await this.boatTypeModel
+      .findOne({ name: new RegExp(`^${name}$`, 'i') })
+      .lean()
+      .exec();
+
+    if (exists) {
+      throw new BadRequestException('Boat type already exists');
+    }
+
+    let fuelPerKm: number | undefined = undefined;
+    if (body?.fuelPerKm !== undefined) {
+      const parsed = Number(body.fuelPerKm);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new BadRequestException('fuelPerKm must be a positive number');
+      }
+      fuelPerKm = parsed;
+    }
+
+    return await this.boatTypeModel.create({
+      name,
+      description: body?.description?.trim() || undefined,
+      fuelPerKm,
+      active: true,
+      createdBy: adminId,
+      updatedBy: adminId,
+    });
+  }
+
+  async updateAdminBoatType(
+    id: string,
+    body: {
+      name?: string;
+      description?: string;
+      fuelPerKm?: number;
+      active?: boolean;
+    },
+    adminId: string,
+  ) {
+    const boatType = await this.boatTypeModel.findById(id).exec();
+    if (!boatType) {
+      throw new NotFoundException('Boat type not found');
+    }
+
+    if (body?.name !== undefined) {
+      const name = this.normalizeBoatTypeName(body.name);
+      if (!name) {
+        throw new BadRequestException('Boat type name cannot be empty');
+      }
+
+      const duplicate = await this.boatTypeModel
+        .findOne({ _id: { $ne: id }, name: new RegExp(`^${name}$`, 'i') })
+        .lean()
+        .exec();
+
+      if (duplicate) {
+        throw new BadRequestException('Boat type name already exists');
+      }
+
+      // Keep existing boats synchronized with the renamed type.
+      if (boatType.name !== name) {
+        await this.boatModel.updateMany(
+          { boatType: boatType.name },
+          { boatType: name },
+        );
+      }
+
+      boatType.name = name;
+    }
+
+    if (body?.description !== undefined) {
+      boatType.description = String(body.description || '').trim() || undefined;
+    }
+
+    if (body?.fuelPerKm !== undefined) {
+      const parsed = Number(body.fuelPerKm);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        throw new BadRequestException('fuelPerKm must be a positive number');
+      }
+      boatType.fuelPerKm = parsed;
+    }
+
+    if (body?.active !== undefined) {
+      boatType.active = !!body.active;
+    }
+
+    boatType.updatedBy = adminId;
+    await boatType.save();
+    return boatType;
+  }
+
+  async deleteAdminBoatType(id: string) {
+    const boatType = await this.boatTypeModel.findById(id).exec();
+    if (!boatType) {
+      throw new NotFoundException('Boat type not found');
+    }
+
+    const usageCount = await this.boatModel.countDocuments({
+      boatType: boatType.name,
+    });
+
+    if (usageCount > 0) {
+      throw new BadRequestException(
+        'Cannot delete boat type that is already used by boats. Set it inactive instead.',
+      );
+    }
+
+    await boatType.deleteOne();
+    return { message: 'Boat type deleted successfully' };
   }
 
   async create(data: Partial<Boat>) {
@@ -48,7 +208,8 @@ export class BoatService {
       throw new BadRequestException('boatType is required');
     }
 
-    if (!BOAT_TYPES.includes(boatType as any)) {
+    const allowedBoatTypes = await this.getAllowedBoatTypeNames();
+    if (!allowedBoatTypes.includes(boatType)) {
       throw new BadRequestException('Invalid boatType');
     }
 
@@ -111,6 +272,10 @@ export class BoatService {
     return this.boatModel.find({ userId }).sort({ createdAt: -1 }).exec();
   }
 
+  async findAllBoats() {
+    return this.boatModel.find().sort({ createdAt: -1 }).exec();
+  }
+
   async updateBoat(boatId: string, userId: string, data: Partial<Boat>) {
     const boat = await this.boatModel.findById(boatId).exec();
 
@@ -134,7 +299,8 @@ export class BoatService {
 
     if (data.boatType !== undefined) {
       const boatType = String(data.boatType).trim();
-      if (!BOAT_TYPES.includes(boatType as any)) {
+      const allowedBoatTypes = await this.getAllowedBoatTypeNames();
+      if (!allowedBoatTypes.includes(boatType)) {
         throw new BadRequestException('Invalid boatType');
       }
       updateData.boatType = boatType as any;

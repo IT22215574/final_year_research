@@ -29,27 +29,26 @@ export class AuthController {
   ) {
     const result = await this.authService.signIn(signInDto);
 
-    // Mobile clients (React Native) often don't reliably persist HTTP-only cookies.
-    // Return a token in the response body for mobile, while keeping cookie-based auth for web.
-    if (clientType?.toLowerCase() === 'mobile') {
-      const { token, ...user } = result;
-      return {
-        success: true,
-        data: {
-          ...user,
-          accessToken: token,
-        },
-      };
+    // Return token in response body for all clients (API, mobile, Postman)
+    const { token, ...user } = result;
+    const responseData = {
+      success: true,
+      data: {
+        ...user,
+        access_token: token, // Include token in response body
+      },
+    };
+
+    // Web browsers: also set HTTP-only cookie for session persistence
+    if (!clientType?.toLowerCase().includes('mobile')) {
+      const expiryDate = new Date(Date.now() + 3600000);
+      response.cookie('access_token', token, {
+        httpOnly: true,
+        expires: expiryDate,
+      });
     }
 
-    const expiryDate = new Date(Date.now() + 3600000);
-    response.cookie('access_token', result.token, {
-      httpOnly: true,
-      expires: expiryDate,
-    });
-
-    const { token, ...user } = result;
-    return user;
+    return responseData;
   }
 
   @Post('signout')
@@ -60,9 +59,7 @@ export class AuthController {
   }
 
   @Post('request-mobile-verification')
-  async requestMobileVerification(
-    @Body() dto: RequestMobileVerificationDto,
-  ) {
+  async requestMobileVerification(@Body() dto: RequestMobileVerificationDto) {
     return this.authService.requestMobileVerification(dto);
   }
 

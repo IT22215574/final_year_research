@@ -35,7 +35,12 @@ type TabName =
   | "SpeciesDetection"
   | "QualityGrading"
   | "GradingHistory"
-  | "GradingDetail";
+  | "GradingDetail"
+  | "fishtripcost"
+  | "fishtripcostadmin"
+  | "dataset"
+  | "modeltrain"
+  | "boatanalytics";
 
 interface NavItemConfig {
   tabName: TabName;
@@ -148,8 +153,8 @@ const NavItem = ({
               tintColor: isActive
                 ? "#FFFFFF"
                 : isHovered && !isActive
-                ? "#005CFF"
-                : "#64748b",
+                  ? "#005CFF"
+                  : "#64748b",
             },
             iconStyle,
           ]}
@@ -185,23 +190,55 @@ const TabsLayout = () => {
   const pathname = usePathname();
   const { width, height } = useWindowDimensions();
 
-  const {
-    isDesktop,
-    scale,
-    moderateScale,
-    verticalScale,
-  } = useMemo(() => getScaleFns(width, height), [width, height]);
+  const { isDesktop, scale, moderateScale, verticalScale } = useMemo(
+    () => getScaleFns(width, height),
+    [width, height],
+  );
 
   const [activeTab, setActiveTab] = useState<TabName>("home");
   const [sidebarVisible, setSidebarVisible] = useState(false);
 
-  const { currentUser, isSignedIn } = useAuthStore();
+  const { currentUser, isSignedIn, checkAuthStatus } = useAuthStore();
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
 
   const isGuest = !isSignedIn || !currentUser;
 
-  const navItems: NavItemConfig[] = useMemo(
-    () => [
+  const navItems: NavItemConfig[] = useMemo(() => {
+    // 🐟 IF IN ADMIN MODE: Return ONLY the admin buttons!
+    if (
+      currentUser?.role === "fisher admin" &&
+      pathname.includes("/fishtripcostadmin")
+    ) {
+      return [
+        {
+          tabName: "fishtripcostadmin",
+          route: "/(root)/(tabs)/fishtripcostadmin",
+          icon: icons.nav_home, // You can change this icon!
+          label: "Admin Menu",
+        },
+        {
+          tabName: "dataset",
+          route: "/(root)/(tabs)/fishtripcostadmin/dataset",
+          icon: icons.Digital,
+          label: "Dataset",
+        },
+        {
+          tabName: "boatanalytics",
+          route: "/(root)/(tabs)/fishtripcostadmin/boat-analytics",
+          icon: icons.Digital,
+          label: "Analytics",
+        },
+        {
+          tabName: "modeltrain",
+          route: "/(root)/(tabs)/fishtripcostadmin/modeltrain",
+          icon: icons.Digital,
+          label: "Models",
+        },
+      ];
+    }
+
+    // 🌊 IF IN NORMAL MODE: Return the normal buttons!
+    const baseItems: NavItemConfig[] = [
       {
         tabName: "home",
         route: "/(root)/(tabs)/home",
@@ -228,9 +265,14 @@ const TabsLayout = () => {
         label: "Profile",
         showBadge: false,
       },
-    ],
-    []
-  );
+    ];
+
+    return baseItems;
+  }, [currentUser?.role, pathname]); // IMPORTANT: pathname must be here!
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   useEffect(() => {
     if (pathname.includes("/Market")) {
@@ -239,8 +281,22 @@ const TabsLayout = () => {
       setActiveTab("Quality");
     } else if (pathname.includes("/Notifications")) {
       setActiveTab("Notifications");
-    } else if (pathname.includes("/profile") || pathname.includes("/Update_profile")) {
+    } else if (
+      pathname.includes("/profile") ||
+      pathname.includes("/Update_profile")
+    ) {
       setActiveTab("profile");
+    } else if (pathname.includes("/fishtripcost")) {
+      setActiveTab("fishtripcost");
+      // ✅ ADD ADMIN TRACKING HERE
+    } else if (pathname.includes("/fishtripcostadmin/boat-analytics")) {
+      setActiveTab("boatanalytics");
+    } else if (pathname.includes("/fishtripcostadmin/dataset")) {
+      setActiveTab("dataset");
+    } else if (pathname.includes("/fishtripcostadmin/modeltrain")) {
+      setActiveTab("modeltrain");
+    } else if (pathname.includes("/fishtripcostadmin")) {
+      setActiveTab("fishtripcostadmin");
     } else {
       setActiveTab("home");
     }
@@ -251,7 +307,7 @@ const TabsLayout = () => {
       if (currentUser?.id) {
         fetchUnreadCount();
       }
-    }, [currentUser?.id, fetchUnreadCount])
+    }, [currentUser?.id, fetchUnreadCount]),
   );
 
   useEffect(() => {
@@ -263,11 +319,45 @@ const TabsLayout = () => {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
+        // List of detail page names that should use back navigation
+        const detailPages = [
+          "past-trips",
+          "planner",
+          "history",
+          "learning-summary",
+          "log-actual",
+          "mapview",
+          "result",
+          "boats",
+          "costs",
+          "trip-details",
+          "edit-trip",
+          "add-boat",
+          "boat-analytics",
+          "dataset",
+          "boattypes",
+          "modeltrain",
+          "modelregistry",
+        ];
+
+        const lastPathSegment = pathname.split("/").filter(Boolean).pop() || "";
+        const isDetailPage = detailPages.some((page) =>
+          lastPathSegment.includes(page),
+        );
+
+        // If in detail pages, go back to previous page in stack
+        if (isDetailPage) {
+          router.back();
+          return true;
+        }
+
+        // If on home tab, exit app
         if (activeTab === "home") {
           BackHandler.exitApp();
           return true;
         }
 
+        // For all other cases, go to home
         setActiveTab("home");
         router.replace("/(root)/(tabs)/home");
         return true;
@@ -275,11 +365,11 @@ const TabsLayout = () => {
 
       const subscription = BackHandler.addEventListener(
         "hardwareBackPress",
-        onBackPress
+        onBackPress,
       );
 
       return () => subscription.remove();
-    }, [activeTab])
+    }, [activeTab, pathname]),
   );
 
   const handleTabPress = (tabName: TabName, route: string) => {
@@ -302,11 +392,11 @@ const TabsLayout = () => {
 
   const bottomBarHeight: number = isDesktop
     ? Math.max(90, containerSize + 20 + 14 + verticalScale(8))
-    : Platform.select({
+    : (Platform.select({
         ios: verticalScale(60) + insets.bottom,
         android: verticalScale(65) + insets.bottom,
         default: verticalScale(70) + insets.bottom,
-      }) ?? verticalScale(70) + insets.bottom;
+      }) ?? verticalScale(70) + insets.bottom);
 
   return (
     <SafeAreaProvider style={styles.safe}>
@@ -389,6 +479,7 @@ const TabsLayout = () => {
                 headerShown: true,
               }}
             />
+
             <Tabs.Screen
               name="Quality"
               options={{
@@ -400,6 +491,7 @@ const TabsLayout = () => {
                 },
               }}
             />
+
             <Tabs.Screen
               name="Notifications"
               options={{
@@ -407,6 +499,7 @@ const TabsLayout = () => {
                 headerShown: true,
               }}
             />
+
             <Tabs.Screen
               name="profile"
               options={{
@@ -425,9 +518,6 @@ const TabsLayout = () => {
                 title: "Edit Profile",
                 headerShown: true,
                 headerTitleAlign: "center",
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
                 href: null,
               }}
             />
@@ -451,29 +541,6 @@ const TabsLayout = () => {
                 title: "Quality Grading",
                 headerShown: true,
                 headerTitleAlign: "center",
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
-                href: null,
-              }}
-            />
-            <Tabs.Screen
-              name="GradingHistory"
-              options={{
-                headerShown: true,
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
-                href: null,
-              }}
-            />
-            <Tabs.Screen
-              name="GradingDetail"
-              options={{
-                headerShown: true,
-                headerStyle: {
-                  backgroundColor: "#0057FF",
-                },
                 href: null,
               }}
             />
@@ -486,6 +553,37 @@ const TabsLayout = () => {
                 headerStyle: {
                   backgroundColor: "#0057FF",
                 },
+                href: null,
+              }}
+            />
+
+            <Tabs.Screen
+              name="GradingHistory"
+              options={{
+                title: "Quality Details",
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+                href: null,
+              }}
+            />
+
+            <Tabs.Screen
+              name="GradingDetail"
+              options={{
+                headerShown: true,
+                headerStyle: {
+                  backgroundColor: "#0057FF",
+                },
+                href: null,
+              }}
+            />
+            <Tabs.Screen
+              name="fishtripcostadmin"
+              options={{
+                title: "Fisher Admin Dashboard",
+                headerShown: true, // ✅ THIS BRINGS THE SIDEBAR BUTTON BACK!
                 href: null,
               }}
             />
@@ -506,15 +604,45 @@ const TabsLayout = () => {
         </View>
 
         {/* Bottom Navigation - Unified for desktop & mobile */}
-          {isDesktop ? (
+        {isDesktop ? (
+          <View
+            style={[
+              styles.customTabBar,
+              styles.tabBarDesktop,
+              { height: bottomBarHeight },
+            ]}
+          >
+            <View style={[styles.navItemsContainer, styles.navItemsDesktop]}>
+              {navItems.map((item) => (
+                <NavItem
+                  key={item.tabName}
+                  icon={item.icon}
+                  label={item.label}
+                  isActive={activeTab === item.tabName}
+                  onPress={() => handleTabPress(item.tabName, item.route)}
+                  showBadge={item.showBadge}
+                  badgeCount={unreadCount}
+                  isDesktop={true}
+                  iconSize={iconSize}
+                  containerSize={containerSize}
+                  iconStyle={item.iconStyle}
+                />
+              ))}
+            </View>
+          </View>
+        ) : (
+          !sidebarVisible && (
             <View
               style={[
                 styles.customTabBar,
-                styles.tabBarDesktop,
-                { height: bottomBarHeight },
+                styles.tabBarMobile,
+                {
+                  paddingBottom: Math.max(insets.bottom, verticalScale(8)),
+                  height: bottomBarHeight,
+                },
               ]}
             >
-              <View style={[styles.navItemsContainer, styles.navItemsDesktop]}>
+              <View style={styles.navItemsContainer}>
                 {navItems.map((item) => (
                   <NavItem
                     key={item.tabName}
@@ -524,7 +652,7 @@ const TabsLayout = () => {
                     onPress={() => handleTabPress(item.tabName, item.route)}
                     showBadge={item.showBadge}
                     badgeCount={unreadCount}
-                    isDesktop={true}
+                    isDesktop={false}
                     iconSize={iconSize}
                     containerSize={containerSize}
                     iconStyle={item.iconStyle}
@@ -532,38 +660,8 @@ const TabsLayout = () => {
                 ))}
               </View>
             </View>
-          ) : (
-            !sidebarVisible && (
-              <View
-                style={[
-                  styles.customTabBar,
-                  styles.tabBarMobile,
-                  {
-                    paddingBottom: Math.max(insets.bottom, verticalScale(8)),
-                    height: bottomBarHeight,
-                  },
-                ]}
-              >
-                <View style={styles.navItemsContainer}>
-                  {navItems.map((item) => (
-                    <NavItem
-                      key={item.tabName}
-                      icon={item.icon}
-                      label={item.label}
-                      isActive={activeTab === item.tabName}
-                      onPress={() => handleTabPress(item.tabName, item.route)}
-                      showBadge={item.showBadge}
-                      badgeCount={unreadCount}
-                      isDesktop={false}
-                      iconSize={iconSize}
-                      containerSize={containerSize}
-                      iconStyle={item.iconStyle}
-                    />
-                  ))}
-                </View>
-              </View>
-            )
-          )}
+          )
+        )}
       </View>
     </SafeAreaProvider>
   );

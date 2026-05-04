@@ -10,8 +10,7 @@ export default function BoatsLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="[id]" />
       <Stack.Screen name="add-boat" />
-      <Stack.Screen name="edit" />
+      <Stack.Screen name="edit/[id]" />
     </Stack>
   );
 }
-

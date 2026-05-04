@@ -11,19 +11,24 @@ import {
   UseInterceptors,
   UploadedFile,
   Delete,
+  ForbiddenException,
 } from '@nestjs/common';
 import { BoatService } from './boat.service';
 import { AuthTokenGuard } from '../common/guards/auth-token.guard';
 import { Types } from 'mongoose';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { boatMulterOptions } from '../common/config/multer.config';
+import { UserService } from '../user/user.service';
 
 import { CreateBoatDto } from './dto/create-boat.dto';
 
 @Controller('boats')
 @UseGuards(AuthTokenGuard)
 export class BoatController {
-  constructor(private readonly boatService: BoatService) {}
+  constructor(
+    private readonly boatService: BoatService,
+    private readonly userService: UserService,
+  ) {}
 
   // ✅ Create boat (supports image upload)
   @Post()
@@ -54,6 +59,71 @@ export class BoatController {
   @Get('types')
   getBoatTypes() {
     return this.boatService.getBoatTypes();
+  }
+
+  @Get('admin/types')
+  async getAdminBoatTypes(@Req() req: any) {
+    await this.ensureAdmin(req);
+    return this.boatService.getAdminBoatTypes();
+  }
+
+  @Get('admin/all')
+  async getAllBoatsForAdmin(@Req() req: any) {
+    await this.ensureAdmin(req);
+    return this.boatService.findAllBoats();
+  }
+
+  @Post('admin/types')
+  async createAdminBoatType(
+    @Req() req: any,
+    @Body() body: { name?: string; description?: string; fuelPerKm?: number },
+  ) {
+    const adminId = this.getUserId(req);
+    await this.ensureAdmin(req);
+    return this.boatService.createAdminBoatType(body, adminId);
+  }
+
+  @Patch('admin/types/:id')
+  async updateAdminBoatType(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body()
+    body: {
+      name?: string;
+      description?: string;
+      fuelPerKm?: number;
+      active?: boolean;
+    },
+  ) {
+    const adminId = this.getUserId(req);
+    await this.ensureAdmin(req);
+
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid boat type id');
+    }
+
+    return this.boatService.updateAdminBoatType(id, body, adminId);
+  }
+
+  @Delete('admin/types/:id')
+  async deleteAdminBoatType(@Req() req: any, @Param('id') id: string) {
+    await this.ensureAdmin(req);
+
+    if (!Types.ObjectId.isValid(id)) {
+      throw new BadRequestException('Invalid boat type id');
+    }
+
+    return this.boatService.deleteAdminBoatType(id);
+  }
+
+  @Get('fuel-baselines')
+  getFuelBaselines() {
+    return this.boatService.getFuelBaselines();
+  }
+
+  @Get('types-with-fuel-info')
+  getBoatTypesWithFuelInfo() {
+    return this.boatService.getBoatTypesWithFuelInfo();
   }
 
   @Get(':id')
@@ -133,5 +203,35 @@ export class BoatController {
     }
 
     return String(userId);
+  }
+
+  private isAdminLikeUser(user: any): boolean {
+    const role = String(user?.role || '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return (
+      user?.isAdmin === true ||
+      String(user?.isAdmin).toLowerCase() === 'true' ||
+      role.includes('admin')
+    );
+  }
+
+  private async ensureAdmin(req: any): Promise<void> {
+    const user = req?.user ?? {};
+
+    if (this.isAdminLikeUser(user)) {
+      return;
+    }
+
+    const userId = this.getUserId(req);
+    const latestUser = await this.userService
+      .getUserById(userId)
+      .catch(() => null);
+
+    if (!latestUser || !this.isAdminLikeUser(latestUser)) {
+      throw new ForbiddenException('Only fish admin can manage boat types');
+    }
   }
 }

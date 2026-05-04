@@ -21,6 +21,7 @@ export type BuildPredictionResponseInput = {
     };
     windSpeed: number;
     waveHeight: number;
+    rainMmPerHour?: number;
   };
   economics: {
     fesi: number;
@@ -70,6 +71,9 @@ export type BuildPredictionResponseInput = {
   };
   recommendations: string[];
   mlFallback: boolean;
+
+  // ✅ Day 5 addition (append-only, non-breaking)
+  modelMetadata?: any;
 };
 
 export function buildPredictionResponse(input: BuildPredictionResponseInput) {
@@ -84,5 +88,8 @@ export function buildPredictionResponse(input: BuildPredictionResponseInput) {
     profitability: input.profitability,
     recommendations: input.recommendations,
     mlFallback: input.mlFallback,
+
+    // ✅ THIS LINE FIXES YOUR ERROR + COMPLETES DAY 5
+    modelMetadata: input.modelMetadata || null,
   };
 }

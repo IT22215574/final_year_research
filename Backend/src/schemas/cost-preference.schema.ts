@@ -14,6 +14,15 @@ export class CostPreference {
   @Prop({ required: true, trim: true })
   category: string;
 
+  @Prop({ default: 'cash-outline', trim: true })
+  icon?: string;
+
+  @Prop({ default: 1, min: 0.1 })
+  quantity: number;
+
+  @Prop({ required: true, min: 0 })
+  pricePerUnit: number;
+
   @Prop({ required: true, min: 0 })
   amount: number;
 

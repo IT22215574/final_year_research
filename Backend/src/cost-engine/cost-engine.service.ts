@@ -51,6 +51,7 @@ import { buildPredictionResponse } from './functions/mapping/build-prediction-re
 import { mergeCostPreferences } from './functions/cost/merge-cost-preferences';
 import { calculateExternalCostTotal } from './functions/cost/calculate-external-cost-total';
 import { buildCostBreakdown } from './functions/cost/build-cost-breakdown';
+import { ModelRegistryService } from '../model-registry/model-registry.service';
 
 @Injectable()
 export class CostEngineService {
@@ -61,6 +62,7 @@ export class CostEngineService {
     private readonly http: HttpService,
     private readonly config: ConfigService,
     private readonly costPreferencesService: CostPreferencesService,
+    private readonly modelRegistryService: ModelRegistryService,
   ) {}
 
   private async getValidatedBoatForPrediction(boatId: string, userId?: string) {
@@ -91,12 +93,18 @@ export class CostEngineService {
     let calculatedFromCoordinates = false;
     const drf = 0.05; // Detour/route factor
 
-    // If coordinates provided, calculate distance
-    if (
+    // If manual distance provided, use it (prioritized because frontend calculates total path distance)
+    if (dto.distanceKm != null && dto.distanceKm > 0) {
+      baseDistanceKm = dto.distanceKm;
+      predictedDistanceKm = effectiveDistanceKm(baseDistanceKm, drf);
+      calculatedFromCoordinates = false;
+    }
+    // Otherwise, if coordinates provided, calculate straight-line distance
+    else if (
       dto.startLat != null &&
       dto.startLon != null &&
       dto.endLat != null &&
-      dto.endLon != null   
+      dto.endLon != null
     ) {
       baseDistanceKm = haversineDistanceKm(
         dto.startLat,
@@ -106,12 +114,6 @@ export class CostEngineService {
       );
       predictedDistanceKm = effectiveDistanceKm(baseDistanceKm, drf);
       calculatedFromCoordinates = true;
-    }
-    // Otherwise, use manual distance
-    else if (dto.distanceKm != null && dto.distanceKm > 0) {
-      baseDistanceKm = dto.distanceKm;
-      predictedDistanceKm = effectiveDistanceKm(baseDistanceKm, drf);
-      calculatedFromCoordinates = false;
     }
     // Neither provided - error
     else {
@@ -123,7 +125,7 @@ export class CostEngineService {
     const { wsi, normalized: wsiNormalized } = calculateWSI(
       dto.windSpeed,
       dto.waveHeight,
-      0,
+      dto.rainMmPerHour ?? 0,
     );
 
     const { fesi, components: fesiComponents } = calculateFESI({
@@ -136,6 +138,8 @@ export class CostEngineService {
       this.config.get<string>('ML_SERVICE_BASE_URL') || 'http://localhost:5001';
 
     const efficiencyFactor = boat.fuelEfficiencyFactor ?? 1;
+    const effectiveEngineHP =
+      dto.engineHP ?? dto.engineHorsePower ?? boat.engineHorsePower ?? 85;
     let mlFallback = false;
 
     const fuelBaseResult = estimateFuelBase({
@@ -143,6 +147,7 @@ export class CostEngineService {
       wsi,
       speed: dto.speed,
       efficiencyFactor,
+      boatType: boat.boatType,
     });
 
     let predictedFuelLiters = fuelBaseResult.predictedFuelLiters;
@@ -151,9 +156,10 @@ export class CostEngineService {
       const fuelRes = await firstValueFrom(
         this.http.post(`${baseUrl}/predict/fuel`, {
           boatId: dto.boatId,
+          boatType: boat.boatType, // ✅ Send boat type for fuel baseline
           distanceKm: predictedDistanceKm,
           speed: dto.speed,
-          engineHP: boat.engineHorsePower ?? 85,
+          engineHP: effectiveEngineHP,
           fishingHours: dto.fishingHours,
           numberOfDays: dto.numberOfDays,
           weatherSeverityIndex: wsi,
@@ -328,6 +334,33 @@ export class CostEngineService {
         'Conditions look stable: proceed with standard plan and monitor weather updates.',
       );
     }
+    // 🛡️ GOVERNED MODEL METADATA (Day 5 - Append Only)
+    let modelMetadata: any = null;
+
+    if (this.config.get<string>('ENABLE_MODEL_VERSION_ROUTING') === 'true') {
+      try {
+        const activeModel =
+          await this.modelRegistryService.getActiveModelForBoatType(
+            boat.boatType,
+          );
+
+        if (activeModel) {
+          modelMetadata = {
+            modelVersionId: activeModel._id.toString(),
+            algorithmType: activeModel.algorithmType,
+            scope: activeModel.scope,
+            boatType: activeModel.boatType,
+            selectionRank: activeModel.selectionRank,
+            quality: activeModel.quality,
+            promotedAt: activeModel.promotedAt,
+            artifactReference: activeModel.artifactReference,
+          };
+        }
+      } catch (err) {
+        // Non-breaking: if registry fails, prediction still works
+        console.error('Model registry lookup failed:', err);
+      }
+    }
 
     return buildPredictionResponse({
       distance: {
@@ -340,6 +373,7 @@ export class CostEngineService {
         normalized: wsiNormalized,
         windSpeed: dto.windSpeed,
         waveHeight: dto.waveHeight,
+        rainMmPerHour: dto.rainMmPerHour ?? 0,
       },
       economics: {
         fesi,
@@ -377,6 +411,7 @@ export class CostEngineService {
       },
       recommendations,
       mlFallback,
+      modelMetadata,
     });
   }
   // =========================
@@ -397,6 +432,8 @@ export class CostEngineService {
     const boat = await this.getValidatedBoatForPrediction(dto.boatId, userId);
 
     const prediction = await this.predictTrip(dto, userId);
+    const effectiveEngineHP =
+      dto.engineHP ?? dto.engineHorsePower ?? boat.engineHorsePower;
 
     if (dto.clientRequestId) {
       const exists = await this.tripModel.findOne({
@@ -440,12 +477,13 @@ export class CostEngineService {
         prediction?.distance?.baseDistanceKm ??
         undefined,
 
-      engineHorsePower: boat.engineHorsePower,
-      engineHP: boat.engineHorsePower,
+      engineHorsePower: effectiveEngineHP,
+      engineHP: effectiveEngineHP,
       boatType: boat.boatType,
 
       windSpeed: dto.windSpeed,
       waveHeight: dto.waveHeight,
+      rainMmPerHour: dto.rainMmPerHour,
       fuelPricePerLiter: dto.fuelPrice,
       marketPrice: dto.marketPrice,
 

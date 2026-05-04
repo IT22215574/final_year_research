@@ -16,7 +16,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 // Backend API base URL from environment variables
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_KEY;
 
 if (!API_BASE_URL) {
   throw new Error("EXPO_PUBLIC_API_URL must be defined in .env file");

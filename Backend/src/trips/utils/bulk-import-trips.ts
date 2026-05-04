@@ -79,7 +79,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Deep Sea Hunter',
-      boatType: 'Trawler',
+      boatType: '55 Feet Long-line Fishing Trawler',  // ✅ Fixed
       engineHorsePower: 180,
       boatLength: 18.5,
       boatWidth: 4.2,
@@ -118,7 +118,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Chilaw Queen',
-      boatType: 'Longliner',
+      boatType: '55 Feet Long-line Fishing Trawler',  // ✅ Fixed
       engineHorsePower: 95,
       boatLength: 12.8,
       boatWidth: 3.5,
@@ -157,7 +157,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Lanka Fisher 7',
-      boatType: 'One-day Boat',
+      boatType: 'One Day Fishing Boat (30ft)',  // ✅ Fixed
       engineHorsePower: 52,
       boatLength: 9.2,
       boatWidth: 2.6,
@@ -196,7 +196,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Sea Breeze Express',
-      boatType: 'Fiber Boat',
+      boatType: 'Flat Bottom Boat (18-19ft)',  // ✅ Fixed
       engineHorsePower: 28,
       boatLength: 6.8,
       boatWidth: 2.0,
@@ -235,7 +235,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Blue Horizon 3',
-      boatType: 'Multi-day Boat',
+      boatType: 'Multi-day Fishing Vessel',  // ✅ Fixed
       engineHorsePower: 135,
       boatLength: 15.1,
       boatWidth: 4.0,
@@ -274,7 +274,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Pearl Diver',
-      boatType: 'One-day Boat',
+      boatType: 'One Day Fishing Boat (30ft)',  // ✅ Fixed
       engineHorsePower: 40,
       boatLength: 8.0,
       boatWidth: 2.3,
@@ -313,7 +313,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Tuna Master',
-      boatType: 'Longliner',
+      boatType: '55 Feet Long-line Fishing Trawler',  // ✅ Fixed
       engineHorsePower: 110,
       boatLength: 13.6,
       boatWidth: 3.7,
@@ -352,7 +352,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Rapid Catch',
-      boatType: 'Fiber Boat',
+      boatType: 'Flat Bottom Boat (18-19ft)',  // ✅ Fixed
       engineHorsePower: 32,
       boatLength: 7.4,
       boatWidth: 2.2,
@@ -391,7 +391,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Golden Wave 5',
-      boatType: 'One-day Boat',
+      boatType: 'One Day Fishing Boat (30ft)',  // ✅ Fixed
       engineHorsePower: 48,
       boatLength: 8.9,
       boatWidth: 2.5,
@@ -430,7 +430,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Southern Star',
-      boatType: 'Multi-day Boat',
+      boatType: 'Multi-day Fishing Vessel',  // ✅ Fixed
       engineHorsePower: 142,
       boatLength: 15.8,
       boatWidth: 4.1,
@@ -469,7 +469,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Coral Reef II',
-      boatType: 'Fiber Boat',
+      boatType: 'Flat Bottom Boat (18-19ft)',  // ✅ Fixed
       engineHorsePower: 30,
       boatLength: 7.0,
       boatWidth: 2.1,
@@ -508,7 +508,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'King Fisher X',
-      boatType: 'Trawler',
+      boatType: '55 Feet Long-line Fishing Trawler',  // ✅ Fixed
       engineHorsePower: 165,
       boatLength: 17.2,
       boatWidth: 4.0,
@@ -547,7 +547,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Marina Pride',
-      boatType: 'Longliner',
+      boatType: '55 Feet Long-line Fishing Trawler',  // ✅ Fixed
       engineHorsePower: 105,
       boatLength: 13.2,
       boatWidth: 3.6,
@@ -586,7 +586,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Sunrise Voyager',
-      boatType: 'One-day Boat',
+      boatType: 'One Day Fishing Boat (30ft)',  // ✅ Fixed
       engineHorsePower: 42,
       boatLength: 8.3,
       boatWidth: 2.4,
@@ -625,7 +625,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Lagoon Hunter',
-      boatType: 'Fiber Boat',
+      boatType: 'Flat Bottom Boat (18-19ft)',  // ✅ Fixed
       engineHorsePower: 34,
       boatLength: 7.6,
       boatWidth: 2.3,
@@ -664,7 +664,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Deep Blue Explorer',
-      boatType: 'Multi-day Boat',
+      boatType: 'Multi-day Fishing Vessel',  // ✅ Fixed
       engineHorsePower: 128,
       boatLength: 14.5,
       boatWidth: 3.9,
@@ -703,7 +703,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Coastal Runner',
-      boatType: 'One-day Boat',
+      boatType: 'One Day Fishing Boat (30ft)',  // ✅ Fixed
       engineHorsePower: 50,
       boatLength: 9.0,
       boatWidth: 2.6,
@@ -742,7 +742,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Tropic Fish',
-      boatType: 'Fiber Boat',
+      boatType: 'Flat Bottom Boat (18-19ft)',  // ✅ Fixed
       engineHorsePower: 29,
       boatLength: 6.9,
       boatWidth: 2.0,
@@ -781,7 +781,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Ocean Quest',
-      boatType: 'Multi-day Boat',
+      boatType: 'Multi-day Fishing Vessel',  // ✅ Fixed
       engineHorsePower: 138,
       boatLength: 15.4,
       boatWidth: 4.0,
@@ -820,7 +820,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Island Hopper',
-      boatType: 'One-day Boat',
+      boatType: 'One Day Fishing Boat (30ft)',  // ✅ Fixed
       engineHorsePower: 46,
       boatLength: 8.7,
       boatWidth: 2.5,
@@ -859,7 +859,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Net Master',
-      boatType: 'Trawler',
+      boatType: '55 Feet Long-line Fishing Trawler',  // ✅ Fixed
       engineHorsePower: 172,
       boatLength: 18.0,
       boatWidth: 4.3,
@@ -898,7 +898,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Silver Fin',
-      boatType: 'Longliner',
+      boatType: '55 Feet Long-line Fishing Trawler',  // ✅ Fixed
       engineHorsePower: 98,
       boatLength: 12.5,
       boatWidth: 3.4,
@@ -937,7 +937,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Morning Glory',
-      boatType: 'One-day Boat',
+      boatType: 'One Day Fishing Boat (30ft)',  // ✅ Fixed
       engineHorsePower: 44,
       boatLength: 8.4,
       boatWidth: 2.4,
@@ -976,7 +976,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Wave Rider',
-      boatType: 'Fiber Boat',
+      boatType: 'Flat Bottom Boat (18-19ft)',  // ✅ Fixed
       engineHorsePower: 36,
       boatLength: 7.8,
       boatWidth: 2.3,
@@ -1015,7 +1015,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Pacific Dream',
-      boatType: 'Multi-day Boat',
+      boatType: 'Multi-day Fishing Vessel',  // ✅ Fixed
       engineHorsePower: 130,
       boatLength: 14.8,
       boatWidth: 3.8,
@@ -1054,7 +1054,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Harbor Light',
-      boatType: 'One-day Boat',
+      boatType: 'One Day Fishing Boat (30ft)',  // ✅ Fixed
       engineHorsePower: 47,
       boatLength: 8.8,
       boatWidth: 2.5,
@@ -1093,7 +1093,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Reef Explorer',
-      boatType: 'Fiber Boat',
+      boatType: 'Flat Bottom Boat (18-19ft)',  // ✅ Fixed
       engineHorsePower: 31,
       boatLength: 7.2,
       boatWidth: 2.2,
@@ -1132,7 +1132,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Sea Monarch',
-      boatType: 'Multi-day Boat',
+      boatType: 'Multi-day Fishing Vessel',  // ✅ Fixed
       engineHorsePower: 145,
       boatLength: 16.0,
       boatWidth: 4.2,
@@ -1171,7 +1171,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Storm Chaser',
-      boatType: 'Trawler',
+      boatType: '55 Feet Long-line Fishing Trawler',  // ✅ Fixed
       engineHorsePower: 175,
       boatLength: 18.2,
       boatWidth: 4.3,
@@ -1210,7 +1210,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Emerald Sea',
-      boatType: 'Longliner',
+      boatType: '55 Feet Long-line Fishing Trawler',  // ✅ Fixed
       engineHorsePower: 102,
       boatLength: 12.9,
       boatWidth: 3.5,
@@ -1249,7 +1249,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Dawn Patrol',
-      boatType: 'One-day Boat',
+      boatType: 'One Day Fishing Boat (30ft)',  // ✅ Fixed
       engineHorsePower: 43,
       boatLength: 8.2,
       boatWidth: 2.3,
@@ -1288,7 +1288,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Lagoon Breeze',
-      boatType: 'Fiber Boat',
+      boatType: 'Flat Bottom Boat (18-19ft)',  // ✅ Fixed
       engineHorsePower: 33,
       boatLength: 7.5,
       boatWidth: 2.2,
@@ -1327,7 +1327,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Atlantic Hope',
-      boatType: 'Multi-day Boat',
+      boatType: 'Multi-day Fishing Vessel',  // ✅ Fixed
       engineHorsePower: 132,
       boatLength: 14.7,
       boatWidth: 3.9,
@@ -1366,7 +1366,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Bay Runner',
-      boatType: 'One-day Boat',
+      boatType: 'One Day Fishing Boat (30ft)',  // ✅ Fixed
       engineHorsePower: 49,
       boatLength: 9.1,
       boatWidth: 2.6,
@@ -1405,7 +1405,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Shoreline Pro',
-      boatType: 'Fiber Boat',
+      boatType: 'Flat Bottom Boat (18-19ft)',  // ✅ Fixed
       engineHorsePower: 27,
       boatLength: 6.7,
       boatWidth: 2.0,
@@ -1444,7 +1444,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Deep Venture',
-      boatType: 'Multi-day Boat',
+      boatType: 'Multi-day Fishing Vessel',  // ✅ Fixed
       engineHorsePower: 140,
       boatLength: 15.6,
       boatWidth: 4.1,
@@ -1483,7 +1483,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Reef Runner',
-      boatType: 'One-day Boat',
+      boatType: 'One Day Fishing Boat (30ft)',  // ✅ Fixed
       engineHorsePower: 45,
       boatLength: 8.6,
       boatWidth: 2.5,
@@ -1522,7 +1522,7 @@ const SAMPLE_TRIPS = [
   {
     boatSpec: {
       boatName: 'Net Weaver',
-      boatType: 'Trawler',
+      boatType: '55 Feet Long-line Fishing Trawler',  // ✅ Fixed
       engineHorsePower: 168,
       boatLength: 17.8,
       boatWidth: 4.2,
