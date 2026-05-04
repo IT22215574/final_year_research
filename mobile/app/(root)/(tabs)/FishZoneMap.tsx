@@ -11,7 +11,7 @@ import {
   Modal,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import MapView, { Marker, Circle, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker, Circle, PROVIDER_GOOGLE, Polygon } from "react-native-maps";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -53,6 +53,73 @@ interface GeographicZone {
   lonMax: number;
   color: string;
 }
+
+// Sri Lanka EEZ boundary — traced from official 1974/1976 India-SL maritime agreement map
+// Sufficient intermediate points added on curves so Polygon renders smooth arcs
+const SRI_LANKA_EEZ_BOUNDARY = [
+  // ── North: Palk Strait entry (near Jaffna / Point Pedro) ──
+  { latitude: 9.8,  longitude: 79.3  },
+  // ── Northern Indo-SL maritime boundary going northeast ──
+  { latitude: 10.3, longitude: 79.6  },
+  { latitude: 10.8, longitude: 79.9  },
+  { latitude: 11.3, longitude: 80.2  },
+  { latitude: 11.7, longitude: 80.4  },
+  { latitude: 12.0, longitude: 80.5  }, // northernmost point
+  // ── Curve east-southeast into Bay of Bengal ──
+  { latitude: 11.5, longitude: 81.0  },
+  { latitude: 11.0, longitude: 81.5  },
+  { latitude: 10.5, longitude: 82.0  },
+  { latitude: 10.0, longitude: 82.5  },
+  { latitude: 9.5,  longitude: 83.0  },
+  { latitude: 9.0,  longitude: 83.5  },
+  { latitude: 8.5,  longitude: 83.8  },
+  { latitude: 8.0,  longitude: 84.0  }, // eastern boundary ~84°E
+  // ── Eastern boundary straight south ──
+  { latitude: 7.0,  longitude: 84.0  },
+  { latitude: 6.0,  longitude: 84.0  },
+  { latitude: 5.0,  longitude: 84.0  },
+  { latitude: 4.0,  longitude: 84.0  },
+  { latitude: 3.0,  longitude: 83.5  },
+  // ── Southeast curve towards south ──
+  { latitude: 2.5,  longitude: 83.0  },
+  { latitude: 2.2,  longitude: 82.5  },
+  { latitude: 2.0,  longitude: 82.0  }, // southernmost area (east)
+  // ── Southern boundary going west ──
+  { latitude: 2.0,  longitude: 81.0  },
+  { latitude: 2.0,  longitude: 80.0  },
+  { latitude: 2.0,  longitude: 79.0  },
+  // ── Southwest curve ──
+  { latitude: 2.2,  longitude: 78.5  },
+  { latitude: 2.5,  longitude: 78.0  },
+  { latitude: 3.0,  longitude: 77.5  },
+  { latitude: 3.5,  longitude: 77.0  },
+  // ── Western Indo-SL maritime boundary going north-northwest ──
+  { latitude: 4.5,  longitude: 76.8  },
+  { latitude: 5.5,  longitude: 76.5  },
+  { latitude: 6.5,  longitude: 76.5  },
+  { latitude: 7.0,  longitude: 76.7  },
+  { latitude: 7.5,  longitude: 77.0  },
+  { latitude: 8.0,  longitude: 77.5  },
+  { latitude: 8.5,  longitude: 78.0  },
+  { latitude: 9.0,  longitude: 78.5  },
+  { latitude: 9.5,  longitude: 79.0  },
+  // ── Close polygon back to Palk Strait ──
+  { latitude: 9.8,  longitude: 79.3  },
+];
+
+const isInsideSriLankaEEZ = (lat: number, lon: number): boolean => {
+  const polygon = SRI_LANKA_EEZ_BOUNDARY;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].latitude, yi = polygon[i].longitude;
+    const xj = polygon[j].latitude, yj = polygon[j].longitude;
+    const intersect =
+      yi > lon !== yj > lon &&
+      lat < ((xj - xi) * (lon - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
 
 // Geographic zones covering Sri Lanka's EEZ only (bounded by India-SL maritime agreements)
 // Northern boundary ~10.5°N (Palk Strait/Bay of Bengal India treaty line)
@@ -231,12 +298,11 @@ export default function FishZoneMapScreen() {
     setSelectedGeographicZones([]);
   };
 
-  // Filter fish zones based on selected geographic zones
+  // Filter fish zones: must be inside Sri Lanka's EEZ and within a selected geographic zone
   const filteredFishZones = fishZones.filter((zone) => {
-    // If no geographic zones selected, show nothing
     if (selectedGeographicZones.length === 0) return false;
+    if (!isInsideSriLankaEEZ(zone.lat, zone.lon)) return false;
 
-    // Check if fish zone falls within any selected geographic zone
     return selectedGeographicZones.some((geoZoneId) => {
       const geoZone = GEOGRAPHIC_ZONES.find((z) => z.id === geoZoneId);
       if (!geoZone) return false;
@@ -369,6 +435,14 @@ export default function FishZoneMapScreen() {
         showsUserLocation
         showsMyLocationButton
       >
+        {/* Sri Lanka maritime zone boundary */}
+        <Polygon
+          coordinates={SRI_LANKA_EEZ_BOUNDARY}
+          strokeColor="rgba(0,0,0,0.75)"
+          strokeWidth={1.5}
+          fillColor="transparent"
+        />
+
         {filteredFishZones.map((zone, index) => (
           <React.Fragment key={`zone-${index}`}>
             {/* Circle showing fish zone area */}
