@@ -156,7 +156,8 @@ export class CostEngineController {
   async getMarketTrends(@Query('days') days?: string) {
     try {
       const parsedDays = days !== undefined ? Number(days) : 7;
-      const safeDays = Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : 7;
+      const safeDays =
+        Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : 7;
 
       return {
         period: `last_${safeDays}_days`,

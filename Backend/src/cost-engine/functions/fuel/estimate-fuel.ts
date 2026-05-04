@@ -28,7 +28,10 @@ export function estimateFuelBase(input: FuelBaseInput): FuelBaseResult {
   };
 }
 
-export function applySpeedAdjustment(predictedFuelLiters: number, speed: number) {
+export function applySpeedAdjustment(
+  predictedFuelLiters: number,
+  speed: number,
+) {
   const baseSpeed = 10;
   const speedAdjPerKnot = 0.03;
 

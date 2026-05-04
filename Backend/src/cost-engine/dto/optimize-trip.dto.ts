@@ -5,7 +5,9 @@ import { OmitType } from '@nestjs/mapped-types';
 import { PredictCostDto } from './predict-cost.dto';
 
 // Take everything from PredictCostDto except speed
-export class OptimizeTripDto extends OmitType(PredictCostDto, ['speed'] as const) {
+export class OptimizeTripDto extends OmitType(PredictCostDto, [
+  'speed',
+] as const) {
   // Optional: optimizer can try multiple speeds
   @IsOptional()
   @Type(() => Number)

@@ -28,11 +28,24 @@ export class GradingService {
 
     const candidates = [
       // If running from Backend/
-      path.resolve(process.cwd(), '..', 'model', 'fish_quality_grade', 'predict.py'),
+      path.resolve(
+        process.cwd(),
+        '..',
+        'model',
+        'fish_quality_grade',
+        'predict.py',
+      ),
       // If running from repo root
       path.resolve(process.cwd(), 'model', 'fish_quality_grade', 'predict.py'),
       // If running from Backend/dist/
-      path.resolve(process.cwd(), '..', '..', 'model', 'fish_quality_grade', 'predict.py'),
+      path.resolve(
+        process.cwd(),
+        '..',
+        '..',
+        'model',
+        'fish_quality_grade',
+        'predict.py',
+      ),
     ];
 
     const found = candidates.find((p) => fs.existsSync(p));
@@ -57,7 +70,13 @@ export class GradingService {
     const modelPath = process.env.MODEL_PATH;
 
     return await new Promise((resolve, reject) => {
-      const childArgs = [scriptPath, '--side1', args.side1Path, '--side2', args.side2Path];
+      const childArgs = [
+        scriptPath,
+        '--side1',
+        args.side1Path,
+        '--side2',
+        args.side2Path,
+      ];
       if (modelPath) {
         childArgs.push('--model', modelPath);
       }

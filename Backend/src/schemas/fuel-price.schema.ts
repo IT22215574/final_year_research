@@ -5,7 +5,6 @@ export type FuelPriceDocument = HydratedDocument<FuelPrice>;
 
 @Schema({ timestamps: true })
 export class FuelPrice {
-
   @Prop({ required: true })
   pricePerLiter: number;
 

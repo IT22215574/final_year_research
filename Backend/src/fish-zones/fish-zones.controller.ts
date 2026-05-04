@@ -6,9 +6,7 @@ export class FishZonesController {
   constructor(private readonly fishZonesService: FishZonesService) {}
 
   @Get('latest')
-  async getLatestFishZones(
-    @Query('minProbability') minProbability?: string,
-  ) {
+  async getLatestFishZones(@Query('minProbability') minProbability?: string) {
     const minProb = minProbability ? parseFloat(minProbability) : 0;
     return this.fishZonesService.getLatestFishZones(minProb);
   }

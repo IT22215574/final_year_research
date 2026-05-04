@@ -40,7 +40,7 @@ export class MlService {
   }): Promise<{ predictedCost: number }> {
     try {
       const response = await axios.post(
-        `${this.ML_API_URL}/predict-cost`, 
+        `${this.ML_API_URL}/predict-cost`,
         data,
       );
       return response.data;

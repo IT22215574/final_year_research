@@ -30,7 +30,9 @@ export class GradingController {
     const side2 = files?.side2?.[0];
 
     if (!side1 || !side2) {
-      throw new BadRequestException('Both images are required: side1 and side2');
+      throw new BadRequestException(
+        'Both images are required: side1 and side2',
+      );
     }
 
     return this.gradingService.predictFromFiles({

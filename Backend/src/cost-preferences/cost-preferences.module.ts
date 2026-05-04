@@ -10,12 +10,11 @@ import { CostPreferencesService } from './cost-preferences.service';
 import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-  imports: [    
+  imports: [
     MongooseModule.forFeature([
       { name: CostPreference.name, schema: CostPreferenceSchema },
-      
     ]),
-    AuthModule
+    AuthModule,
   ],
   controllers: [CostPreferencesController],
   providers: [CostPreferencesService],

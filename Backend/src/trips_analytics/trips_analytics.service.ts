@@ -106,54 +106,55 @@ export class AnalyticsService {
   //    X: distanceKm, speed, engineHP, fishingHours, weatherSeverityIndex
   //    y: fuelUsedLiters
   // ---------------------------------------------------------
-async exportFuelTrainingCSV(): Promise<string> {
-  const trips = await this.tripModel
-    .find()
-    .lean<(Trip & { _id: any; createdAt?: Date })[]>()
-    .exec();
+  async exportFuelTrainingCSV(): Promise<string> {
+    const trips = await this.tripModel
+      .find()
+      .lean<(Trip & { _id: any; createdAt?: Date })[]>()
+      .exec();
 
-  if (trips.length === 0) {
-    throw new Error('No trips to export');
+    if (trips.length === 0) {
+      throw new Error('No trips to export');
+    }
+
+    // ✅ Recommended: filter out bad rows for cleaner ML dataset
+    const cleanTrips = trips.filter(
+      (t) =>
+        (t.distanceKm ?? 0) > 0 &&
+        ((t as any).speed ?? 0) > 0 &&
+        ((t as any).engineHP ?? (t as any).engineHorsePower ?? 0) > 0 &&
+        ((t as any).fishingHours ?? 0) >= 0 &&
+        ((t as any).weatherSeverityIndex ?? 0) >= 0 &&
+        ((t as any).fuelUsedLiters ?? 0) > 0,
+    );
+
+    const rows = (cleanTrips.length > 0 ? cleanTrips : trips).map((t) => ({
+      distanceKm: t.distanceKm ?? 0,
+      speed: (t as any).speed ?? 0,
+      // ✅ key fallback for older rows
+      engineHP: (t as any).engineHP ?? (t as any).engineHorsePower ?? 0,
+      fishingHours: (t as any).fishingHours ?? 0,
+      weatherSeverityIndex: (t as any).weatherSeverityIndex ?? 0,
+
+      // ✅ label (REAL fuel value)
+      fuelUsedLiters: (t as any).fuelUsedLiters ?? 0,
+
+      // optional but useful for filtering/versioning
+      createdAt: t.createdAt ? new Date(t.createdAt).toISOString() : '',
+    }));
+
+    const fields = [
+      'distanceKm',
+      'speed',
+      'engineHP',
+      'fishingHours',
+      'weatherSeverityIndex',
+      'fuelUsedLiters',
+      'createdAt',
+    ];
+
+    const parser = new Parser({ fields });
+    return parser.parse(rows);
   }
-
-  // ✅ Recommended: filter out bad rows for cleaner ML dataset
-  const cleanTrips = trips.filter((t) =>
-    (t.distanceKm ?? 0) > 0 &&
-    ((t as any).speed ?? 0) > 0 &&
-    (((t as any).engineHP ?? (t as any).engineHorsePower ?? 0) > 0) &&
-    ((t as any).fishingHours ?? 0) >= 0 &&
-    ((t as any).weatherSeverityIndex ?? 0) >= 0 &&
-    ((t as any).fuelUsedLiters ?? 0) > 0
-  );
-
-  const rows = (cleanTrips.length > 0 ? cleanTrips : trips).map((t) => ({
-    distanceKm: t.distanceKm ?? 0,
-    speed: (t as any).speed ?? 0,
-    // ✅ key fallback for older rows
-    engineHP: (t as any).engineHP ?? (t as any).engineHorsePower ?? 0,
-    fishingHours: (t as any).fishingHours ?? 0,
-    weatherSeverityIndex: (t as any).weatherSeverityIndex ?? 0,
-
-    // ✅ label (REAL fuel value)
-    fuelUsedLiters: (t as any).fuelUsedLiters ?? 0,
-
-    // optional but useful for filtering/versioning
-    createdAt: t.createdAt ? new Date(t.createdAt).toISOString() : '',
-  }));
-
-  const fields = [
-    'distanceKm',
-    'speed',
-    'engineHP',
-    'fishingHours',
-    'weatherSeverityIndex',
-    'fuelUsedLiters',
-    'createdAt',
-  ];
-
-  const parser = new Parser({ fields });
-  return parser.parse(rows);
-}
   // -----------------------------
   // 3) Overall analytics summary
   // -----------------------------
@@ -216,7 +217,8 @@ async exportFuelTrainingCSV(): Promise<string> {
       totalUsers: uniqueUsers,
       totalFuelUsed: Math.round(totalFuelUsed * 100) / 100,
       totalDistance: Math.round(totalDistance * 100) / 100,
-      averageTripDuration: Math.round((totalDuration / trips.length) * 100) / 100,
+      averageTripDuration:
+        Math.round((totalDuration / trips.length) * 100) / 100,
       totalCostAllTrips: Math.round(totalCost * 100) / 100,
       averageCostPerTrip: Math.round((totalCost / trips.length) * 100) / 100,
     };

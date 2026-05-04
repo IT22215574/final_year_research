@@ -75,7 +75,10 @@ export class GradingRecordsService {
   }
 
   /** Delete a record — only the owner may delete it */
-  async remove(id: string, userId: string): Promise<{ success: boolean; message: string }> {
+  async remove(
+    id: string,
+    userId: string,
+  ): Promise<{ success: boolean; message: string }> {
     const doc = await this.findOne(id, userId);
 
     // Clean up image files from disk

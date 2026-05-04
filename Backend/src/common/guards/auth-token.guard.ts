@@ -15,7 +15,8 @@ export class AuthTokenGuard implements CanActivate {
 
     const headerAuth: string | undefined = req.headers?.authorization;
     const bearerToken =
-      typeof headerAuth === 'string' && headerAuth.toLowerCase().startsWith('bearer ')
+      typeof headerAuth === 'string' &&
+      headerAuth.toLowerCase().startsWith('bearer ')
         ? headerAuth.slice(7).trim()
         : null;
 
@@ -31,7 +32,9 @@ export class AuthTokenGuard implements CanActivate {
       req.user = decoded;
       return true;
     } catch {
-      throw new UnauthorizedException('Invalid or expired authentication token');
+      throw new UnauthorizedException(
+        'Invalid or expired authentication token',
+      );
     }
   }
 }

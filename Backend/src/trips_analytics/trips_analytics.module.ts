@@ -8,7 +8,7 @@ import { AuthModule } from 'src/auth/auth.module';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Trip.name, schema: TripSchema }]),
-    AuthModule
+    AuthModule,
   ],
   controllers: [AnalyticsController],
   providers: [AnalyticsService],

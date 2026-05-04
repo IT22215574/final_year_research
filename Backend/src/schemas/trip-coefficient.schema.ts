@@ -5,7 +5,6 @@ export type TripCoefficientDocument = HydratedDocument<TripCoefficient>;
 
 @Schema({ timestamps: true })
 export class TripCoefficient {
-
   @Prop({ required: true })
   tripId: string;
 
@@ -25,4 +24,5 @@ export class TripCoefficient {
   adjustmentApplied: number;
 }
 
-export const TripCoefficientSchema = SchemaFactory.createForClass(TripCoefficient);
+export const TripCoefficientSchema =
+  SchemaFactory.createForClass(TripCoefficient);

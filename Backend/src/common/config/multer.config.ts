@@ -50,7 +50,9 @@ const imageFileFilter = (req: any, file: Express.Multer.File, cb: any) => {
   ];
   if (!allowed.includes(file.mimetype.toLowerCase())) {
     return cb(
-      new BadRequestException('Only jpg/jpeg/png/webp/heic images are allowed.'),
+      new BadRequestException(
+        'Only jpg/jpeg/png/webp/heic images are allowed.',
+      ),
       false,
     );
   }

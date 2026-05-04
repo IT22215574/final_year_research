@@ -1,10 +1,5 @@
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
-import {
-
-  MinLength,
-  IsOptional,
-  IsDateString,
-} from 'class-validator';
+import { MinLength, IsOptional, IsDateString } from 'class-validator';
 
 export class SignInDto {
   @IsEmail()
@@ -15,7 +10,6 @@ export class SignInDto {
   @IsNotEmpty()
   password: string;
 }
-
 
 export class CompleteSignupDto {
   @IsString()
@@ -34,7 +28,6 @@ export class CompleteSignupDto {
   @IsNotEmpty()
   lastName: string;
 
-
   @IsString()
   @IsNotEmpty()
   role: string;
@@ -47,11 +40,9 @@ export class CompleteSignupDto {
   @IsOptional()
   zone: string;
 
-
   @IsString()
   @IsOptional()
   medium: string;
-
 
   @IsString()
   @MinLength(6)

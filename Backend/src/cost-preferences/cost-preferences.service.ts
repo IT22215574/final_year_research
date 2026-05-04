@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
@@ -24,10 +21,7 @@ export class CostPreferencesService {
     return value === 'true';
   }
 
-  private buildCreatePayload(
-    userId: string,
-    dto: CreateCostPreferenceDto,
-  ) {
+  private buildCreatePayload(userId: string, dto: CreateCostPreferenceDto) {
     return {
       userId,
       name: dto.name?.trim(),

@@ -36,14 +36,14 @@ export function estimateCarbonFromFuel(
   emissionFactorKgPerLiter: number = DEFAULT_DIESEL_EMISSION_FACTOR,
 ): CarbonEstimate {
   const safeFuel = Number.isFinite(fuelLiters) ? Math.max(0, fuelLiters) : 0;
-  const safeCatch =
-    Number.isFinite(expectedCatchKg) ? Math.max(0, expectedCatchKg) : 0;
+  const safeCatch = Number.isFinite(expectedCatchKg)
+    ? Math.max(0, expectedCatchKg)
+    : 0;
 
   const carbonEmissionKg = safeFuel * emissionFactorKgPerLiter;
 
   // Avoid divide-by-zero; if catch is 0, we define intensity as 0 (or you can set to carbonEmissionKg)
-  const carbonPerKgCatch =
-    safeCatch > 0 ? carbonEmissionKg / safeCatch : 0;
+  const carbonPerKgCatch = safeCatch > 0 ? carbonEmissionKg / safeCatch : 0;
 
   return {
     emissionFactorKgPerLiter,

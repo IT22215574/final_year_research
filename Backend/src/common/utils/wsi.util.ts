@@ -9,7 +9,11 @@ function clamp01(x: number) {
  * - Wave 0..4 m
  * - Rain 0..50 mm/h (optional; if missing use 0)
  */
-export function calculateWSI(windSpeed: number, waveHeight: number, rainMmPerHour = 0) {
+export function calculateWSI(
+  windSpeed: number,
+  waveHeight: number,
+  rainMmPerHour = 0,
+) {
   const windN = clamp01(windSpeed / 30);
   const waveN = clamp01(waveHeight / 4);
   const rainN = clamp01(rainMmPerHour / 50);

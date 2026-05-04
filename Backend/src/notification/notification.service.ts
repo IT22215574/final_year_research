@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Notification, NotificationDocument } from '../schemas/notification.schema';
+import {
+  Notification,
+  NotificationDocument,
+} from '../schemas/notification.schema';
 
 @Injectable()
 export class NotificationService {
@@ -12,10 +15,7 @@ export class NotificationService {
 
   async getAllNotifications(userId?: string) {
     const query = userId ? { userId } : {};
-    return this.notificationModel
-      .find(query)
-      .sort({ createdAt: -1 })
-      .exec();
+    return this.notificationModel.find(query).sort({ createdAt: -1 }).exec();
   }
 
   async getUnreadCount(userId?: string) {
@@ -31,16 +31,20 @@ export class NotificationService {
 
   async markAllAsRead(userId?: string) {
     const query = userId ? { userId } : {};
-    return this.notificationModel
-      .updateMany(query, { isRead: true })
-      .exec();
+    return this.notificationModel.updateMany(query, { isRead: true }).exec();
   }
 
   async deleteNotification(notificationId: string) {
     return this.notificationModel.findByIdAndDelete(notificationId).exec();
   }
 
-  async createNotification(title: string, message: string, userId?: string, type = 'info', data?: any) {
+  async createNotification(
+    title: string,
+    message: string,
+    userId?: string,
+    type = 'info',
+    data?: any,
+  ) {
     const notification = new this.notificationModel({
       title,
       message,
@@ -56,7 +60,7 @@ export class NotificationService {
     const sampleNotifications = [
       {
         title: 'Fish Market Update',
-        message: 'Today\'s fish prices have been updated for Colombo market.',
+        message: "Today's fish prices have been updated for Colombo market.",
         type: 'info',
       },
       {
@@ -71,7 +75,8 @@ export class NotificationService {
       },
       {
         title: 'Weather Alert',
-        message: 'Strong winds expected tomorrow. Plan your fishing trips accordingly.',
+        message:
+          'Strong winds expected tomorrow. Plan your fishing trips accordingly.',
         type: 'warning',
       },
     ];

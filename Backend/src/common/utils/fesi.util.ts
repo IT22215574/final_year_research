@@ -25,7 +25,7 @@ export function calculateFESI(opts: {
   const weatherVol = stdev(opts.recentWSI || []);
 
   // Normalize volatilities into 0..1 ranges (tweak later)
-  const fuelN = clamp01(fuelVol / 50);     // LKR-ish scale guess
+  const fuelN = clamp01(fuelVol / 50); // LKR-ish scale guess
   const marketN = clamp01(marketVol / 200);
   const weatherN = clamp01(weatherVol / 0.3);
 

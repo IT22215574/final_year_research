@@ -60,9 +60,7 @@ export class AuthController {
   }
 
   @Post('request-mobile-verification')
-  async requestMobileVerification(
-    @Body() dto: RequestMobileVerificationDto,
-  ) {
+  async requestMobileVerification(@Body() dto: RequestMobileVerificationDto) {
     return this.authService.requestMobileVerification(dto);
   }
 

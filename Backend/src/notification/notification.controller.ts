@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Param,
-  Headers,
-} from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Headers } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 
 @Controller('notifications')
@@ -13,9 +6,7 @@ export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Get()
-  async getAllNotifications(
-    @Headers('x-client-type') clientType?: string,
-  ) {
+  async getAllNotifications(@Headers('x-client-type') clientType?: string) {
     const notifications = await this.notificationService.getAllNotifications();
 
     if (clientType?.toLowerCase() === 'mobile') {
@@ -29,9 +20,7 @@ export class NotificationController {
   }
 
   @Get('unread-count')
-  async getUnreadCount(
-    @Headers('x-client-type') clientType?: string,
-  ) {
+  async getUnreadCount(@Headers('x-client-type') clientType?: string) {
     const count = await this.notificationService.getUnreadCount();
 
     if (clientType?.toLowerCase() === 'mobile') {
@@ -63,9 +52,7 @@ export class NotificationController {
   }
 
   @Post('mark-all-read')
-  async markAllAsRead(
-    @Headers('x-client-type') clientType?: string,
-  ) {
+  async markAllAsRead(@Headers('x-client-type') clientType?: string) {
     const result = await this.notificationService.markAllAsRead();
 
     if (clientType?.toLowerCase() === 'mobile') {
@@ -97,9 +84,11 @@ export class NotificationController {
   }
 
   @Post('sample-data')
-  async createSampleNotifications(@Headers('x-client-type') clientType?: string) {
+  async createSampleNotifications(
+    @Headers('x-client-type') clientType?: string,
+  ) {
     await this.notificationService.createSampleNotifications();
-    
+
     if (clientType?.toLowerCase() === 'mobile') {
       return {
         success: true,

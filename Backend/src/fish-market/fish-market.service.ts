@@ -22,7 +22,9 @@ function toUtcMidnight(dateStr?: string): Date {
     return new Date(Date.UTC(y, m - 1, d));
   }
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
 }
 
 /** Returns the UTC end-of-day (23:59:59.999) for comparison. */
@@ -46,9 +48,7 @@ export class FishMarketService {
       throw new BadRequestException('Invalid categoryId');
     }
 
-    const images = imageFiles.map(
-      (f) => `/uploads/fish-market/${f.filename}`,
-    );
+    const images = imageFiles.map((f) => `/uploads/fish-market/${f.filename}`);
 
     const marketDate = toUtcMidnight(dto.marketDate);
 
@@ -87,7 +87,8 @@ export class FishMarketService {
     } else if (filters.from || filters.to) {
       query.marketDate = {};
       if (filters.from) query.marketDate.$gte = toUtcMidnight(filters.from);
-      if (filters.to) query.marketDate.$lte = toUtcEndOfDay(toUtcMidnight(filters.to));
+      if (filters.to)
+        query.marketDate.$lte = toUtcEndOfDay(toUtcMidnight(filters.to));
     }
 
     if (filters.categoryId && Types.ObjectId.isValid(filters.categoryId)) {
@@ -138,7 +139,8 @@ export class FishMarketService {
       doc.categoryId = new Types.ObjectId(dto.categoryId) as any;
     }
     if (dto.grade !== undefined) doc.grade = dto.grade.trim();
-    if (dto.wholesalePrice !== undefined) doc.wholesalePrice = dto.wholesalePrice;
+    if (dto.wholesalePrice !== undefined)
+      doc.wholesalePrice = dto.wholesalePrice;
     if (dto.price !== undefined) doc.price = dto.price;
     if (dto.numberOfKilos !== undefined) doc.numberOfKilos = dto.numberOfKilos;
     if (dto.catchingAreaName !== undefined)

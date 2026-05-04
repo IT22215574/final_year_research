@@ -61,9 +61,7 @@ export class FishZonesService {
         .sort()
         .reverse();
 
-      return files.length > 0
-        ? path.join(this.predictionsDir, files[0])
-        : null;
+      return files.length > 0 ? path.join(this.predictionsDir, files[0]) : null;
     } catch (error) {
       console.error('Error reading predictions directory:', error);
       return null;
@@ -156,9 +154,7 @@ export class FishZonesService {
   /**
    * Get latest predictions as GeoJSON
    */
-  async getLatestGeoJSON(
-    minProbability: number = 0,
-  ): Promise<FishZoneGeoJSON> {
+  async getLatestGeoJSON(minProbability: number = 0): Promise<FishZoneGeoJSON> {
     const geojsonFile = this.getLatestPredictionFile('.geojson');
 
     if (geojsonFile && fs.existsSync(geojsonFile)) {
@@ -168,8 +164,9 @@ export class FishZonesService {
 
       // Filter by fish_zone=1 (only actual fish zones) AND probability
       geojsonData.features = geojsonData.features.filter(
-        (feature) => feature.properties.fish_zone === 1 && 
-                     feature.properties.fish_probability >= minProbability,
+        (feature) =>
+          feature.properties.fish_zone === 1 &&
+          feature.properties.fish_probability >= minProbability,
       );
 
       return geojsonData;
