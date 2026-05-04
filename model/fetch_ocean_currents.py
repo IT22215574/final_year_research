@@ -30,9 +30,12 @@ VARIABLES = ["uo", "vo"]  # eastward and northward ocean current velocities
 MIN_LON, MAX_LON = 79.0, 82.0
 MIN_LAT, MAX_LAT = 5.0, 10.0
 
+# Base data folder for unified storage
+BASE_DATA_FOLDER = "Fish zone daily data"
+
 # Output files
-OUTPUT_FILE_LATEST = "ocean_currents_latest.nc"
-DATA_ARCHIVE_DIR = "ocean_currents_archive"
+OUTPUT_FILE_LATEST = os.path.join(BASE_DATA_FOLDER, "currents_latest.nc")
+DATA_ARCHIVE_DIR = os.path.join(BASE_DATA_FOLDER, "ocean_currents_archive")
 
 
 def ensure_archive_directory() -> None:
@@ -52,6 +55,10 @@ def try_fetch_ocean_currents(date_str: str) -> bool:
         print(f"Region: lon [{MIN_LON}, {MAX_LON}]  lat [{MIN_LAT}, {MAX_LAT}]")
         print(f"Variables: {', '.join(VARIABLES)}\n")
         
+        # ensure base folder exists
+        if not os.path.exists(BASE_DATA_FOLDER):
+            os.makedirs(BASE_DATA_FOLDER, exist_ok=True)
+
         copernicusmarine.subset(
             dataset_id=DATASET_ID,
             variables=VARIABLES,
@@ -61,8 +68,8 @@ def try_fetch_ocean_currents(date_str: str) -> bool:
             maximum_latitude=MAX_LAT,
             start_datetime=f"{date_str}T00:00:00",
             end_datetime=f"{date_str}T23:59:59",
-            output_filename=OUTPUT_FILE_LATEST,
-            output_directory=".",
+            output_filename=os.path.basename(OUTPUT_FILE_LATEST),
+            output_directory=BASE_DATA_FOLDER,
             force_download=True,
             username=COPERNICUS_USER,
             password=COPERNICUS_PASS,

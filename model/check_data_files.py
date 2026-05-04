@@ -4,11 +4,15 @@ Quick diagnostic to check data files
 """
 import xarray as xr
 from pathlib import Path
+import os
 
-# Data directories
-SST_DATA_DIR = Path(__file__).parent / "sst_data"
-CHLOROPHYLL_DATA_DIR = Path(__file__).parent / "chlorophyll_data"
-CURRENTS_DATA_DIR = Path(__file__).parent / "ocean_currents"
+# Unified base data folder
+BASE_DATA_FOLDER = Path(__file__).parent / "Fish zone daily data"
+
+# Data directories (now subpaths under unified folder)
+SST_DATA_DIR = BASE_DATA_FOLDER
+CHLOROPHYLL_DATA_DIR = BASE_DATA_FOLDER
+CURRENTS_DATA_DIR = BASE_DATA_FOLDER
 
 def get_latest_file(directory, pattern):
     files = sorted(directory.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)

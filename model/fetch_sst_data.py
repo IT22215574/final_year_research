@@ -28,8 +28,11 @@ VARIABLE    = "analysed_sst"
 MIN_LON, MAX_LON = 79.0, 82.0
 MIN_LAT, MAX_LAT =  5.0, 10.0
 
+# Base data folder (unified)
+BASE_DATA_FOLDER = "Fish zone daily data"
+
 # Output file
-OUTPUT_FILE = "sri_lanka_sst_latest.nc"
+OUTPUT_FILE = os.path.join(BASE_DATA_FOLDER, "sst_latest.nc")
 
 
 def get_latest_date() -> str:

@@ -19,7 +19,8 @@ for days_back in range(0, 5):
     print(f'\nTrying {date_str}...')
     
     try:
-        os.makedirs('chlorophyll_data', exist_ok=True)
+        base_dir = 'Fish zone daily data'
+        os.makedirs(base_dir, exist_ok=True)
         copernicusmarine.subset(
             dataset_id=dataset_id,
             variables=['CHL'],
@@ -30,13 +31,13 @@ for days_back in range(0, 5):
             start_datetime=f'{date_str}T00:00:00',
             end_datetime=f'{date_str}T23:59:59',
             output_filename=f'chlorophyll_{date_str}.nc',
-            output_directory='chlorophyll_data',
+            output_directory=base_dir,
             force_download=True,
             username=COPERNICUS_USER,
             password=COPERNICUS_PASS,
         )
         print(f'\n✓ Successfully downloaded chlorophyll for {date_str}')
-        print(f'File: chlorophyll_data/chlorophyll_{date_str}.nc')
+        print(f'File: {base_dir}/chlorophyll_{date_str}.nc')
         break
     except Exception as e:
         print(f'✗ Failed: {str(e)[:200]}')

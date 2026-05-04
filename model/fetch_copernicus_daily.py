@@ -35,29 +35,41 @@ COPERNICUS_PASS = os.getenv("COPERNICUS_PASS", "your_password_here")
 MIN_LON, MAX_LON = 79.0, 82.0
 MIN_LAT, MAX_LAT = 5.0, 10.0
 
+# Base folder to store all daily fish-zone related data
+BASE_DATA_FOLDER = "Fish zone daily data"
+
 # Dataset configurations (verified dataset IDs from Copernicus Marine Service)
 DATASETS = {
     "sst": {
         "id": "METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2",
         "variables": ["analysed_sst"],
-        "folder": "sst_data",
+        "folder": BASE_DATA_FOLDER,
         "filename_prefix": "sst",
         "description": "Sea Surface Temperature"
     },
     "currents": {
         "id": "cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m",
         "variables": ["uo", "vo"],  # eastward and northward velocities
-        "folder": "ocean_currents",
+        "folder": BASE_DATA_FOLDER,
         "filename_prefix": "currents",
         "description": "Ocean Currents"
     },
     "chlorophyll": {
         "id": "cmems_obs-oc_glo_bgc-plankton_nrt_l4-gapfree-multi-4km_P1D",
         "variables": ["CHL"],
-        "folder": "chlorophyll_data",
+        "folder": BASE_DATA_FOLDER,
         "filename_prefix": "chlorophyll",
         "description": "Chlorophyll Concentration"
     }
+}
+
+# Bathymetry (static) dataset - saved in the same base folder
+DATASETS["bathymetry"] = {
+    "id": "cmems_mod_glo_phy_anfc_0.083deg_static",
+    "variables": ["deptho"],
+    "folder": BASE_DATA_FOLDER,
+    "filename_prefix": "bathymetry",
+    "description": "Bathymetry (ocean depth)"
 }
 
 # Logging configuration

@@ -4,13 +4,25 @@ Extracts the uo (eastward) and vo (northward) velocity variables,
 calculates statistics, and visualizes as vector field and magnitude maps.
 """
 
+import os
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-# NetCDF file path (output from fetch_ocean_currents.py)
-NETCDF_FILE = "ocean_currents_latest.nc"
+# Base data folder (unified)
+BASE_DATA_FOLDER = "Fish zone daily data"
+
+from pathlib import Path
+
+# NetCDF file path (pick latest currents file in base folder)
+base = Path(BASE_DATA_FOLDER)
+candidates = sorted(base.glob("currents_*.nc"), key=lambda p: p.stat().st_mtime, reverse=True)
+if candidates:
+    NETCDF_FILE = str(candidates[0])
+else:
+    # fallback to legacy filename
+    NETCDF_FILE = str(base / "currents_latest.nc")
 
 
 def main() -> None:

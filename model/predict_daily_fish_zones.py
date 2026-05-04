@@ -39,10 +39,13 @@ from land_mask import is_sri_lanka_land
 
 # Paths
 MODEL_PATH = Path(__file__).parent / "finding fish location" / "train" / "models" / "rf_fish_zone_model.pkl"
-SST_DATA_DIR = Path(__file__).parent / "sst_data"
-CHLOROPHYLL_DATA_DIR = Path(__file__).parent / "chlorophyll_data"
-CURRENTS_DATA_DIR = Path(__file__).parent / "ocean_currents"
-BATHYMETRY_PATH = Path(__file__).parent / "bathymetry_data" / "bathymetry.nc"
+# Unified data folder
+BASE_DATA_FOLDER = Path(__file__).parent / "Fish zone daily data"
+
+SST_DATA_DIR = BASE_DATA_FOLDER
+CHLOROPHYLL_DATA_DIR = BASE_DATA_FOLDER
+CURRENTS_DATA_DIR = BASE_DATA_FOLDER
+BATHYMETRY_PATH = BASE_DATA_FOLDER / "bathymetry.nc"
 OUTPUT_DIR = Path(__file__).parent / "fish_zone_predictions"
 
 # Sri Lanka bounding box

@@ -16,25 +16,30 @@ def download_bathymetry():
     - Longitude: 79°E to 82°E
     """
     
-    # Ensure output directory exists
-    os.makedirs('bathymetry_data', exist_ok=True)
-    
-    output_file = 'bathymetry_data/bathymetry.nc'
+    # Ensure unified output directory exists
+    base_dir = 'Fish zone daily data'
+    os.makedirs(base_dir, exist_ok=True)
+
+    output_file = os.path.join(base_dir, 'bathymetry.nc')
     
     print("Downloading bathymetry data for Sri Lanka region...")
     print(f"Region: Lat [5°N, 10°N], Lon [79°E, 82°E]")
     
     try:
         # Download bathymetry data from Copernicus Marine Service
-        copernicusmarine.subset(
-            dataset_id='cmems_mod_glo_phy_anfc_0.083deg_static',
-            variables=['deptho'],  # ocean depth variable
-            minimum_longitude=79,
-            maximum_longitude=82,
-            minimum_latitude=5,
-            maximum_latitude=10,
-            output_filename=output_file
-        )
+            copernicusmarine.subset(
+                dataset_id='cmems_mod_glo_phy_anfc_0.083deg_static',
+                variables=['deptho'],  # ocean depth variable
+                minimum_longitude=79,
+                maximum_longitude=82,
+                minimum_latitude=5,
+                maximum_latitude=10,
+                output_filename=os.path.basename(output_file),
+                output_directory=base_dir,
+                force_download=True,
+                username=os.getenv("COPERNICUS_USER", "your_username_here"),
+                password=os.getenv("COPERNICUS_PASS", "your_password_here"),
+            )
         
         print(f"✓ Bathymetry data successfully downloaded to: {output_file}")
         print(f"  Variable: deptho (ocean depth in meters)")
@@ -52,7 +57,11 @@ def download_bathymetry():
                 maximum_longitude=82,
                 minimum_latitude=5,
                 maximum_latitude=10,
-                output_filename=output_file
+                output_filename=os.path.basename(output_file),
+                output_directory=base_dir,
+                force_download=True,
+                username=os.getenv("COPERNICUS_USER", "your_username_here"),
+                password=os.getenv("COPERNICUS_PASS", "your_password_here"),
             )
             print(f"✓ Bathymetry data successfully downloaded to: {output_file}")
         except Exception as e2:
