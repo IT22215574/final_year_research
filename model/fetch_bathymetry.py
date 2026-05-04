@@ -27,7 +27,7 @@ def download_bathymetry():
     
     try:
         # Download bathymetry data from Copernicus Marine Service
-            copernicusmarine.subset(
+        copernicusmarine.subset(
                 dataset_id='cmems_mod_glo_phy_anfc_0.083deg_static',
                 variables=['deptho'],  # ocean depth variable
                 minimum_longitude=79,
