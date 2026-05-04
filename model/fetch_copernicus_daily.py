@@ -9,7 +9,7 @@ This script downloads three datasets from Copernicus Marine Service:
 
 The script is designed to run daily via cron job or scheduler.
 It automatically detects today's date and downloads the latest available data
-for the Sri Lanka ocean region (Lat: 5-10°N, Lon: 79-82°E).
+for Sri Lanka's Exclusive Economic Zone (Lat: 2-14°N, Lon: 74-86°E).
 
 Author: Ravindu Jayaweera
 Date: March 2026
@@ -31,9 +31,9 @@ import copernicusmarine
 COPERNICUS_USER = os.getenv("COPERNICUS_USER", "your_username_here")
 COPERNICUS_PASS = os.getenv("COPERNICUS_PASS", "your_password_here")
 
-# Sri Lanka bounding box coordinates
-MIN_LON, MAX_LON = 79.0, 82.0
-MIN_LAT, MAX_LAT = 5.0, 10.0
+# Sri Lanka Exclusive Economic Zone (EEZ) bounding box (~200 nm from coastline)
+MIN_LON, MAX_LON = 74.0, 86.0
+MIN_LAT, MAX_LAT = 2.0, 14.0
 
 # Base folder to store all daily fish-zone related data
 BASE_DATA_FOLDER = "Fish zone daily data"

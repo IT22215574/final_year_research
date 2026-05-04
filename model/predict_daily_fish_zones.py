@@ -31,7 +31,7 @@ from matplotlib.patches import Rectangle
 
 # Add the train directory to path for imports
 sys.path.append(str(Path(__file__).parent / "finding fish location" / "train"))
-from land_mask import is_sri_lanka_land
+from land_mask import is_land
 
 # ==============================================================================
 # CONFIGURATION
@@ -48,9 +48,47 @@ CURRENTS_DATA_DIR = BASE_DATA_FOLDER
 BATHYMETRY_PATH = BASE_DATA_FOLDER / "bathymetry.nc"
 OUTPUT_DIR = Path(__file__).parent / "fish_zone_predictions"
 
-# Sri Lanka bounding box
-MIN_LON, MAX_LON = 79.0, 82.0
-MIN_LAT, MAX_LAT = 5.0, 10.0
+# Sri Lanka EEZ outer bounding box (used only to limit the initial grid)
+MIN_LON, MAX_LON = 76.0, 85.0
+MIN_LAT, MAX_LAT = 2.0, 10.5
+
+# Sri Lanka EEZ polygon (approximate, based on 1974/1976 India-SL maritime agreements)
+# Points listed as (lat, lon) counterclockwise. Excludes Indian coastal waters.
+SRI_LANKA_EEZ_POLYGON = [
+    (10.5, 80.0),   # North – Palk Strait India boundary
+    (10.5, 82.5),   # North-Northeast
+    (10.0, 85.0),   # Northeast
+    (8.0,  85.0),   # East
+    (5.0,  85.0),   # East-Southeast
+    (2.5,  83.0),   # Southeast
+    (2.5,  80.0),   # South
+    (2.5,  78.0),   # South-Southwest
+    (4.0,  76.5),   # Southwest (Maldives boundary)
+    (6.0,  76.5),   # West
+    (8.0,  77.5),   # West (India-SL Gulf of Mannar boundary)
+    (8.5,  78.5),   # Northwest
+    (9.0,  79.0),   # Northwest
+    (9.5,  79.5),   # North (Gulf of Mannar / India boundary)
+    (10.0, 80.0),   # North (Palk Strait)
+    (10.5, 80.0),   # Close polygon
+]
+
+
+def _point_in_eez(lat: float, lon: float) -> bool:
+    """Ray-casting check: is (lat, lon) inside SRI_LANKA_EEZ_POLYGON?"""
+    poly = SRI_LANKA_EEZ_POLYGON
+    n = len(poly)
+    inside = False
+    j = n - 1
+    for i in range(n):
+        lat_i, lon_i = poly[i]
+        lat_j, lon_j = poly[j]
+        if ((lon_i > lon) != (lon_j > lon)) and (
+            lat < (lat_j - lat_i) * (lon - lon_i) / (lon_j - lon_i) + lat_i
+        ):
+            inside = not inside
+        j = i
+    return inside
 
 # Grid resolution for predictions
 GRID_RESOLUTION = 0.1  # degrees (~11 km)
@@ -236,18 +274,22 @@ def extract_value_at_point(ds: xr.Dataset, var_name: str, lat: float, lon: float
 
 
 def create_prediction_grid() -> pd.DataFrame:
-    """Create a grid of lat/lon points covering Sri Lankan waters."""
+    """Create a grid of lat/lon points within Sri Lanka's EEZ only."""
     lats = np.arange(MIN_LAT, MAX_LAT, GRID_RESOLUTION)
     lons = np.arange(MIN_LON, MAX_LON, GRID_RESOLUTION)
-    
+
     lat_grid, lon_grid = np.meshgrid(lats, lons)
-    
+
     grid_points = []
     for lat, lon in zip(lat_grid.flatten(), lon_grid.flatten()):
-        # Skip land points
-        if not is_sri_lanka_land(lat, lon):
-            grid_points.append({'lat': lat, 'lon': lon})
-    
+        # Keep only points inside Sri Lanka's EEZ polygon
+        if not _point_in_eez(lat, lon):
+            continue
+        # Skip any land mass (Sri Lanka island, Indian mainland, etc.)
+        if is_land(lat, lon):
+            continue
+        grid_points.append({'lat': lat, 'lon': lon})
+
     logger.info(f"Created prediction grid with {len(grid_points)} ocean points")
     return pd.DataFrame(grid_points)
 

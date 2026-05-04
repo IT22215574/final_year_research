@@ -76,7 +76,8 @@ export default function FishZoneMapView() {
   );
   const [minProbability, setMinProbability] = useState(0.5);
 
-  const SRI_LANKA_CENTER: LatLngExpression = [7.5, 80.5];
+  // Center of Sri Lanka's EEZ (lat midpoint of 2-14°N, lon midpoint of 74-86°E)
+  const SRI_LANKA_CENTER: LatLngExpression = [8.0, 80.0];
 
   useEffect(() => {
     fetchFishZones();
@@ -239,7 +240,7 @@ export default function FishZoneMapView() {
       {/* Map */}
       <MapContainer
         center={SRI_LANKA_CENTER}
-        zoom={8}
+        zoom={6}
         style={{ width: "100%", height: "100%" }}
         className="z-0"
       >

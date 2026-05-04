@@ -5,7 +5,7 @@ from Copernicus Marine Service using the copernicusmarine Python client.
 
 Dataset  : GLOBAL_ANALYSISFORECAST_PHY_001_024
 Variables: uo (eastward velocity), vo (northward velocity)
-Region   : Latitude 5–10 °N, Longitude 79–82 °E
+Region   : Sri Lanka EEZ — Latitude 2–14 °N, Longitude 74–86 °E
 """
 
 import os
@@ -26,9 +26,9 @@ COPERNICUS_PASS = os.getenv("COPERNICUS_PASS", "your_password_here")
 DATASET_ID = "cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m"  # Daily mean ocean currents
 VARIABLES = ["uo", "vo"]  # eastward and northward ocean current velocities
 
-# Sri Lanka bounding box
-MIN_LON, MAX_LON = 79.0, 82.0
-MIN_LAT, MAX_LAT = 5.0, 10.0
+# Sri Lanka Exclusive Economic Zone (EEZ) bounding box (~200 nm from coastline)
+MIN_LON, MAX_LON = 74.0, 86.0
+MIN_LAT, MAX_LAT = 2.0, 14.0
 
 # Base data folder for unified storage
 BASE_DATA_FOLDER = "Fish zone daily data"

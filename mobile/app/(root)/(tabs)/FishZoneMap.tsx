@@ -54,78 +54,80 @@ interface GeographicZone {
   color: string;
 }
 
-// Define geographic zones around Sri Lanka
+// Geographic zones covering Sri Lanka's EEZ only (bounded by India-SL maritime agreements)
+// Northern boundary ~10.5°N (Palk Strait/Bay of Bengal India treaty line)
+// Western boundary ~77-78°E (India-SL Gulf of Mannar treaty line)
 const GEOGRAPHIC_ZONES: GeographicZone[] = [
   {
     id: "north",
     name: "North",
-    latMin: 8.5,
-    latMax: 10.0,
-    lonMin: 79.5,
-    lonMax: 81.5,
+    latMin: 9.5,
+    latMax: 10.5,
+    lonMin: 80.0,
+    lonMax: 82.5,
     color: "#3B82F6", // blue
   },
   {
     id: "northeast",
     name: "Northeast",
     latMin: 8.0,
-    latMax: 9.5,
-    lonMin: 81.0,
-    lonMax: 82.0,
+    latMax: 10.5,
+    lonMin: 82.0,
+    lonMax: 85.0,
     color: "#8B5CF6", // violet
   },
   {
     id: "east",
     name: "East",
-    latMin: 6.5,
-    latMax: 8.5,
-    lonMin: 81.0,
-    lonMax: 82.0,
+    latMin: 5.0,
+    latMax: 9.0,
+    lonMin: 82.0,
+    lonMax: 85.0,
     color: "#06B6D4", // cyan
   },
   {
     id: "southeast",
     name: "Southeast",
-    latMin: 5.5,
-    latMax: 7.0,
+    latMin: 2.0,
+    latMax: 6.5,
     lonMin: 80.5,
-    lonMax: 82.0,
+    lonMax: 85.0,
     color: "#14B8A6", // teal
   },
   {
     id: "south",
     name: "South",
-    latMin: 5.0,
+    latMin: 2.0,
     latMax: 6.5,
-    lonMin: 79.5,
-    lonMax: 81.0,
+    lonMin: 78.0,
+    lonMax: 82.5,
     color: "#10B981", // green
   },
   {
     id: "southwest",
     name: "Southwest",
-    latMin: 5.5,
+    latMin: 2.0,
     latMax: 7.0,
-    lonMin: 79.0,
-    lonMax: 80.5,
+    lonMin: 76.0,
+    lonMax: 80.0,
     color: "#F59E0B", // amber
   },
   {
     id: "west",
     name: "West",
-    latMin: 6.5,
-    latMax: 8.0,
-    lonMin: 79.0,
+    latMin: 5.5,
+    latMax: 9.0,
+    lonMin: 77.5,
     lonMax: 80.5,
     color: "#EF4444", // red
   },
   {
     id: "northwest",
     name: "Northwest",
-    latMin: 7.5,
-    latMax: 9.0,
-    lonMin: 79.0,
-    lonMax: 80.5,
+    latMin: 8.5,
+    latMax: 10.5,
+    lonMin: 78.5,
+    lonMax: 81.5,
     color: "#EC4899", // pink
   },
 ];
@@ -145,12 +147,12 @@ export default function FishZoneMapScreen() {
   const [showZoneSelector, setShowZoneSelector] = useState(false);
   const [showMapControls, setShowMapControls] = useState(true);
 
-  // Sri Lanka center for map
+  // Center of Sri Lanka's EEZ (bounded by India-SL maritime agreements)
   const SRI_LANKA_CENTER = {
     latitude: 7.5,
-    longitude: 80.5,
-    latitudeDelta: 5,
-    longitudeDelta: 5,
+    longitude: 81.5,
+    latitudeDelta: 10,
+    longitudeDelta: 10,
   };
 
   useEffect(() => {

@@ -16,9 +16,10 @@ class BBox:
         return (self.lat_min <= lat <= self.lat_max) and (self.lon_min <= lon <= self.lon_max)
 
 
-# Rough bounding box around Sri Lanka + nearshore.
+# Bounding box covering Sri Lanka's full Exclusive Economic Zone (EEZ).
+# Extends ~200 nautical miles from the island: Lat 2–14°N, Lon 74–86°E.
 # Used only to decide when to apply the land-mask check.
-SRI_LANKA_BBOX = BBox(lat_min=5.0, lat_max=10.8, lon_min=79.0, lon_max=82.6)
+SRI_LANKA_BBOX = BBox(lat_min=2.0, lat_max=14.0, lon_min=74.0, lon_max=86.0)
 
 
 def _require_global_land_mask():

@@ -5,8 +5,8 @@ import os
 from datetime import date, timedelta
 
 # Config
-MIN_LON, MAX_LON = 79.0, 82.0
-MIN_LAT, MAX_LAT = 5.0, 10.0
+MIN_LON, MAX_LON = 74.0, 86.0
+MIN_LAT, MAX_LAT = 2.0, 14.0
 dataset_id = 'cmems_obs-oc_glo_bgc-plankton_nrt_l4-gapfree-multi-4km_P1D'
 
 COPERNICUS_USER = os.getenv("COPERNICUS_USER")
