@@ -24,7 +24,7 @@ import useAuthStore from "@/stores/authStore";
 import { apiFetch } from "@/utils/api"; // Import apiFetch
 import * as SecureStore from "expo-secure-store"; // Import SecureStore
 
-const API = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.8.135:5000';
+const API = process.env.EXPO_PUBLIC_API_URL;
 
 const SignIn = () => {
   const {

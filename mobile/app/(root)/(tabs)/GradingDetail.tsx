@@ -21,7 +21,7 @@ import { useGradingRecordStore } from "@/stores/gradingRecordStore";
 import type { GradingRecord } from "@/services/gradingRecordService";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-const SERVER_BASE = (process.env.EXPO_PUBLIC_API_URL ?? "http://192.168.8.135:5000").replace(/\/+$/, "");
+const SERVER_BASE = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
 const { width: SCREEN_W } = Dimensions.get("window");
 
 // Memoized helper functions

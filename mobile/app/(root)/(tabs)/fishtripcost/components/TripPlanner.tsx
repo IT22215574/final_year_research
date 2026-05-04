@@ -110,7 +110,7 @@ const TripPlanner = () => {
   const [riskScore, setRiskScore] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.8.135:5000';
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   // Fetch boats for horizontal carousel
   const fetchBoats = async () => {
