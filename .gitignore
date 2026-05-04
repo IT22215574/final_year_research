@@ -59,8 +59,6 @@ mobile/android/.gradle/
 
 # Expo
 .expo/
-!.expo/types/
-!.expo/types/router.d.ts
 web-build/
 
 # Python / AI / ML Ignore Rules

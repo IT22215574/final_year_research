@@ -14,13 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import MapView, { Marker, Circle, PROVIDER_GOOGLE, Polygon } from "react-native-maps";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-
-// Backend API base URL from environment variables
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_KEY;
-
-if (!API_BASE_URL) {
-  throw new Error("EXPO_PUBLIC_API_URL must be defined in .env file");
-}
+import { apiFetch } from "@/utils/api";
 
 interface FishZone {
   lat: number;
@@ -229,8 +223,8 @@ export default function FishZoneMapScreen() {
   const fetchFishZones = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${API_BASE_URL}/fish-zones/latest?minProbability=${minProbability}`
+      const response = await apiFetch(
+        `/api/v1/fish-zones/latest?minProbability=${minProbability}`
       );
 
       if (!response.ok) {

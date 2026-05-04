@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -235,7 +235,6 @@ const SignIn = () => {
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.8,
             shadowRadius: 4,
-            elevation: 4,
           }}
           resizeMode="contain"
         />
@@ -253,7 +252,7 @@ const SignIn = () => {
       console.log("🌐 API Base URL:", API);
 
       // Use direct fetch for sign-in since we don't have token yet
-      const response = await fetch(`${API}/auth/signin`, {
+      const response = await fetch(`${API}/api/v1/auth/signin`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -267,11 +266,35 @@ const SignIn = () => {
 
       console.log("📡 Response Status:", response.status);
 
-      const result = await response.json();
+      const rawResponse = await response.text();
+      let result: any = {};
+
+      if (rawResponse) {
+        try {
+          result = JSON.parse(rawResponse);
+        } catch {
+          result = { message: rawResponse };
+        }
+      }
+
       console.log("📱 FULL API Response:", result);
 
       if (!response.ok) {
-        throw new Error(result.message || "Sign in failed");
+        const serverMessage =
+          (typeof result?.message === "string" && result.message) ||
+          (typeof result?.error === "string" && result.error) ||
+          "";
+
+        const fallbackMessage =
+          response.status === 401 || response.status === 403
+            ? "Invalid email or password"
+            : "Sign in failed";
+
+        throw new Error(serverMessage || fallbackMessage);
+      }
+
+      if (!rawResponse || Object.keys(result).length === 0) {
+        throw new Error("Invalid server response. Please try again.");
       }
 
       // ✅ STORE TOKENS IN SECURE STORE
@@ -369,7 +392,7 @@ const SignIn = () => {
   };
 
   // Helper function to determine input border color
-  const getInputBorderColor = (fieldName: string) => {
+  const getInputBorderColor = (fieldName: "email" | "password") => {
     if (errors[fieldName] || apiErrors[fieldName]) {
       return "#ef4444";
     }
