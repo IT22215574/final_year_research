@@ -24,6 +24,7 @@ import Svg, { Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { icons } from "@/constants";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import React from "react";
 
 // Data arrays
 const districtZoneData = {
@@ -362,6 +363,7 @@ const mediums = ["Sinhala", "Tamil", "English"];
 const roles = ["customer", "Fisher man", "Boat owner"];
 
 const API = process.env.EXPO_PUBLIC_API_URL;
+const AUTH_API = `${API}/api/v1/auth`;
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -557,11 +559,11 @@ const SignUp = () => {
 
       console.log(
         "📤 Sending signup request to:",
-        `${API}/auth/complete-signup`,
+        `${AUTH_API}/complete-signup`,
       );
       console.log("📦 Request body:", JSON.stringify(requestBody, null, 2));
 
-      const response = await fetch(`${API}/auth/complete-signup`, {
+      const response = await fetch(`${AUTH_API}/complete-signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -627,7 +629,7 @@ const SignUp = () => {
                 password: "",
                 confirmPassword: "",
               });
-              router.replace("/sign-in");
+              router.replace("/(auth)/sign-in");
             },
           },
         ],

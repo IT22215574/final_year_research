@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { images } from "@/constants";
 
 const API = process.env.EXPO_PUBLIC_API_URL;
+const AUTH_API = `${API}/api/v1/auth`;
 
 const ResetPassword = () => {
   const router = useRouter();
@@ -37,43 +38,23 @@ const ResetPassword = () => {
   const [tokenValid, setTokenValid] = useState(false);
 
   useEffect(() => {
-    // Verify reset token when screen loads
-    verifyResetToken();
-  }, []);
-
-  const verifyResetToken = async () => {
-    try {
-      const response = await fetch(`${API}/api/auth/verify-reset-token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          resetToken: resetToken,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Invalid or expired reset link");
-      }
-
+    if (resetToken) {
       setTokenValid(true);
-    } catch (error: any) {
-      console.error("Verify token error:", error);
-      Alert.alert(
-        "Error",
-        error.message || "This reset link is invalid or has expired.",
-        [
-          {
-            text: "OK",
-            onPress: () => router.replace("/(auth)/forgetpassword"),
-          },
-        ],
-      );
+      return;
     }
-  };
+
+    setTokenValid(false);
+    Alert.alert(
+      "Error",
+      "This reset link is invalid or has expired.",
+      [
+        {
+          text: "OK",
+          onPress: () => router.replace("/(auth)/forgetpassword"),
+        },
+      ],
+    );
+  }, [resetToken, router]);
 
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({
@@ -112,7 +93,7 @@ const ResetPassword = () => {
     setError("");
 
     try {
-      const response = await fetch(`${API}/api/auth/reset-password`, {
+      const response = await fetch(`${AUTH_API}/reset-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

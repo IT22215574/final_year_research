@@ -20,6 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { images } from "@/constants";
 
 const API = process.env.EXPO_PUBLIC_API_URL;
+const AUTH_API = `${API}/api/v1/auth`;
 
 const OTPRequest = () => {
   const router = useRouter();
@@ -52,7 +53,7 @@ const OTPRequest = () => {
     setError("");
 
     try {
-      const response = await fetch(`${API}/api/auth/send-password-reset-otp`, {
+      const response = await fetch(`${AUTH_API}/send-password-reset-otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -88,7 +89,7 @@ const OTPRequest = () => {
     setError("");
 
     try {
-      const response = await fetch(`${API}/api/auth/send-password-reset-otp`, {
+      const response = await fetch(`${AUTH_API}/send-password-reset-otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -152,7 +153,7 @@ const OTPRequest = () => {
 
     try {
       const response = await fetch(
-        `${API}/api/auth/verify-password-reset-otp`,
+        `${AUTH_API}/verify-password-reset-otp`,
         {
           method: "POST",
           headers: {
