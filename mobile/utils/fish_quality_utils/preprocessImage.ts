@@ -71,18 +71,19 @@ export async function assessImageQuality(uri: string): Promise<ImageQualityInfo>
 
 /**
  * Enhance image for better internet image handling
+ * Note: expo-image-manipulator only supports resize, rotate, flip, crop
+ * (no direct contrast/sharpness adjustments)
  */
 export async function enhanceImage(uri: string): Promise<string> {
   try {
-    console.log('[enhanceImage] Enhancing image for internet use...');
+    console.log('[enhanceImage] Normalizing image size...');
     
-    // Apply enhancements: resize, contrast boost, sharpening
+    // Only use valid expo-image-manipulator actions
+    // Resize to max 800px width for consistent processing
     const enhanced = await ImageManipulator.manipulateAsync(
       uri,
       [
-        { resize: { width: 800 } }, // Resize to reasonable size
-        { contrast: 1.15 }, // Slight contrast boost
-        { sharpen: 1.2 }, // Slight sharpening
+        { resize: { width: 800 } }, // Normalize size for consistent detection
       ],
       { 
         compress: 0.92,
@@ -90,7 +91,7 @@ export async function enhanceImage(uri: string): Promise<string> {
       }
     );
     
-    console.log('[enhanceImage] Enhancement complete');
+    console.log('[enhanceImage] Image prepared');
     return enhanced.uri;
   } catch (error) {
     console.error('[enhanceImage] Failed:', error);

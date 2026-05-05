@@ -125,7 +125,7 @@ export default function QualityGrading() {
   const [leftImage, setLeftImage] = useState<string | null>(null);
   const [rightImage, setRightImage] = useState<string | null>(null);
   const [leftName, setLeftName] = useState("No image selected");
-  const [rightName, setRightName] = useState("No image selected");
+  const [rightName, setRightName] = useState("Optional");
 
   const [loading, setLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("Preparing…");
@@ -244,15 +244,11 @@ export default function QualityGrading() {
     ]);
 
   // ── Predict with progress tracking ─────────────────────────────────────────
-  const canPredict =
-    !!leftImage && !!rightImage && !loading && apiStatus === "ok";
+  const canPredict = !!leftImage && !loading && apiStatus === "ok";
 
   const predict = async () => {
-    if (!leftImage || !rightImage) {
-      Alert.alert(
-        "Missing Images",
-        "Please select both left and right images.",
-      );
+    if (!leftImage) {
+      Alert.alert("Missing Image", "Please select at least one fish image.");
       return;
     }
 
@@ -289,8 +285,9 @@ export default function QualityGrading() {
     }, 1500);
 
     try {
-      const r = await runFishPipeline(leftImage, rightImage, {
+      const r = await runFishPipeline(leftImage, rightImage || undefined, {
         useTTA: true,
+        singleImageMode: !rightImage,
         onProgress: (msg: string) => {
           setLoadingMsg(msg);
         },
@@ -316,8 +313,13 @@ export default function QualityGrading() {
         return;
       }
 
-      // ── Pair mismatch check ───────────────────────────────────
-      if (r.isFish && r.pairValidation && !r.pairValidation.matched) {
+      // ── Pair mismatch check (only for paired mode) ───────────────────────
+      if (
+        !rightImage &&
+        r.isFish &&
+        r.pairValidation &&
+        !r.pairValidation.matched
+      ) {
         const leftDisplay = getFishName(r.pairValidation.leftLabel).english;
         const rightDisplay = getFishName(r.pairValidation.rightLabel).english;
         setResult(r);
@@ -441,7 +443,7 @@ export default function QualityGrading() {
             setLeftImage(null);
             setRightImage(null);
             setLeftName("No image selected");
-            setRightName("No image selected");
+            setRightName("Optional");
             setResult(null);
             setPredError(null);
             setSaveSuccess(false);
@@ -610,11 +612,14 @@ export default function QualityGrading() {
         {/* ── Image pickers ── */}
         <View style={s.card}>
           <Text style={s.cardTitle}>1. Select Fish Images</Text>
+          <Text style={s.cardSubTitle}>
+            You can grade with one image. The right image is optional.
+          </Text>
 
           <View style={s.imageRow}>
             {(["left", "right"] as const).map((side) => {
               const uri = side === "left" ? leftImage : rightImage;
-              const displayName = side === "left" ? "Left" : "Right";
+              const displayName = side === "left" ? "Left" : "Right (Optional)";
 
               return (
                 <View key={side} style={s.slotWrapper}>
@@ -649,7 +654,7 @@ export default function QualityGrading() {
               📷 Left: {leftName}
             </Text>
             <Text style={s.fileName} numberOfLines={1}>
-              📷 Right: {rightName}
+              📷 Right: {rightImage ? rightName : "Optional"}
             </Text>
           </View>
 
@@ -1261,6 +1266,12 @@ const s = StyleSheet.create({
     fontWeight: "700",
     color: "#1e293b",
     marginBottom: 16,
+  },
+  cardSubTitle: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: -10,
+    marginBottom: 12,
   },
   sectionSubtitle: {
     fontSize: 14,

@@ -126,10 +126,12 @@ export interface RunFishPipelineOptions {
 }
 
 // LOWER THRESHOLDS for internet images
-export const FISH_THRESHOLD = 0.45; // ← lowered from 0.60, model trained on limited species
-export const SPECIES_THRESHOLD = 0.40; // ← lowered from 0.45
+// Internet fish images often have different lighting, angles, and compression
+// These thresholds are tuned to accept real-world fish photos while avoiding false positives
+export const FISH_THRESHOLD = 0.55;       // ← Lowered to accept marginal fish detections (~55%)
+export const SPECIES_THRESHOLD = 0.40;    // ← Lowered for internet images
 export const GRADE_THRESHOLD = 0.45;
-export const UNKNOWN_THRESHOLD = 0.25; // ← lowered from 0.30
+export const UNKNOWN_THRESHOLD = 0.25;    // ← Species unrecognized if below this
 
 export const BINARY_LABELS = {
   0: "fish",

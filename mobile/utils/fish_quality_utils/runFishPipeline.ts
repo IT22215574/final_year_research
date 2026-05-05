@@ -103,18 +103,166 @@ export async function loadModels(): Promise<boolean> {
 
 /**
  * Main pipeline function to run fish classification
+ * 
+ * @param leftUri - URI to left/main image
+ * @param rightUri - URI to right image (optional if singleImageMode is true)
+ * @param options - Configuration options including singleImageMode
  */
 export async function runFishPipeline(
   leftUri: string,
-  rightUri: string,
-  options?: RunFishPipelineOptions
+  rightUri?: string,
+  options?: RunFishPipelineOptions & { singleImageMode?: boolean }
 ): Promise<PredictionResult> {
   const onProgress = options?.onProgress ?? (() => undefined);
-  const useTTA = options?.useTTA ?? true;
-  const enhancedPreprocessing = options?.enhancedPreprocessing ?? true;
+  const useTTA = options?.useTTA ?? true;  // ← Enabled by default for better accuracy
+  const enhancedPreprocessing = options?.enhancedPreprocessing ?? true;  // ← Enabled for internet images
+  const singleImageMode = options?.singleImageMode ?? !rightUri;
 
   onProgress('Checking backend status...');
   await loadModels();
+
+  // ═════════════════════════════════════════════════════════════════════
+  // SINGLE-IMAGE MODE
+  // ═════════════════════════════════════════════════════════════════════
+  if (singleImageMode) {
+    console.log('[runFishPipeline] Using single-image mode');
+    
+    onProgress('Analyzing image quality...');
+    const imageQuality = await assessImageQuality(leftUri);
+    const isScreenshot = imageQuality.isScreenshot;
+    
+    if (isScreenshot) {
+      console.log('[runFishPipeline] Screenshot detected, applying enhancements');
+      onProgress('Enhancing image for better results...');
+    }
+
+    onProgress('Preparing image...');
+    const image = await prepareImageForUpload(leftUri, 'image', { 
+      enhance: enhancedPreprocessing && isScreenshot 
+    });
+
+    const formData = new FormData();
+    formData.append('image', image as any);
+    formData.append('use_tta', String(useTTA));
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+
+    let res: Response;
+    try {
+      onProgress('Uploading image to backend...');
+      console.log(`[runFishPipeline] Sending single image to ${FISH_API_BASE}/predict/single`);
+      
+      res = await fetch(`${FISH_API_BASE}/predict/single`, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      if (err?.name === 'AbortError') {
+        throw new Error('Request timed out — backend took too long to respond.');
+      }
+      throw new Error(`Network error: ${err.message}`);
+    }
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      let detail = `Server error ${res.status}`;
+      try {
+        const body = await res.json();
+        detail = body?.detail ?? detail;
+      } catch (_) {
+        // keep generic fallback
+      }
+      throw new Error(detail);
+    }
+
+    const data = await res.json();
+    console.log('[runFishPipeline] Single-image response:', JSON.stringify(data));
+
+    // Handle single-image specific validation
+    const backendStatus: string = data.status ?? '';
+    const VALIDATION_FAILURES = [
+      'no_fish', 'unknown_species', 'unsupported_species'
+    ];
+
+    if (VALIDATION_FAILURES.includes(backendStatus)) {
+      const validationResult: PredictionResult = {
+        isFish: backendStatus !== 'no_fish',
+        fishLabel: data.stage1?.label ?? 'unknown',
+        fishConfidence: data.stage1?.confidence ?? 0,
+        fishProbabilities: data.stage1?.probabilities ?? {},
+        validationStatus: backendStatus as PredictionResult['validationStatus'],
+        validationMessage: data.message ?? 'Validation failed.',
+        warnings: data.warnings ?? [],
+        imageQuality: data.image_quality
+          ? { left: data.image_quality, right: data.image_quality }
+          : undefined,
+      };
+      return validationResult;
+    }
+
+    // Success path for single-image mode
+    const stage1 = data.stage1;
+    const stage2 = data.stage2 ?? null;
+    const stage3 = data.stage3 ?? null;
+
+    const result: PredictionResult = {
+      isFish: stage1?.label === 'fish',
+      fishLabel: stage1?.label ?? 'unknown',
+      fishConfidence: stage1?.confidence ?? 0,
+      fishProbabilities: stage1?.probabilities ?? {},
+      allProbabilities: {
+        fish: stage1?.probabilities ?? {},
+        species: stage2?.probabilities ?? {},
+        grade: stage3?.probabilities ?? {},
+      },
+      imageQuality: data.image_quality
+        ? { left: data.image_quality, right: data.image_quality }
+        : undefined,
+      uncertainty: data.stage1?.uncertainty || 0,
+      warnings: (data.warnings ?? []),
+    };
+
+    if (stage1?.label === 'fish' && stage2) {
+      const rawLabel = stage2.label as string;
+      const conf = stage2.confidence as number;
+
+      if (conf < UNKNOWN_THRESHOLD) {
+        result.species = "unknown";
+        result.speciesConfidence = conf;
+        result.speciesProbabilities = stage2.probabilities ?? {};
+        result.finalLabel = "Unknown Fish Species";
+        result.warnings?.push("Species not recognised — may be outside supported species list");
+      } else {
+        result.species = rawLabel;
+        result.speciesConfidence = conf;
+        result.speciesProbabilities = stage2.probabilities ?? {};
+
+        if (stage3 && stage3.label !== 'not_applicable') {
+          result.grade = stage3.label;
+          result.gradeConfidence = stage3.confidence;
+          result.gradeProbabilities = stage3.probabilities ?? {};
+          result.finalLabel = data.final_result !== 'NOT FISH' ? data.final_result : undefined;
+        } else {
+          result.finalLabel = rawLabel;
+        }
+      }
+    }
+
+    result.validationStatus = (data.status ?? 'success') as PredictionResult['validationStatus'];
+    result.validationMessage = data.message;
+
+    return result;
+  }
+
+  // ═════════════════════════════════════════════════════════════════════
+  // PAIRED-IMAGE MODE (original behavior)
+  // ═════════════════════════════════════════════════════════════════════
+  if (!rightUri) {
+    throw new Error('Right image required for paired mode');
+  }
 
   // Assess image quality
   onProgress('Analyzing image quality...');

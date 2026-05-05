@@ -42,41 +42,19 @@ GRADE_CLASSIFIER_ONNX = os.path.join(SCRIPT_DIR, "grade_classifier_1.onnx")
 
 # Check if files exist with different possible names
 if not os.path.exists(FISH_DETECTOR_ONNX):
-    # Try alternative names
-    alt_paths = [
-        os.path.join(SCRIPT_DIR, "best_binary_model.onnx"),
-        os.path.join(SCRIPT_DIR, "stage1_model.onnx"),
-        os.path.join(SCRIPT_DIR, "fish_detector.onnx"),
-    ]
-    for alt_path in alt_paths:
-        if os.path.exists(alt_path):
-            FISH_DETECTOR_ONNX = alt_path
-            logger.info(f"Found fish detector at: {alt_path}")
-            break
+    FISH_DETECTOR_ONNX = os.path.join(SCRIPT_DIR, "data_csv/train/Effecient_best1_binary_model.onnx")
+    if os.path.exists(FISH_DETECTOR_ONNX):
+        logger.info(f"Found fish detector at: {FISH_DETECTOR_ONNX}")
 
 if not os.path.exists(SPECIES_CLASSIFIER_ONNX):
-    alt_paths = [
-        os.path.join(SCRIPT_DIR, "best_species_model.onnx"),
-        os.path.join(SCRIPT_DIR, "stage2_model.onnx"),
-        os.path.join(SCRIPT_DIR, "species_classifier.onnx"),
-    ]
-    for alt_path in alt_paths:
-        if os.path.exists(alt_path):
-            SPECIES_CLASSIFIER_ONNX = alt_path
-            logger.info(f"Found species classifier at: {alt_path}")
-            break
+    SPECIES_CLASSIFIER_ONNX = os.path.join(SCRIPT_DIR, "data_csv/train/Effecient_best1_species_model.onnx")
+    if os.path.exists(SPECIES_CLASSIFIER_ONNX):
+        logger.info(f"Found species classifier at: {SPECIES_CLASSIFIER_ONNX}")
 
 if not os.path.exists(GRADE_CLASSIFIER_ONNX):
-    alt_paths = [
-        os.path.join(SCRIPT_DIR, "best_grade_model.onnx"),
-        os.path.join(SCRIPT_DIR, "stage3_model.onnx"),
-        os.path.join(SCRIPT_DIR, "grade_classifier.onnx"),
-    ]
-    for alt_path in alt_paths:
-        if os.path.exists(alt_path):
-            GRADE_CLASSIFIER_ONNX = alt_path
-            logger.info(f"Found grade classifier at: {alt_path}")
-            break
+    GRADE_CLASSIFIER_ONNX = os.path.join(SCRIPT_DIR, "data_csv/train/Effecient_best1_grade_model.onnx")
+    if os.path.exists(GRADE_CLASSIFIER_ONNX):
+        logger.info(f"Found grade classifier at: {GRADE_CLASSIFIER_ONNX}")
 
 IMG_SIZE = 224
 
@@ -87,10 +65,11 @@ GRADE_THRESHOLD = 0.45
 UNKNOWN_SPECIES_THRESHOLD = 0.30  # Below this, classify as unknown
 
 # ── Per-image validation thresholds ─────────────────────────────────────────
-# Stricter thresholds for per-image checks BEFORE running the dual-image pipeline
-PER_IMAGE_FISH_THRESHOLD  = 0.80   # Each image must independently be recognised as a fish
-PER_IMAGE_SPECIES_THRESHOLD = 0.70 # Species must be confidently identified per image
-FINAL_GRADE_THRESHOLD = 0.65       # Grade confidence minimum
+# Lowered thresholds to handle internet/downloaded fish images better
+# Internet fish images often look different from training data (lighting, angles, compression)
+PER_IMAGE_FISH_THRESHOLD  = 0.55   # Lowered to 0.55 to accept marginal fish detections
+PER_IMAGE_SPECIES_THRESHOLD = 0.45 # Lowered from 0.70 for internet images
+FINAL_GRADE_THRESHOLD = 0.58       # Grade confidence minimum
 
 # Enable test-time augmentation for better accuracy
 USE_TTA = True
@@ -854,6 +833,220 @@ async def predict_base64(request: Dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/predict/single")
+async def predict_single(
+    image: UploadFile = File(...),
+    use_tta: bool = Query(USE_TTA, description="Use Test-Time Augmentation")
+) -> Dict:
+    """
+    Single-image grading pipeline for internet-downloaded or user-uploaded fish photos.
+    
+    This endpoint is optimized for single images with relaxed thresholds:
+    - Fish detection threshold: 0.60 (vs 0.80 for paired mode)
+    - No pair validation checks
+    - Returns same output format as /predict for consistency
+    
+    Ideal for:
+    • Photos taken from a camera roll (single orientation)
+    • Internet-downloaded fish images
+    • Quick grading when paired images aren't available
+    
+    Returns the same response format as /predict but without per-image pair validation.
+    """
+    start_time = time.time()
+
+    # ── Model check ───────────────────────────────────────────────────────
+    if not all([fish_session, species_session, grade_session]):
+        success, message = load_models()
+        if not success:
+            raise HTTPException(status_code=503, detail=f"Models not available: {message}")
+
+    # ── File-type validation ──────────────────────────────────────────────
+    ct = (image.content_type or '').lower()
+    if ct in {'application/json', 'text/plain', 'text/html'}:
+        raise HTTPException(status_code=400, detail=f"File {image.filename} is not an image")
+
+    # ── Preprocess ────────────────────────────────────────────────────────
+    try:
+        img_array, img_quality = await preprocess_image(image, apply_enhancements=True)
+    finally:
+        await image.close()
+
+    # Collect warnings
+    warnings: List[str] = []
+    if img_quality.get("is_screenshot"):
+        warnings.append("Image appears to be a screenshot — results may be less accurate")
+    if img_quality.get("quality_issues"):
+        warnings.append(f"Image quality issues: {', '.join(img_quality['quality_issues'])}")
+
+    # ── Helper: build response dict ───────────────────────────────────────
+    def _response(status: str, message: str, **kw) -> Dict:
+        resp = {
+            "request_id": hashlib.md5(str(time.time()).encode()).hexdigest()[:8],
+            "timestamp": datetime.now().isoformat(),
+            "processing_time": round(time.time() - start_time, 3),
+            "status": status,
+            "message": message,
+            "image_quality": img_quality,
+            "warnings": warnings,
+            "mode": "single_image",
+        }
+        resp.update(kw)
+        return resp
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 1 — Fish detection (single-image mode, relaxed threshold 0.60)
+    # ═══════════════════════════════════════════════════════════════════════
+    SINGLE_IMAGE_FISH_THRESHOLD = 0.60  # Relaxed for internet images
+    
+    fish_result = run_single_image(fish_session, img_array, use_tta=False)
+    fish_label = BINARY_LABELS[fish_result["prediction_idx"]]
+    fish_confidence = fish_result["confidence"]
+    fish_ok = fish_label == "fish" and fish_confidence >= SINGLE_IMAGE_FISH_THRESHOLD
+
+    logger.info(
+        f"[predict/single] Fish detection: {fish_label} "
+        f"(confidence={fish_confidence:.4f}, threshold={SINGLE_IMAGE_FISH_THRESHOLD}, ok={fish_ok})"
+    )
+
+    # No fish detected
+    if not fish_ok:
+        return _response(
+            "no_fish",
+            f"No fish detected in the image (confidence {fish_confidence:.0%} < {SINGLE_IMAGE_FISH_THRESHOLD:.0%}).",
+            final_result="NOT FISH",
+            stage1={
+                "label": fish_label,
+                "confidence": fish_confidence,
+                "probabilities": {
+                    BINARY_LABELS[i]: float(p)
+                    for i, p in enumerate(fish_result["probabilities"])
+                },
+            },
+        )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 2 — Species prediction (single image)
+    # ═══════════════════════════════════════════════════════════════════════
+    species_result = run_single_image(species_session, img_array, use_tta=use_tta)
+    species_label = SPECIES_LABELS[species_result["prediction_idx"]]
+    species_confidence = species_result["confidence"]
+
+    logger.info(
+        f"[predict/single] Species: {species_label} (confidence={species_confidence:.4f})"
+    )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 3 — Species confidence check
+    # ═══════════════════════════════════════════════════════════════════════
+    if species_confidence < SPECIES_THRESHOLD:
+        return _response(
+            "unknown_species",
+            f"Fish species could not be recognised confidently "
+            f"(confidence {species_confidence:.0%} < {SPECIES_THRESHOLD:.0%}).",
+            final_result="UNKNOWN SPECIES",
+            stage1={
+                "label": fish_label,
+                "confidence": fish_confidence,
+                "probabilities": {
+                    BINARY_LABELS[i]: float(p)
+                    for i, p in enumerate(fish_result["probabilities"])
+                },
+            },
+            stage2={
+                "label": species_label,
+                "confidence": species_confidence,
+                "probabilities": {
+                    SPECIES_LABELS[i]: float(p)
+                    for i, p in enumerate(species_result["probabilities"])
+                },
+            },
+        )
+
+    # Supported species check
+    if species_label not in SUPPORTED_SPECIES:
+        return _response(
+            "unsupported_species",
+            f"The species '{species_label}' is not supported by the grading model.",
+            final_result=f"UNSUPPORTED: {species_label}",
+        )
+
+    # Success response (fish + species recognized)
+    response = _response(
+        "success",
+        "Single-image prediction completed successfully.",
+        final_result=species_label,
+        stage1={
+            "label": fish_label,
+            "confidence": fish_confidence,
+            "probabilities": {
+                BINARY_LABELS[i]: float(p)
+                for i, p in enumerate(fish_result["probabilities"])
+            },
+            "uncertainty": fish_result.get("uncertainty", 0),
+            "method": fish_result.get("method", "single"),
+        },
+        stage2={
+            "label": species_label,
+            "confidence": species_confidence,
+            "probabilities": {
+                SPECIES_LABELS[i]: float(p)
+                for i, p in enumerate(species_result["probabilities"])
+            },
+            "uncertainty": species_result.get("uncertainty", 0),
+            "method": species_result.get("method", "single"),
+        },
+    )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # STEP 4 — Grade classification (for supported species)
+    # ═══════════════════════════════════════════════════════════════════════
+    if species_label.lower() in [s.lower() for s in GRADE_SPECIES]:
+        grade_result = run_single_image(grade_session, img_array, use_tta=use_tta)
+        grade = GRADE_LABELS[grade_result["prediction_idx"]]
+        grade_confidence = grade_result["confidence"]
+
+        logger.info(
+            f"[predict/single] Grade: {grade} (confidence={grade_confidence:.4f})"
+        )
+
+        response["stage3"] = {
+            "label": grade,
+            "confidence": grade_confidence,
+            "probabilities": {
+                GRADE_LABELS[i]: float(p)
+                for i, p in enumerate(grade_result["probabilities"])
+            },
+            "uncertainty": grade_result.get("uncertainty", 0),
+            "method": grade_result.get("method", "single"),
+        }
+
+        if grade_confidence < FINAL_GRADE_THRESHOLD:
+            response["status"] = "low_confidence"
+            response["message"] = (
+                f"Grade prediction confidence ({grade_confidence:.0%}) is below "
+                f"the minimum threshold ({FINAL_GRADE_THRESHOLD:.0%})."
+            )
+            response["final_result"] = f"{species_label} (grade uncertain)"
+        else:
+            response["final_result"] = f"{species_label}_{grade}"
+    else:
+        response["stage3"] = {
+            "label": "not_applicable",
+            "reason": f"Grade classification only available for: {GRADE_SPECIES}",
+        }
+        response["status"] = "success_no_grade"
+
+    # Uncertainty warnings
+    if fish_result.get("uncertainty", 0) > 0.3:
+        warnings.append(f"High uncertainty in fish detection: {fish_result['uncertainty']:.2f}")
+    if species_result.get("uncertainty", 0) > 0.3:
+        warnings.append(f"High uncertainty in species classification: {species_result['uncertainty']:.2f}")
+    response["warnings"] = warnings
+
+    return response
+
+
 @app.get("/stats")
 async def get_stats():
     """Get API statistics"""
@@ -983,4 +1176,4 @@ async def measure(
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
