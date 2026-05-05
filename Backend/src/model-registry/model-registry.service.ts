@@ -96,6 +96,19 @@ export class ModelRegistryService {
     return Number.isFinite(parsed) ? parsed : null;
   }
 
+  private countCsvRows(csvPath?: string | null) {
+    if (!csvPath || !fs.existsSync(csvPath)) {
+      return 0;
+    }
+
+    const content = fs.readFileSync(csvPath, 'utf8').trim();
+    if (!content) {
+      return 0;
+    }
+
+    return Math.max(content.split(/\r?\n/).length - 1, 0);
+  }
+
   private readArtifactSummary(
     scope: 'GLOBAL' | 'BOAT_TYPE',
     artifactDir: string,
@@ -134,6 +147,10 @@ export class ModelRegistryService {
         ? modelPath
         : null;
 
+    const rowsUsed =
+      Number(metadata.rows_used || metadata.dataset_rows || 0) ||
+      this.countCsvRows(metadata.dataset);
+
     return {
       scope,
       boatType,
@@ -141,7 +158,7 @@ export class ModelRegistryService {
       metadataPath,
       modelExists: fs.existsSync(modelPath),
       selectedModel,
-      rowsUsed: Number(metadata.rows_used || metadata.dataset_rows || 0),
+      rowsUsed,
       dataset: metadata.dataset || null,
       target: metadata.target || null,
       metrics: {

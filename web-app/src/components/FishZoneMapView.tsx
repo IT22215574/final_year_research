@@ -9,7 +9,7 @@ import {
   useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import type { LatLngExpression } from "leaflet";
+import type { LatLngBoundsExpression, LatLngExpression } from "leaflet";
 
 // Backend API base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
@@ -56,7 +56,7 @@ function MapBounds({ fishZones }: { fishZones: FishZone[] }) {
 
   useEffect(() => {
     if (fishZones.length > 0) {
-      const bounds: LatLngExpression[] = fishZones.map((zone) => [
+      const bounds: LatLngBoundsExpression = fishZones.map((zone) => [
         zone.lat,
         zone.lon,
       ]);

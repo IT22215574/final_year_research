@@ -13,19 +13,20 @@ import {
   Platform,
   NativeSyntheticEvent,
   TextInputKeyPressEventData,
-  Image
+  Image,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { images } from "@/constants";
 
 const API = process.env.EXPO_PUBLIC_API_URL;
+const AUTH_API = `${API}/api/v1/auth`;
 
 const OTPRequest = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { emailOrPhone, isEmail, userId } = params;
-  
+
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -52,7 +53,7 @@ const OTPRequest = () => {
     setError("");
 
     try {
-      const response = await fetch(`${API}/api/auth/send-password-reset-otp`, {
+      const response = await fetch(`${AUTH_API}/send-password-reset-otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -88,14 +89,14 @@ const OTPRequest = () => {
     setError("");
 
     try {
-      const response = await fetch(`${API}/api/auth/send-password-reset-otp`, {
+      const response = await fetch(`${AUTH_API}/send-password-reset-otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           emailOrPhone: emailOrPhone,
-          isEmail: isEmail
+          isEmail: isEmail,
         }),
       });
 
@@ -111,7 +112,6 @@ const OTPRequest = () => {
       setOtp(["", "", "", ""]);
       // Focus first input
       inputRefs.current[0]?.focus();
-
     } catch (error: any) {
       console.error("Resend OTP error:", error);
       setError(error.message || "Failed to resend OTP. Please try again.");
@@ -133,13 +133,16 @@ const OTPRequest = () => {
     }
 
     // Check if OTP is complete
-    if (newOtp.every(digit => digit !== "") && index === 3) {
+    if (newOtp.every((digit) => digit !== "") && index === 3) {
       verifyOtp(newOtp.join(""));
     }
   };
 
-  const handleKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+  const handleKeyPress = (
+    e: NativeSyntheticEvent<TextInputKeyPressEventData>,
+    index: number,
+  ) => {
+    if (e.nativeEvent.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
@@ -149,17 +152,20 @@ const OTPRequest = () => {
     setError("");
 
     try {
-      const response = await fetch(`${API}/api/auth/verify-password-reset-otp`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${AUTH_API}/verify-password-reset-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            emailOrPhone: emailOrPhone,
+            isEmail: isEmail,
+            otp: enteredOtp,
+          }),
         },
-        body: JSON.stringify({
-          emailOrPhone: emailOrPhone,
-          isEmail: isEmail,
-          otp: enteredOtp
-        }),
-      });
+      );
 
       const result = await response.json();
 
@@ -169,18 +175,17 @@ const OTPRequest = () => {
 
       // OTP verified successfully
       Alert.alert("Success", "OTP verified successfully!");
-      
+
       // Navigate to reset password screen with the reset token
       router.push({
         pathname: "/(auth)/resetpassword",
-        params: { 
+        params: {
           emailOrPhone: emailOrPhone,
           isEmail: isEmail,
           resetToken: result.resetToken,
-          userId: result.userId
-        }
+          userId: result.userId,
+        },
       });
-
     } catch (error: any) {
       console.error("Verify OTP error:", error);
       setError(error.message || "Invalid OTP. Please try again.");
@@ -195,19 +200,20 @@ const OTPRequest = () => {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  const maskedEmailOrPhone = isEmail === "true" 
-    ? emailOrPhone 
-    : (emailOrPhone as string).replace(/(\d{3})\d{4}(\d{3})/, '$1****$2');
+  const maskedEmailOrPhone =
+    isEmail === "true"
+      ? emailOrPhone
+      : (emailOrPhone as string).replace(/(\d{3})\d{4}(\d{3})/, "$1****$2");
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -222,10 +228,10 @@ const OTPRequest = () => {
         </TouchableOpacity>
 
         {/* Illustration */}
-        <Image 
-          source={images.Forgot2} 
-          style={styles.illustration} 
-          resizeMode="contain" 
+        <Image
+          source={images.Forgot2}
+          style={styles.illustration}
+          resizeMode="contain"
         />
 
         {/* Title */}
@@ -242,11 +248,11 @@ const OTPRequest = () => {
           {otp.map((digit, index) => (
             <TextInput
               key={index}
-              ref={ref => inputRefs.current[index] = ref}
+              ref={(ref) => (inputRefs.current[index] = ref)}
               style={[
                 styles.otpInput,
                 digit && styles.otpInputFilled,
-                error && styles.otpInputError
+                error && styles.otpInputError,
               ]}
               value={digit}
               onChangeText={(value) => handleOtpChange(value, index)}
@@ -259,9 +265,7 @@ const OTPRequest = () => {
           ))}
         </View>
 
-        {error ? (
-          <Text style={styles.errorText}>{error}</Text>
-        ) : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* Timer Display - Centered */}
         <View style={styles.timerContainer}>
@@ -272,20 +276,20 @@ const OTPRequest = () => {
 
         {/* Resend OTP - Inline with the text */}
         <View style={styles.resendContainer}>
-          <Text style={styles.resendText}>
-            Didn't receive the code?{" "}
-          </Text>
-          <TouchableOpacity 
-            onPress={handleResendOtp} 
+          <Text style={styles.resendText}>Didn't receive the code? </Text>
+          <TouchableOpacity
+            onPress={handleResendOtp}
             disabled={!canResend || resendLoading}
           >
             {resendLoading ? (
               <ActivityIndicator size="small" color="#3b82f6" />
             ) : (
-              <Text style={[
-                styles.resendButtonText,
-                (!canResend || resendLoading) && styles.resendButtonDisabled
-              ]}>
+              <Text
+                style={[
+                  styles.resendButtonText,
+                  (!canResend || resendLoading) && styles.resendButtonDisabled,
+                ]}
+              >
                 Resend Code
               </Text>
             )}
@@ -293,13 +297,14 @@ const OTPRequest = () => {
         </View>
 
         {/* Verify Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
-            styles.verifyBtn, 
-            (loading || otp.some(digit => digit === "")) && styles.disabledButton
-          ]} 
+            styles.verifyBtn,
+            (loading || otp.some((digit) => digit === "")) &&
+              styles.disabledButton,
+          ]}
           activeOpacity={0.8}
-          disabled={loading || otp.some(digit => digit === "")}
+          disabled={loading || otp.some((digit) => digit === "")}
           onPress={() => verifyOtp(otp.join(""))}
         >
           {loading ? (

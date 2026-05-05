@@ -11,13 +11,14 @@ import {
   Alert,
   ScrollView,
   KeyboardAvoidingView,
-  Platform
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { images } from "@/constants";
 
 const API = process.env.EXPO_PUBLIC_API_URL;
+const AUTH_API = `${API}/api/v1/auth`;
 
 const ForgetPassword = () => {
   const router = useRouter();
@@ -32,16 +33,16 @@ const ForgetPassword = () => {
   // Validate input format
   const validateInput = (input: string) => {
     const trimmedInput = input.trim();
-    
+
     // Check if it's an email
-    if (trimmedInput.includes('@')) {
+    if (trimmedInput.includes("@")) {
       const emailRegex = /^\S+@\S+\.\S+$/;
       return emailRegex.test(trimmedInput);
-    } 
+    }
     // Check if it's a phone number (Sri Lankan format)
     else {
       const phoneRegex = /^(07[0-9]|94[0-9]|\+94[0-9])[0-9]{7,9}$/;
-      const cleanPhone = trimmedInput.replace(/\D/g, '');
+      const cleanPhone = trimmedInput.replace(/\D/g, "");
       return phoneRegex.test(cleanPhone);
     }
   };
@@ -49,10 +50,10 @@ const ForgetPassword = () => {
   const handleVerify = async () => {
     // Prevent multiple submissions
     if (loading) return;
-    
+
     // Clear previous errors
     setError("");
-    
+
     // Validate input format
     if (!validateInput(emailOrPhone)) {
       setError("Please enter a valid email or phone number");
@@ -63,10 +64,9 @@ const ForgetPassword = () => {
     setIsValidInput(true);
     setLoading(true);
 
-
     try {
       // First check if account exists (THIS DOESN'T SEND OTP)
-      const checkResponse = await fetch(`${API}/api/auth/check-account`, {
+      const checkResponse = await fetch(`${AUTH_API}/check-account`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -85,7 +85,7 @@ const ForgetPassword = () => {
       if (checkResult.success && checkResult.exists) {
         // Account exists, now send OTP (THIS SENDS OTP)
         const otpResponse = await fetch(
-          `${API}/api/auth/send-password-reset-otp`,
+          `${AUTH_API}/send-password-reset-otp`,
           {
             method: "POST",
             headers: {
@@ -95,7 +95,7 @@ const ForgetPassword = () => {
               emailOrPhone: emailOrPhone.trim(),
               isEmail: checkResult.isEmail,
             }),
-          }
+          },
         );
 
         const otpResult = await otpResponse.json();
@@ -137,11 +137,11 @@ const ForgetPassword = () => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -156,14 +156,19 @@ const ForgetPassword = () => {
         </TouchableOpacity>
 
         {/* Illustration */}
-        <Image source={images.Forgot1} style={styles.illustration} resizeMode="contain" />
+        <Image
+          source={images.Forgot1}
+          style={styles.illustration}
+          resizeMode="contain"
+        />
 
         {/* Title */}
         <Text style={styles.title}>Forgot Password?</Text>
 
         {/* Subtitle */}
         <Text style={styles.subtitle}>
-          Please Enter The Email Address or Phone Number Linked With Your Account
+          Please Enter The Email Address or Phone Number Linked With Your
+          Account
         </Text>
 
         {/* Input field */}
@@ -171,15 +176,14 @@ const ForgetPassword = () => {
           <Text style={styles.label}>
             Email / Phone Number <Text style={styles.required}>*</Text>
           </Text>
-          <View style={[
-            styles.inputWrapper,
-            !isValidInput && styles.errorInput
-          ]}>
-            <Ionicons 
-              name="mail-outline" 
-              size={20} 
-              color={!isValidInput ? "#ef4444" : "#9BA3AB"} 
-              style={styles.icon} 
+          <View
+            style={[styles.inputWrapper, !isValidInput && styles.errorInput]}
+          >
+            <Ionicons
+              name="mail-outline"
+              size={20}
+              color={!isValidInput ? "#ef4444" : "#9BA3AB"}
+              style={styles.icon}
             />
             <TextInput
               placeholder="Enter Your Email / Phone Number"
@@ -192,17 +196,15 @@ const ForgetPassword = () => {
               keyboardType="email-address"
             />
           </View>
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>
 
         {/* Button - Disabled until input is provided */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
-            styles.verifyBtn, 
-            (isInputEmpty || loading) && styles.disabledButton
-          ]} 
+            styles.verifyBtn,
+            (isInputEmpty || loading) && styles.disabledButton,
+          ]}
           activeOpacity={0.8}
           disabled={isInputEmpty || loading}
           onPress={handleVerify}

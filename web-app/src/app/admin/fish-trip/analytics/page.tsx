@@ -144,6 +144,8 @@ type BoatTypeView = {
   trainingJobs: number;
   recordsProcessed: number;
   backlog: number;
+  modelDatasetCoverage: number;
+  hasArtifactDatasetMismatch: boolean;
   lastTrainingAt: string | null;
   highRiskTrips: number;
   algorithm: string;
@@ -184,6 +186,13 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("en-LK", { maximumFractionDigits: 1 }).format(value);
 }
 
+function formatR2(value: number) {
+  return new Intl.NumberFormat("en-LK", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  }).format(value);
+}
+
 function formatDate(value: string | null) {
   if (!value) return "Not trained";
   const date = new Date(value);
@@ -196,6 +205,25 @@ function imageUrl(path?: string) {
   const origin =
     process.env.NEXT_PUBLIC_BACKEND_ORIGIN || env.apiBaseUrl.replace(/\/api\/v1\/?$/, "");
   return `${origin.replace(/\/+$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+function dataQualityNotes(row: BoatTypeView) {
+  const notes: string[] = [];
+  if (row.hasArtifactDatasetMismatch) {
+    notes.push(
+      `Model artifact used ${row.artifactRowsUsed} rows, current dataset has ${row.trainingRows}`,
+    );
+  }
+  if (row.trainingRows > 0 && row.trainingRows < 100) {
+    notes.push(`Only ${row.trainingRows} training rows`);
+  }
+  if (row.trainingRows > 0 && row.uploadedTrainingRows / row.trainingRows >= 0.75) {
+    notes.push(`${formatPercent((row.uploadedTrainingRows / row.trainingRows) * 100)} uploaded rows`);
+  }
+  if (row.actualTripCount < 10) {
+    notes.push(`Only ${row.actualTripCount} app actual logs`);
+  }
+  return notes;
 }
 
 export default function FishTripAnalyticsPage() {
@@ -297,6 +325,18 @@ export default function FishTripAnalyticsPage() {
             ? Math.max(0, Math.min(100, 100 - artifactRow.metrics.mape))
             : 0;
         const registryAccuracy = modelAccuracy(bestModel);
+        const trainingRows = datasetRow?.totalRows || 0;
+        const artifactRowsUsed = artifactRow?.rowsUsed || 0;
+        const hasArtifactDatasetMismatch =
+          artifactRowsUsed > 0 &&
+          trainingRows > 0 &&
+          artifactRowsUsed !== trainingRows;
+        const modelDatasetCoverage =
+          trainingRows > 0 && artifactRowsUsed > 0
+            ? hasArtifactDatasetMismatch
+              ? 0
+              : 100
+            : analyticsRow?.coveragePercent || 0;
 
         return {
           boatType: key,
@@ -305,10 +345,10 @@ export default function FishTripAnalyticsPage() {
           boatCount: boatTypeBoats.length,
           tripCount: boatTypeTrips.length,
           actualTripCount: boatTypeTrips.filter((trip) => Number(trip.actualFuelLiters || 0) > 0).length,
-          trainingRows: datasetRow?.totalRows || 0,
+          trainingRows,
           manualTrainingRows: datasetRow?.manualTripRows || 0,
           uploadedTrainingRows: datasetRow?.uploadedDatasetRows || 0,
-          artifactRowsUsed: artifactRow?.rowsUsed || 0,
+          artifactRowsUsed,
           modelAccuracy: artifactAccuracy || registryAccuracy,
           mape: artifactRow?.metrics.mape || metricValue(bestModel?.metrics, "mape", "MAPE", "averagePredictionError") || 0,
           mae: artifactRow?.metrics.mae || metricValue(bestModel?.metrics, "mae", "MAE") || 0,
@@ -319,6 +359,8 @@ export default function FishTripAnalyticsPage() {
           trainingJobs: analyticsRow?.trainingJobs || 0,
           recordsProcessed: analyticsRow?.recordsProcessed || 0,
           backlog: analyticsRow?.backlog || 0,
+          modelDatasetCoverage,
+          hasArtifactDatasetMismatch,
           lastTrainingAt: artifactRow?.updatedAt || analyticsRow?.lastTrainingAt || null,
           highRiskTrips: boatTypeTrips.filter((trip) => trip.riskCategory === "high").length,
           algorithm: artifactRow?.selectedModel || bestModel?.algorithmType || "No model",
@@ -371,7 +413,7 @@ export default function FishTripAnalyticsPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Trip Analytics</h1>
           <p className="text-gray-600 mt-1">
-            Boat-type model accuracy, training coverage, and trip performance
+            Boat-type validation score, training coverage, and trip performance
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -409,11 +451,11 @@ export default function FishTripAnalyticsPage() {
         <MetricCard icon={Anchor} label="Boat types" value={totals.boatTypes.toLocaleString()} />
         <MetricCard icon={Database} label="App trips" value={totals.trips.toLocaleString()} />
         <MetricCard icon={Brain} label="Training rows" value={totals.trainingRows.toLocaleString()} />
-        <MetricCard icon={Gauge} label="Avg model accuracy" value={formatPercent(totals.avgAccuracy)} />
+        <MetricCard icon={Gauge} label="Avg validation score" value={formatPercent(totals.avgAccuracy)} />
       </section>
 
       <section className="mt-6 grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <ChartPanel title="Model accuracy by boat type">
+        <ChartPanel title="Validation score by boat type">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={visibleRows}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -440,10 +482,10 @@ export default function FishTripAnalyticsPage() {
               <Line type="monotone" dataKey="trainingRows" stroke="#d97706" strokeWidth={3} name="Training rows" />
               <Line
                 type="monotone"
-                dataKey="coveragePercent"
+                dataKey="modelDatasetCoverage"
                 stroke="#059669"
                 strokeWidth={3}
-                name="Coverage %"
+                name="Current dataset match %"
               />
             </LineChart>
           </ResponsiveContainer>
@@ -479,10 +521,16 @@ export default function FishTripAnalyticsPage() {
                     </p>
                   </div>
                   <div className="text-left md:text-right">
-                    <div className="text-sm text-gray-500">Model accuracy</div>
+                    <div className="text-sm text-gray-500">Validation score</div>
                     <div className="text-3xl font-bold text-blue-700">{formatPercent(row.modelAccuracy)}</div>
                   </div>
                 </div>
+
+                {dataQualityNotes(row).length > 0 ? (
+                  <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    Treat this score as early validation: {dataQualityNotes(row).join(" • ")}.
+                  </div>
+                ) : null}
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
                   <MiniStat label="Boats" value={row.boatCount.toLocaleString()} />
@@ -496,13 +544,26 @@ export default function FishTripAnalyticsPage() {
                   <MiniStat label="MAPE" value={formatPercent(row.mape)} />
                   <MiniStat label="MAE" value={formatNumber(row.mae)} />
                   <MiniStat label="RMSE" value={formatNumber(row.rmse)} />
-                  <MiniStat label="R2" value={formatNumber(row.r2)} />
+                  <MiniStat label="R2" value={formatR2(row.r2)} />
                 </div>
 
                 <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Progress label="Training coverage" value={row.coveragePercent} color="bg-emerald-600" />
+                  <Progress
+                    label="Current dataset match"
+                    value={row.modelDatasetCoverage}
+                    color="bg-emerald-600"
+                  />
                   <Progress label="Job success" value={row.jobSuccessRate} color="bg-blue-600" />
-                  <Progress label="Backlog" value={row.backlog > 0 ? Math.min(100, row.backlog * 10) : 0} color="bg-amber-600" />
+                  <Progress
+                    label="Backlog"
+                    value={
+                      row.trainingRows > 0
+                        ? Math.min(100, (row.backlog / row.trainingRows) * 100)
+                        : 0
+                    }
+                    displayValue={`${row.backlog.toLocaleString()} pending`}
+                    color="bg-amber-600"
+                  />
                 </div>
               </div>
             </div>
@@ -561,13 +622,23 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Progress({ label, value, color }: { label: string; value: number; color: string }) {
+function Progress({
+  label,
+  value,
+  displayValue,
+  color,
+}: {
+  label: string;
+  value: number;
+  displayValue?: string;
+  color: string;
+}) {
   const safeValue = Math.max(0, Math.min(100, value));
   return (
     <div className="rounded-xl bg-gray-50 p-3">
       <div className="flex items-center justify-between gap-2 text-xs">
         <span className="text-gray-500">{label}</span>
-        <span className="font-semibold text-gray-800">{formatPercent(value)}</span>
+        <span className="font-semibold text-gray-800">{displayValue || formatPercent(value)}</span>
       </div>
       <div className="mt-2 h-2 rounded-full bg-gray-200 overflow-hidden">
         <div className={`h-full ${color}`} style={{ width: `${safeValue}%` }} />
