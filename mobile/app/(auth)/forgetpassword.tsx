@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { images } from "@/constants";
 
 const API = process.env.EXPO_PUBLIC_API_URL;
+const AUTH_API = `${API}/api/v1/auth`;
 
 const ForgetPassword = () => {
   const router = useRouter();
@@ -65,7 +66,7 @@ const ForgetPassword = () => {
 
     try {
       // First check if account exists (THIS DOESN'T SEND OTP)
-      const checkResponse = await fetch(`${API}/api/auth/check-account`, {
+      const checkResponse = await fetch(`${AUTH_API}/check-account`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -84,7 +85,7 @@ const ForgetPassword = () => {
       if (checkResult.success && checkResult.exists) {
         // Account exists, now send OTP (THIS SENDS OTP)
         const otpResponse = await fetch(
-          `${API}/api/auth/send-password-reset-otp`,
+          `${AUTH_API}/send-password-reset-otp`,
           {
             method: "POST",
             headers: {
