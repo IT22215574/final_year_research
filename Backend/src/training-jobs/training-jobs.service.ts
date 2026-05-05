@@ -312,11 +312,12 @@ export class TrainingJobsService {
     });
 
     rows.forEach((row) => {
-      row.backlog = Math.max(row.approvedCandidates - row.trainedCandidates, 0);
+      const eligibleCandidates = row.approvedCandidates + row.trainedCandidates;
+      row.backlog = row.approvedCandidates;
       row.coveragePercent =
-        row.approvedCandidates > 0
+        eligibleCandidates > 0
           ? Math.round(
-              (row.trainedCandidates / row.approvedCandidates) * 1000,
+              (row.trainedCandidates / eligibleCandidates) * 1000,
             ) / 10
           : 0;
       row.jobSuccessRate =
@@ -365,10 +366,13 @@ export class TrainingJobsService {
       },
     );
 
+    const summaryEligibleCandidates =
+      summary.approvedCandidates + summary.trainedCandidates;
+
     const overallCoverage =
-      summary.approvedCandidates > 0
+      summaryEligibleCandidates > 0
         ? Math.round(
-            (summary.trainedCandidates / summary.approvedCandidates) * 1000,
+            (summary.trainedCandidates / summaryEligibleCandidates) * 1000,
           ) / 10
         : 0;
 
