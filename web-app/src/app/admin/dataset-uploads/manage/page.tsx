@@ -36,16 +36,53 @@ interface BoatwiseStats {
   readyForTraining: boolean;
 }
 
+interface TrainingCandidate {
+  _id: string;
+  sourceTripId: string;
+  boatId: string;
+  boatType: string;
+  featuresSnapshot?: Record<string, unknown>;
+  labelSnapshot?: Record<string, unknown>;
+  status: string;
+  createdAt?: string;
+}
+
+function formatValue(value: unknown) {
+  if (value === null || value === undefined || value === '') return '-';
+  if (typeof value === 'number') {
+    return new Intl.NumberFormat('en-LK', { maximumFractionDigits: 2 }).format(value);
+  }
+  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  return String(value);
+}
+
+function snapshotValue(
+  snapshot: Record<string, unknown> | undefined,
+  ...keys: string[]
+) {
+  for (const key of keys) {
+    const value = snapshot?.[key];
+    if (value !== null && value !== undefined && value !== '') return value;
+  }
+  return '-';
+}
+
 export default function DatasetManagementPage() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [tripCandidates, setTripCandidates] = useState<TrainingCandidate[]>([]);
   const [boatwiseStats, setBoatwiseStats] = useState<BoatwiseStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tripCandidatesLoading, setTripCandidatesLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
   const [approving, setApproving] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<string | null>(null);
+  const [candidateProcessingId, setCandidateProcessingId] = useState<string | null>(null);
+  const [candidateErrorMessage, setCandidateErrorMessage] = useState<string | null>(null);
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<TrainingCandidate | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showCandidateDetails, setShowCandidateDetails] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const getErrorMessage = useCallback((error: unknown, fallback: string) => {
@@ -81,6 +118,22 @@ export default function DatasetManagementPage() {
     }
   }, [activeTab, getErrorMessage]);
 
+  const loadTripCandidates = useCallback(async () => {
+    setTripCandidatesLoading(true);
+    setCandidateErrorMessage(null);
+    try {
+      const data = await apiFetch<TrainingCandidate[]>('training-candidates/pending');
+      setTripCandidates(Array.isArray(data) ? data : []);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Unknown error loading trip-based records');
+      console.error('Error loading trip-based records:', message);
+      setCandidateErrorMessage(message);
+      setTripCandidates([]);
+    } finally {
+      setTripCandidatesLoading(false);
+    }
+  }, [getErrorMessage]);
+
   const loadBoatwiseStats = useCallback(async () => {
     setStatsLoading(true);
     try {
@@ -97,8 +150,9 @@ export default function DatasetManagementPage() {
 
   useEffect(() => {
     loadDatasets();
+    loadTripCandidates();
     loadBoatwiseStats();
-  }, [loadDatasets, loadBoatwiseStats]);
+  }, [loadDatasets, loadTripCandidates, loadBoatwiseStats]);
 
   const handleApprove = async (id: string) => {
     if (!confirm('Approve this dataset for training?')) return;
@@ -146,6 +200,50 @@ export default function DatasetManagementPage() {
     }
   };
 
+  const handleApproveTripCandidate = async (id: string) => {
+    if (!confirm('Approve this trip record for model training?')) return;
+
+    setCandidateProcessingId(id);
+    try {
+      await apiFetch(`training-candidates/${id}/approve`, {
+        method: 'POST',
+      });
+
+      await loadTripCandidates();
+      await loadBoatwiseStats();
+      setShowCandidateDetails(false);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Failed to approve trip record');
+      console.error('Error approving trip record:', message);
+      alert(message);
+    } finally {
+      setCandidateProcessingId(null);
+    }
+  };
+
+  const handleRejectTripCandidate = async (id: string) => {
+    const reason = prompt('Reject reason:');
+    if (!reason) return;
+
+    setCandidateProcessingId(id);
+    try {
+      await apiFetch(`training-candidates/${id}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      });
+
+      await loadTripCandidates();
+      await loadBoatwiseStats();
+      setShowCandidateDetails(false);
+    } catch (error) {
+      const message = getErrorMessage(error, 'Failed to reject trip record');
+      console.error('Error rejecting trip record:', message);
+      alert(message);
+    } finally {
+      setCandidateProcessingId(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       PENDING: 'bg-yellow-100 text-yellow-800',
@@ -182,6 +280,129 @@ export default function DatasetManagementPage() {
               when generating training files for each boat type.
             </p>
           </div>
+        </div>
+
+        {/* Trip-based Pending Records */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">Trip-Based Pending Records</h2>
+              <p className="text-slate-600 text-sm mt-1">
+                Review app-logged actual fuel and cost records before they enter model training.
+              </p>
+            </div>
+            <button
+              onClick={loadTripCandidates}
+              disabled={tripCandidatesLoading || !!candidateProcessingId}
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+            >
+              {tripCandidatesLoading ? 'Refreshing...' : 'Refresh Trip Records'}
+            </button>
+          </div>
+
+          {candidateErrorMessage && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 font-semibold">Error loading trip records</p>
+              <p className="text-red-700 text-sm mt-2">{candidateErrorMessage}</p>
+            </div>
+          )}
+
+          {tripCandidatesLoading ? (
+            <div className="text-center py-8 bg-white rounded-xl border border-slate-200">
+              <div className="inline-block">
+                <div className="animate-spin w-6 h-6 border-4 border-blue-300 border-t-blue-600 rounded-full"></div>
+              </div>
+              <p className="text-slate-600 mt-2">Loading trip records...</p>
+            </div>
+          ) : tripCandidates.length === 0 && !candidateErrorMessage ? (
+            <div className="text-center py-8 bg-white rounded-xl border border-dashed border-slate-300">
+              <p className="text-slate-600 font-medium">No pending trip-based records</p>
+              <p className="text-slate-500 text-sm mt-2">
+                New records appear here after fishermen log actual trip fuel and cost.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {tripCandidates.map((candidate) => {
+                const distance = snapshotValue(candidate.featuresSnapshot, 'distanceKm', 'distance');
+                const fuel = snapshotValue(candidate.labelSnapshot, 'actualFuelLiters', 'fuelUsedLiters');
+                const cost = snapshotValue(candidate.labelSnapshot, 'actualCost', 'totalCost');
+                const isProcessing = candidateProcessingId === candidate._id;
+
+                return (
+                  <div
+                    key={candidate._id}
+                    className="bg-white rounded-xl shadow border border-slate-200 p-4 hover:shadow-lg transition-all"
+                  >
+                    <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-lg font-semibold text-slate-900">
+                            {candidate.boatType || 'Unknown boat type'}
+                          </h3>
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusBadge(candidate.status)}`}>
+                            {candidate.status}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                          <div>
+                            <p className="text-slate-600 text-xs">Distance</p>
+                            <p className="font-semibold text-slate-900">{formatValue(distance)} km</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-600 text-xs">Actual Fuel</p>
+                            <p className="font-semibold text-slate-900">{formatValue(fuel)} L</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-600 text-xs">Actual Cost</p>
+                            <p className="font-semibold text-slate-900">Rs. {formatValue(cost)}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-600 text-xs">Logged</p>
+                            <p className="font-semibold text-slate-900">
+                              {candidate.createdAt ? new Date(candidate.createdAt).toLocaleDateString() : '-'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-500">
+                          <p className="truncate">Source trip: {candidate.sourceTripId || '-'}</p>
+                          <p className="truncate">Boat ID: {candidate.boatId || '-'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row xl:flex-col gap-2 xl:min-w-40">
+                        <button
+                          onClick={() => {
+                            setSelectedCandidate(candidate);
+                            setShowCandidateDetails(true);
+                          }}
+                          className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-all"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleApproveTripCandidate(candidate._id)}
+                          disabled={!!candidateProcessingId}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-semibold hover:bg-green-700 transition-all disabled:opacity-50"
+                        >
+                          {isProcessing ? 'Processing...' : 'Approve'}
+                        </button>
+                        <button
+                          onClick={() => handleRejectTripCandidate(candidate._id)}
+                          disabled={!!candidateProcessingId}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-all disabled:opacity-50"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Boat-wise Dataset Statistics */}
@@ -522,6 +743,118 @@ export default function DatasetManagementPage() {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trip Candidate Details Modal */}
+      {showCandidateDetails && selectedCandidate && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">
+                  Trip Training Record
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  {selectedCandidate.boatType} • {selectedCandidate.sourceTripId}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCandidateDetails(false)}
+                className="text-slate-500 hover:text-slate-700 text-sm font-semibold"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <p className="text-slate-600 text-sm mb-1">Boat Type</p>
+                <p className="font-semibold">{selectedCandidate.boatType}</p>
+              </div>
+              <div>
+                <p className="text-slate-600 text-sm mb-1">Status</p>
+                <p className="font-semibold">{selectedCandidate.status}</p>
+              </div>
+              <div>
+                <p className="text-slate-600 text-sm mb-1">Boat ID</p>
+                <p className="font-semibold break-all">{selectedCandidate.boatId}</p>
+              </div>
+              <div>
+                <p className="text-slate-600 text-sm mb-1">Source Trip</p>
+                <p className="font-semibold break-all">{selectedCandidate.sourceTripId}</p>
+              </div>
+              <div>
+                <p className="text-slate-600 text-sm mb-1">Created</p>
+                <p className="font-semibold">
+                  {selectedCandidate.createdAt
+                    ? new Date(selectedCandidate.createdAt).toLocaleString()
+                    : '-'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-slate-200 p-4">
+                <h3 className="font-bold text-slate-900 mb-3">Feature Snapshot</h3>
+                {Object.entries(selectedCandidate.featuresSnapshot || {}).length === 0 ? (
+                  <p className="text-sm text-slate-500">No feature data available.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {Object.entries(selectedCandidate.featuresSnapshot || {}).map(([key, value]) => (
+                      <div key={key}>
+                        <p className="text-xs text-slate-500">{key}</p>
+                        <p className="text-sm font-semibold text-slate-900 whitespace-pre-wrap">
+                          {formatValue(value)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-4">
+                <h3 className="font-bold text-slate-900 mb-3">Label Snapshot</h3>
+                {Object.entries(selectedCandidate.labelSnapshot || {}).length === 0 ? (
+                  <p className="text-sm text-slate-500">No label data available.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {Object.entries(selectedCandidate.labelSnapshot || {}).map(([key, value]) => (
+                      <div key={key}>
+                        <p className="text-xs text-slate-500">{key}</p>
+                        <p className="text-sm font-semibold text-slate-900 whitespace-pre-wrap">
+                          {formatValue(value)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={() => setShowCandidateDetails(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-semibold hover:bg-slate-200"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => handleRejectTripCandidate(selectedCandidate._id)}
+                disabled={!!candidateProcessingId}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50"
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => handleApproveTripCandidate(selectedCandidate._id)}
+                disabled={!!candidateProcessingId}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50"
+              >
+                Approve
+              </button>
             </div>
           </div>
         </div>

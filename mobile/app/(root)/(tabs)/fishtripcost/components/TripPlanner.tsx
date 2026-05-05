@@ -42,6 +42,69 @@ import {
   WeatherData,
 } from "@/services/weatherService";
 
+const HARBOR_LOCATION = {
+  latitude: 6.9347,
+  longitude: 79.8429,
+};
+
+const getZoneLatLon = (zone: any) => {
+  const latitude =
+    typeof zone?.lat === "number"
+      ? zone.lat
+      : typeof zone?.latitude === "number"
+        ? zone.latitude
+        : null;
+
+  const longitude =
+    typeof zone?.lon === "number"
+      ? zone.lon
+      : typeof zone?.longitude === "number"
+        ? zone.longitude
+        : null;
+
+  if (latitude === null || longitude === null) return null;
+
+  return { latitude, longitude };
+};
+
+const getDistanceKm = (
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number },
+) => {
+  const earthRadiusKm = 6371;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRadians(to.latitude - from.latitude);
+  const dLon = toRadians(to.longitude - from.longitude);
+  const lat1 = toRadians(from.latitude);
+  const lat2 = toRadians(to.latitude);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const getRouteDistanceFromZones = (zones: any[]) => {
+  if (!zones || zones.length === 0) return 0;
+
+  const points = zones
+    .map(getZoneLatLon)
+    .filter(
+      (point): point is { latitude: number; longitude: number } =>
+        point !== null,
+    );
+
+  if (points.length === 0) return 0;
+
+  let totalDistance = getDistanceKm(HARBOR_LOCATION, points[0]);
+  for (let i = 1; i < points.length; i += 1) {
+    totalDistance += getDistanceKm(points[i - 1], points[i]);
+  }
+
+  return totalDistance;
+};
+
 const TripPlanner = () => {
   const insets = useSafeAreaInsets();
 
@@ -182,14 +245,25 @@ const TripPlanner = () => {
   // Compute distance from zones
   useEffect(() => {
     if (selectedZones.length > 0) {
-      const totalDist = selectedZones.reduce((sum: number, zone: any) => {
-        let zoneDist = 0;
-        if (typeof zone.distance === "number") zoneDist = zone.distance;
-        else if (typeof zone.distance === "string")
-          zoneDist = parseFloat(zone.distance) || 0;
-        return sum + zoneDist;
-      }, 0);
-      setDistance(totalDist.toFixed(2));
+      const coordinateDistance = getRouteDistanceFromZones(selectedZones);
+
+      if (coordinateDistance > 0) {
+        setDistance(coordinateDistance.toFixed(2));
+        return;
+      }
+
+      const fallbackDistance = selectedZones.reduce(
+        (sum: number, zone: any) => {
+          let zoneDist = 0;
+          if (typeof zone.distance === "number") zoneDist = zone.distance;
+          else if (typeof zone.distance === "string")
+            zoneDist = parseFloat(zone.distance) || 0;
+          return sum + zoneDist;
+        },
+        0,
+      );
+
+      setDistance(fallbackDistance.toFixed(2));
     } else {
       setDistance("");
     }
@@ -292,22 +366,7 @@ const TripPlanner = () => {
   const getStartEndFromZones = () => {
     if (!selectedZones || selectedZones.length === 0) return null;
 
-    const first: any = selectedZones[0];
     const last: any = selectedZones[selectedZones.length - 1];
-
-    const firstLat =
-      typeof first?.lat === "number"
-        ? first.lat
-        : typeof first?.latitude === "number"
-          ? first.latitude
-          : null;
-
-    const firstLon =
-      typeof first?.lon === "number"
-        ? first.lon
-        : typeof first?.longitude === "number"
-          ? first.longitude
-          : null;
 
     const lastLat =
       typeof last?.lat === "number"
@@ -323,25 +382,19 @@ const TripPlanner = () => {
           ? last.longitude
           : null;
 
-    if (
-      firstLat === null ||
-      firstLon === null ||
-      lastLat === null ||
-      lastLon === null
-    ) {
+    if (lastLat === null || lastLon === null) {
       return null;
     }
 
     return {
-      startLat: firstLat,
-      startLon: firstLon,
+      startLat: HARBOR_LOCATION.latitude,
+      startLon: HARBOR_LOCATION.longitude,
       endLat: lastLat,
       endLon: lastLon,
     };
   };
 
-  const handleMapPress = () =>
-    router.push("/(root)/(tabs)/fishtripcost/mapview");
+  const handleMapPress = () => router.push("/(root)/(tabs)/FishZoneMap");
 
   const handlePredict = async () => {
     const coords = getStartEndFromZones();
@@ -671,14 +724,40 @@ const TripPlanner = () => {
 
         <View className="flex-row gap-2 mt-3">
           {selectedZones.length > 0 && (
+            <>
+              <TouchableOpacity
+                onPress={() => router.push("/(root)/(tabs)/FishZoneMap")}
+                className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 flex-row items-center"
+                activeOpacity={0.7}
+              >
+                <Ionicons name="map" size={15} color="#3b82f6" />
+                <Text className="text-blue-600 font-medium text-sm ml-1.5">
+                  Map
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={clearZones}
+                className="border border-rose-200 bg-rose-50 rounded-xl px-3 py-2 flex-row items-center"
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash-outline" size={15} color="#ef4444" />
+                <Text className="text-rose-600 font-medium text-sm ml-1.5">
+                  Clear
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {selectedZones.length === 0 && (
             <TouchableOpacity
-              onPress={clearZones}
-              className="border border-rose-200 bg-rose-50 rounded-xl px-3 py-2 flex-row items-center"
+              onPress={() => router.push("/(root)/(tabs)/FishZoneMap")}
+              className="flex-1 bg-blue-500 rounded-xl px-3 py-2 flex-row items-center justify-center"
               activeOpacity={0.7}
             >
-              <Ionicons name="trash-outline" size={15} color="#ef4444" />
-              <Text className="text-rose-600 font-medium text-sm ml-1.5">
-                Clear
+              <Ionicons name="map" size={16} color="#fff" />
+              <Text className="text-white font-semibold text-sm ml-2">
+                Select Zone from Map
               </Text>
             </TouchableOpacity>
           )}
@@ -1504,10 +1583,24 @@ const TripPlanner = () => {
                         zone.zoneName ||
                         zone.title ||
                         `Zone ${index + 1}`;
+                      const currentPoint = getZoneLatLon(zone);
+                      const previousPoint =
+                        index === 0
+                          ? HARBOR_LOCATION
+                          : getZoneLatLon(selectedZones[index - 1]);
                       const zoneDistance =
-                        typeof zone.distance === "number"
-                          ? zone.distance
-                          : Number.parseFloat(zone.distance || "0") || 0;
+                        currentPoint && previousPoint
+                          ? getDistanceKm(previousPoint, currentPoint)
+                          : typeof zone.distance === "number"
+                            ? zone.distance
+                            : Number.parseFloat(zone.distance || "0") || 0;
+                      const probability =
+                        typeof zone.fish_probability === "number"
+                          ? `${(zone.fish_probability * 100).toFixed(1)}%`
+                          : zone.density || "Selected";
+                      const coordinates = currentPoint
+                        ? `${currentPoint.latitude.toFixed(3)}, ${currentPoint.longitude.toFixed(3)}`
+                        : "Coordinates unavailable";
 
                       return (
                         <View
@@ -1527,7 +1620,10 @@ const TripPlanner = () => {
                               {zoneName}
                             </Text>
                             <Text className="text-slate-500 text-xs mt-0.5">
-                              {zoneDistance.toFixed(1)} km
+                              {zoneDistance.toFixed(1)} km leg • {coordinates}
+                            </Text>
+                            <Text className="text-slate-400 text-[11px] mt-0.5">
+                              Fish probability: {probability}
                             </Text>
                           </View>
                           <Ionicons
