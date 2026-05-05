@@ -43,6 +43,7 @@ import { resolveSpecies, getSizeCategoryForSpecies } from "@/utils/fishWeight";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BOTTOM_NAV_HEIGHT = 80; // Adjust based on your bottom navigation height
+const SINGLE_IMAGE_MODE = true;
 
 /** Species that support quality grading (match labels from the model exactly) */
 const GRADABLE_SPECIES = ["tuna", "makerel"];
@@ -182,8 +183,7 @@ export default function QualityGrading() {
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.92,
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
       });
 
       if (!res.canceled && res.assets.length > 0) {
@@ -216,8 +216,7 @@ export default function QualityGrading() {
 
       const res = await ImagePicker.launchCameraAsync({
         quality: 0.92,
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
       });
 
       if (!res.canceled && res.assets.length > 0) {
@@ -237,7 +236,7 @@ export default function QualityGrading() {
   };
 
   const pickImage = (side: "left" | "right") =>
-    Alert.alert("Select Image", `Choose source for ${side} image`, [
+    Alert.alert("Select Image", "Choose a clear side-view fish image", [
       { text: "Camera", onPress: () => openCamera(side) },
       { text: "Gallery", onPress: () => openGallery(side) },
       { text: "Cancel", style: "cancel" },
@@ -287,7 +286,7 @@ export default function QualityGrading() {
     try {
       const r = await runFishPipeline(leftImage, rightImage || undefined, {
         useTTA: true,
-        singleImageMode: !rightImage,
+        singleImageMode: SINGLE_IMAGE_MODE,
         onProgress: (msg: string) => {
           setLoadingMsg(msg);
         },
@@ -315,7 +314,7 @@ export default function QualityGrading() {
 
       // ── Pair mismatch check (only for paired mode) ───────────────────────
       if (
-        !rightImage &&
+        rightImage &&
         r.isFish &&
         r.pairValidation &&
         !r.pairValidation.matched
@@ -406,7 +405,7 @@ export default function QualityGrading() {
         predictedGrade: result.grade ?? undefined,
         gradeConfidence: result.gradeConfidence,
         speciesConfidence: result.speciesConfidence,
-        imageUris: [leftImage, rightImage].filter(Boolean) as string[],
+        imageUris: [leftImage].filter(Boolean) as string[],
         notes: notes || undefined,
         measuredLengthCm,
         estimatedWeightKg,
@@ -611,50 +610,40 @@ export default function QualityGrading() {
 
         {/* ── Image pickers ── */}
         <View style={s.card}>
-          <Text style={s.cardTitle}>1. Select Fish Images</Text>
+          <Text style={s.cardTitle}>1. Select Fish Image</Text>
           <Text style={s.cardSubTitle}>
-            You can grade with one image. The right image is optional.
+            Use one clear, uncropped side-view image of the fish.
           </Text>
 
-          <View style={s.imageRow}>
-            {(["left", "right"] as const).map((side) => {
-              const uri = side === "left" ? leftImage : rightImage;
-              const displayName = side === "left" ? "Left" : "Right (Optional)";
-
-              return (
-                <View key={side} style={s.slotWrapper}>
-                  <TouchableOpacity
-                    style={[s.imageSlot, uri && s.imageSlotFilled]}
-                    onPress={() => pickImage(side)}
-                    activeOpacity={0.7}
-                  >
-                    {uri ? (
-                      <Image source={{ uri }} style={s.thumb} />
-                    ) : (
-                      <View style={s.thumbEmpty}>
-                        <MaterialIcons
-                          name="add-a-photo"
-                          size={32}
-                          color="#95a5a6"
-                        />
-                        <Text style={s.thumbLabel}>Add {displayName}</Text>
-                      </View>
-                    )}
-                    <View style={s.slotBadge}>
-                      <Text style={s.slotBadgeText}>{displayName}</Text>
-                    </View>
-                  </TouchableOpacity>
+          <View style={s.singleImageRow}>
+            <View style={s.singleSlotWrapper}>
+              <TouchableOpacity
+                style={[s.imageSlot, leftImage && s.imageSlotFilled]}
+                onPress={() => pickImage("left")}
+                activeOpacity={0.7}
+              >
+                {leftImage ? (
+                  <Image source={{ uri: leftImage }} style={s.thumb} />
+                ) : (
+                  <View style={s.thumbEmpty}>
+                    <MaterialIcons
+                      name="add-a-photo"
+                      size={32}
+                      color="#95a5a6"
+                    />
+                    <Text style={s.thumbLabel}>Add Fish Image</Text>
+                  </View>
+                )}
+                <View style={s.slotBadge}>
+                  <Text style={s.slotBadgeText}>Single Image</Text>
                 </View>
-              );
-            })}
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={s.fileNames}>
             <Text style={s.fileName} numberOfLines={1}>
-              📷 Left: {leftName}
-            </Text>
-            <Text style={s.fileName} numberOfLines={1}>
-              📷 Right: {rightImage ? rightName : "Optional"}
+              Image: {leftName}
             </Text>
           </View>
 
@@ -777,7 +766,7 @@ export default function QualityGrading() {
             <MaterialIcons name="analytics" size={64} color="#dfe6e9" />
             <Text style={s.emptyTitle}>No Analysis Yet</Text>
             <Text style={s.emptyText}>
-              Select left and right images of your fish{"\n"}
+              Select one clear image of your fish{"\n"}
               then tap "Start Grading" to begin analysis
             </Text>
           </View>
@@ -1284,8 +1273,16 @@ const s = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
+  singleImageRow: {
+    alignItems: "center",
+    marginBottom: 12,
+  },
   slotWrapper: {
     flex: 1,
+  },
+  singleSlotWrapper: {
+    width: "100%",
+    maxWidth: 320,
   },
   imageSlot: {
     borderRadius: 12,
