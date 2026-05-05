@@ -39,7 +39,7 @@ export type BoatLearningInsightsResponse = {
     boatType: string;
     engineHorsePower: number;
   };
-  learningInsights: any;
+  learningInsights: unknown;
   currentCoefficients?: {
     fuelEfficiencyFactor?: number;
     engineDegradationFactor?: number;
@@ -51,7 +51,7 @@ export type BoatLearningInsightsResponse = {
 export type BoatPredictionHistoryResponse = {
   boatId: string;
   days: number;
-  history: any[];
+  history: unknown[];
   totalEntries: number;
   message?: string;
   mlServiceError?: boolean;
@@ -127,6 +127,10 @@ function buildBoatFormData(data: Partial<BoatPayload>): FormData {
 
 export function getMyBoats(): Promise<Boat[]> {
   return apiFetch<Boat[]>("/boats/my");
+}
+
+export function getAllBoatsForAdmin(): Promise<Boat[]> {
+  return apiFetch<Boat[]>("/boats/admin/all");
 }
 
 export function getBoatTypes(): Promise<string[]> {

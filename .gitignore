@@ -4,16 +4,17 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Production builds
+# Build outputs
 dist/
 build/
 
-# Environment variables
+# Local environment files
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+Backend/.env
 
 # Logs
 logs
@@ -24,11 +25,6 @@ pids
 *.pid.lock
 
 # Runtime data
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
 coverage/
 .nyc_output/
 
@@ -58,30 +54,22 @@ uploads/
 *.tmp
 *.temp
 
-# Documentation files (excluding README.md)
-*.md
-!README.md
-!**/README.md
+# Android / Gradle caches
+mobile/android/.gradle/
 
+# Expo
+.expo/
+web-build/
 
-
-# ===============================
 # Python / AI / ML Ignore Rules
-# ===============================
-
-# Virtual environments
 venv/
 .venv/
 env/
 */venv/
 */.venv/
-
-# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Model files
 models/
 *.h5
 *.keras
@@ -89,25 +77,32 @@ models/
 *.joblib
 *.pt
 *.pth
-
-# Dataset files
 *.csv
 *.xlsx
 *.jsonl
 data/
-
-# Jupyter Notebook checkpoints
 .ipynb_checkpoints/
-
-# Python build files
-build/
-dist/
 *.egg-info/
-
-# FastAPI / Flask cache
 instance/
-
 # Training outputs
 runs/
 outputs/
 checkpoints/
+
+# Fish trip cost docs folder
+documentation/fish-trip-cost/
+
+# Generated documentation and reports
+*.md
+!README.md
+!documentation/**/*.md
+
+# Generated output files from models
+*.geojson
+*.png
+*.txt
+!README.txt
+prediction_log.txt
+summary_*.txt
+fish_zones_*.geojson
+fish_zones_heatmap_*.png

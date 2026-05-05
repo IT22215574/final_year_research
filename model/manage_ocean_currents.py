@@ -7,10 +7,13 @@ import os
 import glob
 from datetime import datetime
 
+# Unified base data folder
+BASE_DATA_FOLDER = "Fish zone daily data"
+
 
 def list_archived_data():
     """List all archived ocean current data files."""
-    archive_dir = "ocean_currents_archive"
+    archive_dir = os.path.join(BASE_DATA_FOLDER, "ocean_currents_archive")
     
     if not os.path.exists(archive_dir):
         print(f"Archive directory '{archive_dir}' does not exist yet.")
@@ -45,7 +48,7 @@ def list_archived_data():
 
 def check_latest_data():
     """Check if latest data file exists and show its info."""
-    latest_file = "ocean_currents_latest.nc"
+    latest_file = os.path.join(BASE_DATA_FOLDER, "currents_latest.nc")
     
     print(f"\n{'='*70}")
     print("Latest Ocean Current Data Status")

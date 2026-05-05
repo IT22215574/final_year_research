@@ -66,6 +66,9 @@ export class Trip {
   waveHeight?: number;
 
   @Prop()
+  rainMmPerHour?: number;
+
+  @Prop()
   weatherCondition?: string;
 
   // =========================

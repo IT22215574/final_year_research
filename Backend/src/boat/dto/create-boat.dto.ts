@@ -1,6 +1,5 @@
 import {
   IsEnum,
-  IsIn,
   IsNotEmpty,
   IsNumberString,
   IsOptional,
@@ -9,36 +8,46 @@ import {
 
 // ✅ Sri Lankan Fishing Boat Type Codes
 export const BOAT_TYPES = [
-  'IMUL', // Indigenous Multi-Day Ultra Light
-  'IDAY', // Indigenous Day Boats
+  'IMUI', // Indigenous Multi-Day Ultra Light
+  'IDAT', // Indigenous Day Boats
   'OFRP', // Offshore Fishing Vessel
-  'MTRB', // Multi-day Trawler/Boat
+  'MTRP', // Multi-day Trawler/Boat
 ] as const;
 
-// ✅ Boat-Type-Specific Fuel Consumption Baselines (L/km)
-// Based on Sri Lankan fishing vessel fuel efficiency data
+// ✅ Boat-Type-Specific Fuel Consumption Baselines
+//
+// Keep the units explicit:
+// - fuelPerKm is used for route/travel fuel.
+// - fuelPerHpHour is used for fishing/idling engine-hour fuel.
+//
+// Do not replace fuelPerKm with L/HP/hour values such as 0.28. Those are
+// different physical units and will make prediction explanations inconsistent.
 export const BOAT_FUEL_BASELINES = {
-  IMUL: {
+  IMUI: {
     name: 'Indigenous Multi-Day Ultra Light',
     fuelPerKm: 2.25, // L/km baseline
+    fuelPerHpHour: 0.28, // L/HP/hour baseline
     description: 'Small motorized boats for day/multi-day fishing',
   },
 
-  IDAY: {
+  IDAT: {
     name: 'Indigenous Day Boats',
     fuelPerKm: 2.0, // L/km baseline
+    fuelPerHpHour: 0.3, // L/HP/hour baseline
     description: 'Traditional day fishing vessels',
   },
 
   OFRP: {
     name: 'Offshore Fishing Vessel',
     fuelPerKm: 0.62, // L/km baseline - Speed-adjusted
+    fuelPerHpHour: 0.28, // L/HP/hour baseline
     description: 'Large offshore fishing trawlers',
   },
 
-  MTRB: {
+  MTRP: {
     name: 'Multi-day Trawler/Boat',
     fuelPerKm: 0.43, // L/km baseline
+    fuelPerHpHour: 0.25, // L/HP/hour baseline
     description: 'Multi-day fishing vessels',
   },
 } as const;
@@ -50,7 +59,6 @@ export class CreateBoatDto {
 
   @IsNotEmpty()
   @IsString()
-  @IsIn(BOAT_TYPES, { message: 'Invalid boatType' })
   boatType: string;
 
   // FormData sends numbers as strings

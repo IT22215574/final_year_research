@@ -145,9 +145,10 @@ main() {
     # Data status
     echo "" | tee -a "$LOG_FILE"
     log_info "Current Data Status:"
-    log_info "  SST Data:         $(ls -t sst_data/sst_*.nc 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo 'None')"
-    log_info "  Chlorophyll Data: $(ls -t chlorophyll_data/chlorophyll_*.nc 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo 'None')"
-    log_info "  Ocean Currents:   $(ls -t ocean_currents/currents_*.nc 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo 'None')"
+    log_info "  SST Data:         $(ls -t 'Fish zone daily data'/sst_*.nc 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo 'None')"
+    log_info "  Chlorophyll Data: $(ls -t 'Fish zone daily data'/chlorophyll_*.nc 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo 'None')"
+    log_info "  Ocean Currents:   $(ls -t 'Fish zone daily data'/currents_*.nc 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo 'None')"
+    log_info "  Bathymetry:       $(ls -t 'Fish zone daily data'/bathymetry*.nc 2>/dev/null | head -1 | xargs basename 2>/dev/null || echo 'None')"
     
     # -------------------------------------------------------------------------
     # COMPLETION

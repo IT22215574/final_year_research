@@ -1,13 +1,15 @@
 """
 Fuel baseline rates for different Sri Lankan fishing boat types.
 
-Based on actual fuel consumption patterns:
-- Gasoline (outboard): 0.20-0.24 L/HP-hr
-- Diesel (inboard): 0.15-0.18 L/HP-hr
-- Distance fuel rate: L/km based on average HP and speed
+Based on two separate fuel concepts:
+- Engine-hour fuel: L/HP/hour, used with fishing/idling hours and load factor.
+- Route fuel: L/km, used with trip distance.
 """
 
-# Boat type fuel consumption baselines (liters per km)
+# Boat type route fuel baselines (liters per km).
+#
+# These are distance-rate fallbacks for route/travel fuel. They must not be
+# mixed with L/HP/hour values. Engine-hour fuel is configured separately below.
 BOAT_TYPE_FUEL_BASELINES = {
     # Backend boat types (current system)
     "One Day Fishing Boat (30ft)": 0.55,  # ~40 HP, gasoline
@@ -18,6 +20,10 @@ BOAT_TYPE_FUEL_BASELINES = {
     "Traditional Fishing Boat": 0.25,      # ~15 HP, gasoline/paddle
     
     # ML training data types (for compatibility)
+    "IMUI": 2.25,  # Indigenous Multi-Day Ultra Light
+    "IDAT": 2.00,  # Indigenous Day Boats
+    "OFRP": 0.62,  # Offshore Fishing Vessel
+    "MTRP": 0.43,  # Multi-day Trawler/Boat
     "Fiber Boat (small)": 0.42,   # 25-35 HP, gasoline
     "Fiber Boat (medium)": 0.58,  # 35-50 HP, gasoline
     "One Day Boat": 0.65,         # 40-60 HP, mixed
@@ -38,6 +44,16 @@ BOAT_TYPE_FUEL_BASELINES = {
     "general": 0.60,  # Default if type unknown
 }
 
+# Boat type engine-hour fuel baselines (liters per HP per hour).
+# These are used for fishing/idling/working-time fuel.
+BOAT_TYPE_HP_HOUR_RATES = {
+    "IMUI": 0.28,
+    "IDAT": 0.30,
+    "OFRP": 0.28,
+    "MTRP": 0.25,
+    "general": 0.27,
+}
+
 # Friendly boat type names for display
 BOAT_TYPE_DISPLAY_NAMES = {
     "One Day Fishing Boat (30ft)": "One Day Boat (30ft)",
@@ -49,6 +65,10 @@ BOAT_TYPE_DISPLAY_NAMES = {
     
     "Fiber Boat (small)": "Small FRP Boat",
     "Fiber Boat (medium)": "Medium FRP Boat",
+    "IMUI": "Indigenous Multi-Day Ultra Light",
+    "IDAT": "Inboard Day Boat",
+    "OFRP": "Outboard FRP Boat",
+    "MTRP": "Multi-day Trawler",
     "One Day Boat": "One Day Fishing Boat",
     "Multi Day Boat": "Multi-day Boat",
     "Longliner": "Long-liner",
@@ -99,8 +119,32 @@ def get_boat_fuel_baseline(boat_type: str) -> float:
             return value
     
     # Fallback to general rate
-    print(f"⚠️ Unknown boat type '{boat_type}', using general baseline")
+    print(f"WARNING: Unknown boat type '{boat_type}', using general baseline")
     return BOAT_TYPE_FUEL_BASELINES["general"]
+
+
+def get_boat_hp_hour_rate(boat_type: str) -> float:
+    """
+    Get engine-hour fuel rate for a given boat type.
+
+    Args:
+        boat_type: Boat type identifier
+
+    Returns:
+        Fuel consumption rate in liters per HP per hour
+    """
+    if not boat_type:
+        return BOAT_TYPE_HP_HOUR_RATES["general"]
+
+    if boat_type in BOAT_TYPE_HP_HOUR_RATES:
+        return BOAT_TYPE_HP_HOUR_RATES[boat_type]
+
+    boat_type_lower = boat_type.lower()
+    for key, value in BOAT_TYPE_HP_HOUR_RATES.items():
+        if key.lower() == boat_type_lower:
+            return value
+
+    return BOAT_TYPE_HP_HOUR_RATES["general"]
 
 
 def get_boat_type_name(boat_type: str) -> str:
@@ -168,11 +212,13 @@ def calculate_baseline_fuel(boat_type: str, distance_km: float, engine_hp: float
     fuel_per_km = get_boat_fuel_baseline(boat_type)
     distance_fuel = distance_km * fuel_per_km
     
-    # Fishing fuel (if engine HP provided)
+    # Fishing/idling engine-hour fuel (if engine HP provided)
     fishing_fuel = 0
     if engine_hp and fishing_hours:
-        # Use lower rate for fishing/idling: ~0.10 L/HP-hr
-        fishing_fuel = engine_hp * fishing_hours * 0.10
+        hp_hour_rate = get_boat_hp_hour_rate(boat_type)
+        # Fishing/idling rarely uses full rated HP continuously.
+        engine_load_factor = 0.35
+        fishing_fuel = engine_hp * fishing_hours * hp_hour_rate * engine_load_factor
     
     return distance_fuel + fishing_fuel
 

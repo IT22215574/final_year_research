@@ -20,12 +20,15 @@ export type DatciePredictBody = {
   distanceKm?: number;
   windSpeed: number;
   waveHeight: number;
+  rainMmPerHour?: number;
   fuelPrice: number;
   expectedCatch: number;
   marketPrice: number;
   fishingHours: number;
   numberOfDays: number;
   crewCount: number;
+  engineHorsePower?: number;
+  engineHP?: number;
   speed?: number; // Optional: backend tests multiple speeds if not provided
   mode?: "island" | "international";
   manualExternalCosts?: ExternalCostItem[];
@@ -62,6 +65,7 @@ export type CreateTripDto = {
   boatType?: string;
   windSpeed?: number;
   waveHeight?: number;
+  rainMmPerHour?: number;
   weatherCondition?: string;
   fuelUsedLiters?: number;
   fuelPricePerLiter?: number;
@@ -122,6 +126,21 @@ export const createTrip = async (tripData: CreateTripDto): Promise<Trip> => {
 
 export const getMyTrips = async (): Promise<Trip[]> => {
   const response = await apiFetch("/api/v1/trips/my-trips", {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to fetch trips");
+  }
+
+  return await response.json();
+};
+
+export const getTripsForTraining = async (isAdmin: boolean): Promise<Trip[]> => {
+  const endpoint = isAdmin ? "/api/v1/trips" : "/api/v1/trips/my-trips";
+
+  const response = await apiFetch(endpoint, {
     method: "GET",
   });
 

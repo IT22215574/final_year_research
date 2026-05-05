@@ -36,7 +36,11 @@ type TabName =
   | "QualityGrading"
   | "GradingHistory"
   | "GradingDetail"
-  | "fishtripcost";
+  | "fishtripcost"
+  | "fishtripcostadmin"
+  | "dataset"
+  | "modeltrain"
+  | "boatanalytics";
 
 interface NavItemConfig {
   tabName: TabName;
@@ -194,13 +198,47 @@ const TabsLayout = () => {
   const [activeTab, setActiveTab] = useState<TabName>("home");
   const [sidebarVisible, setSidebarVisible] = useState(false);
 
-  const { currentUser, isSignedIn } = useAuthStore();
+  const { currentUser, isSignedIn, checkAuthStatus } = useAuthStore();
   const { unreadCount, fetchUnreadCount } = useNotificationStore();
 
   const isGuest = !isSignedIn || !currentUser;
 
-  const navItems: NavItemConfig[] = useMemo(
-    () => [
+  const navItems: NavItemConfig[] = useMemo(() => {
+    // 🐟 IF IN ADMIN MODE: Return ONLY the admin buttons!
+    if (
+      currentUser?.role === "fisher admin" &&
+      pathname.includes("/fishtripcostadmin")
+    ) {
+      return [
+        {
+          tabName: "fishtripcostadmin",
+          route: "/(root)/(tabs)/fishtripcostadmin",
+          icon: icons.nav_home, // You can change this icon!
+          label: "Admin Menu",
+        },
+        {
+          tabName: "dataset",
+          route: "/(root)/(tabs)/fishtripcostadmin/dataset",
+          icon: icons.Digital,
+          label: "Dataset",
+        },
+        {
+          tabName: "boatanalytics",
+          route: "/(root)/(tabs)/fishtripcostadmin/boat-analytics",
+          icon: icons.Digital,
+          label: "Analytics",
+        },
+        {
+          tabName: "modeltrain",
+          route: "/(root)/(tabs)/fishtripcostadmin/modeltrain",
+          icon: icons.Digital,
+          label: "Models",
+        },
+      ];
+    }
+
+    // 🌊 IF IN NORMAL MODE: Return the normal buttons!
+    const baseItems: NavItemConfig[] = [
       {
         tabName: "home",
         route: "/(root)/(tabs)/home",
@@ -227,9 +265,14 @@ const TabsLayout = () => {
         label: "Profile",
         showBadge: false,
       },
-    ],
-    [],
-  );
+    ];
+
+    return baseItems;
+  }, [currentUser?.role, pathname]); // IMPORTANT: pathname must be here!
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, [checkAuthStatus]);
 
   useEffect(() => {
     if (pathname.includes("/Market")) {
@@ -245,6 +288,15 @@ const TabsLayout = () => {
       setActiveTab("profile");
     } else if (pathname.includes("/fishtripcost")) {
       setActiveTab("fishtripcost");
+      // ✅ ADD ADMIN TRACKING HERE
+    } else if (pathname.includes("/fishtripcostadmin/boat-analytics")) {
+      setActiveTab("boatanalytics");
+    } else if (pathname.includes("/fishtripcostadmin/dataset")) {
+      setActiveTab("dataset");
+    } else if (pathname.includes("/fishtripcostadmin/modeltrain")) {
+      setActiveTab("modeltrain");
+    } else if (pathname.includes("/fishtripcostadmin")) {
+      setActiveTab("fishtripcostadmin");
     } else {
       setActiveTab("home");
     }
@@ -267,11 +319,45 @@ const TabsLayout = () => {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
+        // List of detail page names that should use back navigation
+        const detailPages = [
+          "past-trips",
+          "planner",
+          "history",
+          "learning-summary",
+          "log-actual",
+          "mapview",
+          "result",
+          "boats",
+          "costs",
+          "trip-details",
+          "edit-trip",
+          "add-boat",
+          "boat-analytics",
+          "dataset",
+          "boattypes",
+          "modeltrain",
+          "modelregistry",
+        ];
+
+        const lastPathSegment = pathname.split("/").filter(Boolean).pop() || "";
+        const isDetailPage = detailPages.some((page) =>
+          lastPathSegment.includes(page),
+        );
+
+        // If in detail pages, go back to previous page in stack
+        if (isDetailPage) {
+          router.back();
+          return true;
+        }
+
+        // If on home tab, exit app
         if (activeTab === "home") {
           BackHandler.exitApp();
           return true;
         }
 
+        // For all other cases, go to home
         setActiveTab("home");
         router.replace("/(root)/(tabs)/home");
         return true;
@@ -283,7 +369,7 @@ const TabsLayout = () => {
       );
 
       return () => subscription.remove();
-    }, [activeTab]),
+    }, [activeTab, pathname]),
   );
 
   const handleTabPress = (tabName: TabName, route: string) => {
@@ -490,6 +576,14 @@ const TabsLayout = () => {
                 headerStyle: {
                   backgroundColor: "#0057FF",
                 },
+                href: null,
+              }}
+            />
+            <Tabs.Screen
+              name="fishtripcostadmin"
+              options={{
+                title: "Fisher Admin Dashboard",
+                headerShown: true, // ✅ THIS BRINGS THE SIDEBAR BUTTON BACK!
                 href: null,
               }}
             />

@@ -1,0 +1,19 @@
+
+Fish Zone Prediction Summary
+==================================================
+Date: 2026-05-04 21:25:10
+
+Total prediction points: 5002
+Predicted fish zones: 84 (1.7%)
+High probability zones (>70%): 32 (0.6%)
+
+Average fish probability: 0.022
+Maximum fish probability: 0.957
+
+Environmental Data Ranges:
+- SST: 29.30°C to 31.35°C
+- Chlorophyll: 0.0513 to 11.2791 mg/m³
+- Ocean Current U: -0.491 to 0.720 m/s
+- Ocean Current V: -0.468 to 1.160 m/s
+- Water Depth: 7.9m to 4833.3m
+==================================================

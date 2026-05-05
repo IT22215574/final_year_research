@@ -18,6 +18,18 @@ export type Boat = {
   updatedAt?: string;
 };
 
+export type AdminBoatType = {
+  _id: string;
+  name: string;
+  active: boolean;
+  description?: string;
+  fuelPerKm?: number;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type CreateBoatBody = {
   boatName: string;
   boatType: string;
@@ -59,6 +71,75 @@ export const getBoatTypes = async (): Promise<string[]> => {
   return await response.json();
 };
 
+export const getAdminBoatTypes = async (): Promise<AdminBoatType[]> => {
+  const response = await apiFetch("/api/v1/boats/admin/types", {
+    method: "GET",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to fetch admin boat types");
+  }
+
+  const payload = await response.json();
+  return Array.isArray(payload) ? payload : [];
+};
+
+export const createAdminBoatType = async (body: {
+  name: string;
+  description?: string;
+  fuelPerKm?: number;
+}): Promise<AdminBoatType> => {
+  const response = await apiFetch("/api/v1/boats/admin/types", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to create boat type");
+  }
+
+  return await response.json();
+};
+
+export const updateAdminBoatType = async (
+  id: string,
+  body: {
+    name?: string;
+    description?: string;
+    fuelPerKm?: number;
+    active?: boolean;
+  },
+): Promise<AdminBoatType> => {
+  const response = await apiFetch(`/api/v1/boats/admin/types/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to update boat type");
+  }
+
+  return await response.json();
+};
+
+export const deleteAdminBoatType = async (
+  id: string,
+): Promise<{ message?: string }> => {
+  const response = await apiFetch(`/api/v1/boats/admin/types/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to delete boat type");
+  }
+
+  return await response.json();
+};
+
 export const getBoatById = async (id: string): Promise<Boat> => {
   const response = await apiFetch(`/api/v1/boats/${id}`, {
     method: "GET",
@@ -88,7 +169,7 @@ export const createBoat = async (body: CreateBoatBody): Promise<Boat> => {
 
 export const createBoatWithImage = async (
   body: CreateBoatBody,
-  imageUri?: string
+  imageUri?: string,
 ): Promise<Boat> => {
   const formData = new FormData();
 
@@ -99,14 +180,11 @@ export const createBoatWithImage = async (
   });
 
   if (imageUri) {
-    formData.append(
-      "boatImage",
-      {
-        uri: imageUri,
-        name: "boat.jpg",
-        type: "image/jpeg",
-      } as any
-    );
+    formData.append("boatImage", {
+      uri: imageUri,
+      name: "boat.jpg",
+      type: "image/jpeg",
+    } as any);
   }
 
   const response = await apiFetch("/api/v1/boats", {
@@ -124,7 +202,7 @@ export const createBoatWithImage = async (
 
 export const updateBoat = async (
   id: string,
-  body: UpdateBoatBody
+  body: UpdateBoatBody,
 ): Promise<Boat> => {
   const response = await apiFetch(`/api/v1/boats/${id}`, {
     method: "PATCH",
@@ -142,7 +220,7 @@ export const updateBoat = async (
 export const updateBoatWithImage = async (
   id: string,
   body: UpdateBoatBody,
-  imageUri?: string
+  imageUri?: string,
 ): Promise<Boat> => {
   const formData = new FormData();
 
@@ -153,14 +231,11 @@ export const updateBoatWithImage = async (
   });
 
   if (imageUri) {
-    formData.append(
-      "boatImage",
-      {
-        uri: imageUri,
-        name: "boat.jpg",
-        type: "image/jpeg",
-      } as any
-    );
+    formData.append("boatImage", {
+      uri: imageUri,
+      name: "boat.jpg",
+      type: "image/jpeg",
+    } as any);
   }
 
   const response = await apiFetch(`/api/v1/boats/${id}`, {
@@ -202,15 +277,12 @@ export const getBoatLearningInsights = async (id: string) => {
   return await response.json();
 };
 
-export const getBoatPredictionHistory = async (
-  id: string,
-  days = 30
-) => {
+export const getBoatPredictionHistory = async (id: string, days = 30) => {
   const response = await apiFetch(
     `/api/v1/boats/${id}/prediction-history?days=${days}`,
     {
       method: "GET",
-    }
+    },
   );
 
   if (!response.ok) {

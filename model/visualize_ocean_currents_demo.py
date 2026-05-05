@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from datetime import datetime
 
-# Sri Lanka region
-MIN_LON, MAX_LON = 79.0, 82.0
-MIN_LAT, MAX_LAT = 5.0, 10.0
+# Sri Lanka Exclusive Economic Zone (EEZ)
+MIN_LON, MAX_LON = 74.0, 86.0
+MIN_LAT, MAX_LAT = 2.0, 14.0
 
 # Create grid
 resolution = 0.1  # degrees

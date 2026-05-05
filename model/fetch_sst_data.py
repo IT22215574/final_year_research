@@ -4,7 +4,7 @@ from Copernicus Marine Service using the copernicusmarine Python client.
 
 Dataset : METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
 Variable : analysed_sst
-Region   : Latitude 5–10 °N, Longitude 79–82 °E
+Region   : Sri Lanka EEZ — Latitude 2–14 °N, Longitude 74–86 °E
 """
 
 import os
@@ -24,12 +24,15 @@ COPERNICUS_PASS = os.getenv("COPERNICUS_PASS", "your_password_here")
 DATASET_ID  = "METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2"
 VARIABLE    = "analysed_sst"
 
-# Sri Lanka bounding box
-MIN_LON, MAX_LON = 79.0, 82.0
-MIN_LAT, MAX_LAT =  5.0, 10.0
+# Sri Lanka Exclusive Economic Zone (EEZ) bounding box (~200 nm from coastline)
+MIN_LON, MAX_LON = 74.0, 86.0
+MIN_LAT, MAX_LAT =  2.0, 14.0
+
+# Base data folder (unified)
+BASE_DATA_FOLDER = "Fish zone daily data"
 
 # Output file
-OUTPUT_FILE = "sri_lanka_sst_latest.nc"
+OUTPUT_FILE = os.path.join(BASE_DATA_FOLDER, "sst_latest.nc")
 
 
 def get_latest_date() -> str:

@@ -9,12 +9,16 @@ import {
   Image,
   ActivityIndicator,
   Platform,
+  Modal,
 } from "react-native";
 import DateTimePicker, {
   DateTimePickerAndroid,
 } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { router } from "expo-router";
 
 import useFishingZoneStore from "@/stores/fishingZoneStore";
@@ -39,6 +43,8 @@ import {
 } from "@/services/weatherService";
 
 const TripPlanner = () => {
+  const insets = useSafeAreaInsets();
+
   // Trip Date
   const [tripDate, setTripDate] = useState(new Date());
   const [showTripDateIOS, setShowTripDateIOS] = useState(false);
@@ -50,6 +56,7 @@ const TripPlanner = () => {
   const [numberOfDays, setNumberOfDays] = useState("1");
   const [windSpeed, setWindSpeed] = useState("");
   const [waveHeight, setWaveHeight] = useState("");
+  const [rainMmPerHour, setRainMmPerHour] = useState("0");
   const [fuelPrice, setFuelPrice] = useState("350");
 
   // DATCIE fields
@@ -77,6 +84,7 @@ const TripPlanner = () => {
   );
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [weatherAutoFilled, setWeatherAutoFilled] = useState(false);
+  const [showRouteModal, setShowRouteModal] = useState(false);
 
   // ✅ Engine HP slider/list behavior
   const [useEngineHPDropdown, setUseEngineHPDropdown] = useState(true);
@@ -102,7 +110,7 @@ const TripPlanner = () => {
   const [riskScore, setRiskScore] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const API_URL = process.env.EXPO_PUBLIC_API_KEY;
+  const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
   // Fetch boats for horizontal carousel
   const fetchBoats = async () => {
@@ -142,6 +150,7 @@ const TripPlanner = () => {
             const weatherInfo: WeatherData = {
               windSpeed: avgWeather.windSpeed,
               waveHeight: avgWeather.waveHeight,
+              rainMmPerHour: avgWeather.rainMmPerHour,
               timestamp: new Date().toISOString(),
               location: {
                 lat: selectedZones[0].latitude || 7.8731,
@@ -155,6 +164,7 @@ const TripPlanner = () => {
             if (!windSpeed || !waveHeight || !weatherAutoFilled) {
               setWindSpeed(String(avgWeather.windSpeed));
               setWaveHeight(String(avgWeather.waveHeight));
+              setRainMmPerHour(String(avgWeather.rainMmPerHour));
               setWeatherAutoFilled(true);
             }
           }
@@ -188,6 +198,11 @@ const TripPlanner = () => {
   // ✅ helper: final engine hp
   const getFinalEngineHP = () =>
     useEngineHPDropdown ? selectedEngineHPFromDropdown : engineHP;
+
+  const getFinalEngineHPNumber = () => {
+    const value = parseFloat(getFinalEngineHP() || "");
+    return Number.isFinite(value) && value > 0 ? value : undefined;
+  };
 
   // Trip Date Picker Handler
   const openTripDatePicker = () => {
@@ -364,21 +379,27 @@ const TripPlanner = () => {
 
     try {
       setLoading(true);
+      const finalEngineHP = getFinalEngineHPNumber();
 
       const body: DatciePredictBody = {
         boatId: boatMongoId.trim(),
         // ✅ Include coordinates if available
         ...(hasCoords ? coords : {}),
-        // ✅ Include manual distance if coordinates not available
-        ...(hasCoords ? {} : { distanceKm: parseFloat(distance) }),
+
+        // Pass the distance directly regardless of whether we used coordinates or manual entry
+        distanceKm: parseFloat(distance || "0"),
 
         speed: parseFloat(speed || "10"),
         fishingHours: parseFloat(duration),
         numberOfDays: parseInt(numberOfDays || "1", 10),
         crewCount: parseInt(crewCount || "3", 10),
+        ...(finalEngineHP
+          ? { engineHP: finalEngineHP, engineHorsePower: finalEngineHP }
+          : {}),
 
         windSpeed: parseFloat(windSpeed),
         waveHeight: parseFloat(waveHeight),
+        rainMmPerHour: parseFloat(rainMmPerHour || "0"),
         fuelPrice: parseFloat(fuelPrice),
 
         expectedCatch: parseFloat(expectedCatch || "120"),
@@ -461,21 +482,27 @@ const TripPlanner = () => {
 
     try {
       setLoading(true);
+      const finalEngineHP = getFinalEngineHPNumber();
 
       const body: DatciePredictBody = {
         boatId: boatMongoId.trim(),
         // ✅ Include coordinates if available
         ...(hasCoords ? coords : {}),
-        // ✅ Include manual distance if coordinates not available
-        ...(hasCoords ? {} : { distanceKm: parseFloat(distance) }),
+
+        // Pass the distance directly regardless of whether we used coordinates or manual entry
+        distanceKm: parseFloat(distance || "0"),
 
         // optional speed not passed here so backend will test [8,10,12,14]
         fishingHours: parseFloat(duration || "8"),
         numberOfDays: parseInt(numberOfDays || "1", 10),
         crewCount: parseInt(crewCount || "3", 10),
+        ...(finalEngineHP
+          ? { engineHP: finalEngineHP, engineHorsePower: finalEngineHP }
+          : {}),
 
         windSpeed: parseFloat(windSpeed || "10"),
         waveHeight: parseFloat(waveHeight || "1"),
+        rainMmPerHour: parseFloat(rainMmPerHour || "0"),
         fuelPrice: parseFloat(fuelPrice || "350"),
 
         expectedCatch: parseFloat(expectedCatch || "120"),
@@ -556,102 +583,132 @@ const TripPlanner = () => {
     (recommendations && recommendations.length > 0);
 
   const riskStyle = getRiskStyle(riskScore);
+  const routeDistanceKm = Number.parseFloat(distance || "0") || 0;
+  const expectedRevenue =
+    (Number.parseFloat(expectedCatch || "0") || 0) *
+    (Number.parseFloat(marketPrice || "0") || 0);
+  const weatherSeverityPreview = useMemo(() => {
+    const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+    const windN = clamp01((Number.parseFloat(windSpeed || "0") || 0) / 60);
+    const waveN = clamp01((Number.parseFloat(waveHeight || "0") || 0) / 4);
+    const rainN = clamp01((Number.parseFloat(rainMmPerHour || "0") || 0) / 25);
+    return clamp01(windN * 0.4 + waveN * 0.45 + rainN * 0.15);
+  }, [windSpeed, waveHeight, rainMmPerHour]);
+  const weatherState = currentWeather
+    ? isWeatherSafeForFishing(currentWeather)
+      ? {
+          label: "Good",
+          container: "bg-emerald-50 border-emerald-200",
+          text: "text-emerald-700",
+          icon: "shield-checkmark" as const,
+        }
+      : {
+          label: "Caution",
+          container: "bg-amber-50 border-amber-200",
+          text: "text-amber-700",
+          icon: "warning" as const,
+        }
+    : {
+        label: "Manual",
+        container: "bg-slate-50 border-slate-200",
+        text: "text-slate-600",
+        icon: "cloud-outline" as const,
+      };
+  const scrollBottomPadding =
+    Platform.OS === "web" ? 32 : Math.max(128, 96 + insets.bottom);
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       {/* Header */}
-      <View className="px-5 pt-3 pb-3 flex-row justify-between items-center bg-white border-b border-slate-100">
-        <View>
-          <Text className="text-xl font-bold text-slate-900 tracking-tight">
-            Trip Planner
-          </Text>
-          <Text className="text-xs text-slate-400 mt-0.5">
-            DATCIE cost prediction
-          </Text>
+      <View className="px-4 pt-3 pb-4 bg-white border-b border-slate-100">
+        <View className="flex-row justify-between items-center">
+          <View className="flex-1 pr-3">
+            <Text className="text-2xl font-bold text-slate-950 tracking-tight">
+              Trip Planner
+            </Text>
+            <Text className="text-xs text-slate-500 mt-1">
+              Boat-wise fuel, route weather, and cost prediction
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={handleMapPress}
+            className="bg-blue-600 rounded-2xl px-4 py-3 flex-row items-center"
+            activeOpacity={0.75}
+          >
+            <Ionicons name="map" size={17} color="#ffffff" />
+            <Text className="text-white font-semibold text-sm ml-2">Map</Text>
+          </TouchableOpacity>
         </View>
 
-        <View className="flex-row gap-2">
+        <View className="flex-row mt-4 gap-2">
+          <SummaryChip
+            icon="boat"
+            label={selectedBoatName || "No boat"}
+            value={selectedBoat?.boatType || "Select"}
+          />
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={0.75}
+            onPress={() =>
+              selectedZones.length > 0
+                ? setShowRouteModal(true)
+                : handleMapPress()
+            }
+          >
+            <SummaryChip
+              icon="map"
+              label={`${routeDistanceKm.toFixed(1)} km`}
+              value={selectedZones.length > 0 ? "Route" : "Select route"}
+            />
+          </TouchableOpacity>
+          <SummaryChip
+            icon={weatherState.icon}
+            label={`WSI ${(weatherSeverityPreview * 100).toFixed(0)}%`}
+            value={weatherState.label}
+          />
+        </View>
+
+        <View className="flex-row gap-2 mt-3">
           {selectedZones.length > 0 && (
             <TouchableOpacity
               onPress={clearZones}
               className="border border-rose-200 bg-rose-50 rounded-xl px-3 py-2 flex-row items-center"
               activeOpacity={0.7}
             >
-              <Text className="text-rose-500 mr-1.5">🗑️</Text>
-              <Text className="text-rose-600 font-medium text-sm">Clear</Text>
+              <Ionicons name="trash-outline" size={15} color="#ef4444" />
+              <Text className="text-rose-600 font-medium text-sm ml-1.5">
+                Clear
+              </Text>
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
-            onPress={handleMapPress}
-            className="bg-blue-600 rounded-xl px-3 py-2 flex-row items-center"
+            onPress={() => setShowBoatModal(true)}
+            className="bg-slate-100 rounded-xl px-3 py-2 flex-row items-center"
             activeOpacity={0.7}
           >
-            <Text className="text-white mr-1.5">🗺️</Text>
-            <Text className="text-white font-semibold text-sm">Map View</Text>
+            <Ionicons name="list" size={15} color="#475569" />
+            <Text className="text-slate-600 font-semibold text-sm ml-1.5">
+              Boats
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Selected Zones */}
-      {selectedZones.length > 0 && (
-        <View className="bg-blue-600 mx-4 mt-3 rounded-2xl p-4">
-          <View className="flex-row justify-between items-center mb-3">
-            <Text className="text-white font-semibold text-sm">
-              {selectedZones.length} Zone{selectedZones.length > 1 ? "s" : ""}{" "}
-              Selected
-            </Text>
-            <View className="bg-white/20 rounded-full px-3 py-1">
-              <Text className="text-white font-bold text-xs">
-                {parseFloat(distance || "0").toFixed(1)} km total
-              </Text>
-            </View>
-          </View>
-
-          {selectedZones.map((zone: any, index: number) => (
-            <View
-              key={zone.id ?? index}
-              className="flex-row items-center mb-2 bg-white/10 rounded-xl px-3 py-2.5"
-            >
-              <View className="w-7 h-7 rounded-full bg-white/20 items-center justify-center mr-3">
-                <Text className="text-white font-bold text-xs">
-                  {index + 1}
-                </Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-white font-medium text-sm">
-                  {zone.name}
-                </Text>
-                <Text className="text-blue-200 text-xs">
-                  {zone.fishType || "Various fish"}
-                </Text>
-              </View>
-              <View className="items-end">
-                <Text className="text-white font-bold text-sm">
-                  {formatDistance(zone.distance)} km
-                </Text>
-                <Text className="text-blue-200 text-xs">
-                  {zone.estimatedCatch || "Medium"} catch
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-
       <ScrollView
         className="flex-1 px-4 pt-4"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: scrollBottomPadding }}
+        scrollIndicatorInsets={{ bottom: scrollBottomPadding }}
       >
         {/* Input Card */}
         <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
-          <View className="flex-row items-center mb-5">
-            <View className="w-1.5 h-5 bg-blue-600 rounded-full mr-2.5" />
-            <Text className="text-base font-semibold text-slate-800">
-              Trip Parameters
-            </Text>
-          </View>
+          <SectionHeader
+            icon="compass"
+            title="Trip Setup"
+            subtitle="Choose boat, route, operating plan, and live weather"
+          />
 
           {/* Trip Date - NEW! */}
           <View className="mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
@@ -699,7 +756,7 @@ const TripPlanner = () => {
           {/* ✅ Horizontal Boat Carousel */}
           <View className="mb-4">
             <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 Select Your Boat
               </Text>
 
@@ -917,10 +974,39 @@ const TripPlanner = () => {
             )}
           </View>
 
+          {selectedBoat && (
+            <View className="mb-4 bg-blue-50 border border-blue-100 rounded-2xl p-4">
+              <View className="flex-row items-center">
+                <View className="w-11 h-11 rounded-xl bg-blue-600 items-center justify-center mr-3">
+                  <Ionicons name="boat" size={21} color="#ffffff" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-blue-950 font-bold text-base">
+                    {selectedBoatName}
+                  </Text>
+                  <Text className="text-blue-700 text-xs mt-0.5">
+                    {selectedBoat.boatType || "Boat type"} •{" "}
+                    {getFinalEngineHP() || selectedBoat.engineHorsePower || "-"}{" "}
+                    HP • {mode}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowBoatModal(true)}
+                  className="bg-white rounded-xl px-3 py-2"
+                  activeOpacity={0.75}
+                >
+                  <Text className="text-blue-700 text-xs font-bold">
+                    Change
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
           {/* Boat Mongo ID (auto) */}
           <View className="mb-4">
-            <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
-              Boat Mongo ID (auto)
+            <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+              Boat Link
             </Text>
             <TextInput
               placeholder="Select a boat to auto-fill..."
@@ -1003,10 +1089,7 @@ const TripPlanner = () => {
             </Text>
           </View>
 
-          {/* DATCIE Inputs */}
-          <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-            DATCIE Inputs
-          </Text>
+          <MiniSectionTitle icon="speedometer" title="Operating Plan" />
 
           <View className="flex-row gap-3 mb-3">
             <View className="flex-1">
@@ -1106,187 +1189,125 @@ const TripPlanner = () => {
             </View>
           </View>
 
-          {/* Route & Conditions */}
-          <Text className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-            Route & Conditions
-          </Text>
+          <MiniSectionTitle icon="cloudy" title="Route & Conditions" />
 
-          <View className="flex-row gap-3 mb-3">
-            <View className="flex-1">
-              <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-xs text-slate-500 font-medium">
-                  Distance (km)
-                </Text>
-                {selectedZones.length > 0 && (
-                  <Text className="text-[10px] text-blue-600 font-semibold">
-                    📍 From Map
-                  </Text>
-                )}
-              </View>
-              <TextInput
-                placeholder="e.g. 35"
-                keyboardType="decimal-pad"
-                value={distance}
-                onChangeText={setDistance}
-                className={`border rounded-xl p-3.5 text-slate-800 ${
-                  selectedZones.length > 0
-                    ? "bg-blue-50 border-blue-200 text-blue-700 font-semibold"
-                    : "bg-slate-50 border-slate-200"
-                }`}
-              />
-              <Text className="text-[10px] text-slate-400 mt-1">
-                {selectedZones.length > 0
-                  ? "✓ Auto-calculated from map zones"
-                  : "💡 Enter manually or select zones on map"}
-              </Text>
-            </View>
+          <View className="flex-row flex-wrap justify-between">
+            <PlannerField
+              label="Distance"
+              unit="km"
+              value={distance}
+              onChangeText={setDistance}
+              placeholder="35"
+              badge={selectedZones.length > 0 ? "From map" : undefined}
+              helper={
+                selectedZones.length > 0
+                  ? "Auto-calculated from route"
+                  : "Enter manually or select route"
+              }
+              highlighted={selectedZones.length > 0}
+            />
 
-            <View className="flex-1">
-              <Text className="text-xs text-slate-500 mb-1.5 font-medium">
-                Fishing Hours
-              </Text>
-              <TextInput
-                placeholder="8"
-                keyboardType="decimal-pad"
-                value={duration}
-                onChangeText={setDuration}
-                className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
-              />
-            </View>
+            <PlannerField
+              label="Fishing time"
+              unit="hours"
+              value={duration}
+              onChangeText={setDuration}
+              placeholder="8"
+            />
 
-            <View className="flex-1">
-              <Text className="text-xs text-slate-500 mb-1.5 font-medium">
-                Number of Days
-              </Text>
-              <TextInput
-                placeholder="1"
-                keyboardType="decimal-pad"
-                value={numberOfDays}
-                onChangeText={setNumberOfDays}
-                className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
-              />
-            </View>
+            <PlannerField
+              label="Trip length"
+              unit="days"
+              value={numberOfDays}
+              onChangeText={setNumberOfDays}
+              placeholder="1"
+            />
+
+            <PlannerField
+              label="Fuel price"
+              unit="Rs/L"
+              value={fuelPrice}
+              onChangeText={setFuelPrice}
+              placeholder="350"
+            />
+
+            <PlannerField
+              label="Wind speed"
+              unit="km/h"
+              value={windSpeed}
+              onChangeText={(text) => {
+                setWindSpeed(text);
+                setWeatherAutoFilled(false);
+              }}
+              placeholder="10"
+              badge={currentWeather ? "Live" : undefined}
+              loading={loadingWeather}
+              highlighted={!!currentWeather && weatherAutoFilled}
+            />
+
+            <PlannerField
+              label="Wave height"
+              unit="m"
+              value={waveHeight}
+              onChangeText={(text) => {
+                setWaveHeight(text);
+                setWeatherAutoFilled(false);
+              }}
+              placeholder="1.0"
+              badge={
+                currentWeather
+                  ? isWeatherSafeForFishing(currentWeather)
+                    ? "Safe"
+                    : "Caution"
+                  : undefined
+              }
+              highlighted={!!currentWeather && weatherAutoFilled}
+            />
+
+            <PlannerField
+              label="Rain"
+              unit="mm/h"
+              value={rainMmPerHour}
+              onChangeText={(text) => {
+                setRainMmPerHour(text);
+                setWeatherAutoFilled(false);
+              }}
+              placeholder="0"
+              highlighted={!!currentWeather && weatherAutoFilled}
+            />
           </View>
 
-          <View className="flex-row gap-3 mb-3">
-            <View className="flex-1">
-              <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-xs text-slate-500 font-medium">
-                  Fuel Price (Rs/L)
-                </Text>
-              </View>
-              <TextInput
-                placeholder="350"
-                keyboardType="decimal-pad"
-                value={fuelPrice}
-                onChangeText={setFuelPrice}
-                className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
-              />
-            </View>
-
-            <View className="flex-1">
-              <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-xs text-slate-500 font-medium">
-                  Wind Speed (km/h)
-                </Text>
-                {loadingWeather && (
-                  <ActivityIndicator size="small" color="#3b82f6" />
-                )}
-                {currentWeather && (
-                  <Text className="text-[10px] text-blue-600 font-medium">
-                    🌊 Live
+          <View
+            className={`mb-5 border rounded-2xl p-4 ${weatherState.container}`}
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1 pr-2">
+                <View className="w-10 h-10 rounded-xl bg-white items-center justify-center mr-3">
+                  <Ionicons
+                    name={weatherState.icon}
+                    size={20}
+                    color={
+                      weatherState.label === "Good"
+                        ? "#047857"
+                        : weatherState.label === "Caution"
+                          ? "#b45309"
+                          : "#475569"
+                    }
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className={`font-bold text-sm ${weatherState.text}`}>
+                    Weather {weatherState.label} • WSI{" "}
+                    {(weatherSeverityPreview * 100).toFixed(0)}%
                   </Text>
-                )}
-              </View>
-              <TextInput
-                placeholder="10"
-                keyboardType="decimal-pad"
-                value={windSpeed}
-                onChangeText={(text) => {
-                  setWindSpeed(text);
-                  setWeatherAutoFilled(false);
-                }}
-                className={`border rounded-xl p-3.5 text-slate-800 ${
-                  currentWeather && weatherAutoFilled
-                    ? "bg-blue-50 border-blue-200"
-                    : "bg-slate-50 border-slate-200"
-                }`}
-              />
-            </View>
-          </View>
-
-          <View className="flex-row gap-3 mb-3">
-            <View className="flex-1">
-              <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-xs text-slate-500 font-medium">
-                  Wave Height (m)
-                </Text>
-                {currentWeather && (
-                  <Text className="text-[10px] text-slate-500 font-medium">
-                    {getWeatherEmoji(
-                      currentWeather.windSpeed,
-                      currentWeather.waveHeight,
-                    )}
-                    {isWeatherSafeForFishing(currentWeather)
-                      ? " Safe"
-                      : " Caution"}
-                  </Text>
-                )}
-              </View>
-              <TextInput
-                placeholder="1.0"
-                keyboardType="decimal-pad"
-                value={waveHeight}
-                onChangeText={(text) => {
-                  setWaveHeight(text);
-                  setWeatherAutoFilled(false);
-                }}
-                className={`border rounded-xl p-3.5 text-slate-800 ${
-                  currentWeather && weatherAutoFilled
-                    ? "bg-blue-50 border-blue-200"
-                    : "bg-slate-50 border-slate-200"
-                }`}
-              />
-            </View>
-
-            {currentWeather && (
-              <View className="flex-1">
-                <Text className="text-xs text-slate-500 mb-1.5 font-medium">
-                  Weather Status
-                </Text>
-                <View
-                  className={`border rounded-xl p-3.5 items-center justify-center ${
-                    isWeatherSafeForFishing(currentWeather)
-                      ? "bg-emerald-50 border-emerald-200"
-                      : "bg-amber-50 border-amber-200"
-                  }`}
-                >
-                  <Text
-                    className={`font-semibold text-sm ${
-                      isWeatherSafeForFishing(currentWeather)
-                        ? "text-emerald-700"
-                        : "text-amber-700"
-                    }`}
-                  >
-                    {getWeatherEmoji(
-                      currentWeather.windSpeed,
-                      currentWeather.waveHeight,
-                    )}
-                    {isWeatherSafeForFishing(currentWeather)
-                      ? " Good"
-                      : " Caution"}
+                  <Text className="text-slate-500 text-xs mt-0.5">
+                    Wind {windSpeed || "-"} km/h • Wave {waveHeight || "-"} m •
+                    Rain {rainMmPerHour || "0"} mm/h
                   </Text>
                 </View>
               </View>
-            )}
-          </View>
 
-          <View className="mb-5">
-            <View className="flex-row items-center justify-between mb-1.5">
-              <Text className="text-xs text-slate-500 font-medium">
-                Weather Data Source
-              </Text>
-              {currentWeather && (
+              {currentWeather ? (
                 <TouchableOpacity
                   onPress={() => {
                     if (selectedZones.length > 0) {
@@ -1300,6 +1321,7 @@ const TripPlanner = () => {
                             const avgWeather = getAverageWeather(weatherData);
                             setWindSpeed(String(avgWeather.windSpeed));
                             setWaveHeight(String(avgWeather.waveHeight));
+                            setRainMmPerHour(String(avgWeather.rainMmPerHour));
                             setWeatherAutoFilled(true);
                           }
                         } finally {
@@ -1309,18 +1331,17 @@ const TripPlanner = () => {
                       fetchWeather();
                     }
                   }}
-                  className="bg-blue-100 rounded-lg px-2 py-1"
+                  className="bg-white rounded-xl px-3 py-2"
+                  activeOpacity={0.75}
                 >
-                  <Text className="text-xs text-blue-600 font-medium">
-                    🔄 Refresh
-                  </Text>
+                  <Ionicons name="refresh" size={16} color="#2563eb" />
                 </TouchableOpacity>
-              )}
+              ) : null}
             </View>
-            <Text className="text-[11px] text-slate-400">
+            <Text className="text-[11px] text-slate-500 mt-3">
               {currentWeather
-                ? `Live marine weather from OpenMeteo API • Updated: ${new Date(currentWeather.timestamp).toLocaleTimeString()}`
-                : "Weather will auto-populate when you select fishing zones"}
+                ? `Forecast wind/rain + marine wave data • Updated ${new Date(currentWeather.timestamp).toLocaleTimeString()}`
+                : "Select map zones for route weather, or enter weather manually."}
             </Text>
           </View>
         </View>
@@ -1336,17 +1357,27 @@ const TripPlanner = () => {
 
         {/* Input Card - Actions */}
         <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
+          <SectionHeader
+            icon="analytics"
+            title="Prediction Actions"
+            subtitle="Run cost forecast or compare speed options"
+          />
           {/* Predict */}
           <TouchableOpacity
             onPress={handlePredict}
             disabled={loading}
             activeOpacity={0.8}
-            className={`rounded-xl py-4 items-center ${
+            className={`rounded-2xl py-4 px-4 flex-row items-center justify-center ${
               loading ? "bg-blue-400" : "bg-blue-600"
             }`}
           >
-            <Text className="text-white font-bold text-base">
-              {loading ? "⏳  Calculating..." : "⚡  Predict Cost (DATCIE)"}
+            {loading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Ionicons name="flash" size={18} color="#ffffff" />
+            )}
+            <Text className="text-white font-bold text-base ml-2">
+              {loading ? "Calculating..." : "Predict Cost"}
             </Text>
           </TouchableOpacity>
 
@@ -1355,12 +1386,13 @@ const TripPlanner = () => {
             onPress={handleOptimize}
             disabled={loading}
             activeOpacity={0.8}
-            className={`rounded-xl py-4 items-center mt-3 ${
+            className={`rounded-2xl py-4 px-4 flex-row items-center justify-center mt-3 ${
               loading ? "bg-slate-300" : "bg-slate-900"
             }`}
           >
-            <Text className="text-white font-bold text-base">
-              {loading ? "⏳  Optimizing..." : "🧠  Optimize Speed"}
+            <Ionicons name="options" size={18} color="#ffffff" />
+            <Text className="text-white font-bold text-base ml-2">
+              {loading ? "Optimizing..." : "Optimize Speed"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1388,6 +1420,174 @@ const TripPlanner = () => {
         )}
       </ScrollView>
 
+      <Modal
+        visible={showRouteModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowRouteModal(false)}
+      >
+        <View className="flex-1 justify-end bg-black/40">
+          <TouchableOpacity
+            className="flex-1"
+            activeOpacity={1}
+            onPress={() => setShowRouteModal(false)}
+          />
+
+          <View
+            className="bg-white rounded-t-3xl px-4 pt-4"
+            style={{ paddingBottom: Math.max(24, insets.bottom + 16) }}
+          >
+            <View className="w-12 h-1.5 bg-slate-200 rounded-full self-center mb-4" />
+
+            <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-row items-center flex-1 pr-3">
+                <View className="w-11 h-11 rounded-2xl bg-blue-50 items-center justify-center mr-3">
+                  <Ionicons name="map" size={21} color="#2563eb" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-lg font-bold text-slate-950">
+                    Selected Route
+                  </Text>
+                  <Text className="text-xs text-slate-500 mt-0.5">
+                    {selectedZones.length} zone
+                    {selectedZones.length === 1 ? "" : "s"} selected
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setShowRouteModal(false)}
+                className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
+                activeOpacity={0.75}
+              >
+                <Ionicons name="close" size={20} color="#475569" />
+              </TouchableOpacity>
+            </View>
+
+            <View className="flex-row gap-2 mb-4">
+              <View className="flex-1 bg-blue-50 border border-blue-100 rounded-2xl p-3">
+                <Text className="text-[11px] text-blue-600 font-semibold">
+                  Distance
+                </Text>
+                <Text className="text-blue-950 font-bold text-base mt-1">
+                  {routeDistanceKm.toFixed(1)} km
+                </Text>
+              </View>
+              <View className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-3">
+                <Text className="text-[11px] text-slate-500 font-semibold">
+                  WSI
+                </Text>
+                <Text className="text-slate-950 font-bold text-base mt-1">
+                  {(weatherSeverityPreview * 100).toFixed(0)}%
+                </Text>
+              </View>
+              <View className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-3">
+                <Text className="text-[11px] text-slate-500 font-semibold">
+                  Boat
+                </Text>
+                <Text
+                  className="text-slate-950 font-bold text-base mt-1"
+                  numberOfLines={1}
+                >
+                  {selectedBoat?.boatType || "None"}
+                </Text>
+              </View>
+            </View>
+
+            <View className="max-h-64 mb-4">
+              {selectedZones.length > 0 ? (
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View className="gap-2">
+                    {selectedZones.map((zone: any, index: number) => {
+                      const zoneName =
+                        zone.name ||
+                        zone.zoneName ||
+                        zone.title ||
+                        `Zone ${index + 1}`;
+                      const zoneDistance =
+                        typeof zone.distance === "number"
+                          ? zone.distance
+                          : Number.parseFloat(zone.distance || "0") || 0;
+
+                      return (
+                        <View
+                          key={`${zoneName}-${index}`}
+                          className="flex-row items-center bg-slate-50 border border-slate-100 rounded-2xl p-3"
+                        >
+                          <View className="w-8 h-8 rounded-full bg-blue-600 items-center justify-center mr-3">
+                            <Text className="text-white text-xs font-bold">
+                              {index + 1}
+                            </Text>
+                          </View>
+                          <View className="flex-1">
+                            <Text
+                              className="text-slate-900 font-semibold text-sm"
+                              numberOfLines={1}
+                            >
+                              {zoneName}
+                            </Text>
+                            <Text className="text-slate-500 text-xs mt-0.5">
+                              {zoneDistance.toFixed(1)} km
+                            </Text>
+                          </View>
+                          <Ionicons
+                            name="location-outline"
+                            size={18}
+                            color="#64748b"
+                          />
+                        </View>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              ) : (
+                <View className="bg-slate-50 border border-slate-100 rounded-2xl p-5 items-center">
+                  <Ionicons name="map-outline" size={28} color="#94a3b8" />
+                  <Text className="text-slate-600 font-semibold mt-2">
+                    No route selected
+                  </Text>
+                  <Text className="text-slate-400 text-xs mt-1">
+                    Open the map and choose fishing zones
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <View className="flex-row gap-2">
+              {selectedZones.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    clearZones();
+                    setShowRouteModal(false);
+                  }}
+                  className="border border-rose-200 bg-rose-50 rounded-2xl px-4 py-3 flex-row items-center justify-center"
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="trash-outline" size={17} color="#ef4444" />
+                  <Text className="text-rose-600 font-bold text-sm ml-2">
+                    Clear
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                onPress={() => {
+                  setShowRouteModal(false);
+                  handleMapPress();
+                }}
+                className="flex-1 bg-blue-600 rounded-2xl px-4 py-3 flex-row items-center justify-center"
+                activeOpacity={0.8}
+              >
+                <Ionicons name="navigate" size={17} color="#ffffff" />
+                <Text className="text-white font-bold text-sm ml-2">
+                  Open Map
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <BoatSelectionModal
         visible={showBoatModal}
         onClose={() => setShowBoatModal(false)}
@@ -1398,5 +1598,118 @@ const TripPlanner = () => {
     </SafeAreaView>
   );
 };
+
+const SummaryChip = ({
+  icon,
+  label,
+  value,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+}) => (
+  <View className="flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-3 min-h-[70px]">
+    <View className="flex-row items-center mb-1.5">
+      <Ionicons name={icon} size={15} color="#2563eb" />
+      <Text className="text-[11px] text-slate-500 font-semibold ml-1.5">
+        {value}
+      </Text>
+    </View>
+    <Text className="text-slate-900 font-bold text-sm" numberOfLines={1}>
+      {label}
+    </Text>
+  </View>
+);
+
+const SectionHeader = ({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: any;
+  title: string;
+  subtitle: string;
+}) => (
+  <View className="flex-row items-center mb-5">
+    <View className="w-10 h-10 rounded-2xl bg-blue-50 items-center justify-center mr-3">
+      <Ionicons name={icon} size={19} color="#2563eb" />
+    </View>
+    <View className="flex-1">
+      <Text className="text-base font-bold text-slate-900">{title}</Text>
+      <Text className="text-xs text-slate-500 mt-0.5">{subtitle}</Text>
+    </View>
+  </View>
+);
+
+const MiniSectionTitle = ({ icon, title }: { icon: any; title: string }) => (
+  <View className="flex-row items-center mb-3 mt-1">
+    <Ionicons name={icon} size={15} color="#64748b" />
+    <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wide ml-2">
+      {title}
+    </Text>
+  </View>
+);
+
+const PlannerField = ({
+  label,
+  unit,
+  value,
+  onChangeText,
+  placeholder,
+  badge,
+  helper,
+  highlighted = false,
+  loading = false,
+}: {
+  label: string;
+  unit: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder: string;
+  badge?: string;
+  helper?: string;
+  highlighted?: boolean;
+  loading?: boolean;
+}) => (
+  <View style={{ width: "48%", marginBottom: 12 }}>
+    <View className="min-h-[34px] mb-1.5 justify-end">
+      <View className="flex-row items-center justify-between">
+        <Text
+          className="text-xs text-slate-500 font-semibold"
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+        {loading ? (
+          <ActivityIndicator size="small" color="#2563eb" />
+        ) : badge ? (
+          <View className="bg-blue-50 rounded-full px-2 py-0.5 ml-1">
+            <Text className="text-[10px] text-blue-600 font-bold">{badge}</Text>
+          </View>
+        ) : null}
+      </View>
+      <Text className="text-[10px] text-slate-400 mt-0.5" numberOfLines={1}>
+        {unit}
+      </Text>
+    </View>
+    <TextInput
+      placeholder={placeholder}
+      keyboardType="decimal-pad"
+      value={value}
+      onChangeText={onChangeText}
+      className={`border rounded-xl px-3 py-3.5 text-slate-800 ${
+        highlighted
+          ? "bg-blue-50 border-blue-200 text-blue-700 font-semibold"
+          : "bg-slate-50 border-slate-200"
+      }`}
+      placeholderTextColor="#94a3b8"
+    />
+    {helper ? (
+      <Text className="text-[10px] text-slate-400 mt-1" numberOfLines={1}>
+        {helper}
+      </Text>
+    ) : null}
+  </View>
+);
 
 export default TripPlanner;

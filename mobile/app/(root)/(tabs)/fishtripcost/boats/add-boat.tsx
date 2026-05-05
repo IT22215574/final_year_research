@@ -32,10 +32,6 @@ export default function AddBoatScreen() {
   const [boatLength, setBoatLength] = useState("");
   const [boatWidth, setBoatWidth] = useState("");
   const [boatValue, setBoatValue] = useState("");
-  const [fuelEfficiencyFactor, setFuelEfficiencyFactor] = useState("");
-  const [engineDegradationFactor, setEngineDegradationFactor] = useState("");
-  const [averageFuelPredictionError, setAverageFuelPredictionError] =
-    useState("");
   const [mode, setMode] = useState<BoatMode>("island");
 
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -144,11 +140,6 @@ export default function AddBoatScreen() {
         boatLength: toOptionalNumber(boatLength),
         boatWidth: toOptionalNumber(boatWidth),
         boatValue: toOptionalNumber(boatValue),
-        fuelEfficiencyFactor: toOptionalNumber(fuelEfficiencyFactor),
-        engineDegradationFactor: toOptionalNumber(engineDegradationFactor),
-        averageFuelPredictionError: toOptionalNumber(
-          averageFuelPredictionError,
-        ),
         mode,
       };
 
@@ -364,45 +355,13 @@ export default function AddBoatScreen() {
         </View>
 
         <View className="bg-white rounded-2xl border border-slate-100 p-5 mb-4">
-          <Text className="text-sm font-semibold text-slate-800 mb-3">
-            Learning / Calibration Fields
+          <Text className="text-sm font-semibold text-slate-800 mb-2">
+            Learning Calibration
           </Text>
-
-          <Text className="text-xs text-slate-500 mb-1">
-            Fuel Efficiency Factor
+          <Text className="text-xs text-slate-500">
+            Calibration values are managed automatically by the system after
+            trips are logged.
           </Text>
-          <TextInput
-            value={fuelEfficiencyFactor}
-            onChangeText={setFuelEfficiencyFactor}
-            keyboardType={Platform.OS === "ios" ? "decimal-pad" : "numeric"}
-            placeholder="e.g. 1"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3 text-slate-900"
-            placeholderTextColor="#94a3b8"
-          />
-
-          <Text className="text-xs text-slate-500 mb-1">
-            Engine Degradation Factor
-          </Text>
-          <TextInput
-            value={engineDegradationFactor}
-            onChangeText={setEngineDegradationFactor}
-            keyboardType={Platform.OS === "ios" ? "decimal-pad" : "numeric"}
-            placeholder="e.g. 0.05"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-3 text-slate-900"
-            placeholderTextColor="#94a3b8"
-          />
-
-          <Text className="text-xs text-slate-500 mb-1">
-            Average Fuel Prediction Error
-          </Text>
-          <TextInput
-            value={averageFuelPredictionError}
-            onChangeText={setAverageFuelPredictionError}
-            keyboardType={Platform.OS === "ios" ? "decimal-pad" : "numeric"}
-            placeholder="e.g. 3.2"
-            className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-900"
-            placeholderTextColor="#94a3b8"
-          />
         </View>
 
         <TouchableOpacity

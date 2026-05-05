@@ -4,12 +4,24 @@ Extracts the analysed_sst variable, calculates regional averages,
 and visualizes as a heatmap.
 """
 
+import os
 import xarray as xr
 import numpy as np
 import matplotlib.pyplot as plt
 
-# NetCDF file path (output from fetch_sst_data.py)
-NETCDF_FILE = "sri_lanka_sst_latest.nc"
+# Base data folder (unified)
+BASE_DATA_FOLDER = "Fish zone daily data"
+
+from pathlib import Path
+
+# NetCDF file path (pick latest sst file in base folder)
+base = Path(BASE_DATA_FOLDER)
+candidates = sorted(base.glob("sst_*.nc"), key=lambda p: p.stat().st_mtime, reverse=True)
+if candidates:
+    NETCDF_FILE = str(candidates[0])
+else:
+    # fallback to legacy filename
+    NETCDF_FILE = str(base / "sst_latest.nc")
 
 
 def main() -> None:

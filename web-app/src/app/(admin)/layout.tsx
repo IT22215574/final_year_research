@@ -5,9 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
+  Database,
   LayoutDashboard,
   LogOut,
   Menu,
+  Upload,
   UserPlus,
   X,
 } from "lucide-react";
@@ -40,6 +42,8 @@ export default function AdminLayout({
     () => [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
       { href: "/admin/activity", label: "Activity", icon: BarChart3 },
+      { href: "/admin/dataset-uploads", label: "Dataset Uploads", icon: Upload },
+      { href: "/admin/dataset-uploads/manage", label: "Manage Uploads", icon: Database },
       { href: "/sign-up", label: "Create user", icon: UserPlus },
     ],
     [],
@@ -58,12 +62,14 @@ export default function AdminLayout({
     setPending(true);
     try {
       await signOut();
-      clear();
-      router.replace("/");
     } catch (e) {
       const err = e as ApiError;
-      setError(err.message ?? "Failed to sign out");
+      if (err.status !== 401) {
+        console.warn("Server sign-out failed:", err.message ?? "Failed to sign out");
+      }
     } finally {
+      clear();
+      router.replace("/");
       setPending(false);
       setSidebarOpen(false);
     }

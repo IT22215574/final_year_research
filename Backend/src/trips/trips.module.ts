@@ -12,6 +12,8 @@ import {
   TripCoefficient,
   TripCoefficientSchema,
 } from 'src/schemas/trip-coefficient.schema';
+import { TrainingCandidate, TrainingCandidateSchema } from '../schemas/training-candidate.schema';
+
 
 @Module({
   imports: [
@@ -19,6 +21,7 @@ import {
       { name: Trip.name, schema: TripSchema },
       { name: TripCoefficient.name, schema: TripCoefficientSchema },
       { name: Boat.name, schema: BoatSchema },
+      { name: TrainingCandidate.name, schema: TrainingCandidateSchema }
     ]),
     AuthModule, // Makes JwtService available for AuthTokenGuard
     HttpModule, // For calling Python ML service
@@ -27,4 +30,4 @@ import {
   providers: [TripsService, TripMetricsService, BoatTypeCoefficientService],
   exports: [TripsService, TripMetricsService, BoatTypeCoefficientService],
 })
-export class TripsModule {}
+export class TripsModule { }

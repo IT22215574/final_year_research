@@ -10,17 +10,11 @@ import {
   ScrollView,
   Modal,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import MapView, { Marker, Circle, PROVIDER_GOOGLE } from "react-native-maps";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import MapView, { Marker, Circle, PROVIDER_GOOGLE, Polygon } from "react-native-maps";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-
-// Backend API base URL from environment variables
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_KEY;
-
-if (!API_BASE_URL) {
-  throw new Error("EXPO_PUBLIC_API_URL must be defined in .env file");
-}
+import { apiFetch } from "@/utils/api";
 
 interface FishZone {
   lat: number;
@@ -54,83 +48,153 @@ interface GeographicZone {
   color: string;
 }
 
-// Define geographic zones around Sri Lanka
+// Sri Lanka EEZ boundary — traced from official 1974/1976 India-SL maritime agreement map
+// Sufficient intermediate points added on curves so Polygon renders smooth arcs
+const SRI_LANKA_EEZ_BOUNDARY = [
+  // ── North: Palk Strait entry (near Jaffna / Point Pedro) ──
+  { latitude: 9.8,  longitude: 79.3  },
+  // ── Northern Indo-SL maritime boundary going northeast ──
+  { latitude: 10.3, longitude: 79.6  },
+  { latitude: 10.8, longitude: 79.9  },
+  { latitude: 11.3, longitude: 80.2  },
+  { latitude: 11.7, longitude: 80.4  },
+  { latitude: 12.0, longitude: 80.5  }, // northernmost point
+  // ── Curve east-southeast into Bay of Bengal ──
+  { latitude: 11.5, longitude: 81.0  },
+  { latitude: 11.0, longitude: 81.5  },
+  { latitude: 10.5, longitude: 82.0  },
+  { latitude: 10.0, longitude: 82.5  },
+  { latitude: 9.5,  longitude: 83.0  },
+  { latitude: 9.0,  longitude: 83.5  },
+  { latitude: 8.5,  longitude: 83.8  },
+  { latitude: 8.0,  longitude: 84.0  }, // eastern boundary ~84°E
+  // ── Eastern boundary straight south ──
+  { latitude: 7.0,  longitude: 84.0  },
+  { latitude: 6.0,  longitude: 84.0  },
+  { latitude: 5.0,  longitude: 84.0  },
+  { latitude: 4.0,  longitude: 84.0  },
+  { latitude: 3.0,  longitude: 83.5  },
+  // ── Southeast curve towards south ──
+  { latitude: 2.5,  longitude: 83.0  },
+  { latitude: 2.2,  longitude: 82.5  },
+  { latitude: 2.0,  longitude: 82.0  }, // southernmost area (east)
+  // ── Southern boundary going west ──
+  { latitude: 2.0,  longitude: 81.0  },
+  { latitude: 2.0,  longitude: 80.0  },
+  { latitude: 2.0,  longitude: 79.0  },
+  // ── Southwest curve ──
+  { latitude: 2.2,  longitude: 78.5  },
+  { latitude: 2.5,  longitude: 78.0  },
+  { latitude: 3.0,  longitude: 77.5  },
+  { latitude: 3.5,  longitude: 77.0  },
+  // ── Western Indo-SL maritime boundary going north-northwest ──
+  { latitude: 4.5,  longitude: 76.8  },
+  { latitude: 5.5,  longitude: 76.5  },
+  { latitude: 6.5,  longitude: 76.5  },
+  { latitude: 7.0,  longitude: 76.7  },
+  { latitude: 7.5,  longitude: 77.0  },
+  { latitude: 8.0,  longitude: 77.5  },
+  { latitude: 8.5,  longitude: 78.0  },
+  { latitude: 9.0,  longitude: 78.5  },
+  { latitude: 9.5,  longitude: 79.0  },
+  // ── Close polygon back to Palk Strait ──
+  { latitude: 9.8,  longitude: 79.3  },
+];
+
+const isInsideSriLankaEEZ = (lat: number, lon: number): boolean => {
+  const polygon = SRI_LANKA_EEZ_BOUNDARY;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].latitude, yi = polygon[i].longitude;
+    const xj = polygon[j].latitude, yj = polygon[j].longitude;
+    const intersect =
+      yi > lon !== yj > lon &&
+      lat < ((xj - xi) * (lon - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+};
+
+// Geographic zones covering Sri Lanka's EEZ only (bounded by India-SL maritime agreements)
+// Northern boundary ~10.5°N (Palk Strait/Bay of Bengal India treaty line)
+// Western boundary ~77-78°E (India-SL Gulf of Mannar treaty line)
 const GEOGRAPHIC_ZONES: GeographicZone[] = [
   {
     id: "north",
     name: "North",
-    latMin: 8.5,
-    latMax: 10.0,
-    lonMin: 79.5,
-    lonMax: 81.5,
+    latMin: 9.5,
+    latMax: 10.5,
+    lonMin: 80.0,
+    lonMax: 82.5,
     color: "#3B82F6", // blue
   },
   {
     id: "northeast",
     name: "Northeast",
     latMin: 8.0,
-    latMax: 9.5,
-    lonMin: 81.0,
-    lonMax: 82.0,
+    latMax: 10.5,
+    lonMin: 82.0,
+    lonMax: 85.0,
     color: "#8B5CF6", // violet
   },
   {
     id: "east",
     name: "East",
-    latMin: 6.5,
-    latMax: 8.5,
-    lonMin: 81.0,
-    lonMax: 82.0,
+    latMin: 5.0,
+    latMax: 9.0,
+    lonMin: 82.0,
+    lonMax: 85.0,
     color: "#06B6D4", // cyan
   },
   {
     id: "southeast",
     name: "Southeast",
-    latMin: 5.5,
-    latMax: 7.0,
+    latMin: 2.0,
+    latMax: 6.5,
     lonMin: 80.5,
-    lonMax: 82.0,
+    lonMax: 85.0,
     color: "#14B8A6", // teal
   },
   {
     id: "south",
     name: "South",
-    latMin: 5.0,
+    latMin: 2.0,
     latMax: 6.5,
-    lonMin: 79.5,
-    lonMax: 81.0,
+    lonMin: 78.0,
+    lonMax: 82.5,
     color: "#10B981", // green
   },
   {
     id: "southwest",
     name: "Southwest",
-    latMin: 5.5,
+    latMin: 2.0,
     latMax: 7.0,
-    lonMin: 79.0,
-    lonMax: 80.5,
+    lonMin: 76.0,
+    lonMax: 80.0,
     color: "#F59E0B", // amber
   },
   {
     id: "west",
     name: "West",
-    latMin: 6.5,
-    latMax: 8.0,
-    lonMin: 79.0,
+    latMin: 5.5,
+    latMax: 9.0,
+    lonMin: 77.5,
     lonMax: 80.5,
     color: "#EF4444", // red
   },
   {
     id: "northwest",
     name: "Northwest",
-    latMin: 7.5,
-    latMax: 9.0,
-    lonMin: 79.0,
-    lonMax: 80.5,
+    latMin: 8.5,
+    latMax: 10.5,
+    lonMin: 78.5,
+    lonMax: 81.5,
     color: "#EC4899", // pink
   },
 ];
 
 export default function FishZoneMapScreen() {
+  const insets = useSafeAreaInsets();
   const [fishZones, setFishZones] = useState<FishZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [metadata, setMetadata] = useState<FishZoneResponse["metadata"] | null>(
@@ -142,13 +206,14 @@ export default function FishZoneMapScreen() {
     GEOGRAPHIC_ZONES.map((z) => z.id) // All zones selected by default
   );
   const [showZoneSelector, setShowZoneSelector] = useState(false);
+  const [showMapControls, setShowMapControls] = useState(true);
 
-  // Sri Lanka center for map
+  // Center of Sri Lanka's EEZ (bounded by India-SL maritime agreements)
   const SRI_LANKA_CENTER = {
     latitude: 7.5,
-    longitude: 80.5,
-    latitudeDelta: 5,
-    longitudeDelta: 5,
+    longitude: 81.5,
+    latitudeDelta: 10,
+    longitudeDelta: 10,
   };
 
   useEffect(() => {
@@ -158,8 +223,8 @@ export default function FishZoneMapScreen() {
   const fetchFishZones = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `${API_BASE_URL}/fish-zones/latest?minProbability=${minProbability}`
+      const response = await apiFetch(
+        `/api/v1/fish-zones/latest?minProbability=${minProbability}`
       );
 
       if (!response.ok) {
@@ -227,12 +292,11 @@ export default function FishZoneMapScreen() {
     setSelectedGeographicZones([]);
   };
 
-  // Filter fish zones based on selected geographic zones
+  // Filter fish zones: must be inside Sri Lanka's EEZ and within a selected geographic zone
   const filteredFishZones = fishZones.filter((zone) => {
-    // If no geographic zones selected, show nothing
     if (selectedGeographicZones.length === 0) return false;
+    if (!isInsideSriLankaEEZ(zone.lat, zone.lon)) return false;
 
-    // Check if fish zone falls within any selected geographic zone
     return selectedGeographicZones.some((geoZoneId) => {
       const geoZone = GEOGRAPHIC_ZONES.find((z) => z.id === geoZoneId);
       if (!geoZone) return false;
@@ -275,36 +339,86 @@ export default function FishZoneMapScreen() {
         </View>
       </View>
 
-      {/* Zone Selector Button - Prominent placement */}
-      <View style={styles.zoneSelectorButtonContainer}>
+      <View style={styles.controlsToggleContainer}>
         <TouchableOpacity
-          onPress={() => setShowZoneSelector(true)}
-          style={styles.zoneSelectorButton}
+          onPress={() => setShowMapControls((prev) => !prev)}
+          style={styles.controlsToggleButton}
+          activeOpacity={0.85}
         >
-          <Ionicons name="map" size={20} color="#FFF" />
-          <Text style={styles.zoneSelectorButtonText}>
-            Select Fishing Zones ({selectedGeographicZones.length}/{GEOGRAPHIC_ZONES.length})
+          <Ionicons
+            name={showMapControls ? "chevron-up" : "chevron-down"}
+            size={18}
+            color="#0EA5E9"
+          />
+          <Text style={styles.controlsToggleText}>
+            {showMapControls ? "Hide controls" : "Show controls"}
           </Text>
-          <Ionicons name="chevron-forward" size={20} color="#FFF" />
         </TouchableOpacity>
       </View>
 
-      {/* Metadata Bar */}
-      {metadata && (
-        <View style={styles.metadataBar}>
-          <View style={styles.metadataItem}>
-            <Text style={styles.metadataLabel}>Date</Text>
-            <Text style={styles.metadataValue}>{metadata.date}</Text>
+      {showMapControls && (
+        <>
+          {/* Zone Selector Button - Prominent placement */}
+          <View style={styles.zoneSelectorButtonContainer}>
+            <TouchableOpacity
+              onPress={() => setShowZoneSelector(true)}
+              style={styles.zoneSelectorButton}
+            >
+              <Ionicons name="map" size={20} color="#FFF" />
+              <Text style={styles.zoneSelectorButtonText}>
+                Select Fishing Zones ({selectedGeographicZones.length}/{GEOGRAPHIC_ZONES.length})
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#FFF" />
+            </TouchableOpacity>
           </View>
-          <View style={styles.metadataItem}>
-            <Text style={styles.metadataLabel}>Showing</Text>
-            <Text style={styles.metadataValue}>{filteredFishZones.length}</Text>
+
+          {/* Metadata Bar */}
+          {metadata && (
+            <View style={styles.metadataBar}>
+              <View style={styles.metadataItem}>
+                <Text style={styles.metadataLabel}>Date</Text>
+                <Text style={styles.metadataValue}>{metadata.date}</Text>
+              </View>
+              <View style={styles.metadataItem}>
+                <Text style={styles.metadataLabel}>Showing</Text>
+                <Text style={styles.metadataValue}>{filteredFishZones.length}</Text>
+              </View>
+              <View style={styles.metadataItem}>
+                <Text style={styles.metadataLabel}>Total Available</Text>
+                <Text style={styles.metadataValue}>{fishZones.length}</Text>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.controlsStack}>
+            {/* Probability Filter */}
+            <View style={styles.filterContainer}>
+              <Text style={styles.filterLabel}>Minimum Fish Probability:</Text>
+              <Text style={styles.filterHint}>Shows zones with at least this probability</Text>
+              <View style={styles.filterButtons}>
+                {[0, 0.3, 0.5, 0.7].map((value) => (
+                  <TouchableOpacity
+                    key={value}
+                    style={[
+                      styles.filterButton,
+                      minProbability === value && styles.filterButtonActive,
+                    ]}
+                    onPress={() => handleFilterChange(value)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterButtonText,
+                        minProbability === value && styles.filterButtonTextActive,
+                      ]}
+                    >
+                      {value === 0 ? "All" : `≥${(value * 100).toFixed(0)}%`}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </View>
-          <View style={styles.metadataItem}>
-            <Text style={styles.metadataLabel}>Total Available</Text>
-            <Text style={styles.metadataValue}>{fishZones.length}</Text>
-          </View>
-        </View>
+        </>
       )}
 
       {/* Map */}
@@ -315,6 +429,14 @@ export default function FishZoneMapScreen() {
         showsUserLocation
         showsMyLocationButton
       >
+        {/* Sri Lanka maritime zone boundary */}
+        <Polygon
+          coordinates={SRI_LANKA_EEZ_BOUNDARY}
+          strokeColor="rgba(0,0,0,0.75)"
+          strokeWidth={1.5}
+          fillColor="transparent"
+        />
+
         {filteredFishZones.map((zone, index) => (
           <React.Fragment key={`zone-${index}`}>
             {/* Circle showing fish zone area */}
@@ -342,55 +464,32 @@ export default function FishZoneMapScreen() {
         ))}
       </MapView>
 
-      {/* Probability Filter */}
-      <View style={styles.filterContainer}>
-        <Text style={styles.filterLabel}>Minimum Fish Probability:</Text>
-        <Text style={styles.filterHint}>Shows zones with at least this probability</Text>
-        <View style={styles.filterButtons}>
-          {[0, 0.3, 0.5, 0.7].map((value) => (
-            <TouchableOpacity
-              key={value}
-              style={[
-                styles.filterButton,
-                minProbability === value && styles.filterButtonActive,
-              ]}
-              onPress={() => handleFilterChange(value)}
-            >
-              <Text
-                style={[
-                  styles.filterButtonText,
-                  minProbability === value && styles.filterButtonTextActive,
-                ]}
-              >
-                {value === 0 ? "All" : `≥${(value * 100).toFixed(0)}%`}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Legend */}
-      <View style={styles.legendContainer}>
-        <Text style={styles.legendTitle}>Fish Probability</Text>
-        <View style={styles.legendItems}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#DC2626" }]} />
-            <Text style={styles.legendText}>Very High (80%+)</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#EA580C" }]} />
-            <Text style={styles.legendText}>High (60-80%)</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#F59E0B" }]} />
-            <Text style={styles.legendText}>Medium (40-60%)</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#10B981" }]} />
-            <Text style={styles.legendText}>Low (&lt;40%)</Text>
+      {/* Legend Overlay */}
+      {!selectedZone && (
+        <View style={styles.legendOverlay}>
+          <View style={styles.legendContainer}>
+            <Text style={styles.legendTitle}>Fish Probability</Text>
+            <View style={styles.legendItems}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: "#DC2626" }]} />
+                <Text style={styles.legendText}>Very High (80%+)</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: "#EA580C" }]} />
+                <Text style={styles.legendText}>High (60-80%)</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: "#F59E0B" }]} />
+                <Text style={styles.legendText}>Medium (40-60%)</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: "#10B981" }]} />
+                <Text style={styles.legendText}>Low (&lt;40%)</Text>
+              </View>
+            </View>
           </View>
         </View>
-      </View>
+      )}
 
       {/* Zone Selector Modal */}
       <Modal
@@ -481,8 +580,16 @@ export default function FishZoneMapScreen() {
 
       {/* Selected Zone Details */}
       {selectedZone && (
-        <View style={styles.detailsContainer}>
-          <ScrollView>
+        <View
+          style={[
+            styles.detailsContainer,
+            { bottom: Math.max(88, insets.bottom + 72) },
+          ]}
+        >
+          <ScrollView
+            contentContainerStyle={styles.detailsScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.detailsHeader}>
               <Text style={styles.detailsTitle}>Fish Zone Details</Text>
               <TouchableOpacity onPress={() => setSelectedZone(null)}>
@@ -619,6 +726,29 @@ const styles = StyleSheet.create({
   refreshButton: {
     padding: 8,
   },
+  controlsToggleContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 6,
+    backgroundColor: "#F9FAFB",
+  },
+  controlsToggleButton: {
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
+  },
+  controlsToggleText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#0284C7",
+  },
   zoneSelectorButtonContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -672,11 +802,14 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
+  controlsStack: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+    gap: 12,
+    backgroundColor: "#F9FAFB",
+  },
   filterContainer: {
-    position: "absolute",
-    top: 240,
-    left: 16,
-    right: 16,
     backgroundColor: "#FFF",
     borderRadius: 12,
     padding: 12,
@@ -723,45 +856,49 @@ const styles = StyleSheet.create({
     color: "#FFF",
   },
   legendContainer: {
-    position: "absolute",
-    bottom: 16,
-    left: 16,
     backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    maxWidth: 200,
+    maxWidth: 170,
+  },
+  legendOverlay: {
+    position: "absolute",
+    left: 12,
+    bottom: 96,
+    zIndex: 20,
+    elevation: 20,
   },
   legendTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#111827",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   legendItems: {
-    gap: 6,
+    gap: 4,
   },
   legendItem: {
     flexDirection: "row",
     alignItems: "center",
   },
   legendColor: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginRight: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 6,
   },
   legendText: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#6B7280",
   },
   detailsContainer: {
     position: "absolute",
-    bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: "#FFF",
@@ -770,12 +907,15 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingHorizontal: 16,
     paddingBottom: 32,
-    maxHeight: "50%",
+    maxHeight: "58%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
+  },
+  detailsScrollContent: {
+    paddingBottom: 24,
   },
   detailsHeader: {
     flexDirection: "row",

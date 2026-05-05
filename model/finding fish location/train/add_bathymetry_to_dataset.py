@@ -11,7 +11,8 @@ import numpy as np
 
 # Paths
 DATASET_PATH = Path(__file__).parent / "final_dataset_no_bathymetry.csv"
-BATHYMETRY_PATH = Path(__file__).parent.parent.parent / "bathymetry_data" / "bathymetry.nc"
+# Bathymetry now lives in the unified data folder
+BATHYMETRY_PATH = Path(__file__).parent.parent.parent / "Fish zone daily data" / "bathymetry.nc"
 OUTPUT_PATH = Path(__file__).parent / "final_dataset_with_bathymetry.csv"
 
 def extract_bathymetry(ds, lat, lon):

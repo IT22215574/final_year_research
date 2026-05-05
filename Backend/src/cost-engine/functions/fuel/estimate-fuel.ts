@@ -3,6 +3,7 @@ export type FuelBaseInput = {
   wsi: number;
   speed: number;
   efficiencyFactor: number;
+  boatType?: string;
 };
 
 export type FuelBaseResult = {
@@ -12,8 +13,23 @@ export type FuelBaseResult = {
   predictedFuelLiters: number;
 };
 
+const BOAT_TYPE_DISTANCE_FUEL_RATE: Record<string, number> = {
+  IMUI: 2.25,
+  IDAT: 2.0,
+  OFRP: 0.62,
+  MTRP: 0.43,
+};
+
+function getBoatTypeDistanceFuelRate(boatType?: string) {
+  const normalized = String(boatType || '')
+    .trim()
+    .toUpperCase();
+
+  return BOAT_TYPE_DISTANCE_FUEL_RATE[normalized] ?? 0.6;
+}
+
 export function estimateFuelBase(input: FuelBaseInput): FuelBaseResult {
-  const fuelPerKmBase = 0.5;
+  const fuelPerKmBase = getBoatTypeDistanceFuelRate(input.boatType);
   const fuelBase = input.predictedDistanceKm * fuelPerKmBase;
   const weatherMultiplier = 1 + input.wsi * 0.5;
 
