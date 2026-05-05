@@ -172,7 +172,9 @@ const MetricCard = ({
       marginBottom: 12,
     }}
   >
-    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+    <View
+      style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}
+    >
       <View
         style={{
           width: 38,
@@ -186,13 +188,24 @@ const MetricCard = ({
       >
         <Ionicons name={icon} size={19} color={accent} />
       </View>
-      <Text style={{ fontSize: 12, fontWeight: "700", color: colors.subtext, flex: 1 }}>
+      <Text
+        style={{
+          fontSize: 12,
+          fontWeight: "700",
+          color: colors.subtext,
+          flex: 1,
+        }}
+      >
         {title}
       </Text>
     </View>
 
-    <Text style={{ fontSize: 26, fontWeight: "800", color: colors.text }}>{value}</Text>
-    <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 6 }}>{subtitle}</Text>
+    <Text style={{ fontSize: 26, fontWeight: "800", color: colors.text }}>
+      {value}
+    </Text>
+    <Text style={{ fontSize: 12, color: colors.subtext, marginTop: 6 }}>
+      {subtitle}
+    </Text>
   </View>
 );
 
@@ -243,7 +256,7 @@ const LearningSummaryScreen = () => {
 
   const statusMeta = useMemo(
     () => getStatusColors(data?.improvementStatus),
-    [data?.improvementStatus]
+    [data?.improvementStatus],
   );
 
   if (loading) {
@@ -308,7 +321,9 @@ const LearningSummaryScreen = () => {
                 justifyContent: "center",
               }}
             >
-              <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 15 }}>
+              <Text
+                style={{ color: "#ffffff", fontWeight: "700", fontSize: 15 }}
+              >
                 Retry
               </Text>
             </TouchableOpacity>
@@ -379,7 +394,13 @@ const LearningSummaryScreen = () => {
             marginBottom: 16,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 14,
+            }}
+          >
             <View
               style={{
                 width: 42,
@@ -394,7 +415,9 @@ const LearningSummaryScreen = () => {
               <Ionicons name="stats-chart" size={22} color={colors.blue} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 20, fontWeight: "800", color: "#1e3a8a" }}>
+              <Text
+                style={{ fontSize: 20, fontWeight: "800", color: "#1e3a8a" }}
+              >
                 System-Wide Learning Analytics
               </Text>
               <Text style={{ fontSize: 12, color: "#3b82f6", marginTop: 2 }}>
@@ -503,13 +526,16 @@ const LearningSummaryScreen = () => {
               </View>
             </View>
 
-            <Text style={{ color: colors.subtext, fontSize: 12, marginTop: 10 }}>
+            <Text
+              style={{ color: colors.subtext, fontSize: 12, marginTop: 10 }}
+            >
               Last Updated: {formatDate(data?.lastUpdated)}
             </Text>
           </View>
         </View>
 
-        {typeof data?.averageConfidence === "number" && !Number.isNaN(data.averageConfidence) ? (
+        {typeof data?.averageConfidence === "number" &&
+        !Number.isNaN(data.averageConfidence) ? (
           <View
             style={{
               backgroundColor: colors.card,
@@ -574,8 +600,8 @@ const LearningSummaryScreen = () => {
                 {data.averageConfidence > 0.8
                   ? "🌟 Excellent - Model is highly confident in predictions"
                   : data.averageConfidence > 0.6
-                  ? "✅ Good - Model is moderately confident"
-                  : "⚠️ Building Confidence - Need more training data"}
+                    ? "✅ Good - Model is moderately confident"
+                    : "⚠️ Building Confidence - Need more training data"}
               </Text>
             </View>
           </View>
@@ -602,7 +628,8 @@ const LearningSummaryScreen = () => {
                 <View
                   key={`${boat.boatId}-${index}`}
                   style={{
-                    marginBottom: index === data.topPerformingBoats.length - 1 ? 0 : 16,
+                    marginBottom:
+                      index === data.topPerformingBoats.length - 1 ? 0 : 16,
                     paddingBottom:
                       index === data.topPerformingBoats.length - 1 ? 0 : 16,
                     borderBottomWidth:
@@ -619,7 +646,9 @@ const LearningSummaryScreen = () => {
                     }}
                   >
                     <View style={{ flex: 1, paddingRight: 10 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <View
+                        style={{ flexDirection: "row", alignItems: "center" }}
+                      >
                         <View
                           style={{
                             width: 32,
@@ -631,8 +660,8 @@ const LearningSummaryScreen = () => {
                               index === 0
                                 ? "#facc15"
                                 : index === 1
-                                ? "#cbd5e1"
-                                : "#fdba74",
+                                  ? "#cbd5e1"
+                                  : "#fdba74",
                             marginRight: 10,
                           }}
                         >
@@ -689,8 +718,16 @@ const LearningSummaryScreen = () => {
                         marginBottom: 8,
                       }}
                     >
-                      <Text style={{ color: colors.subtext, fontSize: 14 }}>Total Trips</Text>
-                      <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>
+                      <Text style={{ color: colors.subtext, fontSize: 14 }}>
+                        Total Trips
+                      </Text>
+                      <Text
+                        style={{
+                          color: colors.text,
+                          fontWeight: "700",
+                          fontSize: 14,
+                        }}
+                      >
                         {boat.totalTrips ?? 0}
                       </Text>
                     </View>
@@ -702,8 +739,16 @@ const LearningSummaryScreen = () => {
                         marginBottom: 8,
                       }}
                     >
-                      <Text style={{ color: colors.subtext, fontSize: 14 }}>Confidence</Text>
-                      <Text style={{ color: colors.indigo, fontWeight: "800", fontSize: 14 }}>
+                      <Text style={{ color: colors.subtext, fontSize: 14 }}>
+                        Confidence
+                      </Text>
+                      <Text
+                        style={{
+                          color: colors.indigo,
+                          fontWeight: "800",
+                          fontSize: 14,
+                        }}
+                      >
                         {formatPercent(boat.confidence)}
                       </Text>
                     </View>
@@ -715,8 +760,16 @@ const LearningSummaryScreen = () => {
                         marginBottom: 8,
                       }}
                     >
-                      <Text style={{ color: colors.subtext, fontSize: 14 }}>Avg Error</Text>
-                      <Text style={{ color: colors.text, fontWeight: "700", fontSize: 14 }}>
+                      <Text style={{ color: colors.subtext, fontSize: 14 }}>
+                        Avg Error
+                      </Text>
+                      <Text
+                        style={{
+                          color: colors.text,
+                          fontWeight: "700",
+                          fontSize: 14,
+                        }}
+                      >
                         {formatLiters(boat.avgPredictionError)}
                       </Text>
                     </View>
@@ -728,9 +781,17 @@ const LearningSummaryScreen = () => {
                         alignItems: "center",
                       }}
                     >
-                      <Text style={{ color: colors.subtext, fontSize: 14 }}>Trend</Text>
-                      <View style={{ flexDirection: "row", alignItems: "center" }}>
-                        <Ionicons name={trend.icon} size={16} color={trend.color} />
+                      <Text style={{ color: colors.subtext, fontSize: 14 }}>
+                        Trend
+                      </Text>
+                      <View
+                        style={{ flexDirection: "row", alignItems: "center" }}
+                      >
+                        <Ionicons
+                          name={trend.icon}
+                          size={16}
+                          color={trend.color}
+                        />
                         <Text
                           style={{
                             color: trend.color,
@@ -766,7 +827,8 @@ const LearningSummaryScreen = () => {
                   lineHeight: 20,
                 }}
               >
-                ✨ These boats have the most accurate predictions based on learning data
+                ✨ These boats have the most accurate predictions based on
+                learning data
               </Text>
             </View>
           </View>
@@ -781,8 +843,15 @@ const LearningSummaryScreen = () => {
               marginBottom: 16,
             }}
           >
-            <Text style={{ color: colors.subtext, textAlign: "center", lineHeight: 20 }}>
-              No top performing boats yet. Log actual trips to build learning data.
+            <Text
+              style={{
+                color: colors.subtext,
+                textAlign: "center",
+                lineHeight: 20,
+              }}
+            >
+              No top performing boats yet. Log actual trips to build learning
+              data.
             </Text>
           </View>
         )}
@@ -843,7 +912,9 @@ const LearningSummaryScreen = () => {
                       padding: 12,
                     }}
                   >
-                    <Text style={{ color: "#92400e", fontSize: 13, lineHeight: 20 }}>
+                    <Text
+                      style={{ color: "#92400e", fontSize: 13, lineHeight: 20 }}
+                    >
                       • Trips: {boat.totalTrips ?? 0} • Error:{" "}
                       {formatLiters(boat.avgPredictionError)}
                     </Text>
@@ -881,7 +952,8 @@ const LearningSummaryScreen = () => {
                     lineHeight: 20,
                   }}
                 >
-                  💡 Log more actual trips for these boats to improve prediction accuracy
+                  💡 Log more actual trips for these boats to improve prediction
+                  accuracy
                 </Text>
               </View>
             </View>
@@ -898,7 +970,13 @@ const LearningSummaryScreen = () => {
             marginBottom: 12,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 12,
+            }}
+          >
             <View
               style={{
                 width: 40,
@@ -913,7 +991,14 @@ const LearningSummaryScreen = () => {
               <Ionicons name="bulb-outline" size={20} color={colors.purple} />
             </View>
 
-            <Text style={{ fontSize: 17, fontWeight: "800", color: "#581c87", flex: 1 }}>
+            <Text
+              style={{
+                fontSize: 17,
+                fontWeight: "800",
+                color: "#581c87",
+                flex: 1,
+              }}
+            >
               Adaptive Learning Insights
             </Text>
           </View>
@@ -925,21 +1010,47 @@ const LearningSummaryScreen = () => {
               padding: 16,
             }}
           >
-            <Text style={{ color: "#334155", fontSize: 14, lineHeight: 22, marginBottom: 10 }}>
-              ✅ <Text style={{ fontWeight: "700" }}>Boat-Specific Adaptation:</Text> Each
-              boat&apos;s unique characteristics are learned over time.
+            <Text
+              style={{
+                color: "#334155",
+                fontSize: 14,
+                lineHeight: 22,
+                marginBottom: 10,
+              }}
+            >
+              ✅{" "}
+              <Text style={{ fontWeight: "700" }}>
+                Boat-Specific Adaptation:
+              </Text>{" "}
+              Each boat&apos;s unique characteristics are learned over time.
             </Text>
-            <Text style={{ color: "#334155", fontSize: 14, lineHeight: 22, marginBottom: 10 }}>
-              ✅ <Text style={{ fontWeight: "700" }}>Continuous Improvement:</Text> Model
-              accuracy increases with every logged trip.
+            <Text
+              style={{
+                color: "#334155",
+                fontSize: 14,
+                lineHeight: 22,
+                marginBottom: 10,
+              }}
+            >
+              ✅{" "}
+              <Text style={{ fontWeight: "700" }}>Continuous Improvement:</Text>{" "}
+              Model accuracy increases with every logged trip.
             </Text>
-            <Text style={{ color: "#334155", fontSize: 14, lineHeight: 22, marginBottom: 10 }}>
-              ✅ <Text style={{ fontWeight: "700" }}>Historical Context:</Text> Predictions
-              leverage past performance for better accuracy.
+            <Text
+              style={{
+                color: "#334155",
+                fontSize: 14,
+                lineHeight: 22,
+                marginBottom: 10,
+              }}
+            >
+              ✅ <Text style={{ fontWeight: "700" }}>Historical Context:</Text>{" "}
+              Predictions leverage past performance for better accuracy.
             </Text>
             <Text style={{ color: "#334155", fontSize: 14, lineHeight: 22 }}>
-              ✅ <Text style={{ fontWeight: "700" }}>Economic Intelligence:</Text> System
-              learns realistic cost patterns beyond just fuel.
+              ✅{" "}
+              <Text style={{ fontWeight: "700" }}>Economic Intelligence:</Text>{" "}
+              System learns realistic cost patterns beyond just fuel.
             </Text>
           </View>
 
@@ -960,8 +1071,8 @@ const LearningSummaryScreen = () => {
                 lineHeight: 20,
               }}
             >
-              🔬 Research Novelty: Adaptive, boat-specific trip cost intelligence
-              with external cost modeling
+              🔬 Research Novelty: Adaptive, boat-specific trip cost
+              intelligence with external cost modeling
             </Text>
           </View>
         </View>

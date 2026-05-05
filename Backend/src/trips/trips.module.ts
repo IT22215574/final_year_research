@@ -3,6 +3,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { HttpModule } from '@nestjs/axios';
 import { TripsService } from './trips.service';
 import { TripsController } from './trips.controller';
+import { TripMetricsService } from './services/trip-metrics.service';
+import { BoatTypeCoefficientService } from './services/boat-type-coefficients.service';
 import { Trip, TripSchema } from '../schemas/trip.schema';
 import { AuthModule } from 'src/auth/auth.module';
 import { Boat, BoatSchema } from 'src/schemas/boat.schema';
@@ -22,7 +24,7 @@ import {
     HttpModule, // For calling Python ML service
   ],
   controllers: [TripsController],
-  providers: [TripsService],
-  exports: [TripsService],
+  providers: [TripsService, TripMetricsService, BoatTypeCoefficientService],
+  exports: [TripsService, TripMetricsService, BoatTypeCoefficientService],
 })
 export class TripsModule {}

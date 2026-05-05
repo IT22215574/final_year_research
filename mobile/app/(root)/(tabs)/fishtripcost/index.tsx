@@ -1,22 +1,19 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
-  Image,
   ActivityIndicator,
   RefreshControl,
   Dimensions,
-  Platform,
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import useTripStore from "@/stores/tripStore";
 import { getMyTrips, getMyStats } from "@/services/tripService";
+import { DashboardStats, Trip } from "@/types/trip";
 import FishTripNavBar from "./components/FishTripNavBar";
 import Animated, {
   FadeInDown,
@@ -27,36 +24,42 @@ import Animated, {
   withTiming,
   withSpring,
   Easing,
-  interpolate,
-  Extrapolate,
 } from "react-native-reanimated";
 
 const { width } = Dimensions.get("window");
 const STAT_CARD_WIDTH = (width - 48) / 2;
+const ACTION_TILE_WIDTH = (width - 60) / 3;
+
+const DEFAULT_STATS: DashboardStats = {
+  totalTrips: 0,
+  completedTrips: 0,
+  predictionsWithActuals: 0,
+  fuelAccuracyRate: 0,
+  costAccuracyRate: 0,
+  averagePredictedCost: 0,
+  averageActualCost: 0,
+  averageFuelErrorPercent: 0,
+  averageCostErrorPercent: 0,
+  totalPredictedFuel: 0,
+  totalActualFuel: 0,
+  totalFuelVariance: 0,
+  totalPredictedCost: 0,
+  totalActualCost: 0,
+  totalCostVariance: 0,
+  totalFuelUsed: 0,
+  totalDistance: 0,
+};
 
 export default function FishTripCostDashboard() {
-  const [activeView, setActiveView] = useState<"dashboard" | "costs">(
-    "dashboard",
-  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [greeting, setGreeting] = useState("Good morning");
-  const [stats, setStats] = useState({
-    totalTrips: 0,
-    completedTrips: 0,
-    averageCost: 0,
-    predictionsWithActuals: 0,
-    totalFuelUsed: 0,
-    totalFuelSaved: 0,
-    accuracyRate: 0,
-  });
-  const [trips, setTrips] = useState<any[]>([]);
+  const [stats, setStats] = useState<DashboardStats>(DEFAULT_STATS);
+  const [trips, setTrips] = useState<Trip[]>([]);
 
-  // Animation values
   const headerOpacity = useSharedValue(0);
   const headerTranslateY = useSharedValue(-20);
 
-  // Set greeting based on time
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 12) setGreeting("Good morning");
@@ -64,7 +67,6 @@ export default function FishTripCostDashboard() {
     else setGreeting("Good evening");
   }, []);
 
-  // Animate header on mount
   useEffect(() => {
     headerOpacity.value = withTiming(1, {
       duration: 600,
@@ -74,12 +76,130 @@ export default function FishTripCostDashboard() {
       damping: 15,
       stiffness: 100,
     });
-  }, []);
+  }, [headerOpacity, headerTranslateY]);
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     opacity: headerOpacity.value,
     transform: [{ translateY: headerTranslateY.value }],
   }));
+
+  const normalizeStats = (
+    statsData: any,
+    tripsData: Trip[] = [],
+  ): DashboardStats => {
+    if (statsData?.fuelAccuracyRate !== undefined) {
+      return {
+        ...DEFAULT_STATS,
+        ...statsData,
+      };
+    }
+
+    const tripsArray = Array.isArray(tripsData) ? tripsData : [];
+
+    const completedTrips = tripsArray.filter(
+      (t: any) => t.status === "completed",
+    ).length;
+
+    const withActuals = tripsArray.filter(
+      (t: any) =>
+        t.actualFuelLiters != null && t.predictedFuelLiters != null,
+    ).length;
+
+    const accurateFuelPredictions = tripsArray.filter((t: any) => {
+      if (
+        t.actualFuelLiters == null ||
+        t.predictedFuelLiters == null ||
+        t.predictedFuelLiters === 0
+      ) {
+        return false;
+      }
+
+      const errorPercent =
+        (Math.abs(t.actualFuelLiters - t.predictedFuelLiters) /
+          t.predictedFuelLiters) *
+        100;
+
+      return errorPercent <= 15;
+    }).length;
+
+    const fuelAccuracyRate =
+      withActuals > 0
+        ? Math.round((accurateFuelPredictions / withActuals) * 100)
+        : 0;
+
+    const totalFuelVariance = tripsArray.reduce((sum: number, t: any) => {
+      if (t.actualFuelLiters != null && t.predictedFuelLiters != null) {
+        return sum + (t.actualFuelLiters - t.predictedFuelLiters);
+      }
+      return sum;
+    }, 0);
+
+    const totalPredictedFuel = tripsArray.reduce((sum: number, t: any) => {
+      return sum + Number(t.predictedFuelLiters ?? 0);
+    }, 0);
+
+    const totalActualFuel = tripsArray.reduce((sum: number, t: any) => {
+      return sum + Number(t.actualFuelLiters ?? 0);
+    }, 0);
+
+    const totalPredictedCost = tripsArray.reduce((sum: number, t: any) => {
+      return sum + Number(t.predictedTotalCost ?? t.predictedCost ?? 0);
+    }, 0);
+
+    const totalActualCost = tripsArray.reduce((sum: number, t: any) => {
+      return sum + Number(t.actualTotalCost ?? t.actualCost ?? 0);
+    }, 0);
+
+    const averagePredictedCost =
+      tripsArray.length > 0 ? totalPredictedCost / tripsArray.length : 0;
+
+    const averageActualCost =
+      completedTrips > 0 ? totalActualCost / completedTrips : 0;
+
+    return {
+      totalTrips: Number(statsData?.totalTrips ?? tripsArray.length),
+      completedTrips,
+      predictionsWithActuals: withActuals,
+      fuelAccuracyRate,
+      costAccuracyRate: Number(statsData?.costAccuracyRate ?? 0),
+      averagePredictedCost: Number(
+        statsData?.averagePredictedCost ??
+          statsData?.averageCost ??
+          averagePredictedCost,
+      ),
+      averageActualCost: Number(
+        statsData?.averageActualCost ??
+          statsData?.averageCost ??
+          averageActualCost,
+      ),
+      averageFuelErrorPercent: Number(
+        statsData?.averageFuelErrorPercent ?? 0,
+      ),
+      averageCostErrorPercent: Number(
+        statsData?.averageCostErrorPercent ?? 0,
+      ),
+      totalPredictedFuel: Number(
+        statsData?.totalPredictedFuel ?? totalPredictedFuel,
+      ),
+      totalActualFuel: Number(
+        statsData?.totalActualFuel ??
+          statsData?.totalFuelUsed ??
+          totalActualFuel,
+      ),
+      totalFuelVariance: Math.round(totalFuelVariance * 10) / 10,
+      totalPredictedCost: Number(
+        statsData?.totalPredictedCost ?? totalPredictedCost,
+      ),
+      totalActualCost: Number(statsData?.totalActualCost ?? totalActualCost),
+      totalCostVariance: Number(
+        statsData?.totalCostVariance ?? totalActualCost - totalPredictedCost,
+      ),
+      totalFuelUsed: Number(
+        statsData?.totalFuelUsed ?? statsData?.totalActualFuel ?? totalActualFuel,
+      ),
+      totalDistance: Number(statsData?.totalDistance ?? 0),
+    };
+  };
 
   const loadDashboardData = async (showLoader = true) => {
     try {
@@ -87,94 +207,18 @@ export default function FishTripCostDashboard() {
 
       const [tripsData, statsData] = await Promise.all([
         getMyTrips(),
-        getMyStats().catch(() => null),
+        getMyStats(),
       ]);
 
       const tripsArray = Array.isArray(tripsData) ? tripsData : [];
       setTrips(tripsArray);
 
-      if (statsData) {
-        // Calculate accuracy rate
-        const withActuals = tripsArray.filter(
-          (t: any) => t.actualFuelLiters != null,
-        ).length;
-        const accuratePredictions = tripsArray.filter((t: any) => {
-          if (!t.actualFuelLiters || !t.predictedFuelLiters) return false;
-          const diff = Math.abs(t.actualFuelLiters - t.predictedFuelLiters);
-          return diff / t.predictedFuelLiters <= 0.15;
-        }).length;
-
-        const accuracyRate =
-          withActuals > 0
-            ? Math.round((accuratePredictions / withActuals) * 100)
-            : 0;
-
-        const totalFuelSaved = tripsArray.reduce((sum: number, t: any) => {
-          if (t.actualFuelLiters && t.predictedFuelLiters) {
-            return (
-              sum + Math.max(0, t.predictedFuelLiters - t.actualFuelLiters)
-            );
-          }
-          return sum;
-        }, 0);
-
-        setStats({
-          totalTrips: statsData.totalTrips || 0,
-          completedTrips:
-            tripsArray.filter((t: any) => t.status === "completed").length || 0,
-          averageCost: Math.round(statsData.averageCost || 0),
-          predictionsWithActuals: withActuals,
-          totalFuelUsed: statsData.totalFuelUsed || 0,
-          totalFuelSaved: Math.round(totalFuelSaved * 10) / 10,
-          accuracyRate,
-        });
-      } else {
-        const completed = tripsArray.filter(
-          (t: any) => t.status === "completed",
-        ).length;
-        const withActuals = tripsArray.filter(
-          (t: any) => t.actualFuelLiters != null,
-        ).length;
-        const avgCost =
-          tripsArray.length > 0
-            ? tripsArray.reduce(
-                (sum: number, t: any) => sum + (t.predictedTotalCost || 0),
-                0,
-              ) / tripsArray.length
-            : 0;
-
-        const accuratePredictions = tripsArray.filter((t: any) => {
-          if (!t.actualFuelLiters || !t.predictedFuelLiters) return false;
-          const diff = Math.abs(t.actualFuelLiters - t.predictedFuelLiters);
-          return diff / t.predictedFuelLiters <= 0.15;
-        }).length;
-
-        const accuracyRate =
-          withActuals > 0
-            ? Math.round((accuratePredictions / withActuals) * 100)
-            : 0;
-
-        const totalFuelSaved = tripsArray.reduce((sum: number, t: any) => {
-          if (t.actualFuelLiters && t.predictedFuelLiters) {
-            return (
-              sum + Math.max(0, t.predictedFuelLiters - t.actualFuelLiters)
-            );
-          }
-          return sum;
-        }, 0);
-
-        setStats({
-          totalTrips: tripsArray.length,
-          completedTrips: completed,
-          averageCost: Math.round(avgCost),
-          predictionsWithActuals: withActuals,
-          totalFuelUsed: 0,
-          totalFuelSaved: Math.round(totalFuelSaved * 10) / 10,
-          accuracyRate,
-        });
-      }
+      const normalized = normalizeStats(statsData, tripsArray);
+      setStats(normalized);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
+      setTrips([]);
+      setStats(DEFAULT_STATS);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -192,12 +236,18 @@ export default function FishTripCostDashboard() {
     await loadDashboardData(false);
   };
 
-  useEffect(() => {
-    if (activeView === "costs") {
-      router.push("/(root)/(tabs)/fishtripcost/costs" as any);
-      setActiveView("dashboard");
-    }
-  }, [activeView]);
+  const totalFuelSaved = useMemo(() => {
+    return Math.round(
+      trips.reduce((sum: number, t: any) => {
+        if (t.actualFuelLiters != null && t.predictedFuelLiters != null) {
+          return sum + Math.max(0, t.predictedFuelLiters - t.actualFuelLiters);
+        }
+        return sum;
+      }, 0) * 10,
+    ) / 10;
+  }, [trips]);
+
+  const normalizedFuelMetrics = (stats as any)?.normalizedFuelMetrics;
 
   const quickActionTiles = [
     {
@@ -206,9 +256,8 @@ export default function FishTripCostDashboard() {
       icon: "add-circle",
       iconSet: Ionicons,
       color: "#3b82f6",
-      bgColor: "#eff6ff",
-      gradient: ["#3b82f6", "#2563eb"],
-      action: () => setActiveView("planner"),
+      gradient: ["#3b82f6", "#2563eb"] as const,
+      action: () => router.push("/(root)/(tabs)/fishtripcost" as any),
     },
     {
       id: "past-trips",
@@ -216,8 +265,7 @@ export default function FishTripCostDashboard() {
       icon: "list",
       iconSet: Ionicons,
       color: "#10b981",
-      bgColor: "#ecfdf5",
-      gradient: ["#10b981", "#059669"],
+      gradient: ["#10b981", "#059669"] as const,
       action: () => router.push("/fishtripcost/past-trips" as any),
     },
     {
@@ -226,8 +274,7 @@ export default function FishTripCostDashboard() {
       icon: "boat",
       iconSet: Ionicons,
       color: "#8b5cf6",
-      bgColor: "#f5f3ff",
-      gradient: ["#8b5cf6", "#7c3aed"],
+      gradient: ["#8b5cf6", "#7c3aed"] as const,
       action: () => router.push("/(root)/(tabs)/fishtripcost/boats" as any),
     },
     {
@@ -236,8 +283,7 @@ export default function FishTripCostDashboard() {
       icon: "analytics",
       iconSet: Ionicons,
       color: "#f59e0b",
-      bgColor: "#fef3c7",
-      gradient: ["#f59e0b", "#d97706"],
+      gradient: ["#f59e0b", "#d97706"] as const,
       action: () => router.push("/fishtripcost/learning-summary" as any),
     },
     {
@@ -246,8 +292,7 @@ export default function FishTripCostDashboard() {
       icon: "stats-chart",
       iconSet: Ionicons,
       color: "#06b6d4",
-      bgColor: "#ecfeff",
-      gradient: ["#06b6d4", "#0891b2"],
+      gradient: ["#06b6d4", "#0891b2"] as const,
       action: () => router.push("/fishtripcost/history" as any),
     },
     {
@@ -256,487 +301,661 @@ export default function FishTripCostDashboard() {
       icon: "cash",
       iconSet: Ionicons,
       color: "#ef4444",
-      bgColor: "#fef2f2",
-      gradient: ["#ef4444", "#dc2626"],
-      action: () => router.push("/(root)/(tabs)/costs" as any),
+      gradient: ["#ef4444", "#dc2626"] as const,
+      action: () => router.push("/(root)/(tabs)/fishtripcost/costs" as any),
     },
   ];
 
   const statCards = [
     {
       label: "Total Trips",
-      value: stats.totalTrips,
+      value: Number(stats.totalTrips ?? 0),
       icon: "navigate",
       iconSet: Ionicons,
       color: "#3b82f6",
       bgColor: "#dbeafe",
-      suffix: "",
-      format: "number",
+      format: "number" as const,
     },
     {
       label: "Completed",
-      value: stats.completedTrips,
+      value: Number(stats.completedTrips ?? 0),
       icon: "checkmark-circle",
       iconSet: Ionicons,
       color: "#10b981",
       bgColor: "#d1fae5",
-      suffix: "",
-      format: "number",
+      format: "number" as const,
     },
     {
       label: "Avg Cost",
-      value: stats.averageCost,
+      value: Number(stats.averageActualCost ?? stats.averagePredictedCost ?? 0),
       icon: "cash-outline",
       iconSet: Ionicons,
       color: "#f59e0b",
       bgColor: "#fef3c7",
-      suffix: "Rs",
-      format: "currency",
+      format: "currency" as const,
     },
     {
-      label: "Accuracy",
-      value: stats.accuracyRate,
+      label: "Fuel Accuracy",
+      value: Number(stats.fuelAccuracyRate ?? 0),
       icon: "analytics",
       iconSet: Ionicons,
       color: "#8b5cf6",
       bgColor: "#ede9fe",
-      suffix: "%",
-      format: "percent",
+      format: "percent" as const,
     },
   ];
 
-  const formatValue = (value: number, format: string, suffix: string) => {
-    if (format === "currency") {
-      return `Rs ${value.toLocaleString()}`;
-    } else if (format === "percent") {
-      return `${value}%`;
-    }
-    return value.toString();
+  const formatValue = (
+    value: number,
+    format: "number" | "currency" | "percent",
+  ) => {
+    const safeValue = Number(value ?? 0);
+
+    if (format === "currency") return `Rs ${Math.round(safeValue).toLocaleString()}`;
+    if (format === "percent") return `${safeValue}%`;
+    return safeValue.toString();
   };
 
+  const totalFuelVariance = Number(stats.totalFuelVariance ?? 0);
+  const predictionsWithActuals = Number(stats.predictionsWithActuals ?? 0);
+  const fuelAccuracyRate = Number(stats.fuelAccuracyRate ?? 0);
+
   const renderContent = () => {
-    switch (activeView) {
-      case "costs":
-        return null;
-      case "dashboard":
-      default:
-        if (loading) {
-          return (
-            <View className="flex-1 items-center justify-center bg-slate-50">
-              <Animated.View entering={FadeInUp.delay(200).springify()}>
-                <View className="bg-white p-8 rounded-3xl shadow-xl items-center">
-                  <ActivityIndicator size="large" color="#3b82f6" />
-                  <Text className="text-slate-600 mt-4 font-medium">
-                    Loading your dashboard...
-                  </Text>
-                  <Text className="text-slate-400 text-sm mt-2">
-                    Preparing your fishing insights
-                  </Text>
-                </View>
-              </Animated.View>
-            </View>
-          );
-        }
-
-        return (
-          <Animated.ScrollView
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor="#3b82f6"
-                colors={["#3b82f6"]}
-              />
-            }
-          >
-            {/* Header - Matching Quality screen style */}
-            <LinearGradient
-              colors={["#1e40af", "#3b82f6"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{
-                paddingVertical: 18,
-                paddingHorizontal: 20,
-                borderBottomLeftRadius: 20,
-                borderBottomRightRadius: 20,
-              }}
-            >
-              <Animated.View style={headerAnimatedStyle}>
-                <View className="flex-row justify-between items-center">
-                  <View>
-                    <Text className="text-sm text-blue-100 font-medium mb-1">
-                      {greeting}
-                    </Text>
-                    <Text className="text-2xl font-bold text-white">
-                      Dashboard
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    className="bg-white/20 p-2 rounded-full"
-                    activeOpacity={0.7}
-                    onPress={() => router.push("/profile" as any)}
-                  >
-                    <Ionicons name="person-circle" size={32} color="white" />
-                  </TouchableOpacity>
-                </View>
-                <Text className="text-sm text-blue-100 mt-2">
-                  DATCIE-powered trip cost intelligence
-                </Text>
-              </Animated.View>
-            </LinearGradient>
-
-            {/* Quick Stats Row */}
-            <View className="px-5 -mt-4 mb-6">
-              <View className="bg-white rounded-2xl p-4 flex-row justify-between shadow-lg">
-                <View className="items-center flex-1">
-                  <Text className="text-xl font-bold text-slate-900">
-                    {stats.totalTrips}
-                  </Text>
-                  <Text className="text-xs text-slate-500 mt-1">Total</Text>
-                </View>
-                <View className="w-px bg-slate-200" />
-                <View className="items-center flex-1">
-                  <Text className="text-xl font-bold text-slate-900">
-                    {stats.completedTrips}
-                  </Text>
-                  <Text className="text-xs text-slate-500 mt-1">Done</Text>
-                </View>
-                <View className="w-px bg-slate-200" />
-                <View className="items-center flex-1">
-                  <Text className="text-xl font-bold text-slate-900">
-                    {stats.totalFuelSaved.toFixed(1)}L
-                  </Text>
-                  <Text className="text-xs text-slate-500 mt-1">Saved</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Stats Cards */}
-            <View className="px-5 mb-6">
-              <Text className="text-lg font-bold text-slate-900 mb-4">
-                Overview
+    if (loading) {
+      return (
+        <View className="flex-1 items-center justify-center bg-slate-50">
+          <Animated.View entering={FadeInUp.delay(200).springify()}>
+            <View className="items-center rounded-3xl bg-white p-8 shadow-xl">
+              <ActivityIndicator size="large" color="#3b82f6" />
+              <Text className="mt-4 font-medium text-slate-600">
+                Loading your dashboard...
               </Text>
-              <View className="flex-row flex-wrap justify-between">
-                {statCards.map((stat, index) => (
-                  <Animated.View
-                    key={stat.label}
-                    entering={FadeInDown.delay(index * 100).springify()}
-                    style={{ width: STAT_CARD_WIDTH }}
-                  >
-                    <View
-                      className="bg-white rounded-2xl p-4 mb-3"
-                      style={{
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.08,
-                        shadowRadius: 4,
-                        elevation: 3,
-                      }}
-                    >
-                      <View
-                        className="rounded-xl w-10 h-10 items-center justify-center mb-3"
-                        style={{ backgroundColor: stat.bgColor }}
-                      >
-                        <stat.iconSet
-                          name={stat.icon as any}
-                          size={20}
-                          color={stat.color}
-                        />
-                      </View>
-                      <Text className="text-xs text-slate-500 mb-1">
-                        {stat.label}
-                      </Text>
-                      <Text className="text-xl font-bold text-slate-900">
-                        {formatValue(stat.value, stat.format, stat.suffix)}
-                      </Text>
-                    </View>
-                  </Animated.View>
-                ))}
+              <Text className="mt-2 text-sm text-slate-400">
+                Preparing your fishing insights
+              </Text>
+            </View>
+          </Animated.View>
+        </View>
+      );
+    }
+
+    return (
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#3b82f6"
+            colors={["#3b82f6"]}
+          />
+        }
+      >
+        <LinearGradient
+          colors={["#1e40af", "#3b82f6"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{
+            paddingVertical: 18,
+            paddingHorizontal: 20,
+            borderBottomLeftRadius: 20,
+            borderBottomRightRadius: 20,
+          }}
+        >
+          <Animated.View style={headerAnimatedStyle}>
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className="mb-1 text-sm font-medium text-blue-100">
+                  {greeting}
+                </Text>
+                <Text className="text-2xl font-bold text-white">
+                  Dashboard
+                </Text>
               </View>
+
+              <TouchableOpacity
+                className="rounded-full bg-white/20 p-2"
+                activeOpacity={0.7}
+                onPress={() => router.push("/profile" as any)}
+              >
+                <Ionicons name="person-circle" size={32} color="white" />
+              </TouchableOpacity>
             </View>
 
-            {/* Fuel Efficiency Card */}
-            {stats.totalFuelSaved > 0 && (
+            <Text className="mt-2 text-sm text-blue-100">
+              DATCIE-powered trip cost intelligence
+            </Text>
+          </Animated.View>
+        </LinearGradient>
+
+        <View className="mb-6 -mt-4 px-5">
+          <View className="flex-row justify-between rounded-2xl bg-white p-4 shadow-lg">
+            <View className="flex-1 items-center">
+              <Text className="text-xl font-bold text-slate-900">
+                {Number(stats.totalTrips ?? 0)}
+              </Text>
+              <Text className="mt-1 text-xs text-slate-500">Trips</Text>
+            </View>
+
+            <View className="w-px bg-slate-200" />
+
+            <View className="flex-1 items-center">
+              <Text className="text-xl font-bold text-slate-900">
+                {fuelAccuracyRate}%
+              </Text>
+              <Text className="mt-1 text-xs text-slate-500">
+                Fuel Accuracy
+              </Text>
+            </View>
+
+            <View className="w-px bg-slate-200" />
+
+            <View className="flex-1 items-center">
+              <Text className="text-xl font-bold text-slate-900">
+                {totalFuelVariance > 0 ? "+" : ""}
+                {Number(totalFuelVariance).toFixed(1)}L
+              </Text>
+              <Text className="mt-1 text-xs text-slate-500">Variance</Text>
+            </View>
+          </View>
+
+          {stats.predictionsWithActuals > 0 &&
+            stats.completedTrips > stats.predictionsWithActuals && (
+              <View className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <View className="flex-row items-center">
+                  <Ionicons
+                    name="information-circle"
+                    size={18}
+                    color="#f59e0b"
+                  />
+                  <Text className="ml-2 text-xs font-medium text-amber-800">
+                    Data Quality Filter Active
+                  </Text>
+                </View>
+                <Text className="mt-1 text-xs text-amber-700">
+                  {stats.completedTrips - stats.predictionsWithActuals} trips
+                  excluded due to invalid or extreme outlier data.
+                </Text>
+              </View>
+            )}
+        </View>
+
+        <View className="mb-6 px-5">
+          <Text className="mb-4 text-lg font-bold text-slate-900">
+            Overview
+          </Text>
+
+          <View className="flex-row flex-wrap justify-between">
+            {statCards.map((stat, index) => (
               <Animated.View
-                entering={SlideInRight.delay(400)}
-                className="mx-5 mb-6"
+                key={stat.label}
+                entering={FadeInDown.delay(index * 100).springify()}
+                style={{ width: STAT_CARD_WIDTH }}
               >
-                <LinearGradient
-                  colors={["#10b981", "#059669"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  className="rounded-2xl p-5"
+                <View
+                  className="mb-3 rounded-2xl bg-white p-4"
                   style={{
-                    shadowColor: "#059669",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 8,
-                    elevation: 5,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 4,
+                    elevation: 3,
                   }}
                 >
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-1">
-                      <View className="flex-row items-center mb-2">
-                        <MaterialCommunityIcons
-                          name="fuel"
-                          size={20}
-                          color="white"
-                        />
-                        <Text className="text-white font-semibold ml-2">
-                          Fuel Efficiency
-                        </Text>
-                      </View>
-                      <Text className="text-white text-2xl font-bold">
-                        {stats.totalFuelSaved}L
-                      </Text>
-                      <Text className="text-emerald-100 text-xs mt-1">
-                        Total fuel saved compared to predictions
-                      </Text>
-                    </View>
-                    <View className="bg-white/20 p-3 rounded-full">
-                      <MaterialCommunityIcons
-                        name="leaf"
-                        size={28}
+                  <View
+                    className="mb-3 h-10 w-10 items-center justify-center rounded-xl"
+                    style={{ backgroundColor: stat.bgColor }}
+                  >
+                    <stat.iconSet
+                      name={stat.icon as any}
+                      size={20}
+                      color={stat.color}
+                    />
+                  </View>
+
+                  <Text className="mb-1 text-xs text-slate-500">
+                    {stat.label}
+                  </Text>
+
+                  <Text className="text-xl font-bold text-slate-900">
+                    {formatValue(stat.value, stat.format)}
+                  </Text>
+                </View>
+              </Animated.View>
+            ))}
+          </View>
+        </View>
+
+        {normalizedFuelMetrics && predictionsWithActuals > 0 ? (
+          <Animated.View entering={FadeInDown.delay(250)} className="mx-5 mb-6">
+            <View
+              className="rounded-2xl bg-white p-5"
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                elevation: 4,
+              }}
+            >
+              <View className="mb-4 flex-row items-center justify-between">
+                <View>
+                  <Text className="text-lg font-bold text-slate-900">
+                    Fleet Performance
+                  </Text>
+                  <Text className="mt-1 text-xs text-slate-500">
+                    Normalized fuel performance by boat baseline
+                  </Text>
+                </View>
+
+                <View
+                  className={`rounded-full px-3 py-1 ${
+                    normalizedFuelMetrics.overallVarianceRating === "excellent"
+                      ? "bg-emerald-100"
+                      : normalizedFuelMetrics.overallVarianceRating === "good"
+                        ? "bg-blue-100"
+                        : normalizedFuelMetrics.overallVarianceRating === "fair"
+                          ? "bg-amber-100"
+                          : "bg-red-100"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-bold ${
+                      normalizedFuelMetrics.overallVarianceRating === "excellent"
+                        ? "text-emerald-700"
+                        : normalizedFuelMetrics.overallVarianceRating === "good"
+                          ? "text-blue-700"
+                          : normalizedFuelMetrics.overallVarianceRating === "fair"
+                            ? "text-amber-700"
+                            : "text-red-700"
+                    }`}
+                  >
+                    {String(
+                      normalizedFuelMetrics.overallVarianceRating ?? "unknown",
+                    ).toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="mb-4 flex-row items-center justify-between rounded-xl bg-blue-50 p-3">
+                <View className="flex-1">
+                  <Text className="text-xs text-slate-600">
+                    Fleet Efficiency
+                  </Text>
+                  <Text className="text-xl font-bold text-blue-600">
+                    {Number(
+                      normalizedFuelMetrics.averageEfficiencyScore ?? 0,
+                    ).toFixed(0)}
+                    /100
+                  </Text>
+                </View>
+
+                <View className="h-10 w-px bg-slate-200" />
+
+                <View className="flex-1 items-center">
+                  <Text className="text-xs text-slate-600">Avg Variance</Text>
+                  <Text
+                    className={`text-xl font-bold ${
+                      Math.abs(
+                        Number(
+                          normalizedFuelMetrics.averageNormalizedVariancePercent ??
+                            0,
+                        ),
+                      ) <= 15
+                        ? "text-emerald-600"
+                        : "text-amber-600"
+                    }`}
+                  >
+                    {Number(
+                      normalizedFuelMetrics.averageNormalizedVariancePercent ?? 0,
+                    ) > 0
+                      ? "+"
+                      : ""}
+                    {Number(
+                      normalizedFuelMetrics.averageNormalizedVariancePercent ?? 0,
+                    ).toFixed(1)}
+                    %
+                  </Text>
+                </View>
+
+                <View className="h-10 w-px bg-slate-200" />
+
+                <View className="flex-1 items-end">
+                  <Text className="text-xs text-slate-600">Total Fuel</Text>
+                  <Text className="text-xl font-bold text-slate-700">
+                    {Number(stats.totalActualFuel ?? 0).toFixed(0)}L
+                  </Text>
+                </View>
+              </View>
+
+              <View className="flex-row items-start border-t border-slate-100 pt-3">
+                <Ionicons
+                  name="information-circle-outline"
+                  size={14}
+                  color="#64748b"
+                />
+                <Text className="ml-1.5 flex-1 text-xs text-slate-500">
+                  Performance is compared to boat type baselines. Efficiency
+                  shows fuel usage versus expected behavior, and variance shows
+                  deviation from the normalized baseline.
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+        ) : (
+          <View className="mx-5 mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <View className="mb-2 flex-row items-center">
+              <Ionicons name="bug" size={18} color="#f59e0b" />
+              <Text className="ml-2 font-bold text-amber-900">
+                Boat Type Card Debug Info
+              </Text>
+            </View>
+
+            <Text className="mb-1 text-xs text-amber-800">
+              The Boat Type Performance card requires:
+            </Text>
+
+            <View className="ml-2">
+              <Text className="text-xs text-amber-700">
+                {predictionsWithActuals > 0 ? "✅" : "❌"} Trips with actual
+                data: {predictionsWithActuals}
+              </Text>
+              <Text className="text-xs text-amber-700">
+                {normalizedFuelMetrics ? "✅" : "❌"} Backend normalized metrics:{" "}
+                {normalizedFuelMetrics ? "Yes" : "No"}
+              </Text>
+              {normalizedFuelMetrics && (
+                <Text className="text-xs text-amber-700">
+                  {Object.keys(
+                    normalizedFuelMetrics.boatTypeBreakdown || {},
+                  ).length > 0
+                    ? "✅"
+                    : "❌"}{" "}
+                  Boat types:{" "}
+                  {Object.keys(
+                    normalizedFuelMetrics.boatTypeBreakdown || {},
+                  ).length}
+                </Text>
+              )}
+            </View>
+
+            <Text className="mt-2 text-xs text-amber-600">
+              {predictionsWithActuals === 0
+                ? "→ Log actual data for completed trips to see this card"
+                : !normalizedFuelMetrics
+                  ? "→ Restart backend to get normalized metrics"
+                  : "→ Need trips with boat type information"}
+            </Text>
+          </View>
+        )}
+
+        {totalFuelSaved > 0 && (
+          <Animated.View entering={SlideInRight.delay(400)} className="mx-5 mb-6">
+            <LinearGradient
+              colors={["#10b981", "#059669"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              className="rounded-2xl p-5"
+              style={{
+                shadowColor: "#10b981",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.18,
+                shadowRadius: 6,
+                elevation: 4,
+              }}
+            >
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1">
+                  <View className="mb-2 flex-row items-center">
+                    <MaterialCommunityIcons
+                      name="fuel"
+                      size={20}
+                      color="white"
+                    />
+                    <Text className="ml-2 font-semibold text-white">
+                      Fuel Efficiency
+                    </Text>
+                  </View>
+
+                  <Text className="text-2xl font-bold text-white">
+                    {totalFuelSaved}L
+                  </Text>
+                  <Text className="mt-1 text-xs text-emerald-100">
+                    Total fuel saved compared to predictions
+                  </Text>
+                </View>
+
+                <View className="rounded-full bg-white/20 p-3">
+                  <MaterialCommunityIcons
+                    name="leaf"
+                    size={28}
+                    color="white"
+                  />
+                </View>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+        )}
+
+        <View className="px-5 pb-2">
+          <Text className="mb-4 text-lg font-bold text-slate-900">
+            Quick Actions
+          </Text>
+
+          <View className="flex-row flex-wrap justify-between">
+            {quickActionTiles.map((tile, index) => (
+              <Animated.View
+                key={tile.id}
+                entering={FadeInUp.delay(200 + index * 50).springify()}
+                style={{ width: ACTION_TILE_WIDTH }}
+              >
+                <TouchableOpacity
+                  onPress={tile.action}
+                  activeOpacity={0.7}
+                  className="mb-3"
+                >
+                  <LinearGradient
+                    colors={tile.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    className="items-center rounded-2xl p-4"
+                    style={{
+                      shadowColor: tile.color,
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 6,
+                      elevation: 4,
+                    }}
+                  >
+                    <View className="mb-2 rounded-xl bg-white/20 p-3">
+                      <tile.iconSet
+                        name={tile.icon as any}
+                        size={24}
                         color="white"
                       />
                     </View>
-                  </View>
-                </LinearGradient>
+                    <Text className="text-center text-xs font-semibold text-white">
+                      {tile.label}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
               </Animated.View>
-            )}
+            ))}
+          </View>
+        </View>
 
-            {/* Quick Action Tiles */}
-            <View className="px-5 mb-6">
-              <View className="flex-row justify-between items-center mb-4">
+        {trips.length > 0 ? (
+          <Animated.View entering={FadeInDown.delay(500)} className="px-5 pb-8">
+            <View className="mb-4 flex-row items-center justify-between">
+              <View>
                 <Text className="text-lg font-bold text-slate-900">
-                  Quick Actions
+                  Recent Trips
                 </Text>
                 <Text className="text-xs text-slate-400">
-                  {quickActionTiles.length} options
+                  Your latest fishing expeditions
                 </Text>
               </View>
 
-              <View className="flex-row flex-wrap justify-between">
-                {quickActionTiles.map((tile, index) => (
-                  <Animated.View
-                    key={tile.id}
-                    entering={FadeInUp.delay(200 + index * 50).springify()}
-                    style={{ width: (width - 60) / 3 }}
-                  >
-                    <TouchableOpacity
-                      onPress={tile.action}
-                      activeOpacity={0.7}
-                      className="mb-3"
-                    >
-                      <LinearGradient
-                        colors={tile.gradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        className="rounded-2xl p-4 items-center"
-                        style={{
-                          shadowColor: tile.color,
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.2,
-                          shadowRadius: 6,
-                          elevation: 4,
-                        }}
-                      >
-                        <View className="bg-white/20 p-3 rounded-xl mb-2">
-                          <tile.iconSet
-                            name={tile.icon as any}
-                            size={24}
-                            color="white"
-                          />
-                        </View>
-                        <Text className="text-white text-xs font-semibold text-center">
-                          {tile.label}
-                        </Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </Animated.View>
-                ))}
-              </View>
+              <TouchableOpacity
+                onPress={() => router.push("/fishtripcost/past-trips" as any)}
+                className="rounded-full bg-blue-50 px-4 py-2"
+              >
+                <Text className="text-xs font-semibold text-blue-700">
+                  View All
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Recent Activity */}
-            {trips.length > 0 && (
-              <Animated.View
-                entering={FadeInDown.delay(500)}
-                className="px-5 pb-8"
-              >
-                <View className="flex-row justify-between items-center mb-4">
-                  <View>
-                    <Text className="text-lg font-bold text-slate-900">
-                      Recent Trips
-                    </Text>
-                    <Text className="text-xs text-slate-400">
-                      Your latest fishing expeditions
-                    </Text>
-                  </View>
+            {trips.slice(0, 3).map((trip: any, index) => {
+              const statusColor =
+                trip.status === "completed"
+                  ? { bg: "#d1fae5", text: "#10b981" }
+                  : trip.status === "in-progress"
+                    ? { bg: "#fef3c7", text: "#f59e0b" }
+                    : { bg: "#dbeafe", text: "#3b82f6" };
+
+              return (
+                <Animated.View
+                  key={String(trip._id ?? index)}
+                  entering={FadeInUp.delay(600 + index * 100).springify()}
+                >
                   <TouchableOpacity
                     onPress={() =>
-                      router.push("/fishtripcost/past-trips" as any)
+                      router.push(
+                        `/fishtripcost/trip-details/${trip._id}` as any,
+                      )
                     }
-                    className="bg-blue-50 px-4 py-2 rounded-full"
+                    className="mb-3 rounded-xl bg-white p-4"
+                    style={{
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 6,
+                      elevation: 3,
+                    }}
                   >
-                    <Text className="text-sm text-blue-600 font-semibold">
-                      See All
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                    <View className="flex-row items-start justify-between">
+                      <View className="flex-1">
+                        <View className="mb-2 flex-row items-center">
+                          <MaterialCommunityIcons
+                            name="fish"
+                            size={16}
+                            color="#3b82f6"
+                          />
+                          <Text className="ml-2 text-sm font-bold text-slate-900">
+                            Trip {String(trip._id ?? "------").slice(-6)}
+                          </Text>
+                        </View>
 
-                {trips.slice(0, 3).map((trip: any, index) => {
-                  const statusColor =
-                    trip.status === "completed"
-                      ? { bg: "#d1fae5", text: "#10b981" }
-                      : trip.status === "in-progress"
-                        ? { bg: "#fef3c7", text: "#f59e0b" }
-                        : { bg: "#dbeafe", text: "#3b82f6" };
+                        <View className="mb-2 flex-row items-center">
+                          <Ionicons
+                            name="calendar-outline"
+                            size={12}
+                            color="#94a3b8"
+                          />
+                          <Text className="ml-1 text-xs text-slate-500">
+                            {trip.departureTime
+                              ? new Date(trip.departureTime).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  },
+                                )
+                              : "No date"}
+                          </Text>
+                        </View>
 
-                  return (
-                    <Animated.View
-                      key={trip._id}
-                      entering={FadeInUp.delay(600 + index * 100).springify()}
-                    >
-                      <TouchableOpacity
-                        onPress={() =>
-                          router.push(
-                            `/fishtripcost/trip-details/${trip._id}` as any,
-                          )
-                        }
-                        className="bg-white rounded-xl p-4 mb-3"
-                        style={{
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.06,
-                          shadowRadius: 6,
-                          elevation: 3,
-                        }}
-                      >
-                        <View className="flex-row justify-between items-start">
-                          <View className="flex-1">
-                            <View className="flex-row items-center mb-2">
-                              <MaterialCommunityIcons
-                                name="fish"
-                                size={16}
-                                color="#3b82f6"
-                              />
-                              <Text className="text-sm font-bold text-slate-900 ml-2">
-                                Trip {trip._id.slice(-6)}
-                              </Text>
-                            </View>
-
-                            <View className="flex-row items-center mb-2">
-                              <Ionicons
-                                name="calendar-outline"
-                                size={12}
-                                color="#94a3b8"
-                              />
-                              <Text className="text-xs text-slate-500 ml-1">
-                                {new Date(
-                                  trip.departureTime,
-                                ).toLocaleDateString("en-US", {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                })}
-                              </Text>
-                            </View>
-
-                            <View className="flex-row gap-3">
-                              <View className="flex-row items-center">
-                                <Ionicons
-                                  name="cash-outline"
-                                  size={12}
-                                  color="#f59e0b"
-                                />
-                                <Text className="text-xs text-slate-600 ml-1">
-                                  Rs{" "}
-                                  {(
-                                    trip.predictedTotalCost || 0
-                                  ).toLocaleString()}
-                                </Text>
-                              </View>
-                              <View className="flex-row items-center">
-                                <MaterialCommunityIcons
-                                  name="fuel"
-                                  size={12}
-                                  color="#3b82f6"
-                                />
-                                <Text className="text-xs text-slate-600 ml-1">
-                                  {(trip.predictedFuelLiters || 0).toFixed(1)}L
-                                </Text>
-                              </View>
-                            </View>
+                        <View className="flex-row gap-3">
+                          <View className="flex-row items-center">
+                            <Ionicons
+                              name="cash-outline"
+                              size={12}
+                              color="#f59e0b"
+                            />
+                            <Text className="ml-1 text-xs text-slate-600">
+                              Rs{" "}
+                              {Number(
+                                trip.predictedTotalCost ??
+                                  trip.predictedCost ??
+                                  0,
+                              ).toLocaleString()}
+                            </Text>
                           </View>
 
-                          <View
-                            className="px-3 py-1 rounded-full"
-                            style={{ backgroundColor: statusColor.bg }}
-                          >
-                            <Text
-                              className="text-xs font-semibold"
-                              style={{ color: statusColor.text }}
-                            >
-                              {trip.status || "planned"}
+                          <View className="flex-row items-center">
+                            <MaterialCommunityIcons
+                              name="fuel"
+                              size={12}
+                              color="#3b82f6"
+                            />
+                            <Text className="ml-1 text-xs text-slate-600">
+                              {Number(trip.predictedFuelLiters ?? 0).toFixed(1)}L
                             </Text>
                           </View>
                         </View>
 
                         {trip.status === "in-progress" && (
                           <View className="mt-3">
-                            <View className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <View className="h-1.5 overflow-hidden rounded-full bg-slate-100">
                               <View
-                                className="h-full bg-blue-500 rounded-full"
+                                className="h-full rounded-full bg-blue-500"
                                 style={{ width: "45%" }}
                               />
                             </View>
-                            <Text className="text-xs text-slate-400 mt-1">
+                            <Text className="mt-1 text-xs text-slate-400">
                               45% complete
                             </Text>
                           </View>
                         )}
-                      </TouchableOpacity>
-                    </Animated.View>
-                  );
-                })}
-              </Animated.View>
-            )}
+                      </View>
 
-            {/* Empty State */}
-            {trips.length === 0 && !loading && (
-              <Animated.View
-                entering={FadeInUp}
-                className="px-5 pb-8 items-center"
-              >
-                <View className="bg-white rounded-3xl p-8 items-center w-full">
-                  <MaterialCommunityIcons
-                    name="fish"
-                    size={64}
-                    color="#cbd5e1"
-                  />
-                  <Text className="text-slate-800 font-bold text-lg mt-4">
-                    No trips yet
-                  </Text>
-                  <Text className="text-slate-400 text-sm text-center mt-2">
-                    Start planning your first fishing trip{"\n"}
-                    with AI-powered cost predictions
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => setActiveView("planner")}
-                    className="bg-blue-500 px-6 py-3 rounded-full mt-6"
-                  >
-                    <Text className="text-white font-semibold">
-                      Plan Your First Trip
-                    </Text>
+                      <View
+                        className="rounded-full px-3 py-1"
+                        style={{ backgroundColor: statusColor.bg }}
+                      >
+                        <Text
+                          className="text-xs font-semibold"
+                          style={{ color: statusColor.text }}
+                        >
+                          {trip.status || "planned"}
+                        </Text>
+                      </View>
+                    </View>
                   </TouchableOpacity>
-                </View>
-              </Animated.View>
-            )}
-          </Animated.ScrollView>
-        );
-    }
+                </Animated.View>
+              );
+            })}
+          </Animated.View>
+        ) : (
+          <Animated.View entering={FadeInUp} className="items-center px-5 pb-8">
+            <View className="w-full items-center rounded-3xl bg-white p-8">
+              <MaterialCommunityIcons
+                name="fish"
+                size={64}
+                color="#cbd5e1"
+              />
+              <Text className="mt-4 text-lg font-bold text-slate-800">
+                No trips yet
+              </Text>
+              <Text className="mt-2 text-center text-sm text-slate-400">
+                Start planning your first fishing trip{"\n"}
+                with AI-powered cost predictions
+              </Text>
+              <TouchableOpacity
+                onPress={() => router.push("/(root)/(tabs)/fishtripcost" as any)}
+                className="mt-6 rounded-full bg-blue-500 px-6 py-3"
+              >
+                <Text className="font-semibold text-white">
+                  Plan Your First Trip
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        )}
+      </Animated.ScrollView>
+    );
   };
 
   return (
@@ -744,12 +963,7 @@ export default function FishTripCostDashboard() {
       <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
       <SafeAreaView className="flex-1 bg-slate-50">
         <FishTripNavBar />
-        {activeView === "dashboard" && (
-          <View className="flex-1">{renderContent()}</View>
-        )}
-        {activeView === "planner" && (
-          <View className="flex-1">{renderContent()}</View>
-        )}
+        <View className="flex-1">{renderContent()}</View>
       </SafeAreaView>
     </>
   );

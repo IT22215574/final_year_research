@@ -76,6 +76,12 @@ export class TripsController {
     return await this.tripsService.getUserStats(userId);
   }
 
+  @Get('my-stats/debug')
+  async getMyStatsDebug(@Req() req: ExpressRequest) {
+    const userId = this.getUserId(req);
+    return await this.tripsService.getStatsDebug(userId);
+  }
+
   @Get()
   async findAll(@Req() req: ExpressRequest) {
     const userId = this.getUserId(req);

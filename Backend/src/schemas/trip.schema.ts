@@ -229,6 +229,78 @@ export class Trip {
   fuelDifference?: number;
 
   // =========================
+  // New Comparison Metrics (TripMetricsService)
+  // =========================
+  
+  // Fuel comparison metrics
+  @Prop()
+  fuelErrorLiters?: number; // Absolute error in liters
+
+  @Prop()
+  fuelErrorPercent?: number; // Error as percentage of predicted
+
+  @Prop()
+  fuelVarianceLiters?: number; // Difference (actual - predicted)
+
+  @Prop()
+  isFuelPredictionAccurate?: boolean; // True if error <= 15%
+
+  // Cost comparison metrics
+  @Prop()
+  costErrorAmount?: number; // Absolute error in currency
+
+  @Prop()
+  costErrorPercent?: number; // Error as percentage of predicted
+
+  @Prop()
+  costVarianceAmount?: number; // Difference (actual - predicted)
+
+  @Prop()
+  isCostPredictionAccurate?: boolean; // True if error <= 15%
+
+  // Fuel cost specific
+  @Prop()
+  fuelCostErrorAmount?: number;
+
+  @Prop()
+  fuelCostErrorPercent?: number;
+
+  // Meta
+  @Prop()
+  comparisonEligible?: boolean; // True if has both predicted and actual values
+
+  @Prop()
+  accuracyThresholdUsed?: number; // e.g., 15 (percent)
+
+  @Prop()
+  comparisonCalculatedAt?: Date; // When metrics were last calculated
+
+  // =========================
+  // ✅ NEW: Boat Type-Based Normalized Fuel Metrics
+  // =========================
+  
+  @Prop()
+  expectedFuelForBoatType?: number; // Expected fuel based on boat type baseline (L)
+
+  @Prop()
+  normalizedVariancePercent?: number; // Variance relative to boat type baseline (%)
+
+  @Prop()
+  efficiencyScore?: number; // 0-150 - how efficiently this boat performed vs its type
+
+  @Prop()
+  varianceRating?: string; // 'excellent' | 'good' | 'fair' | 'poor'
+
+  @Prop()
+  mlAdjustedExpectedFuel?: number; // ML-learned expected fuel for this specific boat (L)
+
+  @Prop()
+  mlVariancePercent?: number; // Variance from ML prediction (%)
+
+  @Prop()
+  boatTypeUsedForMetrics?: string; // Boat type code used for normalization
+
+  // =========================
   // Request / mode / state
   // =========================
   @Prop({ unique: true, sparse: true })

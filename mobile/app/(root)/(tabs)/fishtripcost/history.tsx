@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { getMyTrips } from "@/services/tripService";
 import { getMyBoats } from "@/services/boatService";
+import ScreenHeader from "./components/ScreenHeader";
 import FishTripNavBar from "./components/FishTripNavBar";
 
 const money = (n: any) => {
@@ -28,11 +29,12 @@ const formatDate = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
   const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays}d ago`;
+
   return date.toLocaleDateString("en-LK", {
     day: "numeric",
     month: "short",
@@ -46,7 +48,10 @@ const getTripDisplayName = (trip: any) => {
   const boatName = trip?.boat?.boatName || trip?.boatName;
 
   const dateStr = createdAt
-    ? createdAt.toLocaleDateString("en-LK", { month: "short", day: "numeric" })
+    ? createdAt.toLocaleDateString("en-LK", {
+        month: "short",
+        day: "numeric",
+      })
     : "Unknown";
 
   const statusEmojiMap: Record<string, string> = {
@@ -54,8 +59,8 @@ const getTripDisplayName = (trip: any) => {
     completed: "✅",
     cancelled: "❌",
   };
-  const statusEmoji = statusEmojiMap[status] || "🎣";
 
+  const statusEmoji = statusEmojiMap[status] || "🎣";
   const modeText = mode === "international" ? "Int." : "Island";
 
   if (boatName) {
@@ -67,6 +72,7 @@ const getTripDisplayName = (trip: any) => {
 
 const HistoryScreen = () => {
   const router = useRouter();
+
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [trips, setTrips] = useState<any[]>([]);
@@ -83,10 +89,12 @@ const HistoryScreen = () => {
       } else {
         setLoading(true);
       }
+
       const [tripsData, boatsData] = await Promise.all([
         getMyTrips(),
         getMyBoats(),
       ]);
+
       setTrips(Array.isArray(tripsData) ? tripsData : []);
       setBoats(Array.isArray(boatsData) ? boatsData : []);
     } catch (e: any) {
@@ -111,26 +119,18 @@ const HistoryScreen = () => {
   };
 
   const filteredTrips = trips.filter((trip) => {
-    // Filter by selected boat
     if (selectedBoatId && trip.boatId !== selectedBoatId) {
       return false;
     }
 
-    // Filter by search query
-    if (!searchQuery.trim()) return true;
+    if (!searchQuery.trim()) {
+      return true;
+    }
 
     const query = searchQuery.toLowerCase();
-    const tripId = String(trip?._id ?? trip?.id).toLowerCase();
-    const boatName = (
-      trip?.boat?.boatName ||
-      trip?.boatName ||
-      ""
-    ).toLowerCase();
-    const boatType = (
-      trip?.boat?.boatType ||
-      trip?.boatType ||
-      ""
-    ).toLowerCase();
+    const tripId = String(trip?._id ?? trip?.id ?? "").toLowerCase();
+    const boatName = String(trip?.boat?.boatName || trip?.boatName || "").toLowerCase();
+    const boatType = String(trip?.boat?.boatType || trip?.boatType || "").toLowerCase();
     const tripName = getTripDisplayName(trip).toLowerCase();
     const date = trip?.createdAt
       ? new Date(trip.createdAt).toLocaleString().toLowerCase()
@@ -149,26 +149,12 @@ const HistoryScreen = () => {
     <SafeAreaView className="flex-1 bg-gray-50">
       <FishTripNavBar />
 
-      {/* Header */}
-      <View className="bg-white border-b border-gray-200 px-4 pt-3 pb-4">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <TouchableOpacity
-              onPress={() => router.back()}
-              className="w-9 h-9 rounded-lg bg-gray-100 items-center justify-center mr-3"
-              activeOpacity={0.7}
-            >
-              <Text className="text-gray-600 text-lg">←</Text>
-            </TouchableOpacity>
-            <View>
-              <Text className="text-xl font-bold text-gray-900">History</Text>
-              <Text className="text-xs text-gray-500">
-                {filteredTrips.length} {selectedBoatId ? "filtered" : "saved"}{" "}
-                trips
-              </Text>
-            </View>
-          </View>
-
+      <ScreenHeader
+        title="Trip Analytics"
+        subtitle={`${filteredTrips.length} ${
+          selectedBoatId ? "filtered" : "saved"
+        } trips`}
+        rightComponent={
           <TouchableOpacity
             onPress={onRefresh}
             className="w-9 h-9 rounded-lg bg-gray-100 items-center justify-center"
@@ -176,6 +162,19 @@ const HistoryScreen = () => {
           >
             <Text className="text-gray-600 text-lg">↻</Text>
           </TouchableOpacity>
+        }
+      />
+
+      {/* Header */}
+      <View className="bg-white border-b border-gray-200 px-4 pt-3 pb-4">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <View>
+              <Text className="text-sm font-medium text-gray-600">
+                View and analyze your fishing trip history
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Search Bar */}
@@ -220,10 +219,9 @@ const HistoryScreen = () => {
                 All Boats ({trips.length})
               </Text>
             </TouchableOpacity>
+
             {boats.map((boat) => {
-              const boatTripCount = trips.filter(
-                (t) => t.boatId === boat._id,
-              ).length;
+              const boatTripCount = trips.filter((t) => t.boatId === boat._id).length;
               const isSelected = selectedBoatId === boat._id;
 
               return (
@@ -258,9 +256,7 @@ const HistoryScreen = () => {
           <View className="w-20 h-20 rounded-2xl bg-gray-100 items-center justify-center mb-4">
             <Text className="text-3xl">🗺️</Text>
           </View>
-          <Text className="text-gray-900 font-bold text-lg mb-2">
-            No Trips Yet
-          </Text>
+          <Text className="text-gray-900 font-bold text-lg mb-2">No Trips Yet</Text>
           <Text className="text-gray-500 text-center text-sm mb-4">
             Plan and save your first trip
           </Text>
@@ -268,9 +264,7 @@ const HistoryScreen = () => {
             onPress={() => router.push("/(root)/(tabs)/fishtripcost")}
             className="bg-indigo-600 rounded-lg px-5 py-3"
           >
-            <Text className="text-white font-semibold text-sm">
-              Plan Trip →
-            </Text>
+            <Text className="text-white font-semibold text-sm">Plan Trip →</Text>
           </TouchableOpacity>
         </View>
       ) : filteredTrips.length === 0 ? (
@@ -278,12 +272,12 @@ const HistoryScreen = () => {
           <View className="w-20 h-20 rounded-2xl bg-gray-100 items-center justify-center mb-4">
             <Text className="text-3xl">🔍</Text>
           </View>
-          <Text className="text-gray-900 font-bold text-lg mb-2">
-            No Matches Found
-          </Text>
+          <Text className="text-gray-900 font-bold text-lg mb-2">No Matches Found</Text>
           <Text className="text-gray-500 text-center text-sm mb-4">
             {selectedBoatId
-              ? `No trips found for the selected boat${searchQuery ? " and search query" : ""}`
+              ? `No trips found for the selected boat${
+                  searchQuery ? " and search query" : ""
+                }`
               : `No trips match "${searchQuery}"`}
           </Text>
           <View className="flex-row gap-2">
@@ -292,9 +286,7 @@ const HistoryScreen = () => {
                 onPress={() => setSearchQuery("")}
                 className="bg-gray-200 rounded-lg px-4 py-2"
               >
-                <Text className="text-gray-700 text-sm font-medium">
-                  Clear search
-                </Text>
+                <Text className="text-gray-700 text-sm font-medium">Clear search</Text>
               </TouchableOpacity>
             )}
             {selectedBoatId && (
@@ -302,9 +294,7 @@ const HistoryScreen = () => {
                 onPress={() => setSelectedBoatId(null)}
                 className="bg-indigo-600 rounded-lg px-4 py-2"
               >
-                <Text className="text-white text-sm font-medium">
-                  Show all boats
-                </Text>
+                <Text className="text-white text-sm font-medium">Show all boats</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -323,14 +313,10 @@ const HistoryScreen = () => {
             />
           }
           renderItem={({ item }) => {
-            const id = String(item?._id ?? item?.id).slice(-6);
-            const createdAt = item?.createdAt
-              ? formatDate(item.createdAt)
-              : "—";
+            const createdAt = item?.createdAt ? formatDate(item.createdAt) : "—";
             const predictedTotal =
               item?.predictedTotalCost ?? item?.predictedCost ?? null;
-            const actualFuel =
-              item?.actualFuelLiters ?? item?.fuelUsedLiters ?? null;
+            const actualFuel = item?.actualFuelLiters ?? item?.fuelUsedLiters ?? null;
             const hasActual = actualFuel !== null;
 
             return (
@@ -340,7 +326,7 @@ const HistoryScreen = () => {
                 className="bg-white rounded-xl border border-gray-200 p-4 mb-2"
               >
                 <View className="flex-row items-center justify-between mb-2">
-                  <View className="flex-row items-center">
+                  <View className="flex-row items-center flex-1">
                     <View className="w-8 h-8 rounded-lg bg-indigo-100 items-center justify-center mr-3">
                       <Text className="text-sm">🎣</Text>
                     </View>
@@ -355,11 +341,16 @@ const HistoryScreen = () => {
                       </Text>
                     </View>
                   </View>
+
                   <View
-                    className={`rounded-full px-2 py-1 ${hasActual ? "bg-emerald-100" : "bg-gray-100"}`}
+                    className={`rounded-full px-2 py-1 ${
+                      hasActual ? "bg-emerald-100" : "bg-gray-100"
+                    }`}
                   >
                     <Text
-                      className={`text-xs font-medium ${hasActual ? "text-emerald-700" : "text-gray-600"}`}
+                      className={`text-xs font-medium ${
+                        hasActual ? "text-emerald-700" : "text-gray-600"
+                      }`}
                     >
                       {hasActual ? "✓ Logged" : "Pending"}
                     </Text>
@@ -373,6 +364,7 @@ const HistoryScreen = () => {
                       Rs {money(predictedTotal)}
                     </Text>
                   </View>
+
                   {hasActual && (
                     <View className="flex-1">
                       <Text className="text-xs text-gray-500">Actual Fuel</Text>
@@ -384,9 +376,7 @@ const HistoryScreen = () => {
                 </View>
 
                 <View className="flex-row mt-3 pt-2 border-t border-gray-100">
-                  <Text className="text-xs text-gray-400">
-                    Tap to view details →
-                  </Text>
+                  <Text className="text-xs text-gray-400">Tap to view details →</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -397,7 +387,7 @@ const HistoryScreen = () => {
       {/* Details Modal */}
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
@@ -426,10 +416,7 @@ const HistoryScreen = () => {
                           : "—"}
                       </Text>
                       <Text className="text-xs text-gray-400 mt-1">
-                        ID:{" "}
-                        {String(selectedTrip?._id ?? selectedTrip?.id).slice(
-                          -8,
-                        )}
+                        ID: {String(selectedTrip?._id ?? selectedTrip?.id).slice(-8)}
                       </Text>
                     </View>
                   </View>
@@ -445,7 +432,7 @@ const HistoryScreen = () => {
                         Rs{" "}
                         {money(
                           selectedTrip?.predictedTotalCost ??
-                            selectedTrip?.predictedCost,
+                            selectedTrip?.predictedCost
                         )}
                       </Text>
                     </View>
@@ -460,7 +447,7 @@ const HistoryScreen = () => {
                     </View>
                   </View>
 
-                  {/* Actuals if available */}
+                  {/* Actuals */}
                   {(selectedTrip?.actualFuelLiters ||
                     selectedTrip?.fuelUsedLiters ||
                     selectedTrip?.actualCatchKg) && (
@@ -480,11 +467,10 @@ const HistoryScreen = () => {
                             </Text>
                           </View>
                         )}
+
                         {selectedTrip?.actualCatchKg && (
                           <View className="flex-row justify-between">
-                            <Text className="text-emerald-700">
-                              Catch Weight
-                            </Text>
+                            <Text className="text-emerald-700">Catch Weight</Text>
                             <Text className="font-bold text-emerald-700">
                               {selectedTrip.actualCatchKg} kg
                             </Text>
@@ -552,7 +538,7 @@ const HistoryScreen = () => {
                     </>
                   )}
 
-                  {/* Action Buttons */}
+                  {/* Actions */}
                   <View className="flex-row gap-3 mt-2 mb-4">
                     {selectedTrip &&
                       !!selectedTrip?.boatId &&
@@ -562,11 +548,10 @@ const HistoryScreen = () => {
                           onPress={() => {
                             setModalVisible(false);
                             router.push({
-                              pathname:
-                                "/(root)/(tabs)/fishtripcost/log-actual",
+                              pathname: "/(root)/(tabs)/fishtripcost/log-actual",
                               params: {
                                 tripId: String(
-                                  selectedTrip?._id ?? selectedTrip?.id,
+                                  selectedTrip?._id ?? selectedTrip?.id
                                 ),
                               },
                             });
@@ -578,6 +563,7 @@ const HistoryScreen = () => {
                           </Text>
                         </TouchableOpacity>
                       )}
+
                     <TouchableOpacity
                       onPress={() => setModalVisible(false)}
                       className="flex-1 bg-gray-200 rounded-xl py-4 items-center"

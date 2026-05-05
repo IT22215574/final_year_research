@@ -34,6 +34,9 @@ export class CostPreferencesService {
       category: dto.category?.trim(),
       amount: Number(dto.amount),
       description: dto.description?.trim() || '',
+      icon: dto.icon?.trim() || 'cash-outline',
+      quantity: dto.quantity ? Number(dto.quantity) : 1,
+      pricePerUnit: dto.pricePerUnit ? Number(dto.pricePerUnit) : 0,
       isActive:
         dto.isActive !== undefined ? this.toBoolean(dto.isActive) : true,
       autoApply:
@@ -49,6 +52,9 @@ export class CostPreferencesService {
     if (dto.amount !== undefined) updateData.amount = Number(dto.amount);
     if (dto.description !== undefined)
       updateData.description = dto.description.trim();
+    if (dto.icon !== undefined) updateData.icon = dto.icon.trim();
+    if (dto.quantity !== undefined) updateData.quantity = Number(dto.quantity);
+    if (dto.pricePerUnit !== undefined) updateData.pricePerUnit = Number(dto.pricePerUnit);
     if (dto.isActive !== undefined)
       updateData.isActive = this.toBoolean(dto.isActive);
     if (dto.autoApply !== undefined)
