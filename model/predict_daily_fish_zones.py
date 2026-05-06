@@ -38,7 +38,7 @@ from land_mask import is_land
 # ==============================================================================
 
 # Paths
-MODEL_PATH = Path(__file__).parent / "finding fish location" / "train" / "models" / "rf_fish_zone_model.pkl"
+MODEL_PATH = Path(__file__).parent / "finding fish location" / "train" / "models" / "xgboost_fish_zone_model.pkl"
 # Unified data folder
 BASE_DATA_FOLDER = Path(__file__).parent / "Fish zone daily data"
 

@@ -127,7 +127,7 @@ def main() -> None:
     )
 
     print(f"Training samples: {len(X_train)}, Test samples: {len(X_test)}")
-
+#Activation Function: Sigmoid
     model = xgb.XGBClassifier(
         n_estimators=args.n_estimators,
         max_depth=args.max_depth,
