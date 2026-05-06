@@ -215,12 +215,12 @@ Backend/dataset/processed/future_price_predictions.csv
 ┌─────────────────────────────────────────────────────────────────┐
 │                        RAW DATA LAYER                           │
 ├─────────────────────────────────────────────────────────────────┤
-│  Excel Files   │  Fuel Data   │  Festivals   │  Weather API    │
-│  (Weekly)      │  (Excel)     │  (CSV)       │  (Open-Meteo)   │
+│  Excel Files    │  Fuel Data   │  Festivals   │  Weather API    │
+│  (Weekly)       │  (Excel)     │  (CSV)       │  (Open-Meteo)   │
 └────────┬────────┴──────┬───────┴──────┬───────┴────────┬────────┘
-         │                │             │                │
+         │               │              │                │
     [CSV Conv]       [Fuel Proc]   [Fest Gen]       [Weather Fetch]
-         │                │             │                │
+         │               │              │                │
 ┌────────▼────────┬──────▼───────┬──────▼───────┬────────▼────────┐
 │  fish_prices    │ fuel_price   │ festivals    │ weather_data    │
 │  (CSV)          │ _daily (CSV) │ _2020_2026   │ weather_forecast│
@@ -230,14 +230,14 @@ Backend/dataset/processed/future_price_predictions.csv
          │                │             │                │
 ┌────────┴────────────────▼─────────────▼────────────────┴────────┐
 │                  INTEGRATION LAYER                              │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
 │  merged_festival_features.csv                                   │
 │  ↓ (Add weather + fuel)                                         │
 │  final_merged_dataset.csv                                       │
 │  ↓ (Engineer 30+ features)                                      │
 │  features_dataset.csv (TRAINING DATA)                           │
-│                                                                  │
+│                                                                 │
 └────────┬───────────────────────────────────────────────────────┘
          │
          ├──→ 🤖 Model Training (Random Forest + XGBoost)
@@ -292,7 +292,7 @@ predictor = FishPricePredictor()
 # - Fish database from data/fish_names.csv
 # - Features_dataset for analysis
 
-prediction = predictor.predict("මිතුරු", "2026-05-10")
+prediction = predictor.predict("2026-05-10")
 print(f"Predicted price: LKR {prediction['price']:.2f}")
 ```
 
@@ -312,7 +312,6 @@ print(f"Predicted price: LKR {prediction['price']:.2f}")
 
 ---
 
-## 📞 **Questions?**
 
 Refer to the scripts in `model/fish_price_prediction/scripts/` for detailed implementation of each data processing step.
 
