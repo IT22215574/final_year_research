@@ -1,0 +1,16 @@
+#!/bin/sh
+# Example wrapper to run the daily fetcher using a local .env file.
+# Copy to run_fetch.sh, make executable, and ensure .env is present in the same folder.
+# DO NOT store real credentials in your repo; keep `.env` out of version control.
+set -e
+cd "$(dirname "$0")"
+
+# If using a .env file, export its variables for the script.
+if [ -f .env ]; then
+  # Use POSIX-compliant way to export variables from .env
+  set -o allexport
+  . ./.env
+  set +o allexport
+fi
+
+python3 fetch_copernicus_daily.py

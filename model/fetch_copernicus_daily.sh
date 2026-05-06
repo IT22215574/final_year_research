@@ -13,9 +13,16 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
-# Set Copernicus credentials
-export COPERNICUS_USER='ravindujayaweera123@gmail.com'
-export COPERNICUS_PASS='XarW6K6zRiF5!hk'
+# Load credentials from a local .env file if present (safer than embedding secrets in this script)
+# Copy model/.env.example -> model/.env and fill it, then this script will source it.
+if [ -f .env ]; then
+    # Export all variables defined in .env into the environment for the python script
+    set -o allexport
+    . ./.env
+    set +o allexport
+else
+    echo "⚠ .env not found in ${SCRIPT_DIR}. If credentials are not set globally, create model/.env from model/.env.example"
+fi
 
 # Activate Python virtual environment if you have one
 # source /path/to/venv/bin/activate

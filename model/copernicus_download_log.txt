@@ -652,3 +652,100 @@
 2026-05-04 13:48:45 | INFO | ✓ ALL DATASETS DOWNLOADED SUCCESSFULLY
 2026-05-04 13:48:45 | INFO | Run completed at: 2026-05-04 19:18:45.337299
 2026-05-04 13:48:45 | INFO | 
+2026-05-06 01:50:20 | INFO | ================================================================================
+2026-05-06 01:50:20 | INFO | Copernicus Marine Service Daily Data Fetcher
+2026-05-06 01:50:20 | INFO | ================================================================================
+2026-05-06 01:50:20 | INFO | Run started at: 2026-05-06 07:20:20.807395
+2026-05-06 01:50:20 | INFO | Mode: Download LATEST available data only
+2026-05-06 01:50:20 | INFO | ================================================================================
+2026-05-06 01:50:20 | INFO | Downloading latest available data for each dataset...
+2026-05-06 01:50:20 | INFO | ================================================================================
+2026-05-06 01:50:20 | INFO | Trying Sea Surface Temperature for 2026-05-06...
+2026-05-06 01:50:20 | INFO | Downloading Sea Surface Temperature for 2026-05-06...
+2026-05-06 01:50:20 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-06 01:50:20 | INFO |   Variables: analysed_sst
+2026-05-06 01:50:20 | INFO |   Region: Lat[2.0, 14.0] Lon[74.0, 86.0]
+2026-05-06 01:50:27 | ERROR | ✗ Failed to download Sea Surface Temperature: Some of your subset selection [2026-05-06 00:00:00+00:00, 2026-05-06 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2024-01-17 00:00:00+00:00, 2026-05-04 00:00:00+00:00]
+2026-05-06 01:50:27 | INFO | Trying Sea Surface Temperature for 2026-05-05...
+2026-05-06 01:50:27 | INFO | Downloading Sea Surface Temperature for 2026-05-05...
+2026-05-06 01:50:27 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-06 01:50:27 | INFO |   Variables: analysed_sst
+2026-05-06 01:50:27 | INFO |   Region: Lat[2.0, 14.0] Lon[74.0, 86.0]
+2026-05-06 01:50:31 | ERROR | ✗ Failed to download Sea Surface Temperature: Some of your subset selection [2026-05-05 00:00:00+00:00, 2026-05-05 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2024-01-17 00:00:00+00:00, 2026-05-04 00:00:00+00:00]
+2026-05-06 01:50:31 | INFO | Trying Sea Surface Temperature for 2026-05-04...
+2026-05-06 01:50:31 | INFO | Downloading Sea Surface Temperature for 2026-05-04...
+2026-05-06 01:50:31 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-06 01:50:31 | INFO |   Variables: analysed_sst
+2026-05-06 01:50:31 | INFO |   Region: Lat[2.0, 14.0] Lon[74.0, 86.0]
+2026-05-06 01:50:42 | INFO | ✓ Successfully downloaded Sea Surface Temperature
+2026-05-06 01:50:42 | INFO |   File: Fish zone daily data/sst_2026-05-04.nc
+2026-05-06 01:50:42 | INFO |   Size: 138.93 KB
+2026-05-06 01:50:42 | INFO | Deleted old file: sst_2026-05-03.nc
+2026-05-06 01:50:42 | INFO | ✓ Got latest Sea Surface Temperature: 2026-05-04
+2026-05-06 01:50:42 | INFO | Trying Ocean Currents for 2026-05-06...
+2026-05-06 01:50:42 | INFO | Downloading Ocean Currents for 2026-05-06...
+2026-05-06 01:50:42 | INFO |   Dataset ID: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m
+2026-05-06 01:50:42 | INFO |   Variables: uo, vo
+2026-05-06 01:50:42 | INFO |   Region: Lat[2.0, 14.0] Lon[74.0, 86.0]
+2026-05-06 02:00:33 | INFO | ✓ Successfully downloaded Ocean Currents
+2026-05-06 02:00:33 | INFO |   File: Fish zone daily data/currents_2026-05-06.nc
+2026-05-06 02:00:33 | INFO |   Size: 8238.73 KB
+2026-05-06 02:00:33 | INFO | Deleted old file: currents_2026-05-04.nc
+2026-05-06 02:00:33 | INFO | ✓ Got latest Ocean Currents: 2026-05-06
+2026-05-06 02:00:33 | INFO | Trying Chlorophyll Concentration for 2026-05-06...
+2026-05-06 02:00:33 | INFO | Downloading Chlorophyll Concentration for 2026-05-06...
+2026-05-06 02:00:33 | INFO |   Dataset ID: cmems_obs-oc_glo_bgc-plankton_nrt_l4-gapfree-multi-4km_P1D
+2026-05-06 02:00:33 | INFO |   Variables: CHL
+2026-05-06 02:00:33 | INFO |   Region: Lat[2.0, 14.0] Lon[74.0, 86.0]
+2026-05-06 02:00:38 | ERROR | ✗ Failed to download Chlorophyll Concentration: Some of your subset selection [2026-05-06 00:00:00+00:00, 2026-05-06 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2026-04-18 00:00:00+00:00, 2026-05-04 00:00:00+00:00]
+2026-05-06 02:00:38 | INFO | Trying Chlorophyll Concentration for 2026-05-05...
+2026-05-06 02:00:38 | INFO | Downloading Chlorophyll Concentration for 2026-05-05...
+2026-05-06 02:00:38 | INFO |   Dataset ID: cmems_obs-oc_glo_bgc-plankton_nrt_l4-gapfree-multi-4km_P1D
+2026-05-06 02:00:38 | INFO |   Variables: CHL
+2026-05-06 02:00:38 | INFO |   Region: Lat[2.0, 14.0] Lon[74.0, 86.0]
+2026-05-06 02:00:43 | ERROR | ✗ Failed to download Chlorophyll Concentration: Some of your subset selection [2026-05-05 00:00:00+00:00, 2026-05-05 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2026-04-18 00:00:00+00:00, 2026-05-04 00:00:00+00:00]
+2026-05-06 02:00:43 | INFO | Trying Chlorophyll Concentration for 2026-05-04...
+2026-05-06 02:00:43 | INFO | Downloading Chlorophyll Concentration for 2026-05-04...
+2026-05-06 02:00:43 | INFO |   Dataset ID: cmems_obs-oc_glo_bgc-plankton_nrt_l4-gapfree-multi-4km_P1D
+2026-05-06 02:00:43 | INFO |   Variables: CHL
+2026-05-06 02:00:43 | INFO |   Region: Lat[2.0, 14.0] Lon[74.0, 86.0]
+2026-05-06 02:00:53 | INFO | ✓ Successfully downloaded Chlorophyll Concentration
+2026-05-06 02:00:53 | INFO |   File: Fish zone daily data/chlorophyll_2026-05-04.nc
+2026-05-06 02:00:53 | INFO |   Size: 361.25 KB
+2026-05-06 02:00:53 | INFO | Deleted old file: chlorophyll_2026-05-02.nc
+2026-05-06 02:00:53 | INFO | ✓ Got latest Chlorophyll Concentration: 2026-05-04
+2026-05-06 02:00:53 | INFO | ================================================================================
+2026-05-06 02:00:53 | INFO | DOWNLOAD SUMMARY
+2026-05-06 02:00:53 | INFO | ================================================================================
+2026-05-06 02:00:53 | INFO | Sea Surface Temperature: ✓ SUCCESS
+2026-05-06 02:00:53 | INFO | Ocean Currents:          ✓ SUCCESS
+2026-05-06 02:00:53 | INFO | Chlorophyll:             ✓ SUCCESS
+2026-05-06 02:00:53 | INFO | ================================================================================
+2026-05-06 02:00:53 | INFO | ✓ ALL DATASETS DOWNLOADED SUCCESSFULLY
+2026-05-06 02:00:53 | INFO | Run completed at: 2026-05-06 07:30:53.698793
+2026-05-06 02:00:53 | INFO | 
+2026-05-06 02:07:56 | INFO | ================================================================================
+2026-05-06 02:07:56 | INFO | Copernicus Marine Service Daily Data Fetcher
+2026-05-06 02:07:56 | INFO | ================================================================================
+2026-05-06 02:07:56 | INFO | Run started at: 2026-05-06 07:37:56.668281
+2026-05-06 02:07:56 | INFO | Mode: Download LATEST available data only
+2026-05-06 02:07:56 | INFO | ================================================================================
+2026-05-06 02:07:56 | INFO | Downloading latest available data for each dataset...
+2026-05-06 02:07:56 | INFO | ================================================================================
+2026-05-06 02:07:56 | INFO | Trying Sea Surface Temperature for 2026-05-06...
+2026-05-06 02:07:56 | INFO | Downloading Sea Surface Temperature for 2026-05-06...
+2026-05-06 02:07:56 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-06 02:07:56 | INFO |   Variables: analysed_sst
+2026-05-06 02:07:56 | INFO |   Region: Lat[2.0, 14.0] Lon[74.0, 86.0]
+2026-05-06 02:08:01 | ERROR | ✗ Failed to download Sea Surface Temperature: Some of your subset selection [2026-05-06 00:00:00+00:00, 2026-05-06 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2024-01-17 00:00:00+00:00, 2026-05-04 00:00:00+00:00]
+2026-05-06 02:08:01 | INFO | Trying Sea Surface Temperature for 2026-05-05...
+2026-05-06 02:08:01 | INFO | Downloading Sea Surface Temperature for 2026-05-05...
+2026-05-06 02:08:01 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-06 02:08:01 | INFO |   Variables: analysed_sst
+2026-05-06 02:08:01 | INFO |   Region: Lat[2.0, 14.0] Lon[74.0, 86.0]
+2026-05-06 02:08:05 | ERROR | ✗ Failed to download Sea Surface Temperature: Some of your subset selection [2026-05-05 00:00:00+00:00, 2026-05-05 23:59:59+00:00] for the time dimension exceed the dataset coordinates [2024-01-17 00:00:00+00:00, 2026-05-04 00:00:00+00:00]
+2026-05-06 02:08:05 | INFO | Trying Sea Surface Temperature for 2026-05-04...
+2026-05-06 02:08:05 | INFO | Downloading Sea Surface Temperature for 2026-05-04...
+2026-05-06 02:08:05 | INFO |   Dataset ID: METOFFICE-GLO-SST-L4-NRT-OBS-SST-V2
+2026-05-06 02:08:05 | INFO |   Variables: analysed_sst
+2026-05-06 02:08:05 | INFO |   Region: Lat[2.0, 14.0] Lon[74.0, 86.0]

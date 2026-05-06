@@ -19,6 +19,7 @@ matplotlib>=3.4.0
 
 # Data fetching
 copernicusmarine>=1.0.0
+python-dotenv>=0.21.0
 
 # Optional but recommended
 # jupyterlab  # For interactive analysis

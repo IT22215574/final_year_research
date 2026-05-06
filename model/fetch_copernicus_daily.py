@@ -22,12 +22,21 @@ import logging
 from pathlib import Path
 from typing import Optional, Tuple
 import copernicusmarine
+from dotenv import load_dotenv
 
 # ==============================================================================
 # CONFIGURATION
 # ==============================================================================
 
 # Credentials (set via environment variables - recommended for security)
+# Load .env file if present (development convenience). Do NOT commit a real
+# `.env` file into version control — use `.env.example` instead.
+try:
+    load_dotenv(dotenv_path=Path(__file__).parent / ".env")
+except Exception:
+    # Non-fatal: if python-dotenv is missing or loading fails, fall back to env
+    pass
+
 COPERNICUS_USER = os.getenv("COPERNICUS_USER", "your_username_here")
 COPERNICUS_PASS = os.getenv("COPERNICUS_PASS", "your_password_here")
 

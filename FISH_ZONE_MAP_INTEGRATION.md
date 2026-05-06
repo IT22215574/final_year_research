@@ -464,11 +464,17 @@ Part of the Final Year Research Project - Marine Fisheries Prediction System
 **Last Updated**: March 2026  
 **Integration Version**: 1.0.0
 
-# Just download data
+# Just download data (secure method)
 cd model
-export COPERNICUS_USER='ravindujayaweera123@gmail.com'
-export COPERNICUS_PASS='XarW6K6zRiF5!hk'
+# Copy the example .env and fill your credentials locally (do NOT commit):
+# cp .env.example .env
+# Edit `.env` and add your Copernicus credentials, then run:
 python3 fetch_copernicus_daily.py
+
+# Alternatively, use the example wrapper (makes cron usage easier):
+# cp run_fetch.sh.example run_fetch.sh
+# chmod +x run_fetch.sh
+# ./run_fetch.sh
 
 # Then run predictions
 python3 predict_daily_fish_zones.py
