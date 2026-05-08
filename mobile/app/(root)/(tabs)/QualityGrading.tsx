@@ -14,7 +14,7 @@ import {
   Dimensions,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -42,7 +42,7 @@ import { buildFishMeasurements } from "@/utils/measurementUtils";
 import { resolveSpecies, getSizeCategoryForSpecies } from "@/utils/fishWeight";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const BOTTOM_NAV_HEIGHT = 80; // Adjust based on your bottom navigation height
+const TAB_BAR_SPACE = 112;
 const SINGLE_IMAGE_MODE = true;
 
 /** Species that support quality grading (match labels from the model exactly) */
@@ -121,6 +121,7 @@ const VALIDATION_STATUS_UI: Record<
 
 export default function QualityGrading() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [leftImage, setLeftImage] = useState<string | null>(null);
@@ -551,30 +552,31 @@ export default function QualityGrading() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={s.container} edges={["left", "right", "bottom"]}>
-      {/* Header */}
+    <SafeAreaView style={s.container} edges={["left", "right"]}>
       <LinearGradient
         colors={HEADER_GRADIENT}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={s.header}
-      ></LinearGradient>
-      <View className="p-5">
+      >
         <TouchableOpacity
           style={s.backBtn}
           onPress={() => router.push("/Quality")}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <MaterialIcons name="arrow-back" size={24} color="#00000" />
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
+        <View style={s.headerContent}>
+          <Text style={s.headerSub}>Analyze freshness from one clear fish image</Text>
+        </View>
         <View style={s.statusContainer}>
           <View style={[s.statusDot, { backgroundColor: apiStatusColor }]} />
-          <Text style={[s.statusText, { color: apiStatusColor }]}>
+          <Text style={s.statusText}>
             {apiStatusText}
           </Text>
           {(apiStatus === "idle" || apiStatus === "error") && (
             <TouchableOpacity onPress={checkApi} style={s.retryBtn}>
-              <MaterialIcons name="refresh" size={12} color="#000000" />
+              <MaterialIcons name="refresh" size={12} color="#fff" />
               <Text style={s.retryText}>
                 {apiStatus === "idle" ? "Check" : "Retry"}
               </Text>
@@ -584,10 +586,13 @@ export default function QualityGrading() {
         {apiStatus === "error" && apiError && (
           <Text style={s.apiErrText}>{apiError}</Text>
         )}
-      </View>
+      </LinearGradient>
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={s.scrollContent}
+        contentContainerStyle={[
+          s.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 12) + TAB_BAR_SPACE },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -772,8 +777,6 @@ export default function QualityGrading() {
           </View>
         )}
 
-        {/* Add bottom spacing to avoid navigation bar overlap */}
-        <View style={{ height: BOTTOM_NAV_HEIGHT + 20 }} />
       </ScrollView>
 
       {/* ── Modals ── */}
@@ -1144,7 +1147,7 @@ const s = StyleSheet.create({
     backgroundColor: "#f8fafc",
   },
   header: {
-    paddingVertical: 10,
+    paddingVertical: 16,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
@@ -1169,6 +1172,7 @@ const s = StyleSheet.create({
   },
   headerContent: {
     alignItems: "center",
+    paddingHorizontal: 48,
   },
   headerTitle: {
     fontSize: 20,
@@ -1184,7 +1188,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 8,
+    marginTop: 10,
     gap: 6,
   },
   statusDot: {
@@ -1195,6 +1199,7 @@ const s = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: "600",
+    color: "#fff",
   },
   retryBtn: {
     flexDirection: "row",
@@ -1218,7 +1223,6 @@ const s = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 20,
   },
   noticeBox: {
     flexDirection: "row",
@@ -1241,7 +1245,7 @@ const s = StyleSheet.create({
   },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     elevation: 2,

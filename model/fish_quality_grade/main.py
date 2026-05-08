@@ -62,7 +62,7 @@ IMG_SIZE = 224
 FISH_THRESHOLD = 0.60  # Lowered from 0.70 to be more inclusive
 SPECIES_THRESHOLD = 0.45  # Lowered for internet images
 GRADE_THRESHOLD = 0.45
-UNKNOWN_SPECIES_THRESHOLD = 0.30  # Below this, classify as unknown
+UNKNOWN_SPECIES_THRESHOLD = 0.20  # Below this, classify as unknown
 SINGLE_IMAGE_FISH_THRESHOLD = 0.55  # Single uploaded/downloaded photos vary more than paired lab images
 
 # ── Per-image validation thresholds ─────────────────────────────────────────
@@ -204,7 +204,6 @@ def assess_image_quality(img: Image.Image) -> Dict:
 
 
 def enhance_for_internet_image(img: Image.Image) -> Image.Image:
-    """Apply enhancements to help with internet/downloaded images"""
     # Enhance contrast slightly
     enhancer = ImageEnhance.Contrast(img)
     img = enhancer.enhance(1.1)

@@ -11,7 +11,7 @@ import {
   Alert,
   RefreshControl,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -21,6 +21,7 @@ import { loadModels, runFishPipeline } from "@/utils/fish_quality_utils/runFishP
 import type { PredictionResult } from "@/utils/fish_quality_utils/fishTypes";
 
 const SINGLE_IMAGE_MODE = true;
+const TAB_BAR_SPACE = 112;
 
 // ── Fish name dictionary (ALL model labels → display names) ───────────────────
 const FISH_NAMES: Record<string, { english: string; sinhala: string; romanized: string }> = {
@@ -75,6 +76,7 @@ const getFishName = (label?: string | null) => {
 
 export default function SpeciesDetection() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [leftImage, setLeftImage] = useState<string | null>(null);
   const [rightImage, setRightImage] = useState<string | null>(null);
@@ -223,9 +225,14 @@ export default function SpeciesDetection() {
           <MaterialIcons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
 
+        <View style={s.headerContent}>
+          <Text style={s.headerTitle}>Species Detection</Text>
+          <Text style={s.headerSub}>Identify the fish from a clear side-view photo</Text>
+        </View>
+
         <View style={s.statusContainer}>
           <View style={[s.statusDot, { backgroundColor: apiStatusColor }]} />
-          <Text style={[s.statusText, { color: apiStatusColor }]}>{apiStatusText}</Text>
+          <Text style={s.statusText}>{apiStatusText}</Text>
           {(apiStatus === "idle" || apiStatus === "error") && (
             <TouchableOpacity onPress={checkApi} style={s.retryBtn}>
               <MaterialIcons name="refresh" size={12} color="#fff" />
@@ -239,7 +246,10 @@ export default function SpeciesDetection() {
       </LinearGradient>
 
       <ScrollView
-        contentContainerStyle={s.scroll}
+        contentContainerStyle={[
+          s.scroll,
+          { paddingBottom: Math.max(insets.bottom, 12) + TAB_BAR_SPACE },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={apiStatus === "checking"} onRefresh={checkApi} />
@@ -299,7 +309,10 @@ export default function SpeciesDetection() {
                     <Text style={s.loadingText}>{loadingMsg}</Text>
                   </View>
                 ) : (
-                  <Text style={s.predictText}>🔍 DETECT SPECIES</Text>
+                  <View style={s.predictContent}>
+                    <MaterialIcons name="search" size={20} color="#fff" />
+                    <Text style={s.predictText}>Detect Species</Text>
+                  </View>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -488,12 +501,19 @@ const s = StyleSheet.create({
   },
   headerContent: {
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 10,
+    paddingHorizontal: 44,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: "bold",
     color: "#fff",
+    textAlign: "center",
+  },
+  headerSub: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.86)",
+    marginTop: 3,
     textAlign: "center",
   },
   statusContainer: {
@@ -504,7 +524,7 @@ const s = StyleSheet.create({
     marginTop: 4,
   },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 12, fontWeight: "600" },
+  statusText: { fontSize: 12, fontWeight: "600", color: "#fff" },
   retryBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -517,9 +537,9 @@ const s = StyleSheet.create({
   retryText: { color: "#fff", fontSize: 11, marginLeft: 2 },
   apiErrText: { color: "#ffd0cc", fontSize: 11, textAlign: "center", marginTop: 4 },
 
-  scroll: { padding: 16, paddingBottom: 40, gap: 14 },
+  scroll: { padding: 16, gap: 14 },
 
-  card: { backgroundColor: "#fff", borderRadius: 14, padding: 16, elevation: 3, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6 },
+  card: { backgroundColor: "#fff", borderRadius: 12, padding: 16, elevation: 3, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6 },
   cardTitle: { fontSize: 16, fontWeight: "700", color: "#2c3e50", marginBottom: 14 },
   cardSubTitle: { fontSize: 12, color: "#64748b", marginTop: -8, marginBottom: 12 },
 
@@ -546,6 +566,7 @@ const s = StyleSheet.create({
   predictGradient: { paddingVertical: 14, alignItems: "center" },
   loadingRow: { alignItems: "center" },
   loadingText: { color: "#f5f6fa", fontSize: 11, marginTop: 6 },
+  predictContent: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   predictText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
   resetBtn: { padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: "#e74c3c" },
 
