@@ -31,7 +31,10 @@ export default function PredictionCards({
       </View>
 
       <View className="flex-row gap-3">
-        <Card title="🌿 Carbon (kg)" value={carbonKg != null ? num1(carbonKg) : "-"} />
+        <Card
+          title="CO2 Emission (kg)"
+          value={carbonKg != null ? num1(carbonKg) : "-"}
+        />
         <Card
           title="📈 Profitability"
           value={profitProb != null ? `${Math.round(Number(profitProb) * 100)}%` : "-"}

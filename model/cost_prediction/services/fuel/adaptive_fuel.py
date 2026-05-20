@@ -143,10 +143,14 @@ class AdaptiveFuelEngine:
             model_loaded_from = self.model_path if self.model is not None else None
             model_scope = "LEGACY" if self.model is not None else "BASELINE_ONLY"
 
-        # Get base prediction from selected ML model when available.
-        # If no model exists (fresh retrain state), use deterministic baseline.
+        baseline_total = None
+
+        # Get base prediction from the selected ML model when available.
+        # The deterministic baseline is only a fallback for missing models.
         if selected_model is not None:
             base_predicted = float(selected_model.predict(X)[0])
+            predicted = base_predicted
+            prediction_source = "TRAINED_MODEL"
         else:
             fallback_rate = get_boat_fuel_baseline(boat_type) if boat_type else get_boat_fuel_baseline("general")
             distance_component = float(payload["distanceKm"]) * fallback_rate
@@ -158,66 +162,46 @@ class AdaptiveFuelEngine:
                 * hp_hour_rate
                 * engine_load_factor
             )
-            base_predicted = distance_component + fishing_component
-        
-        # Apply boat-type-specific fuel baseline adjustment
-        # This adjusts the ML prediction based on the boat's inherent efficiency
-        if boat_type:
-            fuel_baseline = get_boat_fuel_baseline(boat_type)
-            distance_km = float(payload["distanceKm"])
-            
-            # Calculate baseline fuel from distance using boat-type rate
-            baseline_distance_fuel = distance_km * fuel_baseline
-            
-            # Use baseline for distance portion, keep ML prediction for other factors
-            # This ensures boat-type efficiency is properly reflected
-            hp_hour_rate = get_boat_hp_hour_rate(boat_type)
-            engine_load_factor = 0.35
-            fishing_component = (
-                float(payload["engineHP"])
-                * float(payload["fishingHours"])
-                * hp_hour_rate
-                * engine_load_factor
-            )
-            baseline_total = baseline_distance_fuel + fishing_component
-            
-            # Blend ML prediction with boat-type baseline (70% baseline, 30% ML)
-            # This allows ML to adjust while respecting boat-type efficiency
-            predicted = baseline_total * 0.7 + base_predicted * 0.3
-        else:
-            # No boat type provided, use pure ML prediction
-            predicted = base_predicted
+            baseline_total = distance_component + fishing_component
+            base_predicted = baseline_total
+            predicted = baseline_total
+            prediction_source = "BASELINE_FALLBACK"
 
         # Apply boat-specific adaptive coefficients
+        adaptive_applied = boat_coeffs.get("dataPoints", 0) > 0
+
         # 1. Apply main fuel efficiency factor (learned from historical errors)
-        predicted *= boat_coeffs["fuelEfficiencyFactor"]
+        if adaptive_applied:
+            predicted *= boat_coeffs["fuelEfficiencyFactor"]
         
-        # 2. Apply engine degradation (increases fuel consumption over time)
-        predicted *= (1.0 + boat_coeffs["engineDegradationFactor"])
+            # 2. Apply engine degradation (increases fuel consumption over time)
+            predicted *= (1.0 + boat_coeffs["engineDegradationFactor"])
         
-        # 3. Apply speed optimization factor (boat-specific speed efficiency)
-        speed = float(payload["speed"])
-        if speed != 10:  # 10 is baseline speed
-            speed_deviation = abs(speed - 10) / 10
-            speed_impact = 1.0 + speed_deviation * (boat_coeffs["speedOptimizationFactor"] - 1.0)
-            predicted *= speed_impact
+            # 3. Apply speed optimization factor (boat-specific speed efficiency)
+            speed = float(payload["speed"])
+            if speed != 10:  # 10 is baseline speed
+                speed_deviation = abs(speed - 10) / 10
+                speed_impact = 1.0 + speed_deviation * (boat_coeffs["speedOptimizationFactor"] - 1.0)
+                predicted *= speed_impact
         
-        # 4. Apply weather adaptation factor
-        wsi = float(payload["weatherSeverityIndex"])
-        if wsi > 0.1:  # Apply only for notable weather
-            weather_impact = 1.0 + wsi * (boat_coeffs["weatherAdaptationFactor"] - 1.0)
-            predicted *= weather_impact
+            # 4. Apply weather adaptation factor
+            wsi = float(payload["weatherSeverityIndex"])
+            if wsi > 0.1:  # Apply only for notable weather
+                weather_impact = 1.0 + wsi * (boat_coeffs["weatherAdaptationFactor"] - 1.0)
+                predicted *= weather_impact
         
-        # 5. Apply seasonal adjustments
-        current_month = datetime.utcnow().month
-        if current_month in [5, 6, 7, 8, 9, 10]:  # Monsoon
-            seasonal_factor = boat_coeffs["seasonalAdjustments"]["monsoon"]
-        elif current_month in [12, 1, 2, 3]:  # Dry season
-            seasonal_factor = boat_coeffs["seasonalAdjustments"]["dry"]
+            # 5. Apply seasonal adjustments learned for this boat
+            current_month = datetime.utcnow().month
+            if current_month in [5, 6, 7, 8, 9, 10]:  # Monsoon
+                seasonal_factor = boat_coeffs["seasonalAdjustments"]["monsoon"]
+            elif current_month in [12, 1, 2, 3]:  # Dry season
+                seasonal_factor = boat_coeffs["seasonalAdjustments"]["dry"]
+            else:
+                seasonal_factor = boat_coeffs["seasonalAdjustments"]["inter_monsoon"]
+
+            predicted *= seasonal_factor
         else:
-            seasonal_factor = boat_coeffs["seasonalAdjustments"]["inter_monsoon"]
-        
-        predicted *= seasonal_factor
+            seasonal_factor = 1.0
         
         # 6. Apply legacy multipliers (for backward compatibility)
         predicted *= float(payload.get("engineDegradation", 1.0))
@@ -227,12 +211,16 @@ class AdaptiveFuelEngine:
         response = {
             "predictedFuelLiters": round(predicted, 2),
             "basePrediction": round(base_predicted, 2),
+            "rawModelPrediction": round(base_predicted, 2) if prediction_source == "TRAINED_MODEL" else None,
+            "baselineFallbackPrediction": round(baseline_total, 2) if baseline_total is not None else None,
+            "predictionSource": prediction_source,
             "boatSpecificAdjustments": {
                 "fuelEfficiencyFactor": boat_coeffs["fuelEfficiencyFactor"],
                 "engineDegradationFactor": boat_coeffs["engineDegradationFactor"],
                 "speedOptimizationFactor": boat_coeffs["speedOptimizationFactor"],
                 "weatherAdaptationFactor": boat_coeffs["weatherAdaptationFactor"],
                 "seasonalFactor": seasonal_factor,
+                "adaptiveApplied": adaptive_applied,
                 "confidence": boat_coeffs["confidence"],
                 "dataPoints": boat_coeffs["dataPoints"]
             }
@@ -245,7 +233,7 @@ class AdaptiveFuelEngine:
                 "boatTypeName": get_boat_type_name(boat_type),
                 "baselineFuelPerKm": get_boat_fuel_baseline(boat_type),
                 "baselineFuelPerHpHour": get_boat_hp_hour_rate(boat_type),
-                "baselineApplied": True
+                "baselineApplied": prediction_source == "BASELINE_FALLBACK"
             }
 
         model_meta = self._load_metadata_cached(model_loaded_from) if model_loaded_from else {}

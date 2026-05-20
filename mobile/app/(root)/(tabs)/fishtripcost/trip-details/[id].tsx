@@ -569,7 +569,7 @@ export default function TripDetailsScreen() {
             }
           />
           <Row
-            label="Carbon Emission"
+            label="CO2 Emission"
             value={
               trip.carbonEmissionKg != null
                 ? `${formatNumber(trip.carbonEmissionKg)} kg`
@@ -577,10 +577,10 @@ export default function TripDetailsScreen() {
             }
           />
           <Row
-            label="Carbon per Kg Catch"
+            label="CO2 per Kg Catch"
             value={
               trip.carbonPerKgCatch != null
-                ? formatNumber(trip.carbonPerKgCatch)
+                ? `${formatNumber(trip.carbonPerKgCatch)} kg CO2/kg`
                 : "N/A"
             }
           />

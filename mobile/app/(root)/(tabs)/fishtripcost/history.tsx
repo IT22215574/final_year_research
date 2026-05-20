@@ -316,8 +316,13 @@ const HistoryScreen = () => {
             const createdAt = item?.createdAt ? formatDate(item.createdAt) : "—";
             const predictedTotal =
               item?.predictedTotalCost ?? item?.predictedCost ?? null;
-            const actualFuel = item?.actualFuelLiters ?? item?.fuelUsedLiters ?? null;
-            const hasActual = actualFuel !== null;
+            const actualFuel =
+              typeof item?.actualFuelLiters === "number"
+                ? item.actualFuelLiters
+                : typeof item?.fuelUsedLiters === "number"
+                  ? item.fuelUsedLiters
+                  : null;
+            const hasActual = item?.status === "completed" && Number(actualFuel) > 0;
 
             return (
               <TouchableOpacity
@@ -448,16 +453,17 @@ const HistoryScreen = () => {
                   </View>
 
                   {/* Actuals */}
-                  {(selectedTrip?.actualFuelLiters ||
-                    selectedTrip?.fuelUsedLiters ||
-                    selectedTrip?.actualCatchKg) && (
+                  {((selectedTrip?.status === "completed" &&
+                    (Number(selectedTrip?.actualFuelLiters) > 0 ||
+                      Number(selectedTrip?.fuelUsedLiters) > 0)) ||
+                    Number(selectedTrip?.actualCatchKg) > 0) && (
                     <>
                       <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                         Actual Results
                       </Text>
                       <View className="bg-emerald-50 rounded-xl p-4 mb-4">
-                        {(selectedTrip?.actualFuelLiters ||
-                          selectedTrip?.fuelUsedLiters) && (
+                        {(Number(selectedTrip?.actualFuelLiters) > 0 ||
+                          Number(selectedTrip?.fuelUsedLiters) > 0) && (
                           <View className="flex-row justify-between mb-3">
                             <Text className="text-emerald-700">Fuel Used</Text>
                             <Text className="font-bold text-emerald-700">
@@ -468,7 +474,7 @@ const HistoryScreen = () => {
                           </View>
                         )}
 
-                        {selectedTrip?.actualCatchKg && (
+                        {Number(selectedTrip?.actualCatchKg) > 0 && (
                           <View className="flex-row justify-between">
                             <Text className="text-emerald-700">Catch Weight</Text>
                             <Text className="font-bold text-emerald-700">

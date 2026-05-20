@@ -1,5 +1,5 @@
 // mobile/app/(root)/(tabs)/fishtripcost/log-actual.tsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -12,10 +12,10 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 import useTripStore from "@/stores/tripStore";
-import { logActualTripDatcie } from "@/services/tripService";
+import { getTripById, logActualTripDatcie } from "@/services/tripService";
 import FishTripNavBar from "./components/FishTripNavBar";
 
 const num = (v: string) => {
@@ -25,11 +25,17 @@ const num = (v: string) => {
 
 const LogActualScreen = () => {
   const router = useRouter();
+  const params = useLocalSearchParams<{ tripId?: string | string[] }>();
+  const selectedTripId = Array.isArray(params.tripId)
+    ? params.tripId[0]
+    : params.tripId;
 
   const lastSavedTripId = useTripStore((s) => s.lastSavedTripId);
   const lastSavedTrip = useTripStore((s) => s.lastSavedTrip);
   const prediction = useTripStore((s) => s.datciePrediction);
 
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [loadingTrip, setLoadingTrip] = useState(false);
   const [actualFuelLiters, setActualFuelLiters] = useState("");
   const [actualCatchKg, setActualCatchKg] = useState("");
   const [actualRevenue, setActualRevenue] = useState("");
@@ -41,47 +47,94 @@ const LogActualScreen = () => {
     mlInfo: false,
   });
 
+  useEffect(() => {
+    let mounted = true;
+
+    const loadSelectedTrip = async () => {
+      if (!selectedTripId) {
+        setSelectedTrip(null);
+        return;
+      }
+
+      try {
+        setLoadingTrip(true);
+        const trip = await getTripById(String(selectedTripId));
+        if (mounted) {
+          setSelectedTrip(trip);
+        }
+      } catch (e: any) {
+        console.error("❌ Failed to load selected trip:", e);
+        if (mounted) {
+          Alert.alert(
+            "Trip Load Failed",
+            e?.message || "Could not load the selected trip.",
+          );
+        }
+      } finally {
+        if (mounted) {
+          setLoadingTrip(false);
+        }
+      }
+    };
+
+    loadSelectedTrip();
+
+    return () => {
+      mounted = false;
+    };
+  }, [selectedTripId]);
+
   const summary = useMemo(() => {
+    const activeTrip = selectedTrip || lastSavedTrip;
+
     const predictedFuel =
       prediction?.fuel?.predictedFuelLiters ??
       prediction?.predictedFuelLiters ??
+      activeTrip?.predictedFuelLiters ??
       null;
 
     const predictedTotal =
       prediction?.cost?.predictedTotalCost ??
       prediction?.predictedTotalCost ??
+      activeTrip?.predictedTotalCost ??
       null;
 
     const tripId =
-      lastSavedTripId || lastSavedTrip?._id || lastSavedTrip?.id || null;
+      selectedTripId ||
+      lastSavedTripId ||
+      activeTrip?._id ||
+      activeTrip?.id ||
+      null;
 
     const boatName =
-      lastSavedTrip?.boat?.boatName ||
-      lastSavedTrip?.boatName ||
+      activeTrip?.boat?.boatName ||
+      activeTrip?.boatName ||
+      activeTrip?.boatId ||
       "Unknown Boat";
 
     const boatType =
-      lastSavedTrip?.boat?.boatType || lastSavedTrip?.boatType || "N/A";
+      activeTrip?.boat?.boatType || activeTrip?.boatType || "N/A";
 
     const engineHP =
-      lastSavedTrip?.engineHorsePower ||
-      lastSavedTrip?.engineHP ||
-      lastSavedTrip?.boat?.engineHorsePower ||
+      activeTrip?.engineHorsePower ||
+      activeTrip?.engineHP ||
+      activeTrip?.boat?.engineHorsePower ||
       "N/A";
 
     const distance =
-      lastSavedTrip?.distanceKm ||
+      activeTrip?.distanceKm ||
+      activeTrip?.predictedDistanceKm ||
       prediction?.distance?.predictedDistanceKm ||
       0;
 
-    const speed = lastSavedTrip?.speed || lastSavedTrip?.averageSpeed || 0;
-    const fishingHours = lastSavedTrip?.fishingHours || 0;
-    const numberOfDays = lastSavedTrip?.numberOfDays || 0;
-    const crewCount = lastSavedTrip?.crewCount || 0;
-    const windSpeed = lastSavedTrip?.windSpeed || 0;
-    const waveHeight = lastSavedTrip?.waveHeight || 0;
+    const speed = activeTrip?.speed || activeTrip?.averageSpeed || 0;
+    const fishingHours = activeTrip?.fishingHours || 0;
+    const numberOfDays = activeTrip?.numberOfDays || 0;
+    const crewCount = activeTrip?.crewCount || 0;
+    const windSpeed = activeTrip?.windSpeed || 0;
+    const waveHeight = activeTrip?.waveHeight || 0;
     const weatherSeverity =
-      lastSavedTrip?.weatherSeverityIndex || prediction?.weather?.wsi || 0;
+      activeTrip?.weatherSeverityIndex || prediction?.weather?.wsi || 0;
 
     return {
       predictedFuel,
@@ -99,7 +152,7 @@ const LogActualScreen = () => {
       waveHeight,
       weatherSeverity,
     };
-  }, [prediction, lastSavedTripId, lastSavedTrip]);
+  }, [prediction, selectedTripId, selectedTrip, lastSavedTripId, lastSavedTrip]);
 
   const toggleSection = (section: "tripDetails" | "boatSpecs" | "mlInfo") => {
     setExpandedSections((prev) => ({
@@ -247,7 +300,16 @@ const LogActualScreen = () => {
           </View>
 
           {/* Trip Status Card */}
-          {!summary.tripId ? (
+          {loadingTrip ? (
+            <View className="bg-blue-50 rounded-2xl border border-blue-200 p-5 mb-6">
+              <View className="flex-row items-center">
+                <ActivityIndicator color="#2563eb" />
+                <Text className="text-blue-700 font-semibold ml-3">
+                  Loading selected trip...
+                </Text>
+              </View>
+            </View>
+          ) : !summary.tripId ? (
             <View className="bg-amber-50 rounded-2xl border border-amber-200 p-6 mb-6">
               <View className="flex-row items-start mb-4">
                 <View className="w-12 h-12 rounded-xl bg-amber-100 items-center justify-center mr-4">
@@ -560,7 +622,7 @@ const LogActualScreen = () => {
                 onChangeText={setActualFuelLiters}
                 placeholder="e.g. 185.5"
                 keyboardType="decimal-pad"
-                editable={!!summary.tripId}
+                editable={!!summary.tripId && !loadingTrip}
                 className={`rounded-xl px-4 py-3.5 text-base ${
                   summary.tripId
                     ? "bg-gray-50 border border-gray-300 text-gray-900"
@@ -582,7 +644,7 @@ const LogActualScreen = () => {
                 onChangeText={setActualCatchKg}
                 placeholder="e.g. 142"
                 keyboardType="decimal-pad"
-                editable={!!summary.tripId}
+                editable={!!summary.tripId && !loadingTrip}
                 className={`rounded-xl px-4 py-3.5 text-base ${
                   summary.tripId
                     ? "bg-gray-50 border border-gray-300 text-gray-900"
@@ -604,7 +666,7 @@ const LogActualScreen = () => {
                 onChangeText={setActualRevenue}
                 placeholder="e.g. 85200"
                 keyboardType="decimal-pad"
-                editable={!!summary.tripId}
+                editable={!!summary.tripId && !loadingTrip}
                 className={`rounded-xl px-4 py-3.5 text-base ${
                   summary.tripId
                     ? "bg-gray-50 border border-gray-300 text-gray-900"
@@ -627,7 +689,7 @@ const LogActualScreen = () => {
                 placeholder="e.g. Good weather, found school early"
                 multiline
                 numberOfLines={4}
-                editable={!!summary.tripId}
+                editable={!!summary.tripId && !loadingTrip}
                 className={`rounded-xl px-4 py-3.5 text-base min-h-[100px] ${
                   summary.tripId
                     ? "bg-gray-50 border border-gray-300 text-gray-900"
@@ -654,10 +716,12 @@ const LogActualScreen = () => {
 
             <TouchableOpacity
               onPress={onSubmit}
-              disabled={saving || !summary.tripId}
+              disabled={saving || loadingTrip || !summary.tripId}
               activeOpacity={0.7}
               className={`rounded-xl py-4 items-center mb-3 ${
-                saving || !summary.tripId ? "bg-indigo-300" : "bg-indigo-600"
+                saving || loadingTrip || !summary.tripId
+                  ? "bg-indigo-300"
+                  : "bg-indigo-600"
               }`}
             >
               {saving ? (

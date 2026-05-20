@@ -189,19 +189,25 @@ export class TripMetricsService {
     const totalPredictedFuel = this.sumSafe(
       trips.map((t) => t.predictedFuelLiters),
     );
+    const totalComparablePredictedFuel = this.sumSafe(
+      eligibleTrips.map((t) => t.predictedFuelLiters),
+    );
     const totalActualFuel = this.sumSafe(
       eligibleTrips.map((t) => t.actualFuelLiters),
     );
-    const totalFuelVariance = totalActualFuel - totalPredictedFuel;
+    const totalFuelVariance = totalActualFuel - totalComparablePredictedFuel;
 
     // Cost aggregations
     const totalPredictedCost = this.sumSafe(
       trips.map((t) => t.predictedTotalCost),
     );
+    const totalComparablePredictedCost = this.sumSafe(
+      eligibleTrips.map((t) => t.predictedTotalCost),
+    );
     const totalActualCost = eligibleTrips.reduce((sum, t) => {
       return sum + (this.calculateActualTotalCost(t) || 0);
     }, 0);
-    const totalCostVariance = totalActualCost - totalPredictedCost;
+    const totalCostVariance = totalActualCost - totalComparablePredictedCost;
 
     // Averages
     const averagePredictedCost =
@@ -452,6 +458,11 @@ export class TripMetricsService {
    * Calculate actual total cost from trip components
    */
   private calculateActualTotalCost(trip: any): number | null {
+    const storedActualTotal = this.safeNumber(trip.actualTotalCost);
+    if (storedActualTotal != null) {
+      return storedActualTotal;
+    }
+
     const fuelCost = this.safeNumber(trip.actualFuelCost);
     const operationalCost = this.safeNumber(trip.actualOperationalCost);
     const externalCost = this.calculateActualExternalCostTotal(trip);
@@ -502,7 +513,7 @@ export class TripMetricsService {
 
     // Data quality checks - filter out unrealistic values
     // Fuel should be positive and reasonable (not 0, not absurdly high)
-    if (predictedFuel <= 0 || actualFuel < 0) {
+    if (predictedFuel <= 0 || actualFuel <= 0) {
       return false;
     }
 

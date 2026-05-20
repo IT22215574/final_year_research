@@ -90,6 +90,15 @@ type ModelArtifact = {
     rmse: number | null;
     r2: number | null;
   };
+  cvBestModel: string | null;
+  cvMetrics: {
+    mape: number | null;
+    mae: number | null;
+    rmse: number | null;
+    r2: number | null;
+  };
+  verificationMethod: string | null;
+  metricsUsed: string[];
   updatedAt: string | null;
 };
 
@@ -136,9 +145,13 @@ type BoatTypeView = {
   artifactRowsUsed: number;
   modelAccuracy: number;
   mape: number;
+  cvMape: number | null;
   mae: number;
+  cvMae: number | null;
   rmse: number;
+  cvRmse: number | null;
   r2: number;
+  cvR2: number | null;
   coveragePercent: number;
   jobSuccessRate: number;
   trainingJobs: number;
@@ -149,8 +162,10 @@ type BoatTypeView = {
   lastTrainingAt: string | null;
   highRiskTrips: number;
   algorithm: string;
+  cvAlgorithm: string;
   modelStatus: string;
   modelSource: string;
+  verificationMethod: string;
 };
 
 const colors = ["#2563eb", "#059669", "#d97706", "#0891b2", "#7c3aed", "#dc2626"];
@@ -191,6 +206,18 @@ function formatR2(value: number) {
     minimumFractionDigits: 3,
     maximumFractionDigits: 3,
   }).format(value);
+}
+
+function formatNullablePercent(value: number | null) {
+  return value == null ? "Not available" : formatPercent(value);
+}
+
+function formatNullableNumber(value: number | null) {
+  return value == null ? "Not available" : formatNumber(value);
+}
+
+function formatNullableR2(value: number | null) {
+  return value == null ? "Not available" : formatR2(value);
 }
 
 function formatDate(value: string | null) {
@@ -320,9 +347,12 @@ export default function FishTripAnalyticsPage() {
             if (b.status === "ACTIVE" && a.status !== "ACTIVE") return 1;
             return Number(a.selectionRank || 99) - Number(b.selectionRank || 99);
           })[0];
+        const artifactValidationMape =
+          artifactRow?.cvMetrics?.mape ?? artifactRow?.metrics.mape ?? null;
+        const hasCvMetrics = artifactRow?.cvMetrics?.mape != null;
         const artifactAccuracy =
-          artifactRow?.metrics.mape != null
-            ? Math.max(0, Math.min(100, 100 - artifactRow.metrics.mape))
+          artifactValidationMape != null
+            ? Math.max(0, Math.min(100, 100 - artifactValidationMape))
             : 0;
         const registryAccuracy = modelAccuracy(bestModel);
         const trainingRows = datasetRow?.totalRows || 0;
@@ -333,9 +363,7 @@ export default function FishTripAnalyticsPage() {
           artifactRowsUsed !== trainingRows;
         const modelDatasetCoverage =
           trainingRows > 0 && artifactRowsUsed > 0
-            ? hasArtifactDatasetMismatch
-              ? 0
-              : 100
+            ? Math.min(100, (artifactRowsUsed / trainingRows) * 100)
             : analyticsRow?.coveragePercent || 0;
 
         return {
@@ -351,9 +379,13 @@ export default function FishTripAnalyticsPage() {
           artifactRowsUsed,
           modelAccuracy: artifactAccuracy || registryAccuracy,
           mape: artifactRow?.metrics.mape || metricValue(bestModel?.metrics, "mape", "MAPE", "averagePredictionError") || 0,
+          cvMape: hasCvMetrics ? artifactRow?.cvMetrics?.mape ?? null : null,
           mae: artifactRow?.metrics.mae || metricValue(bestModel?.metrics, "mae", "MAE") || 0,
+          cvMae: hasCvMetrics ? artifactRow?.cvMetrics?.mae ?? null : null,
           rmse: artifactRow?.metrics.rmse || metricValue(bestModel?.metrics, "rmse", "RMSE") || 0,
+          cvRmse: hasCvMetrics ? artifactRow?.cvMetrics?.rmse ?? null : null,
           r2: artifactRow?.metrics.r2 || metricValue(bestModel?.metrics, "r2", "R2") || 0,
+          cvR2: hasCvMetrics ? artifactRow?.cvMetrics?.r2 ?? null : null,
           coveragePercent: analyticsRow?.coveragePercent || 0,
           jobSuccessRate: analyticsRow?.jobSuccessRate || 0,
           trainingJobs: analyticsRow?.trainingJobs || 0,
@@ -364,8 +396,12 @@ export default function FishTripAnalyticsPage() {
           lastTrainingAt: artifactRow?.updatedAt || analyticsRow?.lastTrainingAt || null,
           highRiskTrips: boatTypeTrips.filter((trip) => trip.riskCategory === "high").length,
           algorithm: artifactRow?.selectedModel || bestModel?.algorithmType || "No model",
+          cvAlgorithm: hasCvMetrics
+            ? artifactRow?.cvBestModel || artifactRow?.selectedModel || bestModel?.algorithmType || "No model"
+            : "Not available",
           modelStatus: artifactRow?.modelExists ? "ARTIFACT" : bestModel?.status || "NONE",
           modelSource: artifactRow?.modelExists ? "Colab artifact" : bestModel ? "Registry" : "None",
+          verificationMethod: artifactRow?.verificationMethod || "Holdout split",
         };
       })
       .sort(
@@ -517,13 +553,19 @@ export default function FishTripAnalyticsPage() {
                   <div>
                     <h2 className="text-xl font-bold text-gray-900">{row.displayName}</h2>
                     <p className="text-sm text-gray-500 mt-1">
-                      {row.algorithm} • {row.modelStatus} • {row.modelSource} • Last training {formatDate(row.lastTrainingAt)}
+                      Holdout {row.algorithm} • CV {row.cvAlgorithm} • {row.modelSource} • Last training {formatDate(row.lastTrainingAt)}
                     </p>
                   </div>
                   <div className="text-left md:text-right">
-                    <div className="text-sm text-gray-500">Validation score</div>
+                    <div className="text-sm text-gray-500">CV validation score</div>
                     <div className="text-3xl font-bold text-blue-700">{formatPercent(row.modelAccuracy)}</div>
                   </div>
+                </div>
+
+                <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                  Verification: {row.verificationMethod}. {row.cvMape == null
+                    ? "Repeated CV metrics are not available from the API response yet."
+                    : "Metrics shown include holdout and repeated CV results."}
                 </div>
 
                 {dataQualityNotes(row).length > 0 ? (
@@ -541,10 +583,14 @@ export default function FishTripAnalyticsPage() {
                   <MiniStat label="Uploaded rows" value={row.uploadedTrainingRows.toLocaleString()} />
                   <MiniStat label="Manual rows" value={row.manualTrainingRows.toLocaleString()} />
                   <MiniStat label="Rows used" value={row.artifactRowsUsed.toLocaleString()} />
-                  <MiniStat label="MAPE" value={formatPercent(row.mape)} />
-                  <MiniStat label="MAE" value={formatNumber(row.mae)} />
-                  <MiniStat label="RMSE" value={formatNumber(row.rmse)} />
-                  <MiniStat label="R2" value={formatR2(row.r2)} />
+                  <MiniStat label="Holdout MAPE" value={formatPercent(row.mape)} />
+                  <MiniStat label="CV MAPE" value={formatNullablePercent(row.cvMape)} />
+                  <MiniStat label="Holdout MAE" value={formatNumber(row.mae)} />
+                  <MiniStat label="CV MAE" value={formatNullableNumber(row.cvMae)} />
+                  <MiniStat label="Holdout RMSE" value={formatNumber(row.rmse)} />
+                  <MiniStat label="CV RMSE" value={formatNullableNumber(row.cvRmse)} />
+                  <MiniStat label="Holdout R2" value={formatR2(row.r2)} />
+                  <MiniStat label="CV R2" value={formatNullableR2(row.cvR2)} />
                 </div>
 
                 <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-3">

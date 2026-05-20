@@ -37,6 +37,7 @@ const COST_CATEGORIES = [
   "Maintenance",
   "Insurance",
   "Other",
+  "Custom",
 ];
 
 type Props = {
@@ -52,6 +53,7 @@ export default function ExternalCostForm({
 }: Props) {
   const [formName, setFormName] = useState("");
   const [formCategory, setFormCategory] = useState("Harbor Fee");
+  const [formCustomCategory, setFormCustomCategory] = useState("");
   const [formQuantity, setFormQuantity] = useState("1");
   const [formPricePerUnit, setFormPricePerUnit] = useState("");
   const [formAmount, setFormAmount] = useState("");
@@ -147,6 +149,14 @@ export default function ExternalCostForm({
       return;
     }
 
+    const category =
+      formCategory === "Custom" ? formCustomCategory.trim() : formCategory;
+
+    if (!category) {
+      Alert.alert("Validation", "Category is required");
+      return;
+    }
+
     if (!formQuantity.trim() || !formPricePerUnit.trim()) {
       Alert.alert("Validation", "Quantity and price per unit are required");
       return;
@@ -168,7 +178,7 @@ export default function ExternalCostForm({
 
     const newCost: ExternalCostItem = {
       name: formName.trim(),
-      category: formCategory,
+      category,
       quantity,
       pricePerUnit,
       amount,
@@ -181,6 +191,7 @@ export default function ExternalCostForm({
     // Reset form
     setFormName("");
     setFormCategory("Harbor Fee");
+    setFormCustomCategory("");
     setFormQuantity("1");
     setFormPricePerUnit("");
     setFormAmount("");
@@ -566,6 +577,20 @@ export default function ExternalCostForm({
               ))}
             </ScrollView>
           </View>
+
+          {formCategory === "Custom" && (
+            <View className="mb-3">
+              <Text className="text-sm font-semibold text-slate-700 mb-2">
+                Custom Category *
+              </Text>
+              <TextInput
+                className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800"
+                placeholder="e.g., Fuel Delivery"
+                value={formCustomCategory}
+                onChangeText={setFormCustomCategory}
+              />
+            </View>
+          )}
 
           {/* Quantity and Price Per Unit */}
           <View className="mb-3">

@@ -80,22 +80,27 @@ const ResultScreen = () => {
     console.log("🔍 Prediction Data:", JSON.stringify(prediction, null, 2));
 
     const fuelLiters =
+      prediction?.fuel?.adjustedFuelLiters ??
       prediction?.fuel?.predictedFuelLiters ??
       prediction?.predictedFuelLiters ??
       null;
 
     const fuelCost =
       prediction?.cost?.predictedFuelCost ??
+      prediction?.cost?.fuelCost ??
       prediction?.predictedFuelCost ??
       null;
 
     const operationalCost =
       prediction?.cost?.predictedOperationalCost ??
+      prediction?.cost?.baseOperationalCost ??
+      prediction?.cost?.operationalCost ??
       prediction?.predictedOperationalCost ??
       null;
 
     const externalCostTotal =
       prediction?.cost?.predictedExternalCostTotal ??
+      prediction?.cost?.externalCostTotal ??
       prediction?.predictedExternalCostTotal ??
       null;
 
@@ -116,6 +121,7 @@ const ResultScreen = () => {
 
     const externalCosts =
       prediction?.cost?.predictedExternalCosts ??
+      prediction?.cost?.externalCosts ??
       prediction?.predictedExternalCosts ??
       [];
 
@@ -124,27 +130,18 @@ const ResultScreen = () => {
       prediction?.carbon?.carbonKg ??
       null;
 
-    const profitProb =
-      prediction?.profitability?.profitabilityProbability ??
-      prediction?.profitability?.probability ??
-      null;
-
     const risk =
       prediction?.profitability?.riskCategory ??
       prediction?.profitability?.risk ??
       null;
 
-    const recs = prediction?.recommendations ?? prediction?.tips ?? [];
-
-    // Profitability calculations
-    const expectedCatch = datcieBody?.expectedCatch ?? 0;
-    const marketPrice = datcieBody?.marketPrice ?? 0;
-    const expectedRevenue = expectedCatch * marketPrice;
-    const expectedProfit = totalCost ? expectedRevenue - totalCost : null;
-    const profitMargin =
-      totalCost && expectedRevenue > 0
-        ? ((expectedProfit ?? 0) / expectedRevenue) * 100
-        : null;
+    const recsRaw = prediction?.recommendations ?? prediction?.tips ?? [];
+    const recs = Array.isArray(recsRaw)
+      ? recsRaw.filter(
+          (item: string) =>
+            !/profit|revenue|market|catch/i.test(String(item || "")),
+        )
+      : [];
 
     return {
       fuelLiters,
@@ -154,16 +151,10 @@ const ResultScreen = () => {
       totalCost,
       externalCosts,
       carbonKg,
-      profitProb,
       risk,
       recs,
-      expectedRevenue,
-      expectedProfit,
-      profitMargin,
-      expectedCatch,
-      marketPrice,
     };
-  }, [prediction, datcieBody]);
+  }, [prediction]);
 
   const onSaveTrip = async () => {
     if (!datcieBody) {
@@ -203,7 +194,7 @@ const ResultScreen = () => {
             Prediction Result
           </Text>
           <Text className="text-xs text-slate-400 mt-0.5">
-            DATCIE • fuel • cost • carbon • profitability
+            DATCIE • fuel • cost • carbon
           </Text>
         </View>
 
@@ -261,18 +252,33 @@ const ResultScreen = () => {
 
           <View className="flex-row gap-3 mb-3">
             <Card
-              title="🌿 Carbon (kg)"
+              title="Fuel Cost (Rs)"
+              value={
+                typeof cards.fuelCost === "number"
+                  ? money(cards.fuelCost)
+                  : "-"
+              }
+            />
+            <Card
+              title="External Costs (Rs)"
+              value={
+                typeof cards.externalCostTotal === "number"
+                  ? money(cards.externalCostTotal)
+                  : "-"
+              }
+            />
+          </View>
+
+          <View className="flex-row gap-3 mb-3">
+            <Card
+              title="CO2 Emission (kg)"
               value={
                 typeof cards.carbonKg === "number" ? num1(cards.carbonKg) : "-"
               }
             />
             <Card
-              title="📈 Profitability"
-              value={
-                cards.profitProb !== null
-                  ? `${Math.round(Number(cards.profitProb) * 100)}%`
-                  : "-"
-              }
+              title="Risk"
+              value={cards.risk ? String(cards.risk).toUpperCase() : "-"}
             />
           </View>
 
@@ -424,83 +430,11 @@ const ResultScreen = () => {
               </View>
             )}
 
-          {/* 💵 PROFITABILITY CARD - Research Economic Analysis */}
-          {cards.expectedRevenue > 0 && cards.totalCost && (
-            <View className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200 p-5 mb-4">
-              <View className="flex-row items-center mb-4">
-                <Ionicons name="trending-up" size={22} color="#10b981" />
-                <Text className="text-lg font-bold text-emerald-900 ml-2">
-                  Economic Analysis
-                </Text>
-              </View>
-
-              <View className="bg-white rounded-xl p-4 mb-3">
-                <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-slate-100">
-                  <Text className="text-slate-600">Expected Catch</Text>
-                  <Text className="text-slate-900 font-bold text-lg">
-                    {cards.expectedCatch} kg
-                  </Text>
-                </View>
-
-                <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-slate-100">
-                  <Text className="text-slate-600">Market Price/kg</Text>
-                  <Text className="text-slate-900 font-bold text-lg">
-                    Rs {money(cards.marketPrice)}
-                  </Text>
-                </View>
-
-                <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-emerald-100 bg-emerald-50 -mx-4 px-4 py-3">
-                  <Text className="text-emerald-700 font-semibold">
-                    💰 Expected Revenue
-                  </Text>
-                  <Text className="text-emerald-900 font-bold text-xl">
-                    Rs {money(cards.expectedRevenue)}
-                  </Text>
-                </View>
-
-                <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-rose-100 bg-rose-50 -mx-4 px-4 py-3">
-                  <Text className="text-rose-700 font-semibold">
-                    💸 Total Cost
-                  </Text>
-                  <Text className="text-rose-900 font-bold text-xl">
-                    Rs {money(cards.totalCost)}
-                  </Text>
-                </View>
-
-                <View
-                  className={`flex-row justify-between items-center ${(cards.expectedProfit ?? 0) >= 0 ? "bg-green-100 border-green-200" : "bg-red-100 border-red-200"} -mx-4 px-4 py-4 border rounded-xl`}
-                >
-                  <View>
-                    <Text
-                      className={`${(cards.expectedProfit ?? 0) >= 0 ? "text-green-700" : "text-red-700"} font-bold text-base`}
-                    >
-                      {(cards.expectedProfit ?? 0) >= 0
-                        ? "✅ Expected Profit"
-                        : "⚠️ Expected Loss"}
-                    </Text>
-                    <Text className="text-slate-500 text-xs mt-0.5">
-                      Margin:{" "}
-                      {cards.profitMargin !== null
-                        ? `${cards.profitMargin.toFixed(1)}%`
-                        : "N/A"}
-                    </Text>
-                  </View>
-                  <Text
-                    className={`${(cards.expectedProfit ?? 0) >= 0 ? "text-green-900" : "text-red-900"} font-bold text-2xl`}
-                  >
-                    Rs {money(Math.abs(cards.expectedProfit ?? 0))}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="bg-teal-100 rounded-lg p-3">
-                <Text className="text-teal-800 text-xs font-medium text-center">
-                  📊 Complete economic forecast including external costs &
-                  profitability
-                </Text>
-              </View>
-            </View>
-          )}
+          {/*
+            Economic analysis is hidden here on purpose. Actual catch and
+            revenue are collected in Log Actuals after the trip, then saved for
+            later learning and evaluation.
+          */}
 
           {/* External Costs Summary */}
           {cards.externalCosts && cards.externalCosts.length > 0 && (
@@ -598,16 +532,16 @@ const ResultScreen = () => {
                   }`}
                 >
                   {cards.risk === "low"
-                    ? "✅ Favorable conditions. High probability of successful trip with expected profitability."
+                    ? "✅ Favorable conditions. Fuel and cost risk look low for this trip."
                     : cards.risk === "medium"
-                      ? "⚠️ Moderate risk. Monitor weather and fuel consumption. Profitability may vary."
-                      : "🚨 High risk detected. Consider postponing or adjusting route. Profitability uncertain."}
+                      ? "⚠️ Moderate risk. Monitor weather and fuel consumption."
+                      : "🚨 High risk detected. Consider postponing or adjusting route."}
                 </Text>
               </View>
 
               <View className="bg-white rounded-lg p-3 mt-3">
                 <Text className="text-slate-600 text-xs font-medium text-center">
-                  🤖 ML-powered risk analysis based on weather, economics &
+                  🤖 Risk analysis based on weather, fuel, cost, and
                   historical patterns
                 </Text>
               </View>

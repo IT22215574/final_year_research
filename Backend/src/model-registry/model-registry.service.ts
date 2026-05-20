@@ -28,6 +28,15 @@ type ArtifactSummaryRow = {
     rmse: number | null;
     r2: number | null;
   };
+  cvBestModel: string | null;
+  cvMetrics: {
+    mape: number | null;
+    mae: number | null;
+    rmse: number | null;
+    r2: number | null;
+  };
+  verificationMethod: string | null;
+  metricsUsed: string[];
   updatedAt: string | null;
 };
 
@@ -140,6 +149,23 @@ export class ModelRegistryService {
       ranking.find((row: any) => row?.model === selectedModel) ||
       ranking[0] ||
       {};
+    const crossValidation = Array.isArray(metadata.cross_validation)
+      ? metadata.cross_validation
+      : [];
+    const cvBestModel =
+      metadata.cv_best_model ||
+      crossValidation
+        .slice()
+        .sort(
+          (a: any, b: any) =>
+            Number(a?.CV_MAPE_MEAN ?? Number.POSITIVE_INFINITY) -
+            Number(b?.CV_MAPE_MEAN ?? Number.POSITIVE_INFINITY),
+        )[0]?.model ||
+      null;
+    const selectedCvRanking =
+      crossValidation.find((row: any) => row?.model === cvBestModel) ||
+      crossValidation[0] ||
+      {};
 
     const statsPath = fs.existsSync(metadataPath)
       ? metadataPath
@@ -167,6 +193,25 @@ export class ModelRegistryService {
         rmse: this.asNumberOrNull(selectedRanking.RMSE ?? selectedRanking.rmse),
         r2: this.asNumberOrNull(selectedRanking.R2 ?? selectedRanking.r2),
       },
+      cvBestModel,
+      cvMetrics: {
+        mape: this.asNumberOrNull(
+          selectedCvRanking.CV_MAPE_MEAN ?? selectedCvRanking.mape,
+        ),
+        mae: this.asNumberOrNull(
+          selectedCvRanking.CV_MAE_MEAN ?? selectedCvRanking.mae,
+        ),
+        rmse: this.asNumberOrNull(
+          selectedCvRanking.CV_RMSE_MEAN ?? selectedCvRanking.rmse,
+        ),
+        r2: this.asNumberOrNull(
+          selectedCvRanking.CV_R2_MEAN ?? selectedCvRanking.r2,
+        ),
+      },
+      verificationMethod: metadata.verification_method || null,
+      metricsUsed: Array.isArray(metadata.metrics_used)
+        ? metadata.metrics_used
+        : [],
       updatedAt: statsPath ? fs.statSync(statsPath).mtime.toISOString() : null,
     };
   }

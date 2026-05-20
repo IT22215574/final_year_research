@@ -33,6 +33,7 @@ const CATEGORIES = [
   "Equipment",
   "Maintenance",
   "Other",
+  "Custom",
 ];
 
 const COST_ICONS = [
@@ -60,6 +61,7 @@ export default function EditCostPreferenceScreen() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Harbor");
+  const [customCategory, setCustomCategory] = useState("");
   const [selectedIcon, setSelectedIcon] = useState("cash-outline");
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [quantity, setQuantity] = useState("1");
@@ -92,7 +94,13 @@ export default function EditCostPreferenceScreen() {
       const data = await getCostPreferenceById(String(id));
 
       setName(data.name || "");
-      setCategory(data.category || "Harbor");
+      if (data.category && !CATEGORIES.includes(data.category)) {
+        setCategory("Custom");
+        setCustomCategory(data.category);
+      } else {
+        setCategory(data.category || "Harbor");
+        setCustomCategory("");
+      }
       setSelectedIcon(data.icon || "cash-outline");
       setQuantity(String(data.quantity || 1));
       setPricePerUnit(String(data.pricePerUnit || 0));
@@ -124,6 +132,14 @@ export default function EditCostPreferenceScreen() {
       return;
     }
 
+    const finalCategory =
+      category === "Custom" ? customCategory.trim() : category;
+
+    if (!finalCategory) {
+      Alert.alert("Validation", "Category is required");
+      return;
+    }
+
     const qtyNum = Number(quantity);
     const priceNum = Number(pricePerUnit);
     const amountNum = Number(amount);
@@ -143,7 +159,7 @@ export default function EditCostPreferenceScreen() {
 
       const body: UpdateCostPreferenceBody = {
         name: name.trim(),
-        category,
+        category: finalCategory,
         icon: selectedIcon,
         quantity: qtyNum,
         pricePerUnit: priceNum,
@@ -227,6 +243,21 @@ export default function EditCostPreferenceScreen() {
               ))}
             </Picker>
           </View>
+
+          {category === "Custom" && (
+            <View className="mb-3">
+              <Text className="text-xs text-slate-500 mb-1">
+                Custom Category *
+              </Text>
+              <TextInput
+                value={customCategory}
+                onChangeText={setCustomCategory}
+                placeholder="e.g., Fuel Delivery"
+                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900"
+                placeholderTextColor="#94A3B8"
+              />
+            </View>
+          )}
 
           {/* Icon Selection */}
           <Text className="text-xs text-slate-500 mb-1">Icon *</Text>

@@ -126,8 +126,8 @@ const TripPlanner = () => {
   const [boatMongoId, setBoatMongoId] = useState("");
   const [speed, setSpeed] = useState("10");
   const [crewCount, setCrewCount] = useState("3");
-  const [expectedCatch, setExpectedCatch] = useState("120");
-  const [marketPrice, setMarketPrice] = useState("550");
+  const expectedCatch = "120";
+  const marketPrice = "550";
   const [mode, setMode] = useState<"island" | "international">("island");
 
   // Boat UI modal
@@ -402,7 +402,7 @@ const TripPlanner = () => {
     if (!boatMongoId.trim()) {
       Alert.alert(
         "Boat required",
-        "Select a boat from the boat modal first (it will auto-fill Mongo ID).",
+        "Select a boat first so the prediction can use its type, engine, and learning history.",
       );
       return;
     }
@@ -461,12 +461,12 @@ const TripPlanner = () => {
         manualExternalCosts:
           manualExternalCosts.length > 0
             ? manualExternalCosts.map(
-                ({ name, category, amount, description }) => ({
+                ({ name, category, amount, source, description }) => ({
                   name,
                   category,
                   amount,
                   description,
-                  source: "manual" as const,
+                  source: source || ("manual" as const),
                 }),
               )
             : undefined,
@@ -564,12 +564,12 @@ const TripPlanner = () => {
         manualExternalCosts:
           manualExternalCosts.length > 0
             ? manualExternalCosts.map(
-                ({ name, category, amount, description }) => ({
+                ({ name, category, amount, source, description }) => ({
                   name,
                   category,
                   amount,
                   description,
-                  source: "manual" as const,
+                  source: source || ("manual" as const),
                 }),
               )
             : undefined,
@@ -637,9 +637,6 @@ const TripPlanner = () => {
 
   const riskStyle = getRiskStyle(riskScore);
   const routeDistanceKm = Number.parseFloat(distance || "0") || 0;
-  const expectedRevenue =
-    (Number.parseFloat(expectedCatch || "0") || 0) *
-    (Number.parseFloat(marketPrice || "0") || 0);
   const weatherSeverityPreview = useMemo(() => {
     const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
     const windN = clamp01((Number.parseFloat(windSpeed || "0") || 0) / 60);
@@ -1082,21 +1079,6 @@ const TripPlanner = () => {
             </View>
           )}
 
-          {/* Boat Mongo ID (auto) */}
-          <View className="mb-4">
-            <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-              Boat Link
-            </Text>
-            <TextInput
-              placeholder="Select a boat to auto-fill..."
-              value={boatMongoId}
-              onChangeText={setBoatMongoId}
-              className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
-              placeholderTextColor="#94a3b8"
-              autoCapitalize="none"
-            />
-          </View>
-
           {/* ✅ Engine HP slider / manual toggle */}
           <View className="mb-4">
             <View className="flex-row justify-between items-center mb-2">
@@ -1198,33 +1180,11 @@ const TripPlanner = () => {
             </View>
           </View>
 
-          <View className="flex-row gap-3 mb-3">
-            <View className="flex-1">
-              <Text className="text-xs text-slate-500 mb-1.5 font-medium">
-                Expected Catch (kg)
-              </Text>
-              <TextInput
-                placeholder="120"
-                keyboardType="decimal-pad"
-                value={expectedCatch}
-                onChangeText={setExpectedCatch}
-                className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
-              />
-            </View>
-
-            <View className="flex-1">
-              <Text className="text-xs text-slate-500 mb-1.5 font-medium">
-                Market Price (Rs/kg)
-              </Text>
-              <TextInput
-                placeholder="550"
-                keyboardType="decimal-pad"
-                value={marketPrice}
-                onChangeText={setMarketPrice}
-                className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-slate-800"
-              />
-            </View>
-          </View>
+          {/*
+            Expected catch and market price are intentionally hidden from trip
+            planning. Actual catch/revenue are collected later in Log Actuals
+            so they can be used as cleaner learning data.
+          */}
 
           {/* Mode */}
           <View className="mb-4">

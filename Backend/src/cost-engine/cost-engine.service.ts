@@ -289,6 +289,8 @@ export class CostEngineService {
 
       if (r === 'low' || r === 'medium' || r === 'high') {
         riskCategory = r;
+      } else if (r === 'very_high') {
+        riskCategory = 'high';
       }
     } catch (e: any) {
       mlFallback = true;

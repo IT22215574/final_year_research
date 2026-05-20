@@ -173,6 +173,11 @@ const getRiskColor = (risk?: string) => {
   }
 };
 
+const isTripTrainable = (trip: Trip) =>
+  trip.status === "completed" &&
+  typeof trip.actualFuelLiters === "number" &&
+  trip.actualFuelLiters > 0;
+
 const TripCard = ({
   trip,
   selectionMode,
@@ -187,7 +192,9 @@ const TripCard = ({
   const [expanded, setExpanded] = useState(false);
 
   const isCompleted = trip.status === "completed";
-  const hasActualData = trip.actualFuelLiters != null;
+  const hasActualData = isTripTrainable(trip);
+  const canLogActual =
+    !hasActualData && trip.status !== "completed" && trip.status !== "cancelled";
 
   const mainCost =
     isCompleted && trip.actualTotalCost != null
@@ -212,6 +219,13 @@ const TripCard = ({
 
   const handleViewDetails = () => {
     router.push(`/(root)/(tabs)/fishtripcost/trip-details/${trip._id}`);
+  };
+
+  const handleLogActual = () => {
+    router.push({
+      pathname: "/(root)/(tabs)/fishtripcost/log-actual",
+      params: { tripId: trip._id },
+    });
   };
 
   return (
@@ -503,7 +517,7 @@ const TripCard = ({
                 <Text
                   style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}
                 >
-                  🌿 Carbon
+                  CO2 Emission
                 </Text>
                 <Text
                   style={{ fontSize: 13, fontWeight: "600", color: "#111827" }}
@@ -537,27 +551,64 @@ const TripCard = ({
             )}
           </View>
 
-          <TouchableOpacity
-            onPress={handleViewDetails}
-            style={{
-              backgroundColor: "#3b82f6",
-              borderRadius: 10,
-              paddingVertical: 12,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Ionicons
-              name="information-circle-outline"
-              size={20}
-              color="#ffffff"
-              style={{ marginRight: 6 }}
-            />
-            <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}>
-              View Full Details
-            </Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row" }}>
+            {canLogActual && (
+              <TouchableOpacity
+                onPress={handleLogActual}
+                style={{
+                  flex: 1,
+                  backgroundColor: "#059669",
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 8,
+                }}
+              >
+                <Ionicons
+                  name="create-outline"
+                  size={20}
+                  color="#ffffff"
+                  style={{ marginRight: 6 }}
+                />
+                <Text
+                  style={{
+                    color: "#ffffff",
+                    fontWeight: "600",
+                    fontSize: 14,
+                  }}
+                >
+                  Log Actual
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              onPress={handleViewDetails}
+              style={{
+                flex: 1,
+                backgroundColor: "#3b82f6",
+                borderRadius: 10,
+                paddingVertical: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={20}
+                color="#ffffff"
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={{ color: "#ffffff", fontWeight: "600", fontSize: 14 }}
+              >
+                View Full Details
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>
@@ -752,7 +803,7 @@ export default function PastTripsScreen() {
     const goodTrips = trips
       .filter(
         (trip) =>
-          trip.actualFuelLiters != null &&
+          isTripTrainable(trip) &&
           Math.abs(trip.fuelPredictionError || 100) < 15,
       )
       .map((trip) => trip._id);
@@ -829,7 +880,7 @@ export default function PastTripsScreen() {
 
   const trainableTripsCount = useMemo(() => {
     if (!Array.isArray(trips)) return 0;
-    return trips.filter((trip) => trip.actualFuelLiters != null).length;
+    return trips.filter(isTripTrainable).length;
   }, [trips]);
 
   const filteredTrips = useMemo(() => {

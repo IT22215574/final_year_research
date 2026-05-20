@@ -39,5 +39,19 @@ export function mergeCostPreferences(
     }),
   );
 
-  return [...preferenceCosts, ...manualCosts];
+  const deduped = new Map<string, ExternalCostItem>();
+
+  [...preferenceCosts, ...manualCosts].forEach((item) => {
+    const key = [
+      String(item.source || 'manual').trim().toLowerCase(),
+      String(item.name || '').trim().toLowerCase(),
+      String(item.category || '').trim().toLowerCase(),
+    ].join('|');
+
+    if (!deduped.has(key)) {
+      deduped.set(key, item);
+    }
+  });
+
+  return Array.from(deduped.values());
 }

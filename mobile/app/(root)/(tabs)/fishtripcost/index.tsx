@@ -18,7 +18,6 @@ import FishTripNavBar from "./components/FishTripNavBar";
 import Animated, {
   FadeInDown,
   FadeInUp,
-  SlideInRight,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -49,6 +48,33 @@ const DEFAULT_STATS: DashboardStats = {
   totalFuelUsed: 0,
   totalDistance: 0,
 };
+
+const MetricTile = ({
+  label,
+  value,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  valueClassName: string;
+}) => (
+  <View
+    className="mb-3 rounded-xl bg-slate-50 p-3"
+    style={{ width: "48%", minHeight: 78 }}
+  >
+    <Text className="text-xs text-slate-600" numberOfLines={2}>
+      {label}
+    </Text>
+    <Text
+      className={`mt-1 text-lg font-bold ${valueClassName}`}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.72}
+    >
+      {value}
+    </Text>
+  </View>
+);
 
 export default function FishTripCostDashboard() {
   const [loading, setLoading] = useState(true);
@@ -96,24 +122,20 @@ export default function FishTripCostDashboard() {
 
     const tripsArray = Array.isArray(tripsData) ? tripsData : [];
 
+    const isComparableTrip = (t: any) =>
+      t.status === "completed" &&
+      Number(t.predictedFuelLiters ?? 0) > 0 &&
+      Number(t.actualFuelLiters ?? 0) > 0 &&
+      (t.actualLoggedAt || t.comparisonEligible === true);
+
     const completedTrips = tripsArray.filter(
       (t: any) => t.status === "completed",
     ).length;
 
-    const withActuals = tripsArray.filter(
-      (t: any) =>
-        t.actualFuelLiters != null && t.predictedFuelLiters != null,
-    ).length;
+    const comparableTrips = tripsArray.filter(isComparableTrip);
+    const withActuals = comparableTrips.length;
 
-    const accurateFuelPredictions = tripsArray.filter((t: any) => {
-      if (
-        t.actualFuelLiters == null ||
-        t.predictedFuelLiters == null ||
-        t.predictedFuelLiters === 0
-      ) {
-        return false;
-      }
-
+    const accurateFuelPredictions = comparableTrips.filter((t: any) => {
       const errorPercent =
         (Math.abs(t.actualFuelLiters - t.predictedFuelLiters) /
           t.predictedFuelLiters) *
@@ -127,18 +149,16 @@ export default function FishTripCostDashboard() {
         ? Math.round((accurateFuelPredictions / withActuals) * 100)
         : 0;
 
-    const totalFuelVariance = tripsArray.reduce((sum: number, t: any) => {
-      if (t.actualFuelLiters != null && t.predictedFuelLiters != null) {
-        return sum + (t.actualFuelLiters - t.predictedFuelLiters);
-      }
-      return sum;
-    }, 0);
+    const totalFuelVariance = comparableTrips.reduce(
+      (sum: number, t: any) => sum + (t.actualFuelLiters - t.predictedFuelLiters),
+      0,
+    );
 
     const totalPredictedFuel = tripsArray.reduce((sum: number, t: any) => {
       return sum + Number(t.predictedFuelLiters ?? 0);
     }, 0);
 
-    const totalActualFuel = tripsArray.reduce((sum: number, t: any) => {
+    const totalActualFuel = comparableTrips.reduce((sum: number, t: any) => {
       return sum + Number(t.actualFuelLiters ?? 0);
     }, 0);
 
@@ -146,7 +166,7 @@ export default function FishTripCostDashboard() {
       return sum + Number(t.predictedTotalCost ?? t.predictedCost ?? 0);
     }, 0);
 
-    const totalActualCost = tripsArray.reduce((sum: number, t: any) => {
+    const totalActualCost = comparableTrips.reduce((sum: number, t: any) => {
       return sum + Number(t.actualTotalCost ?? t.actualCost ?? 0);
     }, 0);
 
@@ -236,18 +256,12 @@ export default function FishTripCostDashboard() {
     await loadDashboardData(false);
   };
 
-  const totalFuelSaved = useMemo(() => {
-    return Math.round(
-      trips.reduce((sum: number, t: any) => {
-        if (t.actualFuelLiters != null && t.predictedFuelLiters != null) {
-          return sum + Math.max(0, t.predictedFuelLiters - t.actualFuelLiters);
-        }
-        return sum;
-      }, 0) * 10,
-    ) / 10;
-  }, [trips]);
-
-  const normalizedFuelMetrics = (stats as any)?.normalizedFuelMetrics;
+  const totalFuelVariance = Number(stats.totalFuelVariance ?? 0);
+  const totalCostVariance = Number(stats.totalCostVariance ?? 0);
+  const predictionsWithActuals = Number(stats.predictionsWithActuals ?? 0);
+  const fuelAccuracyRate = Number(stats.fuelAccuracyRate ?? 0);
+  const costAccuracyRate = Number(stats.costAccuracyRate ?? 0);
+  const hasActualComparisons = predictionsWithActuals > 0;
 
   const quickActionTiles = [
     {
@@ -326,8 +340,12 @@ export default function FishTripCostDashboard() {
       format: "number" as const,
     },
     {
-      label: "Avg Cost",
-      value: Number(stats.averageActualCost ?? stats.averagePredictedCost ?? 0),
+      label: hasActualComparisons ? "Avg Actual Cost" : "Avg Pred. Cost",
+      value: Number(
+        hasActualComparisons
+          ? stats.averageActualCost
+          : stats.averagePredictedCost,
+      ),
       icon: "cash-outline",
       iconSet: Ionicons,
       color: "#f59e0b",
@@ -336,7 +354,7 @@ export default function FishTripCostDashboard() {
     },
     {
       label: "Fuel Accuracy",
-      value: Number(stats.fuelAccuracyRate ?? 0),
+      value: hasActualComparisons ? fuelAccuracyRate : 0,
       icon: "analytics",
       iconSet: Ionicons,
       color: "#8b5cf6",
@@ -355,10 +373,6 @@ export default function FishTripCostDashboard() {
     if (format === "percent") return `${safeValue}%`;
     return safeValue.toString();
   };
-
-  const totalFuelVariance = Number(stats.totalFuelVariance ?? 0);
-  const predictionsWithActuals = Number(stats.predictionsWithActuals ?? 0);
-  const fuelAccuracyRate = Number(stats.fuelAccuracyRate ?? 0);
 
   const renderContent = () => {
     if (loading) {
@@ -469,12 +483,13 @@ export default function FishTripCostDashboard() {
                     color="#f59e0b"
                   />
                   <Text className="ml-2 text-xs font-medium text-amber-800">
-                    Data Quality Filter Active
+                    Comparison Data Pending
                   </Text>
                 </View>
                 <Text className="mt-1 text-xs text-amber-700">
                   {stats.completedTrips - stats.predictionsWithActuals} trips
-                  excluded due to invalid or extreme outlier data.
+                  are not included in accuracy/variance because they are
+                  missing valid predicted and actual comparison data.
                 </Text>
               </View>
             )}
@@ -526,7 +541,7 @@ export default function FishTripCostDashboard() {
           </View>
         </View>
 
-        {normalizedFuelMetrics && predictionsWithActuals > 0 ? (
+        {hasActualComparisons ? (
           <Animated.View entering={FadeInDown.delay(250)} className="mx-5 mb-6">
             <View
               className="rounded-2xl bg-white p-5"
@@ -539,105 +554,100 @@ export default function FishTripCostDashboard() {
               }}
             >
               <View className="mb-4 flex-row items-center justify-between">
-                <View>
+                <View className="mr-3 flex-1">
                   <Text className="text-lg font-bold text-slate-900">
-                    Fleet Performance
+                    Actual Performance
                   </Text>
                   <Text className="mt-1 text-xs text-slate-500">
-                    Normalized fuel performance by boat baseline
+                    Calculated from completed trips with logged actual data
                   </Text>
                 </View>
 
                 <View
                   className={`rounded-full px-3 py-1 ${
-                    normalizedFuelMetrics.overallVarianceRating === "excellent"
+                    fuelAccuracyRate >= 85
                       ? "bg-emerald-100"
-                      : normalizedFuelMetrics.overallVarianceRating === "good"
+                      : fuelAccuracyRate >= 70
                         ? "bg-blue-100"
-                        : normalizedFuelMetrics.overallVarianceRating === "fair"
+                        : fuelAccuracyRate >= 50
                           ? "bg-amber-100"
                           : "bg-red-100"
                   }`}
                 >
                   <Text
                     className={`text-xs font-bold ${
-                      normalizedFuelMetrics.overallVarianceRating === "excellent"
+                      fuelAccuracyRate >= 85
                         ? "text-emerald-700"
-                        : normalizedFuelMetrics.overallVarianceRating === "good"
+                        : fuelAccuracyRate >= 70
                           ? "text-blue-700"
-                          : normalizedFuelMetrics.overallVarianceRating === "fair"
+                          : fuelAccuracyRate >= 50
                             ? "text-amber-700"
                             : "text-red-700"
                     }`}
                   >
-                    {String(
-                      normalizedFuelMetrics.overallVarianceRating ?? "unknown",
-                    ).toUpperCase()}
+                    REAL DATA
                   </Text>
                 </View>
               </View>
 
-              <View className="mb-4 flex-row items-center justify-between rounded-xl bg-blue-50 p-3">
-                <View className="flex-1">
-                  <Text className="text-xs text-slate-600">
-                    Fleet Efficiency
-                  </Text>
-                  <Text className="text-xl font-bold text-blue-600">
-                    {Number(
-                      normalizedFuelMetrics.averageEfficiencyScore ?? 0,
-                    ).toFixed(0)}
-                    /100
-                  </Text>
-                </View>
-
-                <View className="h-10 w-px bg-slate-200" />
-
-                <View className="flex-1 items-center">
-                  <Text className="text-xs text-slate-600">Avg Variance</Text>
-                  <Text
-                    className={`text-xl font-bold ${
-                      Math.abs(
-                        Number(
-                          normalizedFuelMetrics.averageNormalizedVariancePercent ??
-                            0,
-                        ),
-                      ) <= 15
-                        ? "text-emerald-600"
-                        : "text-amber-600"
-                    }`}
-                  >
-                    {Number(
-                      normalizedFuelMetrics.averageNormalizedVariancePercent ?? 0,
-                    ) > 0
-                      ? "+"
-                      : ""}
-                    {Number(
-                      normalizedFuelMetrics.averageNormalizedVariancePercent ?? 0,
-                    ).toFixed(1)}
-                    %
-                  </Text>
-                </View>
-
-                <View className="h-10 w-px bg-slate-200" />
-
-                <View className="flex-1 items-end">
-                  <Text className="text-xs text-slate-600">Total Fuel</Text>
-                  <Text className="text-xl font-bold text-slate-700">
-                    {Number(stats.totalActualFuel ?? 0).toFixed(0)}L
-                  </Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-start border-t border-slate-100 pt-3">
-                <Ionicons
-                  name="information-circle-outline"
-                  size={14}
-                  color="#64748b"
+              <View className="mb-4 flex-row flex-wrap justify-between">
+                <MetricTile
+                  label="Compared Trips"
+                  value={String(predictionsWithActuals)}
+                  valueClassName="text-slate-800"
                 />
+                <MetricTile
+                  label="Fuel Accuracy"
+                  value={`${fuelAccuracyRate}%`}
+                  valueClassName="text-blue-600"
+                />
+                <MetricTile
+                  label="Cost Accuracy"
+                  value={`${costAccuracyRate}%`}
+                  valueClassName={
+                    costAccuracyRate >= 70
+                      ? "text-emerald-600"
+                      : "text-amber-600"
+                  }
+                />
+                <MetricTile
+                  label="Actual Fuel"
+                  value={`${Number(stats.totalActualFuel ?? 0).toFixed(0)}L`}
+                  valueClassName="text-slate-700"
+                />
+                <MetricTile
+                  label="Avg Fuel Error"
+                  value={`${Number(stats.averageFuelErrorPercent ?? 0).toFixed(
+                    1,
+                  )}%`}
+                  valueClassName="text-slate-800"
+                />
+                <MetricTile
+                  label="Fuel Variance"
+                  value={`${totalFuelVariance > 0 ? "+" : ""}${totalFuelVariance.toFixed(
+                    1,
+                  )}L`}
+                  valueClassName={
+                    totalFuelVariance <= 0 ? "text-emerald-600" : "text-red-600"
+                  }
+                />
+                <MetricTile
+                  label="Cost Variance"
+                  value={`${totalCostVariance > 0 ? "+" : ""}Rs ${Math.round(
+                    totalCostVariance,
+                  ).toLocaleString()}`}
+                  valueClassName={
+                    totalCostVariance <= 0 ? "text-emerald-600" : "text-red-600"
+                  }
+                />
+              </View>
+
+              <View className="mt-3 flex-row items-start border-t border-slate-100 pt-3">
+                <Ionicons name="information-circle-outline" size={14} color="#64748b" />
                 <Text className="ml-1.5 flex-1 text-xs text-slate-500">
-                  Performance is compared to boat type baselines. Efficiency
-                  shows fuel usage versus expected behavior, and variance shows
-                  deviation from the normalized baseline.
+                  Accuracy includes only completed trips where actual fuel and
+                  actual cost were logged. Variance is actual minus predicted,
+                  using your saved prediction and log actual data.
                 </Text>
               </View>
             </View>
@@ -645,96 +655,30 @@ export default function FishTripCostDashboard() {
         ) : (
           <View className="mx-5 mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
             <View className="mb-2 flex-row items-center">
-              <Ionicons name="bug" size={18} color="#f59e0b" />
+              <Ionicons name="information-circle" size={18} color="#f59e0b" />
               <Text className="ml-2 font-bold text-amber-900">
-                Boat Type Card Debug Info
+                Actual Performance Pending
               </Text>
             </View>
 
             <Text className="mb-1 text-xs text-amber-800">
-              The Boat Type Performance card requires:
+              Dashboard accuracy needs completed trips with logged actual data.
             </Text>
 
             <View className="ml-2">
               <Text className="text-xs text-amber-700">
-                {predictionsWithActuals > 0 ? "✅" : "❌"} Trips with actual
-                data: {predictionsWithActuals}
+                Completed trips: {Number(stats.completedTrips ?? 0)}
               </Text>
               <Text className="text-xs text-amber-700">
-                {normalizedFuelMetrics ? "✅" : "❌"} Backend normalized metrics:{" "}
-                {normalizedFuelMetrics ? "Yes" : "No"}
+                Trips usable for accuracy: {predictionsWithActuals}
               </Text>
-              {normalizedFuelMetrics && (
-                <Text className="text-xs text-amber-700">
-                  {Object.keys(
-                    normalizedFuelMetrics.boatTypeBreakdown || {},
-                  ).length > 0
-                    ? "✅"
-                    : "❌"}{" "}
-                  Boat types:{" "}
-                  {Object.keys(
-                    normalizedFuelMetrics.boatTypeBreakdown || {},
-                  ).length}
-                </Text>
-              )}
             </View>
 
             <Text className="mt-2 text-xs text-amber-600">
-              {predictionsWithActuals === 0
-                ? "→ Log actual data for completed trips to see this card"
-                : !normalizedFuelMetrics
-                  ? "→ Restart backend to get normalized metrics"
-                  : "→ Need trips with boat type information"}
+              Log actual fuel, catch, and costs for planned trips to unlock real
+              dashboard performance.
             </Text>
           </View>
-        )}
-
-        {totalFuelSaved > 0 && (
-          <Animated.View entering={SlideInRight.delay(400)} className="mx-5 mb-6">
-            <LinearGradient
-              colors={["#10b981", "#059669"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="rounded-2xl p-5"
-              style={{
-                shadowColor: "#10b981",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.18,
-                shadowRadius: 6,
-                elevation: 4,
-              }}
-            >
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1">
-                  <View className="mb-2 flex-row items-center">
-                    <MaterialCommunityIcons
-                      name="fuel"
-                      size={20}
-                      color="white"
-                    />
-                    <Text className="ml-2 font-semibold text-white">
-                      Fuel Efficiency
-                    </Text>
-                  </View>
-
-                  <Text className="text-2xl font-bold text-white">
-                    {totalFuelSaved}L
-                  </Text>
-                  <Text className="mt-1 text-xs text-emerald-100">
-                    Total fuel saved compared to predictions
-                  </Text>
-                </View>
-
-                <View className="rounded-full bg-white/20 p-3">
-                  <MaterialCommunityIcons
-                    name="leaf"
-                    size={28}
-                    color="white"
-                  />
-                </View>
-              </View>
-            </LinearGradient>
-          </Animated.View>
         )}
 
         <View className="px-5 pb-2">

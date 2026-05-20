@@ -31,6 +31,7 @@ const CATEGORIES = [
   "Equipment",
   "Maintenance",
   "Other",
+  "Custom",
 ];
 
 const COST_ICONS = [
@@ -55,6 +56,7 @@ const COST_ICONS = [
 export default function AddCostPreferenceScreen() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Harbor");
+  const [customCategory, setCustomCategory] = useState("");
   const [selectedIcon, setSelectedIcon] = useState("cash-outline");
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [quantity, setQuantity] = useState("1");
@@ -93,6 +95,14 @@ export default function AddCostPreferenceScreen() {
       return;
     }
 
+    const finalCategory =
+      category === "Custom" ? customCategory.trim() : category;
+
+    if (!finalCategory) {
+      Alert.alert("Validation", "Category is required");
+      return;
+    }
+
     const qtyNum = Number(quantity);
     const priceNum = Number(pricePerUnit);
     const amountNum = Number(amount);
@@ -112,7 +122,7 @@ export default function AddCostPreferenceScreen() {
 
       const body: CreateCostPreferenceBody = {
         name: name.trim(),
-        category,
+        category: finalCategory,
         icon: selectedIcon,
         quantity: qtyNum,
         pricePerUnit: priceNum,
@@ -155,6 +165,21 @@ export default function AddCostPreferenceScreen() {
               auto-apply to include them automatically in all trip predictions.
             </Text>
           </View>
+
+          {category === "Custom" && (
+            <View className="mt-3">
+              <Text className="text-xs text-slate-500 mb-1">
+                Custom Category *
+              </Text>
+              <TextInput
+                value={customCategory}
+                onChangeText={setCustomCategory}
+                placeholder="e.g., Fuel Delivery"
+                className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900"
+                placeholderTextColor="#94A3B8"
+              />
+            </View>
+          )}
         </View>
 
         {/* Cost Name */}

@@ -28,6 +28,7 @@ import {
   TrainingCandidate,
   TrainingCandidateDocument,
 } from '../schemas/training-candidate.schema';
+import { carbonMetrics } from '../common/utils/carbon.util';
 
 @Injectable()
 export class TripsService {
@@ -327,6 +328,13 @@ export class TripsService {
     trip.actualLoggedAt = new Date();
     trip.actualNotes = dto.actualNotes;
 
+    const actualCarbon = carbonMetrics(
+      Number(dto.actualFuelLiters || 0),
+      Number(dto.actualCatchKg || 0),
+    );
+    trip.carbonEmissionKg = actualCarbon.carbonEmissionKg;
+    trip.carbonPerKgCatch = actualCarbon.carbonPerKgCatch;
+
     trip.fuelPredictionError = fuelPredictionError;
     trip.fuelDifference = fuelDifference;
     trip.totalCostDifference = totalCostDifference;
@@ -549,7 +557,8 @@ export class TripsService {
     const trips = await this.tripModel
       .find({
         _id: { $in: dto.tripIds },
-        actualFuelLiters: { $exists: true }, // Only logged trips
+        status: 'completed',
+        actualFuelLiters: { $gt: 0 }, // Only completed trips with real actual fuel
       })
       .exec();
 

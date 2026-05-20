@@ -132,6 +132,7 @@ export default function SignInPage() {
                     type="email"
                     placeholder="admin@fisheries.com"
                     className="w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 placeholder:text-gray-400 text-base"
+                    suppressHydrationWarning
                     {...register("email")}
                   />
                 </div>
@@ -168,6 +169,7 @@ export default function SignInPage() {
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     className="w-full pl-10 pr-12 py-3.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-gray-900 placeholder:text-gray-400 text-base"
+                    suppressHydrationWarning
                     {...register("password")}
                   />
                   <button
@@ -213,6 +215,7 @@ export default function SignInPage() {
                 type="submit"
                 disabled={isSubmitting}
                 className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 text-white font-semibold py-3.5 px-6 rounded-xl hover:from-blue-700 hover:to-emerald-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30 flex items-center justify-center gap-2 group text-base"
+                suppressHydrationWarning
               >
                 {isSubmitting ? (
                   <>
