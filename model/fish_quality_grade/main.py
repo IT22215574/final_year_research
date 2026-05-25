@@ -62,7 +62,8 @@ IMG_SIZE = 224
 FISH_THRESHOLD = 0.60  # Lowered from 0.70 to be more inclusive
 SPECIES_THRESHOLD = 0.45  # Lowered for internet images
 GRADE_THRESHOLD = 0.45
-UNKNOWN_SPECIES_THRESHOLD = 0.30  # Below this, classify as unknown
+UNKNOWN_SPECIES_THRESHOLD = 0.20  # Below this, classify as unknown
+SINGLE_IMAGE_FISH_THRESHOLD = 0.55  # Single uploaded/downloaded photos vary more than paired lab images
 
 # ── Per-image validation thresholds ─────────────────────────────────────────
 # Lowered thresholds to handle internet/downloaded fish images better
@@ -203,7 +204,6 @@ def assess_image_quality(img: Image.Image) -> Dict:
 
 
 def enhance_for_internet_image(img: Image.Image) -> Image.Image:
-    """Apply enhancements to help with internet/downloaded images"""
     # Enhance contrast slightly
     enhancer = ImageEnhance.Contrast(img)
     img = enhancer.enhance(1.1)
@@ -306,10 +306,10 @@ async def preprocess_image(file: UploadFile, apply_enhancements: bool = True) ->
         # Convert to RGB
         img = img.convert("RGB")
         
-        # Apply enhancements for internet/downloaded images
-        if apply_enhancements and quality_info.get("is_screenshot", False):
+        # Apply gentle normalization for internet/downloaded images and screenshots.
+        if apply_enhancements:
             img = enhance_for_internet_image(img)
-            logger.info("Applied enhancements for screenshot/internet image")
+            logger.info("Applied image normalization/enhancement")
         
         # Resize
         img = img.resize((IMG_SIZE, IMG_SIZE), Image.BILINEAR)
@@ -842,7 +842,7 @@ async def predict_single(
     Single-image grading pipeline for internet-downloaded or user-uploaded fish photos.
     
     This endpoint is optimized for single images with relaxed thresholds:
-    - Fish detection threshold: 0.60 (vs 0.80 for paired mode)
+    - Fish detection threshold: 0.55 (relaxed for single downloaded images)
     - No pair validation checks
     - Returns same output format as /predict for consistency
     
@@ -895,10 +895,8 @@ async def predict_single(
         return resp
 
     # ═══════════════════════════════════════════════════════════════════════
-    # STEP 1 — Fish detection (single-image mode, relaxed threshold 0.60)
+    # STEP 1 - Fish detection (single-image mode, relaxed threshold)
     # ═══════════════════════════════════════════════════════════════════════
-    SINGLE_IMAGE_FISH_THRESHOLD = 0.60  # Relaxed for internet images
-    
     fish_result = run_single_image(fish_session, img_array, use_tta=False)
     fish_label = BINARY_LABELS[fish_result["prediction_idx"]]
     fish_confidence = fish_result["confidence"]
@@ -1061,7 +1059,8 @@ async def get_stats():
             "unknown_species": UNKNOWN_SPECIES_THRESHOLD,
             "per_image_fish": PER_IMAGE_FISH_THRESHOLD,
             "per_image_species": PER_IMAGE_SPECIES_THRESHOLD,
-            "final_grade": FINAL_GRADE_THRESHOLD
+            "final_grade": FINAL_GRADE_THRESHOLD,
+            "single_image_fish": SINGLE_IMAGE_FISH_THRESHOLD,
         },
         "supported_species": SUPPORTED_SPECIES,
         "tta_enabled": USE_TTA,

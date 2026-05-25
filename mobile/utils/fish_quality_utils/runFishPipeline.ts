@@ -138,7 +138,7 @@ export async function runFishPipeline(
 
     onProgress('Preparing image...');
     const image = await prepareImageForUpload(leftUri, 'image', { 
-      enhance: enhancedPreprocessing && isScreenshot 
+      enhance: enhancedPreprocessing
     });
 
     const formData = new FormData();

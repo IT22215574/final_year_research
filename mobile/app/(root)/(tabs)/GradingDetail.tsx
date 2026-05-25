@@ -12,7 +12,7 @@ import {
   Dimensions,
   Share,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -23,6 +23,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 const SERVER_BASE = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
 const { width: SCREEN_W } = Dimensions.get("window");
+const TAB_BAR_SPACE = 112;
 
 // Memoized helper functions
 const gradeColor = (g?: string | null) => {
@@ -246,6 +247,7 @@ InfoRow.displayName = "InfoRow";
 // Main Component
 export default function GradingDetail() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { history, historyLoading, getOne, remove } = useGradingRecordStore();
 
@@ -428,7 +430,7 @@ export default function GradingDetail() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
       <LinearGradient
         colors={HEADER_GRADIENT}
         start={{ x: 0, y: 0 }}
@@ -470,13 +472,14 @@ export default function GradingDetail() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 12) + TAB_BAR_SPACE },
+        ]}
       >
-        <View className="p-2">
-          <Animated.View entering={FadeInDown.duration(400)}>
-            <ImageGallery images={images} />
-          </Animated.View>
-        </View>
+        <Animated.View entering={FadeInDown.duration(400)}>
+          <ImageGallery images={images} />
+        </Animated.View>
 
         {/* Grade Banner */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)}>
@@ -631,14 +634,16 @@ const styles = StyleSheet.create({
     height: 40,
   },
   scrollContent: {
-    paddingBottom: 32,
     paddingVertical: 16,
   },
   imageWrap: {
     backgroundColor: "#1e293b",
+    marginHorizontal: 16,
+    borderRadius: 12,
+    overflow: "hidden",
   },
   mainImg: {
-    width: SCREEN_W,
+    width: "100%",
     height: SCREEN_W * 0.7,
   },
   thumbRow: {

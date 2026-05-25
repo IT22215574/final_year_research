@@ -11,7 +11,7 @@ import {
   Alert,
   RefreshControl,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -19,6 +19,9 @@ import * as ImagePicker from "expo-image-picker";
 import { HEADER_GRADIENT } from "@/constants";
 import { loadModels, runFishPipeline } from "@/utils/fish_quality_utils/runFishPipeline";
 import type { PredictionResult } from "@/utils/fish_quality_utils/fishTypes";
+
+const SINGLE_IMAGE_MODE = true;
+const TAB_BAR_SPACE = 112;
 
 // ── Fish name dictionary (ALL model labels → display names) ───────────────────
 const FISH_NAMES: Record<string, { english: string; sinhala: string; romanized: string }> = {
@@ -73,6 +76,7 @@ const getFishName = (label?: string | null) => {
 
 export default function SpeciesDetection() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [leftImage, setLeftImage] = useState<string | null>(null);
   const [rightImage, setRightImage] = useState<string | null>(null);
@@ -136,7 +140,7 @@ export default function SpeciesDetection() {
   };
 
   const pickImage = (side: "left" | "right") =>
-    Alert.alert("Select Image", `Choose source for ${side} image`, [
+    Alert.alert("Select Image", "Choose a clear side-view fish image", [
       { text: "Camera", onPress: () => openCamera(side) },
       { text: "Gallery", onPress: () => openGallery(side) },
       { text: "Cancel", style: "cancel" },
@@ -144,10 +148,10 @@ export default function SpeciesDetection() {
 
   // ── Predict ────────────────────────────────────────────────────────────────
   // Allow predict even if apiStatus is "idle" — checkApi runs automatically on first predict
-  const canPredict = !!leftImage && !!rightImage && !loading && apiStatus !== "error";
+  const canPredict = !!leftImage && !loading && apiStatus !== "error";
 
   const predict = async () => {
-    if (!leftImage || !rightImage) return;
+    if (!leftImage) return;
 
     // Auto-check API if not done yet
     if (apiStatus === "idle") {
@@ -159,13 +163,14 @@ export default function SpeciesDetection() {
     setResult(null);
     setLoadingMsg("Running stage 1 — Fish detector…");
     try {
-      const r = await runFishPipeline(leftImage, rightImage, {
+      const r = await runFishPipeline(leftImage, undefined, {
         useTTA: true,
+        singleImageMode: SINGLE_IMAGE_MODE,
         onProgress: (msg: string) => setLoadingMsg(msg),
       });
 
       // ── Pair mismatch check ────────────────────────────────────────────
-      if (r.isFish && r.pairValidation && !r.pairValidation.matched) {
+      if (rightImage && r.isFish && r.pairValidation && !r.pairValidation.matched) {
         const leftDisplay  = getFishName(r.pairValidation.leftLabel).english;
         const rightDisplay = getFishName(r.pairValidation.rightLabel).english;
         setResult(r);
@@ -220,9 +225,14 @@ export default function SpeciesDetection() {
           <MaterialIcons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
 
+        <View style={s.headerContent}>
+          <Text style={s.headerTitle}>Species Detection</Text>
+          <Text style={s.headerSub}>Identify the fish from a clear side-view photo</Text>
+        </View>
+
         <View style={s.statusContainer}>
           <View style={[s.statusDot, { backgroundColor: apiStatusColor }]} />
-          <Text style={[s.statusText, { color: apiStatusColor }]}>{apiStatusText}</Text>
+          <Text style={s.statusText}>{apiStatusText}</Text>
           {(apiStatus === "idle" || apiStatus === "error") && (
             <TouchableOpacity onPress={checkApi} style={s.retryBtn}>
               <MaterialIcons name="refresh" size={12} color="#fff" />
@@ -236,7 +246,10 @@ export default function SpeciesDetection() {
       </LinearGradient>
 
       <ScrollView
-        contentContainerStyle={s.scroll}
+        contentContainerStyle={[
+          s.scroll,
+          { paddingBottom: Math.max(insets.bottom, 12) + TAB_BAR_SPACE },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={apiStatus === "checking"} onRefresh={checkApi} />
@@ -244,43 +257,40 @@ export default function SpeciesDetection() {
       >
         {/* ── Image pickers ── */}
         <View style={s.card}>
-          <Text style={s.cardTitle}>Select Images</Text>
-          <View style={s.imageRow}>
-            {(["left", "right"] as const).map((side) => {
-              const uri = side === "left" ? leftImage : rightImage;
-              return (
-                <View key={side} style={s.slotWrapper}>
-                  <TouchableOpacity style={s.imageSlot} onPress={() => pickImage(side)}>
-                    {uri ? (
-                      <Image source={{ uri }} style={s.thumb} />
-                    ) : (
-                      <View style={s.thumbEmpty}>
-                        <MaterialIcons name="add-photo-alternate" size={34} color="#95a5a6" />
-                        <Text style={s.thumbLabel}>Tap to add</Text>
-                      </View>
-                    )}
-                    <View style={s.slotBadge}>
-                      <Text style={s.slotBadgeText}>{side.toUpperCase()}</Text>
-                    </View>
-                  </TouchableOpacity>
-                  <View style={s.slotActions}>
-                    <TouchableOpacity style={s.slotBtn} onPress={() => openCamera(side)}>
-                      <MaterialIcons name="photo-camera" size={16} color="#3498db" />
-                      <Text style={s.slotBtnText}>Camera</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={s.slotBtn} onPress={() => openGallery(side)}>
-                      <MaterialIcons name="photo-library" size={16} color="#3498db" />
-                      <Text style={s.slotBtnText}>Gallery</Text>
-                    </TouchableOpacity>
+          <Text style={s.cardTitle}>Select Fish Image</Text>
+          <Text style={s.cardSubTitle}>
+            Use one clear, uncropped side-view image of the fish.
+          </Text>
+          <View style={s.singleImageRow}>
+            <View style={s.singleSlotWrapper}>
+              <TouchableOpacity style={s.imageSlot} onPress={() => pickImage("left")}>
+                {leftImage ? (
+                  <Image source={{ uri: leftImage }} style={s.thumb} />
+                ) : (
+                  <View style={s.thumbEmpty}>
+                    <MaterialIcons name="add-photo-alternate" size={34} color="#95a5a6" />
+                    <Text style={s.thumbLabel}>Tap to add fish image</Text>
                   </View>
+                )}
+                <View style={s.slotBadge}>
+                  <Text style={s.slotBadgeText}>SINGLE IMAGE</Text>
                 </View>
-              );
-            })}
+              </TouchableOpacity>
+              <View style={s.slotActions}>
+                <TouchableOpacity style={s.slotBtn} onPress={() => openCamera("left")}>
+                  <MaterialIcons name="photo-camera" size={16} color="#3498db" />
+                  <Text style={s.slotBtnText}>Camera</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.slotBtn} onPress={() => openGallery("left")}>
+                  <MaterialIcons name="photo-library" size={16} color="#3498db" />
+                  <Text style={s.slotBtnText}>Gallery</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
 
           <View style={s.fileNames}>
-            <Text style={s.fileName} numberOfLines={1}>L: {leftName}</Text>
-            <Text style={s.fileName} numberOfLines={1}>R: {rightName}</Text>
+            <Text style={s.fileName} numberOfLines={1}>Image: {leftName}</Text>
           </View>
 
           <View style={s.actionRow}>
@@ -299,7 +309,10 @@ export default function SpeciesDetection() {
                     <Text style={s.loadingText}>{loadingMsg}</Text>
                   </View>
                 ) : (
-                  <Text style={s.predictText}>🔍 DETECT SPECIES</Text>
+                  <View style={s.predictContent}>
+                    <MaterialIcons name="search" size={20} color="#fff" />
+                    <Text style={s.predictText}>Detect Species</Text>
+                  </View>
                 )}
               </LinearGradient>
             </TouchableOpacity>
@@ -322,7 +335,7 @@ export default function SpeciesDetection() {
             <Text style={s.cardTitle}>Detection Result</Text>
 
             {/* Pair mismatch banner */}
-            {result.pairValidation && !result.pairValidation.matched && (
+            {rightImage && result.pairValidation && !result.pairValidation.matched && (
               <View style={s.mismatchBanner}>
                 <MaterialIcons name="compare-arrows" size={24} color="#e74c3c" />
                 <View style={{ flex: 1 }}>
@@ -336,7 +349,7 @@ export default function SpeciesDetection() {
                     {getFishName(result.pairValidation.rightLabel).english}
                   </Text>
                   <Text style={s.mismatchHint}>
-                    Use two images of the same fish for best accuracy.
+                    Use one clear image for the single-image detection flow.
                   </Text>
                 </View>
               </View>
@@ -438,7 +451,7 @@ export default function SpeciesDetection() {
           <View style={s.emptyState}>
             <MaterialIcons name="search" size={64} color="#dfe6e9" />
             <Text style={s.emptyText}>
-              Add left + right fish photos{"\n"}then tap DETECT SPECIES
+              Add one clear fish photo{"\n"}then tap DETECT SPECIES
             </Text>
           </View>
         )}
@@ -488,12 +501,19 @@ const s = StyleSheet.create({
   },
   headerContent: {
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 10,
+    paddingHorizontal: 44,
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: "bold",
     color: "#fff",
+    textAlign: "center",
+  },
+  headerSub: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.86)",
+    marginTop: 3,
     textAlign: "center",
   },
   statusContainer: {
@@ -504,7 +524,7 @@ const s = StyleSheet.create({
     marginTop: 4,
   },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 12, fontWeight: "600" },
+  statusText: { fontSize: 12, fontWeight: "600", color: "#fff" },
   retryBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -517,13 +537,16 @@ const s = StyleSheet.create({
   retryText: { color: "#fff", fontSize: 11, marginLeft: 2 },
   apiErrText: { color: "#ffd0cc", fontSize: 11, textAlign: "center", marginTop: 4 },
 
-  scroll: { padding: 16, paddingBottom: 40, gap: 14 },
+  scroll: { padding: 16, gap: 14 },
 
-  card: { backgroundColor: "#fff", borderRadius: 14, padding: 16, elevation: 3, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6 },
+  card: { backgroundColor: "#fff", borderRadius: 12, padding: 16, elevation: 3, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6 },
   cardTitle: { fontSize: 16, fontWeight: "700", color: "#2c3e50", marginBottom: 14 },
+  cardSubTitle: { fontSize: 12, color: "#64748b", marginTop: -8, marginBottom: 12 },
 
   imageRow: { flexDirection: "row", gap: 12, marginBottom: 10 },
+  singleImageRow: { alignItems: "center", marginBottom: 10 },
   slotWrapper: { flex: 1, gap: 6 },
+  singleSlotWrapper: { width: "100%", maxWidth: 320, gap: 6 },
   imageSlot: { borderRadius: 10, overflow: "hidden", position: "relative", borderWidth: 2, borderColor: "#ecf0f1" },
   thumb: { width: "100%", aspectRatio: 1, borderRadius: 8 },
   thumbEmpty: { width: "100%", aspectRatio: 1, backgroundColor: "#f8f9fa", justifyContent: "center", alignItems: "center" },
@@ -543,6 +566,7 @@ const s = StyleSheet.create({
   predictGradient: { paddingVertical: 14, alignItems: "center" },
   loadingRow: { alignItems: "center" },
   loadingText: { color: "#f5f6fa", fontSize: 11, marginTop: 6 },
+  predictContent: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   predictText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
   resetBtn: { padding: 12, borderRadius: 10, borderWidth: 1.5, borderColor: "#e74c3c" },
 

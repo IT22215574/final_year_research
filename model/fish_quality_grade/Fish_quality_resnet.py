@@ -3,6 +3,8 @@ import copy
 import random
 import warnings
 from collections import Counter
+from pathlib import Path
+import json
 
 import numpy as np
 import pandas as pd
@@ -11,10 +13,15 @@ from PIL import Image
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
+    ConfusionMatrixDisplay,
     balanced_accuracy_score,
     f1_score,
 )
 from sklearn.model_selection import train_test_split
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -37,15 +44,28 @@ warnings.filterwarnings("ignore")
 # =========================================================
 # CONFIGURATION
 # =========================================================
-STAGE1_TRAIN_CSV = "stage1_train.csv"          # fish / non-fish
-STAGE2_TRAIN_CSV = "stage2_species_train.csv"  # species
-STAGE3_TRAIN_CSV = "stage3_grade_train.csv"    # grade
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA_DIR = SCRIPT_DIR / "data_csv"
+RESULTS_DIR = SCRIPT_DIR / "resnet_results"
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-STAGE1_MODEL_PATH = "best_stage1_binary_model.pth"
-STAGE2_MODEL_PATH = "best_stage2_species_model.pth"
-STAGE3_MODEL_PATH = "best_stage3_grade_model.pth"
+STAGE1_TRAIN_CSV = DATA_DIR / "stage1_train.csv"          # fish / non-fish
+STAGE1_VAL_CSV = DATA_DIR / "stage1_val.csv"
+STAGE1_TEST_CSV = DATA_DIR / "stage1_test.csv"
+STAGE2_TRAIN_CSV = DATA_DIR / "stage2_species_train.csv"  # species
+STAGE2_VAL_CSV = DATA_DIR / "stage2_species_val.csv"
+STAGE2_TEST_CSV = DATA_DIR / "stage2_species_test.csv"
+STAGE3_TRAIN_CSV = DATA_DIR / "stage3_grade_train.csv"    # grade
+STAGE3_VAL_CSV = DATA_DIR / "stage3_grade_val.csv"
+STAGE3_TEST_CSV = DATA_DIR / "stage3_grade_test.csv"
 
-LABEL_MAPPINGS_PATH = "label_mappings.pth"
+STAGE1_MODEL_PATH = RESULTS_DIR / "resnet_stage1_binary_best.pth"
+STAGE2_MODEL_PATH = RESULTS_DIR / "resnet_stage2_species_best.pth"
+STAGE3_MODEL_PATH = RESULTS_DIR / "resnet_stage3_grade_best.pth"
+
+LABEL_MAPPINGS_PATH = RESULTS_DIR / "resnet_label_mappings.pth"
+SUMMARY_CSV_PATH = RESULTS_DIR / "resnet_summary_metrics.csv"
+SUMMARY_JSON_PATH = RESULTS_DIR / "resnet_summary_metrics.json"
 
 IMG_SIZE = 224
 BATCH_SIZE = 16
@@ -259,8 +279,19 @@ def load_and_filter_dataframe(csv_path, label_column, stage_name):
     return df
 
 
-def create_train_val_test_splits(csv_path, label_column, stage_name):
+def create_train_val_test_splits(csv_path, label_column, stage_name, val_csv_path=None, test_csv_path=None):
     df = load_and_filter_dataframe(csv_path, label_column, stage_name)
+
+    if val_csv_path and test_csv_path and Path(val_csv_path).exists() and Path(test_csv_path).exists():
+        val_df = load_and_filter_dataframe(val_csv_path, label_column, stage_name)
+        test_df = load_and_filter_dataframe(test_csv_path, label_column, stage_name)
+
+        print("\nUsing prepared CSV splits:")
+        print(f"  Train: {len(df)} ({Path(csv_path).name})")
+        print(f"  Val:   {len(val_df)} ({Path(val_csv_path).name})")
+        print(f"  Test:  {len(test_df)} ({Path(test_csv_path).name})")
+
+        return df, val_df, test_df
 
     # Need at least 2 samples per class for stratify to work well
     label_counts = Counter(df[label_column])
@@ -301,6 +332,126 @@ def compute_metrics(all_labels, all_preds):
     macro_f1 = f1_score(all_labels, all_preds, average="macro")
     weighted_f1 = f1_score(all_labels, all_preds, average="weighted")
     return acc, bal_acc, macro_f1, weighted_f1
+
+
+def _stage_dir(stage_name):
+    out_dir = RESULTS_DIR / stage_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir
+
+
+def save_history_plots(history, stage_name):
+    out_dir = _stage_dir(stage_name)
+    history_df = pd.DataFrame(history)
+    history_df.to_csv(out_dir / f"{stage_name}_training_history.csv", index=False)
+
+    if history_df.empty:
+        return
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig.suptitle(f"ResNet50 {stage_name.upper()} Training Metrics", fontsize=16, fontweight="bold")
+
+    axes[0, 0].plot(history_df["epoch"], history_df["train_loss"], label="Train Loss", marker="o")
+    axes[0, 0].plot(history_df["epoch"], history_df["val_loss"], label="Validation Loss", marker="o")
+    axes[0, 0].set_title("Loss")
+    axes[0, 0].set_xlabel("Epoch")
+    axes[0, 0].set_ylabel("Loss")
+    axes[0, 0].legend()
+    axes[0, 0].grid(True, alpha=0.3)
+
+    axes[0, 1].plot(history_df["epoch"], history_df["train_acc"], label="Train Accuracy", marker="o")
+    axes[0, 1].plot(history_df["epoch"], history_df["val_acc"], label="Validation Accuracy", marker="o")
+    axes[0, 1].set_title("Accuracy")
+    axes[0, 1].set_xlabel("Epoch")
+    axes[0, 1].set_ylabel("Accuracy")
+    axes[0, 1].legend()
+    axes[0, 1].grid(True, alpha=0.3)
+
+    axes[1, 0].plot(history_df["epoch"], history_df["val_bal_acc"], label="Validation Balanced Accuracy", marker="o")
+    axes[1, 0].set_title("Balanced Accuracy")
+    axes[1, 0].set_xlabel("Epoch")
+    axes[1, 0].set_ylabel("Balanced Accuracy")
+    axes[1, 0].legend()
+    axes[1, 0].grid(True, alpha=0.3)
+
+    axes[1, 1].plot(history_df["epoch"], history_df["val_macro_f1"], label="Validation Macro F1", marker="o")
+    axes[1, 1].plot(history_df["epoch"], history_df["val_weighted_f1"], label="Validation Weighted F1", marker="o")
+    axes[1, 1].set_title("F1 Scores")
+    axes[1, 1].set_xlabel("Epoch")
+    axes[1, 1].set_ylabel("F1")
+    axes[1, 1].legend()
+    axes[1, 1].grid(True, alpha=0.3)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.savefig(out_dir / f"{stage_name}_training_curves.png", dpi=180)
+    plt.close(fig)
+
+
+def save_confusion_matrix_plot(test_labels, test_preds, target_names, stage_name):
+    out_dir = _stage_dir(stage_name)
+    cm = confusion_matrix(test_labels, test_preds)
+    pd.DataFrame(cm, index=target_names, columns=target_names).to_csv(
+        out_dir / f"{stage_name}_confusion_matrix.csv"
+    )
+
+    fig, ax = plt.subplots(figsize=(8, 7))
+    display = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=target_names)
+    display.plot(ax=ax, cmap="Blues", values_format="d", colorbar=False)
+    ax.set_title(f"ResNet50 {stage_name.upper()} Confusion Matrix")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    fig.savefig(out_dir / f"{stage_name}_confusion_matrix.png", dpi=180)
+    plt.close(fig)
+
+
+def save_classification_report(test_labels, test_preds, target_names, stage_name):
+    out_dir = _stage_dir(stage_name)
+    report_dict = classification_report(
+        test_labels,
+        test_preds,
+        target_names=target_names,
+        digits=4,
+        output_dict=True,
+        zero_division=0,
+    )
+    report_text = classification_report(
+        test_labels,
+        test_preds,
+        target_names=target_names,
+        digits=4,
+        zero_division=0,
+    )
+    pd.DataFrame(report_dict).transpose().to_csv(out_dir / f"{stage_name}_classification_report.csv")
+    (out_dir / f"{stage_name}_classification_report.txt").write_text(report_text, encoding="utf-8")
+    return report_text
+
+
+def save_summary_plots(summary_rows):
+    if not summary_rows:
+        return
+
+    df = pd.DataFrame(summary_rows)
+    df.to_csv(SUMMARY_CSV_PATH, index=False)
+    SUMMARY_JSON_PATH.write_text(json.dumps(summary_rows, indent=2), encoding="utf-8")
+
+    metrics = ["test_accuracy", "test_balanced_accuracy", "test_macro_f1", "test_weighted_f1"]
+    fig, ax = plt.subplots(figsize=(11, 6))
+    x = np.arange(len(df["stage"]))
+    width = 0.18
+
+    for i, metric in enumerate(metrics):
+        ax.bar(x + (i - 1.5) * width, df[metric], width, label=metric.replace("test_", "").replace("_", " ").title())
+
+    ax.set_title("ResNet50 Test Metrics by Stage")
+    ax.set_ylabel("Score")
+    ax.set_ylim(0, 1.05)
+    ax.set_xticks(x)
+    ax.set_xticklabels(df["stage"])
+    ax.legend()
+    ax.grid(axis="y", alpha=0.3)
+    plt.tight_layout()
+    fig.savefig(RESULTS_DIR / "resnet_all_stage_test_metrics.png", dpi=180)
+    plt.close(fig)
 
 # =========================================================
 # TRAIN / VALIDATE
@@ -417,12 +568,18 @@ def build_optimizer(model, backbone_frozen=True):
 # =========================================================
 # TRAIN STAGE
 # =========================================================
-def train_stage(csv_path, label_column, model_save_path, stage_name):
+def train_stage(csv_path, label_column, model_save_path, stage_name, val_csv_path=None, test_csv_path=None):
     print(f"\n{'=' * 90}")
     print(f"TRAINING {stage_name.upper()}")
     print(f"{'=' * 90}")
 
-    train_df, val_df, test_df = create_train_val_test_splits(csv_path, label_column, stage_name)
+    train_df, val_df, test_df = create_train_val_test_splits(
+        csv_path,
+        label_column,
+        stage_name,
+        val_csv_path=val_csv_path,
+        test_csv_path=test_csv_path,
+    )
 
     # For grading/color-sensitive task, use mild augmentation
     train_transform = transforms.Compose([
@@ -513,6 +670,7 @@ def train_stage(csv_path, label_column, model_save_path, stage_name):
     best_metric = -1.0
     best_epoch = 0
     patience_counter = 0
+    history = []
 
     print("\nStarting training...")
     print("-" * 120)
@@ -544,6 +702,18 @@ def train_stage(csv_path, label_column, model_save_path, stage_name):
             f"Val Weighted F1: {val_weighted_f1:.4f}"
         )
 
+        history.append({
+            "epoch": epoch,
+            "train_loss": train_loss,
+            "train_acc": train_acc,
+            "val_loss": val_loss,
+            "val_acc": val_acc,
+            "val_bal_acc": val_bal_acc,
+            "val_macro_f1": val_macro_f1,
+            "val_weighted_f1": val_weighted_f1,
+            "selected_metric": current_metric,
+        })
+
         if current_metric > best_metric:
             best_metric = current_metric
             best_epoch = epoch
@@ -572,6 +742,7 @@ def train_stage(csv_path, label_column, model_save_path, stage_name):
             break
 
     print(f"\nBest epoch: {best_epoch} | Best {best_metric_name}: {best_metric:.4f}")
+    save_history_plots(history, stage_name)
 
     # Load best model
     checkpoint = torch.load(model_save_path, map_location=DEVICE)
@@ -594,9 +765,32 @@ def train_stage(csv_path, label_column, model_save_path, stage_name):
     print(confusion_matrix(test_labels, test_preds))
 
     print("\nClassification Report:")
-    print(classification_report(test_labels, test_preds, target_names=target_names, digits=4))
+    report_text = save_classification_report(test_labels, test_preds, target_names, stage_name)
+    save_confusion_matrix_plot(test_labels, test_preds, target_names, stage_name)
+    print(report_text)
 
-    return model, train_dataset.label_to_idx, train_dataset.idx_to_label
+    metrics = {
+        "stage": stage_name,
+        "backbone": BACKBONE,
+        "best_epoch": best_epoch,
+        "best_metric_name": best_metric_name,
+        "best_metric_value": float(best_metric),
+        "test_loss": float(test_loss),
+        "test_accuracy": float(test_acc),
+        "test_balanced_accuracy": float(test_bal_acc),
+        "test_macro_f1": float(test_macro_f1),
+        "test_weighted_f1": float(test_weighted_f1),
+        "num_classes": num_classes,
+        "classes": target_names,
+        "model_path": str(model_save_path),
+        "results_dir": str(_stage_dir(stage_name)),
+    }
+    (_stage_dir(stage_name) / f"{stage_name}_metrics.json").write_text(
+        json.dumps(metrics, indent=2),
+        encoding="utf-8",
+    )
+
+    return model, train_dataset.label_to_idx, train_dataset.idx_to_label, metrics
 
 # =========================================================
 # MAIN
@@ -615,32 +809,43 @@ def main():
     # -----------------------------
     # STAGE 1: fish vs non-fish
     # -----------------------------
-    stage1_model, stage1_label_map, stage1_idx_map = train_stage(
+    summary_rows = []
+
+    stage1_model, stage1_label_map, stage1_idx_map, stage1_metrics = train_stage(
         csv_path=STAGE1_TRAIN_CSV,
         label_column="binary_label",
         model_save_path=STAGE1_MODEL_PATH,
-        stage_name="stage1"
+        stage_name="stage1",
+        val_csv_path=STAGE1_VAL_CSV,
+        test_csv_path=STAGE1_TEST_CSV,
     )
+    summary_rows.append(stage1_metrics)
 
     # -----------------------------
     # STAGE 2: fish species only
     # -----------------------------
-    stage2_model, stage2_label_map, stage2_idx_map = train_stage(
+    stage2_model, stage2_label_map, stage2_idx_map, stage2_metrics = train_stage(
         csv_path=STAGE2_TRAIN_CSV,
         label_column="species_label",
         model_save_path=STAGE2_MODEL_PATH,
-        stage_name="stage2"
+        stage_name="stage2",
+        val_csv_path=STAGE2_VAL_CSV,
+        test_csv_path=STAGE2_TEST_CSV,
     )
+    summary_rows.append(stage2_metrics)
 
     # -----------------------------
     # STAGE 3: fish grade A/B/C only
     # -----------------------------
-    stage3_model, stage3_label_map, stage3_idx_map = train_stage(
+    stage3_model, stage3_label_map, stage3_idx_map, stage3_metrics = train_stage(
         csv_path=STAGE3_TRAIN_CSV,
         label_column="grade_label",
         model_save_path=STAGE3_MODEL_PATH,
-        stage_name="stage3"
+        stage_name="stage3",
+        val_csv_path=STAGE3_VAL_CSV,
+        test_csv_path=STAGE3_TEST_CSV,
     )
+    summary_rows.append(stage3_metrics)
 
     mappings = {
         "stage1": {"label_to_idx": stage1_label_map, "idx_to_label": stage1_idx_map},
@@ -648,6 +853,7 @@ def main():
         "stage3": {"label_to_idx": stage3_label_map, "idx_to_label": stage3_idx_map},
     }
     torch.save(mappings, LABEL_MAPPINGS_PATH)
+    save_summary_plots(summary_rows)
 
     print("\n" + "=" * 90)
     print("TRAINING COMPLETE")
@@ -656,6 +862,7 @@ def main():
     print(f"Stage 2 model: {STAGE2_MODEL_PATH}")
     print(f"Stage 3 model: {STAGE3_MODEL_PATH}")
     print(f"Mappings:      {LABEL_MAPPINGS_PATH}")
+    print(f"Graphs/reports: {RESULTS_DIR}")
 
 
 if __name__ == "__main__":

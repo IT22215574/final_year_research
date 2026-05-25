@@ -14,7 +14,7 @@ import {
   Dimensions,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -42,7 +42,8 @@ import { buildFishMeasurements } from "@/utils/measurementUtils";
 import { resolveSpecies, getSizeCategoryForSpecies } from "@/utils/fishWeight";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const BOTTOM_NAV_HEIGHT = 80; // Adjust based on your bottom navigation height
+const TAB_BAR_SPACE = 112;
+const SINGLE_IMAGE_MODE = true;
 
 /** Species that support quality grading (match labels from the model exactly) */
 const GRADABLE_SPECIES = ["tuna", "makerel"];
@@ -120,6 +121,7 @@ const VALIDATION_STATUS_UI: Record<
 
 export default function QualityGrading() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [leftImage, setLeftImage] = useState<string | null>(null);
@@ -182,8 +184,7 @@ export default function QualityGrading() {
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.92,
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
       });
 
       if (!res.canceled && res.assets.length > 0) {
@@ -216,8 +217,7 @@ export default function QualityGrading() {
 
       const res = await ImagePicker.launchCameraAsync({
         quality: 0.92,
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
       });
 
       if (!res.canceled && res.assets.length > 0) {
@@ -237,7 +237,7 @@ export default function QualityGrading() {
   };
 
   const pickImage = (side: "left" | "right") =>
-    Alert.alert("Select Image", `Choose source for ${side} image`, [
+    Alert.alert("Select Image", "Choose a clear side-view fish image", [
       { text: "Camera", onPress: () => openCamera(side) },
       { text: "Gallery", onPress: () => openGallery(side) },
       { text: "Cancel", style: "cancel" },
@@ -287,7 +287,7 @@ export default function QualityGrading() {
     try {
       const r = await runFishPipeline(leftImage, rightImage || undefined, {
         useTTA: true,
-        singleImageMode: !rightImage,
+        singleImageMode: SINGLE_IMAGE_MODE,
         onProgress: (msg: string) => {
           setLoadingMsg(msg);
         },
@@ -315,7 +315,7 @@ export default function QualityGrading() {
 
       // ── Pair mismatch check (only for paired mode) ───────────────────────
       if (
-        !rightImage &&
+        rightImage &&
         r.isFish &&
         r.pairValidation &&
         !r.pairValidation.matched
@@ -406,7 +406,7 @@ export default function QualityGrading() {
         predictedGrade: result.grade ?? undefined,
         gradeConfidence: result.gradeConfidence,
         speciesConfidence: result.speciesConfidence,
-        imageUris: [leftImage, rightImage].filter(Boolean) as string[],
+        imageUris: [leftImage].filter(Boolean) as string[],
         notes: notes || undefined,
         measuredLengthCm,
         estimatedWeightKg,
@@ -552,30 +552,31 @@ export default function QualityGrading() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={s.container} edges={["left", "right", "bottom"]}>
-      {/* Header */}
+    <SafeAreaView style={s.container} edges={["left", "right"]}>
       <LinearGradient
         colors={HEADER_GRADIENT}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={s.header}
-      ></LinearGradient>
-      <View className="p-5">
+      >
         <TouchableOpacity
           style={s.backBtn}
           onPress={() => router.push("/Quality")}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <MaterialIcons name="arrow-back" size={24} color="#00000" />
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
+        <View style={s.headerContent}>
+          <Text style={s.headerSub}>Analyze freshness from one clear fish image</Text>
+        </View>
         <View style={s.statusContainer}>
           <View style={[s.statusDot, { backgroundColor: apiStatusColor }]} />
-          <Text style={[s.statusText, { color: apiStatusColor }]}>
+          <Text style={s.statusText}>
             {apiStatusText}
           </Text>
           {(apiStatus === "idle" || apiStatus === "error") && (
             <TouchableOpacity onPress={checkApi} style={s.retryBtn}>
-              <MaterialIcons name="refresh" size={12} color="#000000" />
+              <MaterialIcons name="refresh" size={12} color="#fff" />
               <Text style={s.retryText}>
                 {apiStatus === "idle" ? "Check" : "Retry"}
               </Text>
@@ -585,10 +586,13 @@ export default function QualityGrading() {
         {apiStatus === "error" && apiError && (
           <Text style={s.apiErrText}>{apiError}</Text>
         )}
-      </View>
+      </LinearGradient>
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={s.scrollContent}
+        contentContainerStyle={[
+          s.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 12) + TAB_BAR_SPACE },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -611,50 +615,40 @@ export default function QualityGrading() {
 
         {/* ── Image pickers ── */}
         <View style={s.card}>
-          <Text style={s.cardTitle}>1. Select Fish Images</Text>
+          <Text style={s.cardTitle}>1. Select Fish Image</Text>
           <Text style={s.cardSubTitle}>
-            You can grade with one image. The right image is optional.
+            Use one clear, uncropped side-view image of the fish.
           </Text>
 
-          <View style={s.imageRow}>
-            {(["left", "right"] as const).map((side) => {
-              const uri = side === "left" ? leftImage : rightImage;
-              const displayName = side === "left" ? "Left" : "Right (Optional)";
-
-              return (
-                <View key={side} style={s.slotWrapper}>
-                  <TouchableOpacity
-                    style={[s.imageSlot, uri && s.imageSlotFilled]}
-                    onPress={() => pickImage(side)}
-                    activeOpacity={0.7}
-                  >
-                    {uri ? (
-                      <Image source={{ uri }} style={s.thumb} />
-                    ) : (
-                      <View style={s.thumbEmpty}>
-                        <MaterialIcons
-                          name="add-a-photo"
-                          size={32}
-                          color="#95a5a6"
-                        />
-                        <Text style={s.thumbLabel}>Add {displayName}</Text>
-                      </View>
-                    )}
-                    <View style={s.slotBadge}>
-                      <Text style={s.slotBadgeText}>{displayName}</Text>
-                    </View>
-                  </TouchableOpacity>
+          <View style={s.singleImageRow}>
+            <View style={s.singleSlotWrapper}>
+              <TouchableOpacity
+                style={[s.imageSlot, leftImage && s.imageSlotFilled]}
+                onPress={() => pickImage("left")}
+                activeOpacity={0.7}
+              >
+                {leftImage ? (
+                  <Image source={{ uri: leftImage }} style={s.thumb} />
+                ) : (
+                  <View style={s.thumbEmpty}>
+                    <MaterialIcons
+                      name="add-a-photo"
+                      size={32}
+                      color="#95a5a6"
+                    />
+                    <Text style={s.thumbLabel}>Add Fish Image</Text>
+                  </View>
+                )}
+                <View style={s.slotBadge}>
+                  <Text style={s.slotBadgeText}>Single Image</Text>
                 </View>
-              );
-            })}
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={s.fileNames}>
             <Text style={s.fileName} numberOfLines={1}>
-              📷 Left: {leftName}
-            </Text>
-            <Text style={s.fileName} numberOfLines={1}>
-              📷 Right: {rightImage ? rightName : "Optional"}
+              Image: {leftName}
             </Text>
           </View>
 
@@ -777,14 +771,12 @@ export default function QualityGrading() {
             <MaterialIcons name="analytics" size={64} color="#dfe6e9" />
             <Text style={s.emptyTitle}>No Analysis Yet</Text>
             <Text style={s.emptyText}>
-              Select left and right images of your fish{"\n"}
+              Select one clear image of your fish{"\n"}
               then tap "Start Grading" to begin analysis
             </Text>
           </View>
         )}
 
-        {/* Add bottom spacing to avoid navigation bar overlap */}
-        <View style={{ height: BOTTOM_NAV_HEIGHT + 20 }} />
       </ScrollView>
 
       {/* ── Modals ── */}
@@ -1155,7 +1147,7 @@ const s = StyleSheet.create({
     backgroundColor: "#f8fafc",
   },
   header: {
-    paddingVertical: 10,
+    paddingVertical: 16,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
@@ -1180,6 +1172,7 @@ const s = StyleSheet.create({
   },
   headerContent: {
     alignItems: "center",
+    paddingHorizontal: 48,
   },
   headerTitle: {
     fontSize: 20,
@@ -1195,7 +1188,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 8,
+    marginTop: 10,
     gap: 6,
   },
   statusDot: {
@@ -1206,6 +1199,7 @@ const s = StyleSheet.create({
   statusText: {
     fontSize: 12,
     fontWeight: "600",
+    color: "#fff",
   },
   retryBtn: {
     flexDirection: "row",
@@ -1229,7 +1223,6 @@ const s = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 20,
   },
   noticeBox: {
     flexDirection: "row",
@@ -1252,7 +1245,7 @@ const s = StyleSheet.create({
   },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     elevation: 2,
@@ -1284,8 +1277,16 @@ const s = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
+  singleImageRow: {
+    alignItems: "center",
+    marginBottom: 12,
+  },
   slotWrapper: {
     flex: 1,
+  },
+  singleSlotWrapper: {
+    width: "100%",
+    maxWidth: 320,
   },
   imageSlot: {
     borderRadius: 12,
