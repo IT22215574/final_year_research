@@ -806,3 +806,81 @@ Environmental Data Ranges:
 2026-05-06 10:56:56 | INFO | ============================================================
 2026-05-06 10:56:56 | INFO | Fish Zone Prediction Complete!
 2026-05-06 10:56:56 | INFO | ============================================================
+2026-05-13 23:26:11 | INFO | ============================================================
+2026-05-13 23:26:11 | INFO | Starting Daily Fish Zone Prediction
+2026-05-13 23:26:11 | INFO | ============================================================
+2026-05-13 23:26:11 | INFO | Loading model: xgboost_fish_zone_model.pkl
+2026-05-13 23:26:13 | INFO | Loading SST data: sst_2026-05-04.nc
+2026-05-13 23:26:15 | INFO | Loading chlorophyll data: chlorophyll_2026-05-04.nc
+2026-05-13 23:26:15 | INFO | Loading ocean current data: currents_2026-05-06.nc
+2026-05-13 23:26:15 | INFO | Loading bathymetry data: bathymetry.nc
+2026-05-13 23:26:15 | INFO | Created prediction grid with 5023 ocean points
+2026-05-13 23:26:15 | INFO | Extracting environmental data for grid points...
+2026-05-13 23:26:15 | INFO | Found bathymetry variable: deptho
+2026-05-13 23:26:25 | INFO | Valid data points: 5002 / 5023
+2026-05-13 23:26:25 | INFO | Making predictions...
+2026-05-13 23:26:25 | INFO | Saved predictions to /Users/ravindujayaweera/Desktop/project/final_year_research/model/fish_zone_predictions/fish_zones_2026-05-13.csv
+2026-05-13 23:26:25 | INFO | Saved GeoJSON to /Users/ravindujayaweera/Desktop/project/final_year_research/model/fish_zone_predictions/fish_zones_2026-05-13.geojson
+2026-05-13 23:26:26 | INFO | Saved heatmap to /Users/ravindujayaweera/Desktop/project/final_year_research/model/fish_zone_predictions/fish_zones_heatmap_2026-05-13.png
+2026-05-13 23:26:26 | INFO | 
+Fish Zone Prediction Summary
+==================================================
+Date: 2026-05-13 23:26:26
+
+Total prediction points: 5002
+Predicted fish zones: 151 (3.0%)
+High probability zones (>70%): 147 (2.9%)
+
+Average fish probability: 0.030
+Maximum fish probability: 1.000
+
+Environmental Data Ranges:
+- SST: 29.30°C to 31.70°C
+- Chlorophyll: 0.0574 to 5.1098 mg/m³
+- Ocean Current U: -0.567 to 0.920 m/s
+- Ocean Current V: -0.620 to 1.142 m/s
+- Water Depth: 7.9m to 4833.3m
+==================================================
+
+2026-05-13 23:26:26 | INFO | ============================================================
+2026-05-13 23:26:26 | INFO | Fish Zone Prediction Complete!
+2026-05-13 23:26:26 | INFO | ============================================================
+2026-05-13 23:30:26 | INFO | ============================================================
+2026-05-13 23:30:26 | INFO | Starting Daily Fish Zone Prediction
+2026-05-13 23:30:26 | INFO | ============================================================
+2026-05-13 23:30:26 | INFO | Loading model: xgboost_fish_zone_model.pkl
+2026-05-13 23:30:27 | INFO | Loading SST data: sst_2026-05-04.nc
+2026-05-13 23:30:28 | INFO | Loading chlorophyll data: chlorophyll_2026-05-04.nc
+2026-05-13 23:30:28 | INFO | Loading ocean current data: currents_2026-05-06.nc
+2026-05-13 23:30:28 | INFO | Loading bathymetry data: bathymetry.nc
+2026-05-13 23:30:28 | INFO | Created prediction grid with 5023 ocean points
+2026-05-13 23:30:28 | INFO | Extracting environmental data for grid points...
+2026-05-13 23:30:28 | INFO | Found bathymetry variable: deptho
+2026-05-13 23:30:38 | INFO | Valid data points: 5002 / 5023
+2026-05-13 23:30:38 | INFO | Making predictions...
+2026-05-13 23:30:38 | INFO | Saved predictions to /Users/ravindujayaweera/Desktop/project/final_year_research/model/fish_zone_predictions/fish_zones_2026-05-13.csv
+2026-05-13 23:30:39 | INFO | Saved GeoJSON to /Users/ravindujayaweera/Desktop/project/final_year_research/model/fish_zone_predictions/fish_zones_2026-05-13.geojson
+2026-05-13 23:30:39 | INFO | Saved heatmap to /Users/ravindujayaweera/Desktop/project/final_year_research/model/fish_zone_predictions/fish_zones_heatmap_2026-05-13.png
+2026-05-13 23:30:39 | INFO | 
+Fish Zone Prediction Summary
+==================================================
+Date: 2026-05-13 23:30:39
+
+Total prediction points: 5002
+Predicted fish zones: 151 (3.0%)
+High probability zones (>70%): 147 (2.9%)
+
+Average fish probability: 0.030
+Maximum fish probability: 1.000
+
+Environmental Data Ranges:
+- SST: 29.30°C to 31.70°C
+- Chlorophyll: 0.0574 to 5.1098 mg/m³
+- Ocean Current U: -0.567 to 0.920 m/s
+- Ocean Current V: -0.620 to 1.142 m/s
+- Water Depth: 7.9m to 4833.3m
+==================================================
+
+2026-05-13 23:30:39 | INFO | ============================================================
+2026-05-13 23:30:39 | INFO | Fish Zone Prediction Complete!
+2026-05-13 23:30:39 | INFO | ============================================================

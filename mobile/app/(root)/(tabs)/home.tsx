@@ -102,7 +102,7 @@ const Home = () => {
       >
         {/* Fish Zone Demo (UI-only placeholder) */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fish Zone Demo</Text>
+          <Text style={styles.sectionTitle}>Fish Zone Predictions</Text>
 
           <View style={[styles.card, { marginTop: 14 }]}>
             <Text style={styles.cardTitle}>Predicted Zones</Text>
